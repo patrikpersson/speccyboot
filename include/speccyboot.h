@@ -31,14 +31,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SPECCYBOOT_ZEB_INCLUSION_GUARD
-#define SPECCYBOOT_ZEB_INCLUSION_GUARD
+#ifndef SPECCYBOOT_SPECCYBOOT_INCLUSION_GUARD
+#define SPECCYBOOT_SPECCYBOOT_INCLUSION_GUARD
 
 #include <stdint.h>
 
 #include "spectrum.h"
+
 /* -------------------------------------------------------------------------
- * I/O ports implemented by ZEB
+ * I/O ports implemented by SpeccyBoot
  * ------------------------------------------------------------------------- */
 
 Z80_PORT(0x009f) sbt_cfg_port;        /* speccyboot config */
@@ -71,13 +72,11 @@ enum speccyboot_out_port_bit_t {
  * ------------------------------------------------------------------------- */
 
 enum speccyboot_in_port_bit_t {
-  BIT_EN_WOL    = 0,    /* WOL pin from ENC28J60 */    
-  BIT_SPI_MISO  = 1,    /* SPI data from ENC28J60 */
+  BIT_SPI_MISO  = 0,    /* SPI data from ENC28J60 */
+  BIT_EN_WOL    = 1,    /* WOL pin from ENC28J60 */    
   BIT_EN_INT    = 2     /* INT pin from ENC28J60 */
 };
 
 #define SPI_MISO             (1 << BIT_SPI_MISO)
-#define SPI_RST              (1 << BIT_SPI_RST)
-#define SPI_MOSI             (1 << BIT_SPI_MOSI)
 
-#endif /* SPECCYBOOT_ZEB_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_SPECCYBOOT_INCLUSION_GUARD */
