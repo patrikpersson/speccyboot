@@ -81,7 +81,7 @@ lp:
  */
 #define FRAM_CONFIG   (0)
 
-#define SPI_PORT      (159)
+#define SPI_PORT      (0x9f)
 
 /* ------------------------------------------------------------------------- */
 
@@ -103,224 +103,176 @@ __naked
     add hl, sp
     ld  d, (hl)
 
-    ; each half-cycle is 32 T-states => approx 54.6kbps bit-rate @3.5MHz
+    ; each cycle is 48 T-states => approx 72.9kbps bit-rate @3.5MHz
   
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ; WRITE BYTE: d holds the value to write
     ; MOSI is written directly after SCK has been pulled low
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
-    ld  l, #0x80    ; 7     x
-    ld  c, #159     ; 7			x
-    ld  a, l        ; 4			x   a is now 0x80
-    rl  d           ; 8			x
-    rra             ; 4			x   a is now (0x40 | d.bit7 * 0x80)
-    out (c), a      ; 12		x   CS=0, SCK=0, MOSI=d.bit7
+    ld hl, #0x4140    ; 10    x   used while reading below
+    ld  e, #0x80
+    ld  c, #SPI_PORT
+    ld  a, e          ; 4			x   a is now 0x80
+    rl  d
+    rra               ; 4			x   a is now (0x40 | d.bit7 << 7)
+    out (c), a        ; 12		x   CS=0, SCK=0, MOSI=d.bit7
   
     ; shift out bit 7
 
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
   
     ; shift out bit 6
 
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit6 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit6
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, e          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit6 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit6
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
   
     ; shift out bit 5
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit5 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit5
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
-    
+    ld  a, e          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit5 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit5
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
+
     ; shift out bit 4
-    
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit4 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit4
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
-    
+
+    ld  a, e          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit4 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit4
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
+
     ; shift out bit 3
-    
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit3 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit3
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
-    
+
+    ld  a, e          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit3 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit3
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
+
     ; shift out bit 2
-    
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit2 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit2
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
-    
+
+    ld  a, e          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit2 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit2
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
+
     ; shift out bit 1
-    
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit1 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit1
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
-    
+
+    ld  a, e          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit1 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit1
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
+
     ; shift out bit 0
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit0 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit0
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, e          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit0 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit0
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
   
-    ; keep high for 32 T-states
-    ld hl, #0x4140  ; 10    H
-    ld hl, #0x4140  ; 10    H   delay
-    out (c), l      ; 12		H
+  ; keep high for 24 T-states
+    nop               ; 4     H   delay
+    nop               ; 4     H   delay
+    nop               ; 4     H   delay
+    out (c), l        ; 12		H
   
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ; READ BYTE: d holds the value read
     ; MISO is read just before SCK is pulled high
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-  
     ; shift in bit 7
   
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
   
     ; shift in bit 6
     
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
-  
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
+
     ; shift in bit 5
-    
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
-  
+
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
+
     ; shift in bit 4
-    
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
-  
+
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
+
     ; shift in bit 3
 
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
-  
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
+
     ; shift in bit 2
-    
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
-  
+
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
+
     ; shift in bit 1
      
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
-    
-    ; shift in bit 0
-    
-    in  e, (c)      ; 12		L
-    out	(c), h      ; 12		L
-    rr e            ; 8			H
-    rr e            ; 8			H
-    nop             ; 4     H   delay
-    out (c), l      ; 12		H
-    rl d            ; 8			L
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
 
-    ld l, d         ; 4     L
-    ld a, #0x48     ; 7     L
-    nop             ; 4     L   make sure we wait > 1 half-cycle before CS
-    out (c), a      ; 12    L   release CS
+    ; shift in bit 0
+
+    in  a, (c)        ; 12		L
+    out	(c), h        ; 12		L
+    rra               ; 4			H
+    rl d              ; 8			H
+    out (c), l        ; 12		H
+  
+    ld l, d           ; 4     L
+    ld a, #0x48       ; 7     L
+    nop               ; 4     L   make sure we wait > 1 half-cycle before CS
+    out (c), a        ; 12    L   release CS
   
     ret
   
@@ -349,259 +301,191 @@ __naked
     inc hl
     ld  e, (hl)     ;           data
     
-    ; each half-cycle is 32 T-states => approx 54.6kbps bit-rate @3.5MHz
-    
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ; WRITE BYTE: d holds the value to write
     ; MOSI is written directly after SCK has been pulled low
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
-    ld  l, #0x80
-    ld  c, #159
-    ld  a, l        ; 4			x   a is now 0x80
+    ld  b, #0x80
+    ld  c, #SPI_PORT
+    ld  a, b          ; 4			x   a is now 0x80
     rl  d
-    rra             ; 4			x   a is now (0x40 | d.bit7 * 0x80)
-    out (c), a      ; 12		x   CS=0, SCK=0, MOSI=d.bit7
-    
+    rra               ; 4			x   a is now (0x40 | d.bit7 << 7)
+    out (c), a        ; 12		x   CS=0, SCK=0, MOSI=d.bit7
+  
     ; shift out bit 7
     
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 6
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit6 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit6
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit6 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit6
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 5
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit5 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit5
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit5 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit5
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 4
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit4 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit4
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit4 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit4
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 3
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit3 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit3
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit3 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit3
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 2
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit2 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit2
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit2 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit2
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 1
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit1 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit1
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit1 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit1
+    inc a             ; 4     L   SCK := 1
+    rl  d             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 0
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  d           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit0 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit0
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
-    
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | d.bit0 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=d.bit0
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L   prepare by putting e.bit7 into carry
+    out (c), a        ; 12		L
+  
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     ; WRITE BYTE: e holds the value to write
     ; MOSI is written directly after SCK has been pulled low
     ; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    
+  
     ; shift out bit 7
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit6 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit6
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit7 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit7
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 6
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit6 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit6
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit6 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit6
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 5
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit5 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit5
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit5 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit5
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 4
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit4 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit4
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit4 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit4
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 3
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit3 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit3
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit3 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit3
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 2
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit2 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit2
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit2 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit2
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 1
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit1 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit1
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit1 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit1
+    inc a             ; 4     L   SCK := 1
+    rl  e             ; 8			L
+    out (c), a        ; 12		L
     
     ; shift out bit 0
     
-    ld  a, l        ; 4			H   a is now 0x80
-    rl  e           ; 8			H
-    rra             ; 4			H   a is now (0x40 | d.bit0 * 0x80)
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H   CS=0, SCK=0, MOSI=d.bit0
-    inc a           ; 4     L   SCK := 1
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    nop             ; 4     L   delay
-    out (c), a      ; 12		L
+    ld  a, b          ; 4			H   a is now 0x80
+    rra               ; 4			H   a is now (0x40 | e.bit0 << 7)
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H   CS=0, SCK=0, MOSI=e.bit0
+    inc a             ; 4     L   SCK := 1
+    nop               ; 4     L   delay
+    nop               ; 4     L   delay
+    out (c), a        ; 12		L
     
-    ; keep high for 32 T-states
-    dec a           ; 4     L   SCK := 0
-    nop             ; 4     H   delay
-    nop             ; 4     H   delay
-    nop             ; 4     H   delay
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H
+    ; keep high for 24 T-states
+    dec a             ; 4     H   SCK := 0
+    nop               ; 4     H   delay
+    nop               ; 4     H   delay
+    out (c), a        ; 12		H
     
-    ; release CS after > 32 low T-states
-    ld  a, #0x48    ; 7     L   CS := 1
-    nop             ; 4     H   delay
-    nop             ; 4     H   delay
-    nop             ; 4     H   delay
-    nop             ; 4     H   delay
-    out (c), a      ; 12		H
+    ; release CS after > 24 low T-states
+    ld  a, #0x48      ; 7     L   CS := 1
+    nop               ; 4     L   delay
+    nop               ; 4     L   delay
+    out (c), a        ; 12		L
     
     ret
     
@@ -626,29 +510,13 @@ enc28j60_read_register(bool    is_mac_or_mii,
                        uint8_t bank,
                        uint8_t reg)
 {
-  uint8_t result;
- 
   logging_add_entry("read \200:\200", (uint8_t) bank, (uint8_t) reg);
   
   if (reg < REGISTERS_IN_ALL_BANKS) {
     write2x8(SPI_OPCODE_WCR(ECON1), bank | ECON1_RXEN);  /* select bank */
   }
   
-#if 0
-  spi_active();
-
-  spi_write(SPI_OPCODE_RCR(reg));
-  if (is_mac_or_mii) {
-    (void) spi_read();        /* dummy byte -- ignored */
-  }
-  result = spi_read();
-
-  spi_idle();
-#else
-  result = write8read8(SPI_OPCODE_RCR(reg));
-#endif
-  
-  return result;
+  return write8read8(SPI_OPCODE_RCR(reg));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -667,15 +535,7 @@ enc28j60_write_register(bool    is_mac_or_mii,
     write2x8(SPI_OPCODE_WCR(ECON1), bank | ECON1_RXEN);  /* select bank */
   }
   
-#if 0
-  spi_active();
-
-  spi_write(SPI_OPCODE_WCR(reg));
-  spi_write(value);
-  spi_idle();
-#else
   write2x8(SPI_OPCODE_WCR(reg), value);
-#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -683,7 +543,5 @@ enc28j60_write_register(bool    is_mac_or_mii,
 uint8_t
 enc28j60_poll(void)
 {
-  uint8_t result = write8read8(26);
-  Z80_PORT_WRITE(sbt_cfg_port, result);                /* SPI_RST -> 0 */
   return 0; /* FIXME */
 }
