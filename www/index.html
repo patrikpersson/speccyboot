@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>SpeccyBoot</title>
+</head>
+
+<link rel="stylesheet" type="text/css" href="speccyboot.css">
+
+<body>
+<table width="100%"><tr>
+<td><h1>SpeccyBoot</h1></td>
+<td><h3 align=right>Ethernet boot for the ZX Spectrum</h3></td>
+</tr></table>
+
+<table class="grid">
+<tr>
+<th class="grid">What is it?</th>
+<th class="grid">The hardware</th>
+<th class="grid">The software</th>
+</tr><tr>
+<td class="grid">
+<img src="concept.jpg" width=100%/>
+</td>
+<td class="grid">
+<img src="hardware.jpg" width=100%/>
+</td>
+<td class="grid">
+<img src="menu.png" width=100%/>
+</td>
+</tr><tr>
+<td class="grid">
+<p><b>Old dog, new tricks</b></p>
+<p>
+What if we could load any Spectrum game into the real hardware in a few seconds
+&mdash; over the local network? Lots of embedded development boards can boot
+over a network, so why don't we do this on the Spectrum?
+</p>
+<p>
+<b>Welcome to SpeccyBoot!</b>
+</p>
+<p>
+SpeccyBoot is a combination of hardware and software. The hardware includes an
+Ethernet interface, and the software will implement a rudimentary IP stack
+to perform a network
+(<a href="http://en.wikipedia.org/wiki/Trivial_File_Transfer_Protocol">TFTP</a>)
+boot.
+</p>
+</td>
+
+<td class="grid">
+<p><b>Cheap components</b></p>
+<p>
+The SpeccyBoot hardware device connects to the Spectrum's expansion port, and
+includes the following components:
+</p>
+<ul>
+<li>A <a href="http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en022889">Microchip ENC28J60</a>
+Ethernet controller, connected over <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>.
+For simplicity and size, I used the
+<a href="http://www.olimex.com/dev/enc28j60-h.html">Olimex development board</a>.
+<li>32kB <a href="http://www.ramtron.com/products/nonvolatile-memory/parallel-product.aspx?id=51">Ramtron FM1808</a>
+<a href="http://en.wikipedia.org/wiki/Ferroelectric_RAM">ferro-electric
+RAM</a>
+<li>A few supporting minor circuits (74-series gates, voltage regulators)
+</ul>
+</p>
+<p>The FRAM was chosen because it's easy to re-program. If you have the
+equipment, any old EPROM/EEPROM should be fine.</p>
+</td>
+<td class="grid">
+
+<p><b>Designed for casual retro-gaming</b></p>
+
+<p>The boot software loads a menu application from the TFTP server. The menu
+application, in turn, loads a .z80 snapshot directly into the Spectrum's RAM.</p>
+
+<p>The boot software is stored in the FRAM, which temporarily replaces the
+internal ROM during boot. The three first options allow the machine to be booted
+from a TFTP server, internal ROM, or the high 16K of the FRAM.</p>
+
+</td></tr>
+</table>
+
+<hr>
+
+<h3>Status (spring 2009)</h3>
+
+<p>This is my (Patrik Persson's) hobby project. I've just recently moved on from working with the hardware to the software,
+so it's still early days. Stay tuned for updates.</p>
+
+<ul>
+<li>The hardware works: FRAM and SPI communication with the ENC28J60.
+The bit-banged SPI rate is about 73kbps &mdash; 48 T-states per bit. Not a lot, but it will allow me to load the RAM
+contents in a few seconds.
+<li>The software is still rudimentary: there is a basic menu, but the network
+boot option so far does not do anything sensible (besides flashing the ACTIVITY
+and LINK LEDs).
+<li>The alternate FRAM bank (third option above) can be loaded with, e.g., a <a href="http://www.worldofspectrum.org/int2roms/">ROM image of one of the
+Sinclair Interface 2 cartridges</a>.
+</ul>
+
+<p>These are my rough plans:</p>
+
+<table class="tasks">
+<tr><th class="tasks">priority</th><th class="tasks">task</th></tr>
+<tr><td class="tasksprio">high</td><td class="tasks"><a href="http://tools.ietf.org/html/rfc906">RFC906</a> (minus RARP, seems noone uses that these days)</td></tr>
+<tr><td class="tasksprio">high</td><td class="tasks">IP, ARP, UDP, and TFTP for the above</td></tr>
+<tr><td class="tasksprio">high</td><td class="tasks">.z80 snapshot loading for Spectrum 128</td></tr>
+<tr><td class="tasksprio">medium</td><td class="tasks">.z80 snapshot loading for Spectrum 48 (trickier than the
+128, since RAM can't be used by the loader)</td></tr>
+<tr><td class="tasksprio">medium</td><td class="tasks">ICMP for PING responses</td></tr>
+<tr><td class="tasksprio">low</td><td class="tasks">DHCP or BOOTP client</td></tr>
+<tr><td class="tasksprio">none at all</td><td class="tasks">TCP (neither server nor client). There is not going to be any web browsing on my Spectrum.</td></tr>
+</table>
+
+<p>If you're interested in this project, you should also check out Winston's
+<a href="http://spectrum.alioth.net/doc/index.php/Main_Page">Spectranet</a>
+project to integrate the W5100 (Ethernet host with embedded on-chip TCP/IP
+stack) with the Spectrum.</p>
+
+<hr>
+
+<h3>Download</h3>
+
+<p>No releases of the software are available yet, but feel free to check out SVN:
+<pre>svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot</pre></p>
+
+<p>The SourceForge page is here: <a href="https://sourceforge.net/projects/speccyboot/">https://sourceforge.net/projects/speccyboot/</a></p>
+
+<p>The hardware design is <a href="schematic.png">available here</a>, and you
+may use it freely. The drawing is quite rudimentary, and does not include power
+supply details (5V to most circuits, except the ENC28J60 which uses 3.3V).</a> 
+</p>
+
+<hr>
+
+</body>
+</html>
