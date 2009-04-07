@@ -78,10 +78,10 @@ static Z80_PORT(0x00fe) ula_port;     /* for border color */
   0x3E, 0x20,         /* ld a, #0x20 */
   0xD3, 0x9F,         /* out (0x9f), a    -- page out FRAM */
   0x01, 0xFD, 0x7F,   /* ld bc, #0x7FFD */
-  0x3E, 0x10,         /* ld a, #0x10      -- page in 128k ROM 1  */
+  0x3E, 0x10,         /* ld a, #0x10      -- page in 128k ROM 1 (48k BASIC) */
   0xED, 0x79,         /* out (c), a */
   0x21, 0x00, 0x3D,   /* ld hl, #0x3D00 */
-  0x11, 0x00, 0x60,   /* ld de, #0xXXYY */
+  0x11, 0x00, 0x00,   /* ld de, #0xXXYY */
   0x01, 0x00, 0x03,   /* ld bc, #0x0300 */
   0xED, 0xB0,         /* ldir */
   0xAF,               /* xor a */
@@ -94,14 +94,13 @@ static Z80_PORT(0x00fe) ula_port;     /* for border color */
 #define OFFSET_OF_FONT_ADDR_LSB     (15)
 #define OFFSET_OF_FONT_ADDR_MSB     (16)
 
-static const uint8_t *fontdata = (const uint8_t *) 0x6000;
-// static uint8_t fontdata[0x300];    /* 96 chars (32..127), each 8 bytes */
+static uint8_t fontdata[0x300];    /* 96 chars (32..127), each 8 bytes */
 
 void
 spectrum_init_font(void)
 {
-//  copy_font_code[OFFSET_OF_FONT_ADDR_LSB] = (((uint32_t) &fontdata) & 0xff);
-//  copy_font_code[OFFSET_OF_FONT_ADDR_MSB] = ((((uint32_t) &fontdata) >> 8) & 0xff);
+  copy_font_code[OFFSET_OF_FONT_ADDR_LSB] = (((uint32_t) &fontdata) & 0xff);
+  copy_font_code[OFFSET_OF_FONT_ADDR_MSB] = ((((uint32_t) &fontdata) >> 8) & 0xff);
   JUMP_TO(copy_font_code);
 }
 
