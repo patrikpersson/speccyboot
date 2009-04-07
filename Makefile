@@ -1,4 +1,4 @@
-MODULES      = spectrum enc28j60 logging netboot
+MODULES      = spectrum enc28j60 logging netboot params
 OTHER_HFILES = speccyboot.h
 OTHER_CFILES = main.c
 
