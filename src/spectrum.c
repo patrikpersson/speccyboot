@@ -3,7 +3,7 @@
  *
  * Access to ZX Spectrum features (screen, keyboard, joystick, ...)
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.org>
+ * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
  * ----------------------------------------------------------------------------
  *

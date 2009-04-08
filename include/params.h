@@ -3,7 +3,7 @@
  *
  * Read access to system parameters (Ethernet/IP addresses, ...)
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.org>
+ * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
  * ----------------------------------------------------------------------------
  *

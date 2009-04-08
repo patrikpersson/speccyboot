@@ -3,7 +3,7 @@
  *
  * Loads and executes a ZX Spectrum image over TFTP.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.org>
+ * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
  * ----------------------------------------------------------------------------
  *

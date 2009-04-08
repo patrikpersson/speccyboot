@@ -3,7 +3,7 @@
  *
  * Diagnostic output, line-by-line.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.org>
+ * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
  * ----------------------------------------------------------------------------
  *

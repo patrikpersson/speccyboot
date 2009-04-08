@@ -4,7 +4,7 @@
  * Basic access to control registers and on-chip memory of the
  * Microchip ENC28J60 Ethernet host.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.org>
+ * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
  * ----------------------------------------------------------------------------
  *
