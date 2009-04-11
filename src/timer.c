@@ -1,7 +1,7 @@
 /*
- * Module logging:
+ * Module timer:
  *
- * Diagnostic output, line-by-line.
+ * Minimalistic 50Hz interrupt, and a rudimentary timer API.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -33,22 +33,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SPECCYBOOT_LOGGING_INCLUSION_GUARD
-#define SPECCYBOOT_LOGGING_INCLUSION_GUARD
+#include "timer.h"
 
-#include <stdint.h>
+/* ========================================================================= */
 
-/* -------------------------------------------------------------------------
- * Initialize logging: clear screen, show cursor
- * ------------------------------------------------------------------------- */
+/*
+ * Assumes the 50Hz timer to be the only interrupt source we have
+ */
 void
-logging_init(void);
-
-/* -------------------------------------------------------------------------
- * Scroll everything one line up, and add a new entry at the bottom.
- * Arguments work like spectrum_print_at().
- * ------------------------------------------------------------------------- */
-void
-logging_add_entry(const char *msg, const uint8_t *args);
-
-#endif /* SPECCYBOOT_LOGGING_INCLUSION_GUARD */
+timer_delay(uint16_t ticks)
+{
+  uint8_t i;
+  for (i = 0; i < ticks; i++) {
+    __asm
+      ei
+      halt
+    __endasm;
+  }
+}

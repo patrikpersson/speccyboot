@@ -39,40 +39,78 @@
 
 #include "enc28j60.h"
 #include "spectrum.h"
+#include "params.h"
 #include "logging.h"
+#include "timer.h"
 
 /* ------------------------------------------------------------------------- */
+
+#define DISPLAY_REGISTER(REG, EXPECTED)   do {                                \
+  uint8_t x[2];                                                               \
+  x[0] = enc28j60_read_register(REG);                                         \
+  x[1] = EXPECTED;                                                            \
+  logging_add_entry("Read " #REG ": " HEX_ARG "/" HEX_ARG, x);                \
+} while(0)
+
+/* ------------------------------------------------------------------------- */
+
+static uint8_t
+checksum(uint8_t *addr, uint16_t nbr_bytes)
+{
+  uint8_t cs = 0;
+  uint16_t i;
+  for (i = 0; i < nbr_bytes; i++) {
+    cs ^= *addr++;
+  }
+  return cs;
+}
+/* ------------------------------------------------------------------------- */
+uint8_t read_buffer[512];
 
 void
 netboot_do(void)
 {
   logging_init();
 
-  enc28j60_init();
+  {
+    struct mac_address_t mac_address;
+    
+    params_get_mac_address(&mac_address);
+    enc28j60_init(&mac_address);
+  }
   
   {
-    uint8_t rev = enc28j60_read_register(EREVID);
-    logging_add_entry("ENC28J60 rev. 0x\200", (uint8_t) (rev & 0x1f));
-    enc28j60_write_register(ERDPTL, 0x3f);
-    logging_add_entry("Read ERDPTL=0x\200, expecting 0x3f",
-                      (uint8_t) enc28j60_read_register(ERDPTL));
-    enc28j60_write_register(EWRPTL, 0x57);
-    logging_add_entry("Read EWRPTL=0x\200, expecting 0x57",
-                      (uint8_t) enc28j60_read_register(EWRPTL));
-    enc28j60_write_register(MAADR5, 0x9c);
-    logging_add_entry("Read MAADR5=0x\200, expecting 0x9c",
-                      (uint8_t) enc28j60_read_register(MAADR5));
-    enc28j60_write_register(MAADR3, 0xa3);
-    logging_add_entry("Read MAADR3=0x\200, expecting 0xa3",
-                      (uint8_t) enc28j60_read_register(MAADR3));
+    uint8_t x = enc28j60_read_register(EREVID) & 0x1f;
+    logging_add_entry("ENC28J60 rev. 0x" HEX_ARG, &x);
 
+    DISPLAY_REGISTER(ERXSTL, 0x00);
+    DISPLAY_REGISTER(ERXSTH, 0x00);
+    DISPLAY_REGISTER(ERXNDL, 0xFF);
+    DISPLAY_REGISTER(ERXNDH, 0x17);
+    DISPLAY_REGISTER(MAADR1, 0x12);
+    DISPLAY_REGISTER(MAADR2, 0x34);
+    DISPLAY_REGISTER(MAADR3, 0x56);
+    DISPLAY_REGISTER(MAADR4, 0x78);
+    DISPLAY_REGISTER(MAADR5, 0x9A);
+    DISPLAY_REGISTER(MAADR6, 0xBC);
+    
+    enc28j60_write_memory(0x0100, (uint8_t *) 0x0300, sizeof(read_buffer));
+    enc28j60_read_memory(read_buffer, 0x0100, sizeof(read_buffer));
+    x = checksum((uint8_t *) 0x0300, sizeof(read_buffer));
+    logging_add_entry("Checksum (FRAM) = 0x" HEX_ARG, &x);
+    x = checksum(read_buffer, sizeof(read_buffer));
+    logging_add_entry("Checksum  (RAM) = 0x" HEX_ARG, &x);
+    
     /* now go flash some LEDs */
-    enc28j60_write_register(MIREGADR, 0x14);
     for (;;) {
-      enc28j60_write_register(MIWRL, 144);
-      enc28j60_write_register(MIWRH, 8);
-      enc28j60_write_register(MIWRL, 128);
-      enc28j60_write_register(MIWRH, 9);
+      enc28j60_write_phy_register(PHLCON, 0x0890);
+      timer_delay(SECOND / 10);
+      enc28j60_write_phy_register(PHLCON, 0x0980);
+      timer_delay(SECOND / 10);
+
+      if (spectrum_poll_input() == INPUT_FIRE) {
+        return;
+      }
     }
   }
 }

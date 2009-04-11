@@ -33,8 +33,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ZEB_SPECTRUM_HW_INCLUSION_GUARD
-#define ZEB_SPECTRUM_HW_INCLUSION_GUARD
+#ifndef SPECCYBOOT_SPECTRUM_INCLUSION_GUARD
+#define SPECCYBOOT_SPECTRUM_INCLUSION_GUARD
 
 #include <stdint.h>
 
@@ -59,14 +59,35 @@
 
 #define ROW_LENGTH    (32)
 
+/* -------------------------------------------------------------------------
+ * String constants used by spectrum_print_at & friends
+ * ------------------------------------------------------------------------- */
+#define HEX_ARG         "\001"
+#define HEX_ARG_CHAR    '\001'
+#define DEC_ARG         "\002"
+#define DEC_ARG_CHAR    '\002'
+#define BOLD_ON         "\003"
+#define BOLD_ON_CHAR    '\003'
+#define BOLD_OFF        "\004"
+#define BOLD_OFF_CHAR   '\004'
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Mask out most and least significant byte
+ */
+#define HIBYTE(x)       ((x) >> 8)
+#define LOBYTE(x)       ((x) & 0x00ffu)
+
 /* ------------------------------------------------------------------------- */
 
 /*
  * Take a pointer, assume it points to a function, and call it.
  *
  * This thing is actually more efficient than inline assembly --
- * the compiler knows about the jump, so it generates slightly more
- * efficient code (skips the final RET in the caller).
+ * the compiler knows about the jump, so if JUMP_TO is used at the end of a
+ * function, it results in slightly more efficient code (JP instead of
+ * CALL + RET).
  */
 #define JUMP_TO(ptr) ((void (*)(void)) (ptr))()
 
@@ -81,8 +102,8 @@
 /* -------------------------------------------------------------------------
  * Possible key/joystick input.
  * ------------------------------------------------------------------------- */
-
 enum spectrum_input_t {
+  INPUT_NONE  = 0,    /* no key */
   INPUT_FIRE  = 1,    /* space/kempston fire/0 */
   INPUT_DOWN  = 2,    /* 6/kempston down */
   INPUT_UP    = 3     /* 7/kempston up */
@@ -91,7 +112,6 @@ enum spectrum_input_t {
 /* -------------------------------------------------------------------------
  * Copy font from Sinclair ROM to RAM.
  * ------------------------------------------------------------------------- */
-
 void
 spectrum_init_font(void);
 
@@ -100,7 +120,6 @@ spectrum_init_font(void);
  *
  *   spectrum_cls(INK(RED) | PAPER(BLUE) | BRIGHT, GREEN)
  * ------------------------------------------------------------------------- */
-
 void
 spectrum_cls(const uint8_t screen_attrs, const uint8_t border_attrs);
 
@@ -109,7 +128,6 @@ spectrum_cls(const uint8_t screen_attrs, const uint8_t border_attrs);
  * beyond the end of the row, changes will continue at the beginning of the
  * following row.
  * ------------------------------------------------------------------------- */
-
 void
 spectrum_set_attrs(const uint8_t screen_attrs,
                    const uint8_t row,
@@ -119,9 +137,16 @@ spectrum_set_attrs(const uint8_t screen_attrs,
 /* ------------------------------------------------------------------------- *
  * Display text string at given position on screen. The string is terminated
  * by NUL. Row is in range 0..23, col is in range 0..31.
+ *
+ * Occurrences of the char DEC_ARG/HEX_ARG in str will be replaced by the
+ * corresponding byte in args in dec/hex. These numbers are always interpreted
+ * as 8 bits unsigned.
  * ------------------------------------------------------------------------- */
 void
-spectrum_print_at(uint8_t row, uint8_t col, const char *str);
+spectrum_print_at(uint8_t row,
+                  uint8_t col, 
+                  const char *str,
+                  const uint8_t *args);
 
 /* ------------------------------------------------------------------------- *
  * Scroll all lines up on screen, leaving an empty line at the bottom.
@@ -131,13 +156,19 @@ void
 spectrum_scroll(void);
 
 /* ------------------------------------------------------------------------- *
+ * Returns current key pressed. Always returns immediately. If no key is
+ * currently pressed, return INPUT_NONE.
+ * ------------------------------------------------------------------------- */
+enum spectrum_input_t
+spectrum_poll_input(void);
+
+/* ------------------------------------------------------------------------- *
  * Wait for a key to be pressed, then return the identity of that key.
  *
  * If a key is currently pressed, first waits for that to be released.
  * ------------------------------------------------------------------------- */
-
-enum spectrum_key_t
+enum spectrum_input_t
 spectrum_wait_input(void);
 
-#endif /* ZEB_SPECTRUM_HW_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_SPECTRUM_INCLUSION_GUARD */
 

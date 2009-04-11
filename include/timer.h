@@ -1,7 +1,7 @@
 /*
- * Module logging:
+ * Module timer:
  *
- * Diagnostic output, line-by-line.
+ * Minimalistic 50Hz interrupt, and a rudimentary timer API.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -33,22 +33,30 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SPECCYBOOT_LOGGING_INCLUSION_GUARD
-#define SPECCYBOOT_LOGGING_INCLUSION_GUARD
+#ifndef SPECCYBOOT_TIMER_INCLUSION_GUARD
+#define SPECCYBOOT_TIMER_INCLUSION_GUARD
 
 #include <stdint.h>
 
-/* -------------------------------------------------------------------------
- * Initialize logging: clear screen, show cursor
- * ------------------------------------------------------------------------- */
-void
-logging_init(void);
+/* ========================================================================= */
 
 /* -------------------------------------------------------------------------
- * Scroll everything one line up, and add a new entry at the bottom.
- * Arguments work like spectrum_print_at().
+ * Useful constants for timer_delay()
+ * ------------------------------------------------------------------------- */
+
+#define TICK_MS         (20)
+#define SECOND          (1000 / TICK_MS)
+
+/* ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * Delay execution for the indicated number of 20ms ticks, with a precision
+ * of about 1 tick.
+ *
+ * NOTE: since we use a 16-bit value, the maximal delay is
+ * 65535*20 = 1310700ms = a bit over 21 minutes.
  * ------------------------------------------------------------------------- */
 void
-logging_add_entry(const char *msg, const uint8_t *args);
+timer_delay(uint16_t ticks);
 
-#endif /* SPECCYBOOT_LOGGING_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_TIMER_INCLUSION_GUARD */

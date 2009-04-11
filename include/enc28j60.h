@@ -39,10 +39,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "speccyboot.h"
+#include "params.h"
+
 /* ========================================================================= */
 
 /* -------------------------------------------------------------------------
- * ENC28J60 control registers
+ * ENC28J60 ETH/MAC/MII control registers
  * ------------------------------------------------------------------------- */
 
 #define REGISTER_TUPLE(is_mac_or_mii, bank, reg) \
@@ -143,20 +146,44 @@
 #define EPAUSH                               REGISTER_TUPLE(false, 3, 0x19)
 
 /* -------------------------------------------------------------------------
+ * ENC28J60 PHY control registers  (datasheet table 3-3)
+ * ------------------------------------------------------------------------- */
+
+enum enc28j60_phy_reg_t {
+ PHCON1  = 0x00,
+ PHSTAT1 = 0x01,
+ PHID1   = 0x02,
+ PHID2   = 0x03,
+ PHCON2  = 0x10,
+ PHSTAT2 = 0x11,
+ PHIE    = 0x12,
+ PHIR    = 0x13,
+ PHLCON  = 0x14
+};
+
+/* -------------------------------------------------------------------------
  * Type of interrupt (bitmask for return values of enc28j60_poll())
  * ------------------------------------------------------------------------- */
 
-#define ENC28J60_INT_ACTIVE    (1)
-#define ENC28J60_WOL_ACTIVE    (2)
+#define ENC28J60_INT_ACTIVE    (EN_INT)
+#define ENC28J60_WOL_ACTIVE    (EN_WOL)
+
+/* ========================================================================= */
+
+/*
+ * Address of something in the ENC28J60 SRAM
+ */
+typedef uint16_t enc28j60_addr_t;
 
 /* ========================================================================= */
 
 /* -------------------------------------------------------------------------
- * Initialize ethernet controller
+ * Initialize Ethernet controller
+ *
+ * mac_address:    MAC address for local Ethernet interface
  * ------------------------------------------------------------------------- */
-
 void
-enc28j60_init(void);
+enc28j60_init(struct mac_address_t *mac_address);
 
 /* -------------------------------------------------------------------------
  * Read control register. Intended to be called with a register tuple as
@@ -170,29 +197,61 @@ enc28j60_init(void);
  *
  * returns register value (0..255)
  * ------------------------------------------------------------------------- */
-
 uint8_t
 enc28j60_read_register(bool    is_mac_or_mii,
                        uint8_t bank,
                        uint8_t reg);
 
 /* -------------------------------------------------------------------------
- * Write control register. Intended to be called with a register tuple as
- * defined above, e.g.,
+ * Write ETH/MAC/MII control register. Intended to be called with a register
+ * tuple as defined above, e.g.,
  *
  *   enc28j60_write_register(MAADR4, 0x35);
  *
  * is_mac_or_mii: true for MAC or MII registers, false for ETH registers
  * bank:          register bank (0..3)
  * reg:           register (0..31)
- * value:         new register value (0..255)
+ * value:         new register value (8 bits)
  * ------------------------------------------------------------------------- */
-
 void
 enc28j60_write_register(bool    is_mac_or_mii,
                         uint8_t bank,
                         uint8_t reg,
                         uint8_t value);
+
+/* -------------------------------------------------------------------------
+ * Write PHY control register.
+ *
+ * reg:           register
+ * value:         new register value (16 bits)
+ * ------------------------------------------------------------------------- */
+void
+enc28j60_write_phy_register(enum enc28j60_phy_reg_t  reg,
+                            uint16_t                 value);
+
+/* -------------------------------------------------------------------------
+ * Read on-chip SRAM.
+ *
+ * dst_addr:      Spectrum address to copy to
+ * src_addr:      address in the ENC28J60 to copy from
+ * nbr_bytes:     number of bytes to copy
+ * ------------------------------------------------------------------------- */
+void
+enc28j60_read_memory(uint8_t *        dst_addr,
+                     enc28j60_addr_t  src_addr,
+                     uint16_t         nbr_bytes);
+
+/* -------------------------------------------------------------------------
+ * Write on-chip SRAM.
+ *
+ * dst_addr:      address in the ENC28J60 to copy to
+ * src_addr:      Spectrum address to copy from
+ * nbr_bytes:     number of bytes to copy
+ * ------------------------------------------------------------------------- */
+void
+enc28j60_write_memory(enc28j60_addr_t  dst_addr,
+                      uint8_t *        src_addr,
+                      uint16_t         nbr_bytes);
 
 /* -------------------------------------------------------------------------
  * Poll controller's interrupt pin status
@@ -203,7 +262,6 @@ enc28j60_write_register(bool    is_mac_or_mii,
  *   ENC28J60_WOL_ACTIVE                         WOL is active
  *   ENC28J60_INT_ACTIVE + ENC28J60_WOL_ACTIVE   INT and WOL are active
  * ------------------------------------------------------------------------- */
-
 uint8_t
 enc28j60_poll(void);
 

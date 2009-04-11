@@ -33,8 +33,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdarg.h>
-
 #include "spectrum.h"
 #include "logging.h"
 
@@ -49,36 +47,9 @@ logging_init(void)
 
 /* ------------------------------------------------------------------------- */
 
-#define hexdigit(n) ( ((n) < 10) ? ((n) + '0') : ((n) + 'a' - 10))
-
 void
-logging_add_entry(const char *msg, ...)
+logging_add_entry(const char *msg, const uint8_t *args)
 {
-  static char buf[ROW_LENGTH + 1];
-  int buf_idx = 0;
-  va_list args;
-  
-  va_start(args, msg);
-  while (buf_idx < ROW_LENGTH) {
-    char c = *msg++;
-
-    if (c == '\0') break;
-    
-    if ((c & 0x80) != 0) {
-      uint8_t byte = va_arg(args, uint8_t);
-
-      buf[buf_idx++] = hexdigit(byte >> 4);
-      if (buf_idx < ROW_LENGTH) {
-        buf[buf_idx++] = hexdigit(byte & 0x0f);
-      }
-    }
-    else {
-      buf[buf_idx++] = c;
-    }
-  }
-  va_end(args);
-  buf[buf_idx] = '\0';
-
   spectrum_scroll();
-  spectrum_print_at(23, 0, buf);
+  spectrum_print_at(22, 0, msg, args);
 }

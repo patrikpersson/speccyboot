@@ -48,28 +48,28 @@ params_valid(void)
 /* ------------------------------------------------------------------------- */
 
 void
-params_get_mac_address(mac_address_t *mac_address)
+params_get_mac_address(struct mac_address_t *mac_address)
 {
-  static const mac_address_t a = { 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc };
-  memcpy(mac_address, a, sizeof(mac_address_t));
+  static const uint8_t a[] = { 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc };
+  memcpy(mac_address->addr, a, sizeof(a));
 }
 
 /* ------------------------------------------------------------------------- */
 
 void
-params_get_host_address(ipv4_address_t *host_address)
+params_get_host_address(struct ipv4_address_t *host_address)
 {
-  static const ipv4_address_t a = { 0xc0, 0xa8, 0x00, 0xf0 };
-  memcpy(host_address, a, sizeof(ipv4_address_t));
+  static const uint8_t a[] = { 0xc0, 0xa8, 0x00, 0xf0 };
+  memcpy(host_address->addr, a, sizeof(a));
 }
 
 /* ------------------------------------------------------------------------- */
 
 void
-params_get_server_address(ipv4_address_t *server_address)
+params_get_server_address(struct ipv4_address_t *server_address)
 {
-  static const ipv4_address_t a = { 0xc0, 0xa8, 0x00, 0x0a };
-  memcpy(server_address, a, sizeof(ipv4_address_t));
+  static const uint8_t a[] = { 0xc0, 0xa8, 0x00, 0x0a };
+  memcpy(server_address->addr, a, sizeof(a));
 }
 
 

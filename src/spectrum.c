@@ -53,11 +53,13 @@ static uint8_t * attrs  = (uint8_t *) (ATTRS_BASE);
 /* ------------------------------------------------------------------------- */
 
 static Z80_PORT(0x7ffe) space_row_port;
+static Z80_PORT(0xbffe) enter_row_port;
 static Z80_PORT(0xeffe) digits_0_to_6_row_port;
 
 static Z80_PORT(0x001f) joystick_port;            /* kempston joystick */
 
 #define KEY_SPACE     (0x01)
+#define KEY_ENTER     (0x01)
 #define KEY_0         (0x01)
 #define KEY_6         (0x10)
 #define KEY_7         (0x08)
@@ -66,7 +68,6 @@ static Z80_PORT(0x001f) joystick_port;            /* kempston joystick */
 #define JOY_UP        (0x08)
 #define JOY_DOWN      (0x04)
 
-
 #define KEY_PRESSED(bits, mask)    (((bits) & (mask)) != (mask))
 #define JOY_PRESSED(bits, mask)    (((bits) & (mask)) != 0)
 
@@ -74,7 +75,8 @@ static Z80_PORT(0x00fe) ula_port;     /* for border color */
 
 /* ------------------------------------------------------------------------- */
 
-/* static */ uint8_t copy_font_code[] = {
+static uint8_t copy_font_code[] = {
+  0xF3,               /* di */
   0x3E, 0x20,         /* ld a, #0x20 */
   0xD3, 0x9F,         /* out (0x9f), a    -- page out FRAM */
   0x01, 0xFD, 0x7F,   /* ld bc, #0x7FFD */
@@ -88,19 +90,51 @@ static Z80_PORT(0x00fe) ula_port;     /* for border color */
   0xD3, 0x9F,         /* out (0x9f), a */
   0x01, 0xFD, 0x7F,   /* ld bc, #0x7FFD */
   0xED, 0x79,         /* out (c), a */
+  0xFB,               /* ei */
   0xC9                /* ret */
 };
 
-#define OFFSET_OF_FONT_ADDR_LSB     (15)
-#define OFFSET_OF_FONT_ADDR_MSB     (16)
+#define OFFSET_OF_FONT_ADDR_LSB     (16)
+#define OFFSET_OF_FONT_ADDR_MSB     (17)
 
-static uint8_t fontdata[0x300];    /* 96 chars (32..127), each 8 bytes */
+#define NBR_OF_CHARS                (96)      /* 96 chars (32..127) */
+#define BYTES_PER_CHAR              (8)
+
+static uint8_t fontdata[NBR_OF_CHARS * BYTES_PER_CHAR];
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Simple hex conversion
+ */
+#define hexdigit(n) ( ((n) < 10) ? ((n) + '0') : ((n) + 'a' - 10))
+
+/* -------------------------------------------------------------------------
+ * Character attributes for print_char_at()
+ * ------------------------------------------------------------------------- */
+#define ATTR_NORMAL     (0x00)
+#define ATTR_BOLD       (0x01)
+
+/* ------------------------------------------------------------------------- */
+
+static void
+print_char_at(uint8_t ch, uint8_t *dst_p, bool is_bold)
+{
+  uint8_t *src_p = &fontdata[(ch - ' ') << 3];
+  uint16_t i;
+  for (i = 0; i < 0x0800; i += 0x0100) {
+    uint8_t src_pixels = *src_p++;
+    dst_p[i] = (is_bold)  ? (src_pixels | (src_pixels >> 1)) : (src_pixels);
+  }
+}
+
+/* ------------------------------------------------------------------------- */
 
 void
 spectrum_init_font(void)
 {
-  copy_font_code[OFFSET_OF_FONT_ADDR_LSB] = (((uint32_t) &fontdata) & 0xff);
-  copy_font_code[OFFSET_OF_FONT_ADDR_MSB] = ((((uint32_t) &fontdata) >> 8) & 0xff);
+  copy_font_code[OFFSET_OF_FONT_ADDR_LSB] = (((uint16_t) &fontdata) & 0xff);
+  copy_font_code[OFFSET_OF_FONT_ADDR_MSB] = ((((uint16_t) &fontdata) >> 8) & 0xff);
   JUMP_TO(copy_font_code);
 }
 
@@ -139,19 +173,59 @@ spectrum_set_attrs(const uint8_t screen_attrs,
 /* ------------------------------------------------------------------------- */
 
 void
-spectrum_print_at(uint8_t row, uint8_t col, const char *str)
+spectrum_print_at(uint8_t row, uint8_t col,
+                  const char *str, const uint8_t *args)
 {
   uint8_t *dst_p = ((uint8_t *) BITMAP_BASE)
-             + ((row & 0x18) << 8) + ((row & 0x07) << 5) + col;
+                 + ((row & 0x18) << 8) + ((row & 0x07) << 5) + col;
+  uint8_t attrs = ATTR_NORMAL;
+  
   while (col < ROW_LENGTH && *str) {
     uint8_t ch = *str++;
-    uint8_t *src_p = &fontdata[(ch - ' ') << 3];
-    uint8_t i;
-    for (i = 0; i < 8; i++) {
-      dst_p[i << 8] = *src_p++;
+    
+    switch (ch) {
+      case BOLD_ON_CHAR:
+        attrs |= ATTR_BOLD;
+        continue;
+      case BOLD_OFF_CHAR:
+        attrs &= ~ATTR_BOLD;
+        continue;
+      case DEC_ARG_CHAR:
+      {
+        uint8_t arg = *args++;
+        if (arg >= 100) {
+          print_char_at('0' + (arg / 100), dst_p++, attrs);
+          col++;
+          arg %= 100;
+        }
+        if (arg >= 10 && col < ROW_LENGTH) {
+          print_char_at('0' + (arg / 10), dst_p++, attrs);
+          col++;
+          arg %= 10;
+        }
+        if (col < ROW_LENGTH) {
+          print_char_at('0' + arg, dst_p++, attrs);
+          col++;
+        }
+        break;
+      }
+      case HEX_ARG_CHAR:
+      {
+        uint8_t arg = *args++;
+        print_char_at(hexdigit(arg >> 4), dst_p++, attrs);
+        col++;
+        if (col < ROW_LENGTH) {
+          print_char_at(hexdigit(arg & 0x0f), dst_p++, attrs);
+          col ++;
+        }
+        break;
+      }
+      default:
+        print_char_at(ch, dst_p++, attrs);
+        col ++;
+        break;
     }
-    col ++;
-    dst_p ++;
+    
   }
 }
 
@@ -224,37 +298,46 @@ lp3:
 
 /* ------------------------------------------------------------------------- */
 
-enum spectrum_key_t
+enum spectrum_input_t
+spectrum_poll_input(void)
+{
+  uint8_t dig_state = Z80_PORT_READ(digits_0_to_6_row_port);
+  uint8_t spc_state = Z80_PORT_READ(space_row_port);
+  uint8_t ent_state = Z80_PORT_READ(enter_row_port);
+  uint8_t joy_state = Z80_PORT_READ(joystick_port);
+  
+  if (KEY_PRESSED(dig_state, KEY_0)
+      || KEY_PRESSED(spc_state, KEY_SPACE)
+      || KEY_PRESSED(ent_state, KEY_ENTER)
+      || JOY_PRESSED(joy_state, JOY_FIRE))
+  {
+    return INPUT_FIRE;
+  }
+  if (KEY_PRESSED(dig_state, KEY_6) || JOY_PRESSED(joy_state, JOY_DOWN)) {
+    return INPUT_DOWN;
+  }
+  if (KEY_PRESSED(dig_state, KEY_7) || JOY_PRESSED(joy_state, JOY_UP)) {
+    return INPUT_UP;
+  }
+  
+  return INPUT_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+
+enum spectrum_input_t
 spectrum_wait_input(void)
 {
-  uint8_t dig_state;
-  uint8_t joy_state;
-  uint8_t spc_state;
+  enum spectrum_input_t current_input;
   
   /* Spin until any previous key is released */
-  do {
-    dig_state = Z80_PORT_READ(digits_0_to_6_row_port);
-    joy_state = Z80_PORT_READ(joystick_port);
-  } while (KEY_PRESSED(dig_state, (KEY_6 | KEY_7))
-        || JOY_PRESSED(joy_state, (JOY_UP | JOY_DOWN)));
+  while (spectrum_poll_input() != INPUT_NONE)
+    ;
 
   /* Spin until a key is pressed */
-  for (;;) {
-    dig_state = Z80_PORT_READ(digits_0_to_6_row_port);
-    spc_state = Z80_PORT_READ(space_row_port);
-    joy_state = Z80_PORT_READ(joystick_port);
-    
-    if (KEY_PRESSED(dig_state, KEY_0)
-        || KEY_PRESSED(spc_state, KEY_SPACE)
-        || JOY_PRESSED(joy_state, JOY_FIRE))
-    {
-      return INPUT_FIRE;
-    }
-    if (KEY_PRESSED(dig_state, KEY_6) || JOY_PRESSED(joy_state, JOY_DOWN)) {
-      return INPUT_DOWN;
-    }
-    if (KEY_PRESSED(dig_state, KEY_7) || JOY_PRESSED(joy_state, JOY_UP)) {
-      return INPUT_UP;
-    }
-  }
+  do {
+    current_input = spectrum_poll_input();
+  } while (current_input == INPUT_NONE);
+
+  return current_input;
 }

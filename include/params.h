@@ -45,8 +45,13 @@
 
 /* ------------------------------------------------------------------------- */
 
-typedef uint8_t mac_address_t[SIZEOF_MAC_ADDRESS];
-typedef uint8_t ipv4_address_t[SIZEOF_IPV4_ADDRESS];
+struct mac_address_t {
+  uint8_t  addr[SIZEOF_MAC_ADDRESS];
+};
+
+struct ipv4_address_t {
+  uint8_t  addr[SIZEOF_IPV4_ADDRESS];
+};
 
 /* ========================================================================= */
 
@@ -65,20 +70,20 @@ params_valid(void);
  * ------------------------------------------------------------------------- */
 
 void
-params_get_mac_address(mac_address_t *mac_address);
+params_get_mac_address(struct mac_address_t *mac_address);
 
 /* -------------------------------------------------------------------------
  * Returns (in output argument) the configured IPV4 host address.
  * ------------------------------------------------------------------------- */
 
 void
-params_get_host_address(ipv4_address_t *host_address);
+params_get_host_address(struct ipv4_address_t *host_address);
 
 /* -------------------------------------------------------------------------
  * Returns (in output argument) the configured IPV4 server address.
  * ------------------------------------------------------------------------- */
 
 void
-params_get_server_address(ipv4_address_t *server_address);
+params_get_server_address(struct ipv4_address_t *server_address);
 
 #endif /* SPECCYBOOT_PARAMS_INCLUSION_GUARD */

@@ -1,4 +1,4 @@
-MODULES      = spectrum enc28j60 logging netboot params
+MODULES      = spectrum enc28j60 logging netboot params timer
 OTHER_HFILES = speccyboot.h
 OTHER_CFILES = main.c
 
@@ -18,19 +18,16 @@ CFILES       = $(MODULES:%=%.c) $(OTHER_CFILES)
 HFILES       = $(MODULES:%=%.h) $(OTHER_HFILES)
 OFILES       = $(CFILES:.c=.o)
 
-CRT_RAMIMG   = crt0_ramimage.asm
-OFILES_RAM   = $(CRT_RAMIMG:%.asm=%.o) $(OFILES)
+OFILES_RAM   = crt0_ramimage.o $(OFILES)
 
 SRCDIR       = src
 INCLUDEDIR   = include
 TOOLSDIR     = build-tools
 OBJDIR       = obj
-AUTOGENDIR   = autogen
 
 vpath %.c   $(SRCDIR)
 vpath %.asm $(SRCDIR)
 vpath %.h   $(INCLUDEDIR)
-vpath %.h   $(AUTOGENDIR)
 vpath %.o   $(OBJDIR)
 vpath %.ihx $(OBJDIR)
 
@@ -47,9 +44,9 @@ BIN2WAV     = $(OBJDIR)/bin2wav
 HOSTCC      = gcc
 ECHO        = @/bin/echo
 
-CFLAGS      = --std-sdcc99 -mz80 -I$(INCLUDEDIR) -I$(AUTOGENDIR)
+CFLAGS      = --std-sdcc99 -mz80 -I$(INCLUDEDIR)
 LDFLAGS     = --out-fmt-ihx --data-loc 0x5B00
-LDFLAGS_RAM = $(LDFLAGS) --code-loc 0x8100 --no-std-crt0
+LDFLAGS_RAM = $(LDFLAGS) --no-std-crt0 --code-loc 0x8100 --data-loc 0xc000
 
 # SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
 CFLAGS     += -Dbool=BOOL
@@ -65,7 +62,7 @@ $(BIN2WAV): $(TOOLSDIR)/bin2wav.c
 %.o: %.c $(OBJDIR) $(HFILES)
 	$(CC) $(CFLAGS) -c -o $(OBJDIR)/$@ $<
 
-%.o: %.asm
+%.o: %.asm $(OBJDIR)
 	$(AS) -o $(OBJDIR)/$@ $<
 
 $(OBJDIR):

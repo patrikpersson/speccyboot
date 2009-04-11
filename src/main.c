@@ -40,6 +40,7 @@
 #include "speccyboot.h"
 #include "netboot.h"
 #include "params.h"
+#include "timer.h"
 
 /* ========================================================================= */
 
@@ -51,6 +52,7 @@
  * paged out by itself)!
  */
 static uint8_t trampoline_code[] = {
+  0xF3,             /* di */
   0x3E, 0x00,       /* ld a,X */
   0xD3, 0x9F,       /* out (0x9F), a */
   0xC3, 0x00, 0x00  /* jp 0x0000 */
@@ -59,7 +61,7 @@ static uint8_t trampoline_code[] = {
 /*
  * Position of the bank selector within the trampoline above (X)
  */
-#define TRAMPOLINE_MASK_INDEX   (1)
+#define TRAMPOLINE_MASK_INDEX   (2)
 
 /* ========================================================================= */
 
@@ -91,18 +93,30 @@ option_alternate_boot(void)
 static void
 option_system_info(void)
 {
-  mac_address_t   mac_address;
-  ipv4_address_t  host_address;
-  ipv4_address_t  server_address;
+  struct mac_address_t   mac_address;
+  struct ipv4_address_t  host_address;
+  struct ipv4_address_t  server_address;
   
   spectrum_cls(INK(BLUE) | PAPER(WHITE), WHITE);
-#if 0
+
   params_get_mac_address(&mac_address);
-  spectrum_print_at(5, 0, "MAC address: \200:\200:\200:\200:\200:\200",
-                    mac_address[0], mac_address[1], mac_address[2],
-                    mac_address[3], mac_address[4], mac_address[5]);
-#endif
-  spectrum_print_at(23, 0, "Build: " __DATE__ ", " __TIME__);
+  spectrum_print_at(5, 2, BOLD_ON "MAC ADDRESS " BOLD_OFF
+                          HEX_ARG ":" HEX_ARG ":" HEX_ARG ":" 
+                          HEX_ARG ":" HEX_ARG ":" HEX_ARG,
+                    mac_address.addr);
+
+  params_get_host_address(&host_address);
+  spectrum_print_at(7, 3, BOLD_ON "IP ADDRESS " BOLD_OFF
+                          DEC_ARG "." DEC_ARG "." DEC_ARG "." DEC_ARG,
+                    host_address.addr);
+  
+  params_get_server_address(&server_address);
+  spectrum_print_at(9, 2, BOLD_ON "TFTP SERVER " BOLD_OFF
+                          DEC_ARG "." DEC_ARG "." DEC_ARG "." DEC_ARG,
+                    server_address.addr);
+  
+  spectrum_print_at(23, 0, BOLD_ON "COMPILED " BOLD_OFF __DATE__ " " __TIME__,
+                    NULL);
   
   spectrum_wait_input();
 }
@@ -128,6 +142,12 @@ void main(void) {
   uint8_t option = 0;
   bool redraw_screen = true;   /* Set if screen needs to be re-drawn */
   
+  /*
+   * Need to delay for about 200ms for the Spectrum 128k hardware to settle
+   * after reset. If this is not done, memory paging behaves badly.
+   */
+  spectrum_cls(PAPER(BLACK), BLACK);
+  timer_delay(SECOND / 5);
   spectrum_init_font();
   
   for (;;) {
@@ -142,10 +162,11 @@ void main(void) {
       spectrum_set_attrs(INK(WHITE) | PAPER(BLUE), 23, 10, 22);
       
       for (i = 0; i < NBR_OF_OPTIONS; i++) {
-        spectrum_print_at(7 + (i << 1), 7, menu_options[i].title);
+        spectrum_print_at(7 + (i << 1), 7, menu_options[i].title, NULL);
       }
 
-      spectrum_print_at(23, 0, "SPECCYBOOT \177 2009 Patrik Persson");
+      spectrum_print_at(23, 0, BOLD_ON "SPECCYBOOT"
+                               BOLD_OFF " \177 2009 Patrik Persson", NULL);
 
       redraw_screen = false;
     }

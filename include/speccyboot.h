@@ -79,4 +79,16 @@ enum speccyboot_in_port_bit_t {
 
 #define SPI_MISO             (1 << BIT_SPI_MISO)
 
+#define EN_WOL               (1 << BIT_EN_WOL)
+#define EN_INT               (1 << BIT_EN_INT)
+
+/* -------------------------------------------------------------------------
+ * SPI buffers
+ * ------------------------------------------------------------------------- */
+
+#define SPI_CHUNK_SIZE    (128)
+#define SPI_BUFFER_ADDR   (0x5B00)
+
+/* ------------------------------------------------------------------------- */
+
 #endif /* SPECCYBOOT_SPECCYBOOT_INCLUSION_GUARD */
