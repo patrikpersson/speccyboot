@@ -44,6 +44,49 @@
 
 /* ========================================================================= */
 
+/*
+ * The ENC28J60 SRAM is used as follows:
+ *
+ * 0x0000 ... 0x17FF    6K  Receive buffer
+ * 0x1800 ... 0x1BFF    1K  Transmit buffer
+ * 0x1C00 ... 0x1FFF    1K  Unused
+ *
+ * Errata for silicon rev. 5 suggests receive buffer in low memory (item 3)
+ */
+
+#define ENC28J60_RXBUF_START    (0x0000)
+#define ENC28J60_RXBUF_END      (0x17FF)
+#define ENC28J60_TXBUF_START    (0x1800)
+#define ENC28J60_TXBUF_END      (0x1BFF)
+
+/* TFTP packets have up to 512 bytes payload */
+#define ENC28J60_FRAME_MAX      (640)
+
+/* ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * Broadcast address
+ * ------------------------------------------------------------------------- */
+
+extern const mac_address_t eth_broadcast_address;
+
+/* -------------------------------------------------------------------------
+ * Initialize Ethernet layer
+ * ------------------------------------------------------------------------- */
+void
+eth_init(void);
+
+/* -------------------------------------------------------------------------
+ * Send an Ethernet frame. This function will block until transmission is
+ * complete.
+ * ------------------------------------------------------------------------- */
+void
+eth_send_frame(const mac_address_t destination,
+               const uint8_t *payload,
+               uint16_t nbr_bytes);
+
+/* ========================================================================= */
+
 /* -------------------------------------------------------------------------
  * ENC28J60 ETH/MAC/MII control registers
  * ------------------------------------------------------------------------- */
@@ -161,13 +204,6 @@ enum enc28j60_phy_reg_t {
  PHLCON  = 0x14
 };
 
-/* -------------------------------------------------------------------------
- * Type of interrupt (bitmask for return values of enc28j60_poll())
- * ------------------------------------------------------------------------- */
-
-#define ENC28J60_INT_ACTIVE    (EN_INT)
-#define ENC28J60_WOL_ACTIVE    (EN_WOL)
-
 /* ========================================================================= */
 
 /*
@@ -183,7 +219,7 @@ typedef uint16_t enc28j60_addr_t;
  * mac_address:    MAC address for local Ethernet interface
  * ------------------------------------------------------------------------- */
 void
-enc28j60_init(struct mac_address_t *mac_address);
+enc28j60_init(void);
 
 /* -------------------------------------------------------------------------
  * Read control register. Intended to be called with a register tuple as
@@ -250,19 +286,7 @@ enc28j60_read_memory(uint8_t *        dst_addr,
  * ------------------------------------------------------------------------- */
 void
 enc28j60_write_memory(enc28j60_addr_t  dst_addr,
-                      uint8_t *        src_addr,
+                      const uint8_t *  src_addr,
                       uint16_t         nbr_bytes);
-
-/* -------------------------------------------------------------------------
- * Poll controller's interrupt pin status
- *
- * returns
- *   0                                           no interrupts
- *   ENC28J60_INT_ACTIVE                         INT is active
- *   ENC28J60_WOL_ACTIVE                         WOL is active
- *   ENC28J60_INT_ACTIVE + ENC28J60_WOL_ACTIVE   INT and WOL are active
- * ------------------------------------------------------------------------- */
-uint8_t
-enc28j60_poll(void);
 
 #endif /* ZEB_ENC28J60_INCLUSION_GUARD */

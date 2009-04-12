@@ -41,26 +41,6 @@
 
 /* ========================================================================= */
 
-/*
- * The ENC28J60 SRAM is used as follows:
- *
- * 0x0000 ... 0x17FF    6K  Receive buffer
- * 0x1800 ... 0x1BFF    1K  Transmit buffer
- * 0x1C00 ... 0x1FFF    1K  Unused
- *
- * Errata for silicon rev. 5 suggests receive buffer in low memory (item 3)
- */
-
-#define ENC28J60_RXBUF_START    (0x0000)
-#define ENC28J60_RXBUF_END      (0x17FF)
-#define ENC28J60_TXBUF_START    (0x1800)
-#define ENC28J60_TXBUF_END      (0x1BFF)
-
-/* TFTP packets have up to 512 bytes payload */
-#define ENC28J60_FRAME_MAX      (640)
-
-/* ========================================================================= */
-
 /* ------------------------------------------------------------------------- */
 
 #define ECON1_RXEN    (4)
@@ -90,6 +70,10 @@
 #define SPI(clk, mosi)          (SPI_RST                             \
                                  | ((SPI_SCK) * (clk))               \
                                  | ((SPI_MOSI) * (mosi)))
+
+/* ------------------------------------------------------------------------- */
+
+const mac_address_t eth_broadcast_address = {0xff,0xff,0xff,0xff,0xff,0xff};
 
 /* ------------------------------------------------------------------------- */
 
@@ -209,68 +193,6 @@ spi_write_byte_lp:
 
 #pragma restore
   
-/* ========================================================================= */
-
-#pragma save
-#pragma disable_warning 116
-/* warning since HIBYTE(ENC28J60_TXBUF_START) is zero */
-
-void
-enc28j60_init(struct mac_address_t *mac_address)
-{
-  Z80_PORT_WRITE(sbt_cfg_port, 0);            /* SPI_RST -> 0 */
-  SPI_DELAY();
-  Z80_PORT_WRITE(sbt_cfg_port, SPI_RST);      /* SPI_RST -> 1 */
-  SPI_DELAY();
-
-  /*
-   * ETH initialization
-   */
-  enc28j60_write_register(ETXSTL, LOBYTE(ENC28J60_TXBUF_START));
-  enc28j60_write_register(ETXSTH, HIBYTE(ENC28J60_TXBUF_START));
-  enc28j60_write_register(ETXNDL, LOBYTE(ENC28J60_TXBUF_END));
-  enc28j60_write_register(ETXNDH, HIBYTE(ENC28J60_TXBUF_END));
-  
-  enc28j60_write_register(ERXSTL, LOBYTE(ENC28J60_RXBUF_START));
-  enc28j60_write_register(ERXSTH, HIBYTE(ENC28J60_RXBUF_START));
-  enc28j60_write_register(ERXNDL, LOBYTE(ENC28J60_RXBUF_END));
-  enc28j60_write_register(ERXNDH, HIBYTE(ENC28J60_RXBUF_END));
-
-  enc28j60_write_register(ERXRDPTL, LOBYTE(ENC28J60_RXBUF_START));
-  enc28j60_write_register(ERXRDPTH, HIBYTE(ENC28J60_RXBUF_START));
-
-  enc28j60_write_register(ERXFCON, 0x00);    /* TODO: enable CRC check */
-  enc28j60_write_register(ECON2, 0x80);      /* AUTOINC=1 */
-
-  /* TODO: poll ESTAT.CLKRDY? (datasheet, 6.4) */
-
-  /*
-   * MAC initialization
-   */
-  enc28j60_write_register(MACON1, 0x01);  /* TXPAUS=1 */
-  enc28j60_write_register(MACON3, 0xF3);  /* padding, auto CRC, full dpx, check */
-  enc28j60_write_register(MACON4, 0x00);  /* TODO: bit 6 for infinite wait? */
-
-  enc28j60_write_register(MAMXFLL, LOBYTE(ENC28J60_FRAME_MAX));
-  enc28j60_write_register(MAMXFLH, HIBYTE(ENC28J60_FRAME_MAX));
-  
-  enc28j60_write_register(MABBIPG, 0x15);
-  enc28j60_write_register(MAIPGL, 0x12);
-  
-  enc28j60_write_register(MAADR1, mac_address->addr[0]);
-  enc28j60_write_register(MAADR2, mac_address->addr[1]);
-  enc28j60_write_register(MAADR3, mac_address->addr[2]);
-  enc28j60_write_register(MAADR4, mac_address->addr[3]);
-  enc28j60_write_register(MAADR5, mac_address->addr[4]);
-  enc28j60_write_register(MAADR6, mac_address->addr[5]);
-
-  /*
-   * PHY initialization
-   */
-  enc28j60_write_phy_register(PHCON1, 0x0100);   /* full duplex */
-}
-
-#pragma restore
 
 /* ------------------------------------------------------------------------- */
 
@@ -366,7 +288,7 @@ enc28j60_read_memory(uint8_t *        dst_addr,
 
 void
 enc28j60_write_memory(enc28j60_addr_t  dst_addr,
-                      uint8_t *        src_addr,
+                      const uint8_t *  src_addr,
                       uint16_t         nbr_bytes)
 {
   uint16_t i;
@@ -382,12 +304,105 @@ enc28j60_write_memory(enc28j60_addr_t  dst_addr,
   spi_end_transaction();
 }
 
+/* ========================================================================= */
+
+#pragma save
+#pragma disable_warning 116
+/* warning since HIBYTE(ENC28J60_TXBUF_START) is zero */
+
+void
+eth_init(void)
+{
+  Z80_PORT_WRITE(sbt_cfg_port, 0);            /* SPI_RST -> 0 */
+  SPI_DELAY();
+  Z80_PORT_WRITE(sbt_cfg_port, SPI_RST);      /* SPI_RST -> 1 */
+  SPI_DELAY();
+  
+  /*
+   * ETH initialization
+   */
+  enc28j60_write_register(ERXSTL, LOBYTE(ENC28J60_RXBUF_START));
+  enc28j60_write_register(ERXSTH, HIBYTE(ENC28J60_RXBUF_START));
+  enc28j60_write_register(ERXNDL, LOBYTE(ENC28J60_RXBUF_END));
+  enc28j60_write_register(ERXNDH, HIBYTE(ENC28J60_RXBUF_END));
+  
+  enc28j60_write_register(ERXRDPTL, LOBYTE(ENC28J60_RXBUF_START));
+  enc28j60_write_register(ERXRDPTH, HIBYTE(ENC28J60_RXBUF_START));
+  
+  enc28j60_write_register(ERXFCON, 0x00);    /* TODO: enable CRC check */
+  enc28j60_write_register(ECON2, 0x80);      /* AUTOINC=1 */
+  
+  /* TODO: poll ESTAT.CLKRDY? (datasheet, 6.4) */
+  
+  /*
+   * MAC initialization
+   */
+  enc28j60_write_register(MACON1, 0x01);  /* TXPAUS=1 */
+  enc28j60_write_register(MACON3, 0xF3);  /* padding, auto CRC, full dpx, check */
+  enc28j60_write_register(MACON4, 0x00);  /* TODO: bit 6 for infinite wait? */
+  
+  enc28j60_write_register(MAMXFLL, LOBYTE(ENC28J60_FRAME_MAX));
+  enc28j60_write_register(MAMXFLH, HIBYTE(ENC28J60_FRAME_MAX));
+  
+  enc28j60_write_register(MABBIPG, 0x15);
+  enc28j60_write_register(MAIPGL, 0x12);
+  
+  enc28j60_write_register(MAADR1, params_mac_address[0]);
+  enc28j60_write_register(MAADR2, params_mac_address[1]);
+  enc28j60_write_register(MAADR3, params_mac_address[2]);
+  enc28j60_write_register(MAADR4, params_mac_address[3]);
+  enc28j60_write_register(MAADR5, params_mac_address[4]);
+  enc28j60_write_register(MAADR6, params_mac_address[5]);
+  
+  /*
+   * PHY initialization
+   */
+  enc28j60_write_phy_register(PHCON1, 0x0100);   /* full duplex */
+}
+
+#pragma restore
+
 /* ------------------------------------------------------------------------- */
 
-uint8_t
-enc28j60_poll(void)
+void
+eth_send_frame(const mac_address_t destination,
+               const uint8_t *payload,
+               uint16_t nbr_bytes)
 {
-  return (Z80_PORT_READ(sbt_cfg_port)
-          & (ENC28J60_INT_ACTIVE | ENC28J60_WOL_ACTIVE))
-         ^ (ENC28J60_INT_ACTIVE | ENC28J60_WOL_ACTIVE);
+  /*
+   * Datasheet, section 7.1
+   */
+  static const uint8_t per_packet_ctrl_byte = 0x0E;
+  
+  /*
+   * We only send one packet at a time, so we might as well use absolute
+   * addresses
+   *
+   * Last address = first + 1 (per-packet control byte) + 6 + 6
+   *                (destination/source addresses) + nbr_bytes - 1
+   *              = first + nbr_bytes + 12
+   */
+  uint16_t end_address = ENC28J60_TXBUF_START + 12 + nbr_bytes;
+  enc28j60_write_memory(ENC28J60_TXBUF_START,
+                        &per_packet_ctrl_byte,
+                        sizeof(per_packet_ctrl_byte));
+  enc28j60_write_memory(ENC28J60_TXBUF_START + 1,
+                        destination,
+                        sizeof(destination));
+  enc28j60_write_memory(ENC28J60_TXBUF_START + 7,
+                        params_mac_address,
+                        sizeof(params_mac_address));
+  enc28j60_write_memory(ENC28J60_TXBUF_START + 13,
+                        payload,
+                        nbr_bytes);
+  
+  enc28j60_write_register(ETXSTL, LOBYTE(ENC28J60_TXBUF_START));
+  enc28j60_write_register(ETXSTH, HIBYTE(ENC28J60_TXBUF_START));
+  enc28j60_write_register(ETXNDL, LOBYTE(end_address));
+  enc28j60_write_register(ETXNDH, HIBYTE(end_address));
+  
+  // enc28j60_write_register(EIE, 0x8A);    /* INTIE, TXIE, TXERIE */
+  // enc28j60_write_register(EIR, 0x00);    /* No pending interrupts */
+  
+  // enc28j60_wait_for_transmission_complete();
 }
