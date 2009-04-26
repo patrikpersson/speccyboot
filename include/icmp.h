@@ -1,12 +1,13 @@
 /*
- * Module logging:
+ * Module icmp:
  *
- * Diagnostic output, line-by-line.
+ * Internet Control Message Protocol (ICMP, RFC 792)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
  * ----------------------------------------------------------------------------
  *
+ * Copyright (c) 2009, Patrik Persson
  * Copyright (c) 2009, Patrik Persson
  * 
  * Permission is hereby granted, free of charge, to any person
@@ -30,42 +31,22 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef SPECCYBOOT_ICMP_INCLUSION_GUARD
+#define SPECCYBOOT_ICMP_INCLUSION_GUARD
 
+#include <stdint.h>
+
+#include "eth.h"
+#include "ip.h"
 #include "spectrum.h"
-#include "logging.h"
 
-/* ------------------------------------------------------------------------- */
-
+/* -------------------------------------------------------------------------
+ * Called by IP when an ICMP packet has been identified
+ * ------------------------------------------------------------------------- */
 void
-logging_init(void)
-{
-  spectrum_cls(INK(GREEN) | PAPER(BLACK), BLACK);
-  spectrum_set_attrs(INK(GREEN) | PAPER(BLACK) | BRIGHT, 23, 0, ROW_LENGTH);
-}
+icmp_packet_received(const struct mac_address_t  *src_hwaddr,
+                     const ipv4_address_t        *src,
+                     const uint8_t               *payload,
+                     uint16_t                     nbr_bytes_in_payload);
 
-/* ------------------------------------------------------------------------- */
-
-void
-logging_add_entry(const char *msg, const uint8_t *args)
-{
-  spectrum_scroll();
-  spectrum_print_at(22, 0, msg, args);
-  
-  /*
-   * Pause while a key is being pressed
-   */
-#if 0
-  if (spectrum_poll_input() == INPUT_FIRE) {
-    static Z80_PORT(254) border;
-    border = 7;
-    while (spectrum_poll_input() != INPUT_NONE)
-      ;
-    border = 3;
-    spectrum_wait_input();
-    border = 5;
-    while (spectrum_poll_input() != INPUT_NONE)
-      ;
-    border = 0;
-  }
-#endif
-}
+#endif /* SPECCYBOOT_ICMP_INCLUSION_GUARD */

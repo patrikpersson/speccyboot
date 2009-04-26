@@ -8,35 +8,58 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * All rights reserved.
+ * 
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of SpeccyBoot nor the names of its contributors may
- *       be used to endorse or promote products derived from this software
- *       without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY PATRIK PERSSON ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL PATRIK PERSSON BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #ifndef SPECCYBOOT_SPECTRUM_INCLUSION_GUARD
 #define SPECCYBOOT_SPECTRUM_INCLUSION_GUARD
 
 #include <stdint.h>
+
+/* -------------------------------------------------------------------------
+ * MAC address
+ * ------------------------------------------------------------------------- */
+
+#ifndef MAC_ADDR_0
+
+/*
+ * These definitions can be overridden by passing new ones from Makefile
+ * using -DMAC_ADDR_x=y
+ *
+ * (you need to do this to have more than one SpeccyBoot on the same LAN)
+ *
+ * NOTE: this is an LAA (Locally Administered Address), as signified by
+ * bit 1 in MAC_ADDR_0.
+ */
+
+#define MAC_ADDR_0    (0xba)
+#define MAC_ADDR_1    (0xdb)
+#define MAC_ADDR_2    (0xad)
+#define MAC_ADDR_3    (0xc0)
+#define MAC_ADDR_4    (0xff)
+#define MAC_ADDR_5    (0xee)
+
+#endif
 
 /* -------------------------------------------------------------------------
  * Spectrum attributes
@@ -60,24 +83,60 @@
 #define ROW_LENGTH    (32)
 
 /* -------------------------------------------------------------------------
- * String constants used by spectrum_print_at & friends
+ * String constants used by spectrum_print_at
+ *
+ * HEX16 refers to a little-endian 16-bit number stored in two consecutive
+ * uint8_t's in the array. A big endian 16-bit number would be represented
+ * as two HEX8_ARGs.
  * ------------------------------------------------------------------------- */
-#define HEX_ARG         "\001"
-#define HEX_ARG_CHAR    '\001'
-#define DEC_ARG         "\002"
-#define DEC_ARG_CHAR    '\002'
-#define BOLD_ON         "\003"
-#define BOLD_ON_CHAR    '\003'
-#define BOLD_OFF        "\004"
-#define BOLD_OFF_CHAR   '\004'
+#define HEX8_ARG         "\001"
+#define HEX8_ARG_CHAR    '\001'
+#define HEX16_ARG        "\002"
+#define HEX16_ARG_CHAR   '\002'
+#define DEC8_ARG         "\003"
+#define DEC8_ARG_CHAR    '\003'
+#define BOLD_ON          "\004"
+#define BOLD_ON_CHAR     '\004'
+#define BOLD_OFF         "\005"
+#define BOLD_OFF_CHAR    '\005'
 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Mask out most and least significant byte
+ * Byteswapping/masking helpers
  */
-#define HIBYTE(x)       ((x) >> 8)
+#define HIBYTE(x)       ((x & 0xff00u) ? ((x) >> 8) : 0)
 #define LOBYTE(x)       ((x) & 0x00ffu)
+
+#define BYTESWAP16(x)   (LOBYTE(x) * 0x0100 + HIBYTE(x))
+#define htons(n)        BYTESWAP16(n)
+#define ntohs           htons
+
+#define BITS0TO7(x)     LOBYTE(x)
+#define BITS8TO15(x)    (((x) >> 8) & 0x00ffu)
+#define BITS16TO23(x)   (((x) >> 16) & 0x00ffu)
+#define BITS24TO31(x)   (((x) >> 24) & 0x00ffu)
+
+#define BYTESWAP32(x)   (  BITS0TO7(x)   * 0x01000000u                        \
+                         + BITS8TO15(x)  * 0x00010000u                        \
+                         + BITS16TO23(x) * 0x00000100u                        \
+                         + BITS24TO31(x) )
+                
+#define htonl(n)        BYTESWAP32(n)
+#define ntohl           htonl
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Packed structs
+ */
+
+#ifdef SDCC
+/* SDCC packs structs by default */
+#define PACKED_STRUCT(name)  struct name
+#else
+#error Need to configure packed structs for compiler!
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -108,6 +167,12 @@ enum spectrum_input_t {
   INPUT_DOWN  = 2,    /* 6/kempston down */
   INPUT_UP    = 3     /* 7/kempston up */
 };
+
+/* -------------------------------------------------------------------------
+ * Display splash screen
+ * ------------------------------------------------------------------------- */
+void
+display_splash(void);
 
 /* -------------------------------------------------------------------------
  * Copy font from Sinclair ROM to RAM.
@@ -149,6 +214,13 @@ spectrum_print_at(uint8_t row,
                   const uint8_t *args);
 
 /* ------------------------------------------------------------------------- *
+ * ------------------------------------------------------------------------- */
+void
+spectrum_print_big_at(uint8_t row,
+                      uint8_t col, 
+                      const char *str);
+
+/* ------------------------------------------------------------------------- *
  * Scroll all lines up on screen, leaving an empty line at the bottom.
  * Attributes are not affected, only the bitmap.
  * ------------------------------------------------------------------------- */
@@ -169,6 +241,13 @@ spectrum_poll_input(void);
  * ------------------------------------------------------------------------- */
 enum spectrum_input_t
 spectrum_wait_input(void);
+
+/* ------------------------------------------------------------------------- *
+ * Signal a fatal error message. Terminate all network activity, display
+ * the message, and wait for the user to reset the machine.
+ * ------------------------------------------------------------------------- */
+void
+fatal_error(const char *message);
 
 #endif /* SPECCYBOOT_SPECTRUM_INCLUSION_GUARD */
 

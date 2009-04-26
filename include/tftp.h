@@ -1,7 +1,7 @@
 /*
- * Module logging:
+ * Module tftp:
  *
- * Diagnostic output, line-by-line.
+ * Trivial File Transfer Protocol (TFTP, RFC 1350)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -30,33 +30,50 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef SPECCYBOOT_TFTP_INCLUSION_GUARD
+#define SPECCYBOOT_TFTP_INCLUSION_GUARD
 
-#ifndef SPECCYBOOT_LOGGING_INCLUSION_GUARD
-#define SPECCYBOOT_LOGGING_INCLUSION_GUARD
+#include "udp.h"
 
-#include <stdint.h>
+/* ------------------------------------------------------------------------- */
 
-#ifdef VERBOSE_LOGGING
+/*
+ * Notification callback:
+ *
+ * called when data has been received over TFTP.
+ */
+#define NOTIFY_TFTP_DATA       netboot_notify_tftp_data
+
+/*
+ * Prototype for callback (the actual function name is #define'd in above)
+ *
+ * received_data:           points to a buffer holding the received data
+ * nbr_of_bytes_received:   number of valid bytes in buffer (possibly zero)
+ * more_data_expected:      true if more packets are expected, false if this
+ *                          was the last data packet
+ */
+void NOTIFY_TFTP_DATA(const uint8_t *received_data,
+                      uint16_t       nbr_of_bytes_received,
+                      bool           more_data_expected);
+
+/* ------------------------------------------------------------------------- */
+
+union tftp_packet_t;
+
 /* -------------------------------------------------------------------------
- * Initialize logging: clear screen, show cursor
+ * Called by UDP when a TFTP packet has been identified
  * ------------------------------------------------------------------------- */
 void
-logging_init(void);
+tftp_packet_received(const struct mac_address_t  *src_hwaddr,
+                     const ipv4_address_t        *src,
+                     uint16_t                     src_port_nw_order,
+                     const union tftp_packet_t   *packet,
+                     uint16_t                     nbr_bytes_in_packet);
 
 /* -------------------------------------------------------------------------
- * Scroll everything one line up, and add a new entry at the bottom.
- * Arguments work like spectrum_print_at().
+ * Initiate a file transfer from server
  * ------------------------------------------------------------------------- */
 void
-logging_add_entry(const char *msg, const uint8_t *args);
+tftp_read_request(const char *filename);
 
-#else
-/* VERBOSE_LOGGING */
-
-#define logging_init()
-#define logging_add_entry(msg, args)    ((void) msg, args)
-
-#endif
-/* VERBOSE_LOGGING */
-
-#endif /* SPECCYBOOT_LOGGING_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_TFTP_INCLUSION_GUARD */

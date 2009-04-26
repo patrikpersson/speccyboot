@@ -1,7 +1,7 @@
 /*
- * Module logging:
+ * Module dhcp:
  *
- * Diagnostic output, line-by-line.
+ * Dynamic Host Configuration Protocol (DHCP, RFC 2131)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -30,42 +30,45 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef SPECCYBOOT_DHCP_INCLUSION_GUARD
+#define SPECCYBOOT_DHCP_INCLUSION_GUARD
 
-#include "spectrum.h"
-#include "logging.h"
-
-/* ------------------------------------------------------------------------- */
-
-void
-logging_init(void)
-{
-  spectrum_cls(INK(GREEN) | PAPER(BLACK), BLACK);
-  spectrum_set_attrs(INK(GREEN) | PAPER(BLACK) | BRIGHT, 23, 0, ROW_LENGTH);
-}
+#include "udp.h"
 
 /* ------------------------------------------------------------------------- */
 
+/*
+ * Notification callback:
+ *
+ * called when an IP address has successfully been obtained using DHCP.
+ */
+#define NOTIFY_DHCP_COMPLETED       netboot_notify_ip_ready
+
+/*
+ * Prototype for callback (the actual function name is #define'd in above)
+ */
+void NOTIFY_DHCP_COMPLETED(void);
+
+/* ------------------------------------------------------------------------- */
+
+struct dhcp_header_t;
+
+/* -------------------------------------------------------------------------
+ * Called by when a DHCP packet has been received
+ * ------------------------------------------------------------------------- */
+
 void
-logging_add_entry(const char *msg, const uint8_t *args)
-{
-  spectrum_scroll();
-  spectrum_print_at(22, 0, msg, args);
-  
-  /*
-   * Pause while a key is being pressed
-   */
-#if 0
-  if (spectrum_poll_input() == INPUT_FIRE) {
-    static Z80_PORT(254) border;
-    border = 7;
-    while (spectrum_poll_input() != INPUT_NONE)
-      ;
-    border = 3;
-    spectrum_wait_input();
-    border = 5;
-    while (spectrum_poll_input() != INPUT_NONE)
-      ;
-    border = 0;
-  }
-#endif
-}
+dhcp_packet_received(const ipv4_address_t        *src,
+                     const struct dhcp_header_t  *packet);
+
+/* -------------------------------------------------------------------------
+ * Obtain an IP address using DHCP.
+ *
+ * When an address has been obtained, the function referenced by the
+ * DHCP_COMPLETED_HANDLER macro is called.
+ * ------------------------------------------------------------------------- */
+
+void
+dhcp_init(void);
+
+#endif /* SPECCYBOOT_DHCP_INCLUSION_GUARD */

@@ -8,35 +8,35 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * All rights reserved.
+ * 
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of SpeccyBoot nor the names of its contributors may
- *       be used to endorse or promote products derived from this software
- *       without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY PATRIK PERSSON ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL PATRIK PERSSON BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "spectrum.h"
+#include "logging.h"
 
 /* ------------------------------------------------------------------------- */
 /* Screen memory                                                             */
@@ -49,6 +49,11 @@
 
 static uint8_t * bitmap = (uint8_t *) (BITMAP_BASE);
 static uint8_t * attrs  = (uint8_t *) (ATTRS_BASE);
+
+/*
+ * defined in splash_screen.c
+ */
+extern uint8_t splash_screen[];
 
 /* ------------------------------------------------------------------------- */
 
@@ -102,6 +107,8 @@ static uint8_t copy_font_code[] = {
 
 static uint8_t fontdata[NBR_OF_CHARS * BYTES_PER_CHAR];
 
+static uint16_t rand_data;
+
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -112,6 +119,7 @@ static uint8_t fontdata[NBR_OF_CHARS * BYTES_PER_CHAR];
 /* -------------------------------------------------------------------------
  * Character attributes for print_char_at()
  * ------------------------------------------------------------------------- */
+
 #define ATTR_NORMAL     (0x00)
 #define ATTR_BOLD       (0x01)
 
@@ -126,6 +134,102 @@ print_char_at(uint8_t ch, uint8_t *dst_p, bool is_bold)
     uint8_t src_pixels = *src_p++;
     dst_p[i] = (is_bold)  ? (src_pixels | (src_pixels >> 1)) : (src_pixels);
   }
+}
+
+
+/* ------------------------------------------------------------------------- */
+
+static void
+print_big_char_at(uint8_t ch, uint8_t *dst_p)
+{
+  uint8_t *src_p = &fontdata[(ch - ' ') << 3];
+  uint16_t i;
+  for (i = 0; i < 8; i++) {
+    uint8_t src_pixels   = *src_p++;
+    uint8_t left_pixels  = ((src_pixels & 0x80) ? 0xC0 : 0)
+                         | ((src_pixels & 0x40) ? 0x30 : 0)
+                         | ((src_pixels & 0x20) ? 0x0C : 0)
+                         | ((src_pixels & 0x10) ? 0x03 : 0);
+    uint8_t right_pixels = ((src_pixels & 0x08) ? 0xC0 : 0)
+                         | ((src_pixels & 0x04) ? 0x30 : 0)
+                         | ((src_pixels & 0x02) ? 0x0C : 0)
+                         | ((src_pixels & 0x01) ? 0x03 : 0);
+    dst_p[0x0200 * i]     = dst_p[0x0200 * i + 0x0100] = left_pixels;
+    dst_p[0x0200 * i + 1] = dst_p[0x0200 * i + 0x0101] = right_pixels;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * RST30 entry point (software interrupt)
+ * ------------------------------------------------------------------------- */
+
+void
+rst30_handler(void)
+__naked
+{
+  __asm
+  
+    ret
+  
+  __endasm;
+}
+
+/* -------------------------------------------------------------------------
+ * Public API
+ * ------------------------------------------------------------------------- */
+
+/* ------------------------------------------------------------------------- */
+
+void
+display_splash(void)
+{
+#if 0
+  const uint8_t *src = splash_screen;
+  uint8_t *dst = (uint8_t *) 0x4800;
+  uint16_t dst_idx = 0;
+  while (dst_idx < 0x0800) {
+    uint8_t b = *src++;
+    if (b) {
+      dst[dst_idx++] = b;
+    }
+    else {
+      uint16_t count = *src++;
+      if (!count) count = 0x100;
+      for (; count; count--) {
+        dst[dst_idx++] = '\000';
+      }
+    }
+  }
+#else
+  __asm
+  
+  ld  hl, #_splash_screen
+  ld  de, #0x4800
+
+display_splash_loop:
+  ld  a, d
+  cp  #0x50
+  jr  z, display_splash_done
+  ld  a, (hl)
+  inc hl
+  or  a
+  ;; jr  z, display_splash_seq
+  ld  (de), a
+  inc de
+  jr  display_splash_loop
+
+display_splash_seq:
+  ld  b, (hl)
+display_splash_seq_loop:
+  ld  (de), a
+  inc de
+  djnz  display_splash_seq_loop
+  jr  display_splash_loop
+
+display_splash_done:
+  
+  __endasm;
+#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -190,7 +294,7 @@ spectrum_print_at(uint8_t row, uint8_t col,
       case BOLD_OFF_CHAR:
         attrs &= ~ATTR_BOLD;
         continue;
-      case DEC_ARG_CHAR:
+      case DEC8_ARG_CHAR:
       {
         uint8_t arg = *args++;
         if (arg >= 100) {
@@ -209,15 +313,34 @@ spectrum_print_at(uint8_t row, uint8_t col,
         }
         break;
       }
-      case HEX_ARG_CHAR:
+      case HEX16_ARG_CHAR:
+      {
+        uint8_t lobyte = *args++;
+        uint8_t hibyte = *args++;
+        print_char_at(hexdigit(hibyte >> 4), dst_p++, attrs);
+        col++;
+        if (col >= ROW_LENGTH)  break;
+        
+        print_char_at(hexdigit(hibyte & 0x0f), dst_p++, attrs);
+        col ++;
+        if (col >= ROW_LENGTH)  break;
+        
+        print_char_at(hexdigit(lobyte >> 4), dst_p++, attrs);
+        col ++;
+        if (col >= ROW_LENGTH)  break;
+        
+        print_char_at(hexdigit(lobyte & 0x0f), dst_p++, attrs);
+        col ++;
+        break;
+      }
+      case HEX8_ARG_CHAR:
       {
         uint8_t arg = *args++;
         print_char_at(hexdigit(arg >> 4), dst_p++, attrs);
         col++;
-        if (col < ROW_LENGTH) {
-          print_char_at(hexdigit(arg & 0x0f), dst_p++, attrs);
-          col ++;
-        }
+        if (col >= ROW_LENGTH)  break;
+        print_char_at(hexdigit(arg & 0x0f), dst_p++, attrs);
+        col ++;
         break;
       }
       default:
@@ -226,6 +349,25 @@ spectrum_print_at(uint8_t row, uint8_t col,
         break;
     }
     
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+spectrum_print_big_at(uint8_t row, uint8_t col,
+                      const char *str)
+{
+  uint8_t *dst_p = ((uint8_t *) BITMAP_BASE)
+                 + ((row & 0x0c) << 9) + ((row & 0x03) << 6)
+                 + (col << 1);
+  
+  while (col < 16 && *str) {
+    uint8_t ch = *str++;
+    
+    print_big_char_at(ch, dst_p);
+    col ++;
+    dst_p += 2;
   }
 }
 
@@ -340,4 +482,16 @@ spectrum_wait_input(void)
   } while (current_input == INPUT_NONE);
 
   return current_input;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+fatal_error(const char *message)
+{
+  logging_add_entry("FATAL ERROR:", NULL);
+  logging_add_entry(message, NULL);
+  
+  for(;;)
+    ;
 }

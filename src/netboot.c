@@ -8,109 +8,100 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * All rights reserved.
+ * 
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of SpeccyBoot nor the names of its contributors may
- *       be used to endorse or promote products derived from this software
- *       without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY PATRIK PERSSON ''AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL PATRIK PERSSON BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include <stddef.h>
 
 #include "netboot.h"
 
-#include "enc28j60.h"
+#include "dhcp.h"
+#include "tftp.h"
+
 #include "spectrum.h"
-#include "params.h"
 #include "logging.h"
-#include "timer.h"
 
 /* ------------------------------------------------------------------------- */
-
-#define DISPLAY_REGISTER(REG, EXPECTED)   do {                                \
-  uint8_t x[2];                                                               \
-  x[0] = enc28j60_read_register(REG);                                         \
-  x[1] = EXPECTED;                                                            \
-  logging_add_entry("Read " #REG ": " HEX_ARG "/" HEX_ARG, x);                \
-} while(0)
-
-/* ------------------------------------------------------------------------- */
-
-static uint8_t
-checksum(uint8_t *addr, uint16_t nbr_bytes)
-{
-  uint8_t cs = 0;
-  uint16_t i;
-  for (i = 0; i < nbr_bytes; i++) {
-    cs ^= *addr++;
-  }
-  return cs;
-}
-/* ------------------------------------------------------------------------- */
-uint8_t read_buffer[512];
 
 void
 netboot_do(void)
 {
   logging_init();
+  
+  eth_init();
+  dhcp_init();
+  
+  eth_handle_incoming_frames();
+}
 
-  {
-    struct mac_address_t mac_address;
-    
-    params_get_mac_address(&mac_address);
-    enc28j60_init(&mac_address);
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Called by DHCP (see dhcp.h) when an IP address is available
+ */
+void
+netboot_notify_ip_ready(void)
+{
+  logging_add_entry("BOOT: DHCP got IP "
+                    DEC8_ARG "." DEC8_ARG "." DEC8_ARG "." DEC8_ARG,
+                    (uint8_t *) &ip_config.host_address);
+  
+  tftp_read_request("test.scr");
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Called by TFTP (see tftp.h) when data is received
+ */
+void
+netboot_notify_tftp_data(const uint8_t *received_data,
+                         uint16_t       nbr_of_bytes_received,
+                         bool           more_data_expected)
+{
+  static uint8_t *dst = (uint8_t *) 0x4000;
+  /*
+  logging_add_entry("BOOT: got 0x" HEX16_ARG " bytes",
+                    (uint8_t *) &nbr_of_bytes_received);
+  logging_add_entry("BOOT: more=" HEX8_ARG,
+                    (uint8_t *) &more_data_expected);
+   */
+
+  while (nbr_of_bytes_received-- > 0) {
+    *dst ++ = *received_data++;
   }
   
-  {
-    uint8_t x = enc28j60_read_register(EREVID) & 0x1f;
-    logging_add_entry("ENC28J60 rev. 0x" HEX_ARG, &x);
-
-    DISPLAY_REGISTER(ERXSTL, 0x00);
-    DISPLAY_REGISTER(ERXSTH, 0x00);
-    DISPLAY_REGISTER(ERXNDL, 0xFF);
-    DISPLAY_REGISTER(ERXNDH, 0x17);
-    DISPLAY_REGISTER(MAADR1, 0x12);
-    DISPLAY_REGISTER(MAADR2, 0x34);
-    DISPLAY_REGISTER(MAADR3, 0x56);
-    DISPLAY_REGISTER(MAADR4, 0x78);
-    DISPLAY_REGISTER(MAADR5, 0x9A);
-    DISPLAY_REGISTER(MAADR6, 0xBC);
+  if (! more_data_expected) {
+    __asm
     
-    enc28j60_write_memory(0x0100, (uint8_t *) 0x0300, sizeof(read_buffer));
-    enc28j60_read_memory(read_buffer, 0x0100, sizeof(read_buffer));
-    x = checksum((uint8_t *) 0x0300, sizeof(read_buffer));
-    logging_add_entry("Checksum (FRAM) = 0x" HEX_ARG, &x);
-    x = checksum(read_buffer, sizeof(read_buffer));
-    logging_add_entry("Checksum  (RAM) = 0x" HEX_ARG, &x);
+      di
+      ld  a, #3
+      out (254), a
+      
+      halt
     
-    /* now go flash some LEDs */
-    for (;;) {
-      enc28j60_write_phy_register(PHLCON, 0x0890);
-      timer_delay(SECOND / 10);
-      enc28j60_write_phy_register(PHLCON, 0x0980);
-      timer_delay(SECOND / 10);
-
-      if (spectrum_poll_input() == INPUT_FIRE) {
-        return;
-      }
-    }
+    __endasm;
   }
+  
+  (void) received_data;
 }

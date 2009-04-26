@@ -11,8 +11,7 @@
   ld	sp,#0xffff
 
   ;; Initialise global variables
-  call    gsinit
-  jp	_main
+  jp  gsinit
 
   ;; Ordering of segments for the linker.
   .area	_HOME
@@ -30,4 +29,5 @@
   gsinit::
 
   .area   _GSFINAL
-  ret
+  ei
+  jp	_main
