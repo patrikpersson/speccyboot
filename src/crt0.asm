@@ -14,11 +14,16 @@
   ;; --------------------------------------------------------------------------  
   ;; RESET VECTOR
   ;;
-  ;; Set up interrupts, delay for 200ms (for 128k reset logic to settle)
+  ;; Set up interrupts, enter a sensible RESET state for the ENC28J60, delay
+  ;; for 200ms (for 128k reset logic to settle)
   ;; --------------------------------------------------------------------------  
   
   .org 	0
   di
+
+  xor   a                 ;; Write all port values as zero (the hardware just
+  out   (0x9f), a         ;; initializes bits 4/5 as zero, the rest are random)
+
   im    1
 
   ld    sp, #0xffff       ;; TODO: find a better place for the stack
@@ -45,9 +50,9 @@ reset_delay_loop::        ;; each loop iteration is 6+4+4+12 = 26 T-states
   jp    _rst30_handler
 
   ;; --------------------------------------------------------------------------  
-  ;; RST 0x38 ENTRYPOINT (50HZ INTERRUPT)
+  ;; RST 0x38 (50HZ INTERRUPT) ENTRYPOINT
   ;;
-  ;; increase 8-bit value at '_timer_tick_count', saturate at 0xff
+  ;; Increase 8-bit value at '_timer_tick_count', saturate at 0xff
   ;; --------------------------------------------------------------------------  
 
   .org	0x38
@@ -67,6 +72,7 @@ timer_50hz_saturated::
   ;; --------------------------------------------------------------------------  
   ;; Ordering of segments for the linker
   ;; --------------------------------------------------------------------------  
+
   .area	_HOME
   .area	_CODE
   .area _GSINIT
