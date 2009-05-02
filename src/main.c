@@ -31,179 +31,59 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stddef.h>
-#include <stdbool.h>
-
-#include "spectrum.h"
-#include "speccyboot.h"
+#include "platform.h"
+#include "util.h"
 #include "netboot.h"
 
-/* ========================================================================= */
+/* ------------------------------------------------------------------------- */
 
-/*
- * Code snippet to disable interrupts, switch FRAM/ROM banks, and jump to
- * the start of ROM.
- *
- * NOTE: this is NOT const, because it has to reside in RAM (or it will be
- * paged out by itself)!
- */
-static uint8_t trampoline_code[] = {
-  0xF3,             /* di */
-  0x3E, 0x20,       /* ld a, 0x20 (select internal ROM) */
-  0xD3, 0x9F,       /* out (0x9F), a */
-  0xC3, 0x00, 0x00  /* jp 0x0000 */
-};
+#define KEYBOARD_ROW_ADDRESS          (0xBFFE)
+#define KEY_ENTER                     (0x01)
+#define KEY_J                         (0x08)
 
-/* ========================================================================= */
-
-/* make some noise */
-static void
-make_noise(void)
-__naked
-{
-  __asm
-  
-  ld  de, #0x1000
-  ld  l, #128
-noise_loop:
-  ld  bc, #0xFFFE
-  out (c), d
-  
-  ld b, #28
-noise_l1:
-  djnz  noise_l1
-  
-  out (c), e
-  
-  ld b, #28
-noise_l2:
-  djnz  noise_l2
-  
-  dec l
-  jr  nz, noise_loop
-  
-  ret
-  
-  __endasm;
-}
+#define KEY_IS_PRESSED(status, key)   (((status) & (key)) == 0)
 
 /* ========================================================================= */
 
 void main(void) {
-  uint8_t option = 0;
-  bool redraw_screen = true;   /* Set if screen needs to be re-drawn */
   
-  spectrum_init_font();
-  spectrum_cls(INK(BLACK) | PAPER(BLACK), BLACK);
+  set_screen_attrs(INK(BLACK) | PAPER(BLACK));
+  set_border(BLACK);
 
-  /*
-   * Display splash screen
-   */
-  __asm
+  display_splash();
+
+  set_attrs(INK(GREEN) | PAPER(BLACK), 8, 0, 32);
+  set_attrs(INK(GREEN) | PAPER(BLACK) | BRIGHT, 9, 0, 32);
+  set_attrs(INK(GREEN) | PAPER(BLACK), 10, 0, 32);
   
-    ld  hl, #_splash_screen
-    ld  de, #0x4800
-    
-  main_splash_loop:
-    ld  a, d
-    cp  #0x50
-    jr  z, main_splash_done
-    ld  a, (hl)
-    inc hl
-    or  a
-    ;; jr  z, main_splash_seq
-    ld  (de), a
-    inc de
-    jr  main_splash_loop
-    
-  main_splash_seq:
-    ld  b, (hl)
-  main_splash_seq_loop:
-    ld  (de), a
-    inc de
-    djnz  main_splash_seq_loop
-    jr  main_splash_loop
-    
-  main_splash_done:
-    
-  __endasm;
+  set_attrs(INK(YELLOW) | PAPER(BLACK) | BRIGHT, 15, 0, 3);
+  set_attrs(INK(WHITE) | PAPER(BLACK), 15, 3, 29);
+  set_attrs(INK(YELLOW) | PAPER(BLACK) | BRIGHT, 15, 22, 4);
   
-  spectrum_set_attrs(INK(GREEN) | PAPER(BLACK), 8, 0, 32);
-  spectrum_set_attrs(INK(GREEN) | PAPER(BLACK) | BRIGHT,          9, 0, 32);
-  spectrum_set_attrs(INK(GREEN) | PAPER(BLACK), 10, 0, 32);
-  
-  spectrum_set_attrs(INK(WHITE) | PAPER(BLACK), 15, 0, 32);
-  spectrum_set_attrs(INK(YELLOW) | PAPER(BLACK) | BRIGHT, 15, 0, 3);
-  spectrum_set_attrs(INK(YELLOW) | PAPER(BLACK) | BRIGHT, 15, 22, 4);
-  
-  __asm
-    ld  bc, #0xBFFE
-  main_wait_key:
-    in  d, (c)
-    ld  a, d
-    and #0x01           ;; ENTER
-    jp  z, _trampoline_code
-    ld  a, d
-    and #0x08           ;; J "LOAD"
-    jp  z, _netboot_do
-    jr main_wait_key
-  
-  __endasm;
-  
-#if 0
   for (;;) {
-    uint8_t new_option;
-    enum spectrum_input_t user_input;
+    static Z80_PORT(0xBFFE) keyboard_row;   /* keys H through ENTER */
     
-    if (redraw_screen) {     
-      uint8_t i;
+    uint8_t keyboard_status = Z80_PORT_READ(keyboard_row);
+    
+    if (KEY_IS_PRESSED(keyboard_status, KEY_ENTER)) {
+      __asm  
       
-      spectrum_cls(INK(BLUE) | PAPER(WHITE), BLUE);
-      display_splash();
+        ;; Stores the instruction 'out (0x9F), a' at 0xFFFE. Jumping there will
+        ;; page in ROM 0, and then continue to execute into it.
+        
+        di
+        ld  hl,   #0xFFFE
+        ld  (hl), #0xD3     ;; out (N), a
+        inc hl
+        ld  (hl), #0x9F     ;; N for out instruction above
+        ld  a,    #0x20     ;; select internal ROM
+        jp  0xFFFE
       
-      for (i = 0; i < NBR_OF_OPTIONS; i++) {
-        spectrum_print_at(8 + (i << 1), 7, menu_options[i].title, NULL);
-      }
-
-      redraw_screen = false;
+      __endasm;
     }
-    
-    new_option = option;
-    
-    spectrum_set_attrs(INK(BLACK) | PAPER(YELLOW) | BRIGHT,
-                       8 + (option << 1), 5, 22);
-    
-    user_input = spectrum_wait_input();
-    
-    switch (user_input) {
-      case INPUT_UP:
-        if (option > 0) {
-          new_option = option - 1;
-        }
-        else {
-          /* yell */
-        }
-        break;
-      case INPUT_DOWN:
-        if (option < (NBR_OF_OPTIONS - 1)) {
-          new_option = option + 1;
-        }
-        else {
-          /* yell */
-        }
-        break;
-      case INPUT_FIRE:
-        menu_options[option].handler();
-        redraw_screen = true;
-        break;
+    if (KEY_IS_PRESSED(keyboard_status, KEY_J)) {
+      set_attrs(INK(BLACK) | PAPER(BLACK), 15, 0, 32);
+      netboot_do();
     }
-    
-    if (new_option != option && !redraw_screen) {
-      spectrum_set_attrs(INK(BLUE) | PAPER(WHITE),
-                         8 + (option << 1), 5, 22);
-    }
-    
-    option = new_option;
   }
-#endif
 }

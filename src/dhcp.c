@@ -36,7 +36,6 @@
 #include "udp.h"
 #include "dhcp.h"
 
-#include "spectrum.h"
 #include "logging.h"
 
 #include "eth.h"
@@ -209,15 +208,7 @@ static const ipv4_address_t generic_broadcast_address
 
 /* ------------------------------------------------------------------------- */
 
-/*
- * Configuration state
- */
-static enum {
-  STATE_INIT,
-  STATE_SELECTING,
-  STATE_REQUESTING,
-  STATE_BOUND
-} dhcp_state = STATE_INIT;
+static enum dhcp_state_t dhcp_state = STATE_INIT;
 
 /* ------------------------------------------------------------------------- */
 
@@ -225,7 +216,9 @@ void
 dhcp_init(void)
 {
   dhcp_state = STATE_SELECTING;
-  
+
+  NOTIFY_DHCP_STATE(dhcp_state);
+
   udp_create_packet(&eth_broadcast_address,
                     &generic_broadcast_address,
                     htons(UDP_PORT_DHCP_CLIENT),
@@ -310,13 +303,15 @@ dhcp_packet_received(const ipv4_address_t        *src,
         
         eth_reset_retransmission_timer();   /* Don't ask for more ACKs */
         
-        NOTIFY_DHCP_COMPLETED();
+        NOTIFY_DHCP_STATE(dhcp_state);
         
         break;
         
       case DHCPOFFER:
         dhcp_server_address = *src;
         dhcp_state          = STATE_REQUESTING;
+
+        NOTIFY_DHCP_STATE(dhcp_state);
 
         /*logging_add_entry("DHCP: offer for "
                           DEC8_ARG "." DEC8_ARG "." DEC8_ARG "." DEC8_ARG,

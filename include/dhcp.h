@@ -38,16 +38,28 @@
 /* ------------------------------------------------------------------------- */
 
 /*
+ * DHCP state
+ */
+enum dhcp_state_t {
+  STATE_INIT,
+  STATE_SELECTING,
+  STATE_REQUESTING,
+  STATE_BOUND
+};
+
+/* ------------------------------------------------------------------------- */
+
+/*
  * Notification callback:
  *
- * called when an IP address has successfully been obtained using DHCP.
+ * called when the states SELECTING/REQUESTING/BOUND states are entered.
  */
-#define NOTIFY_DHCP_COMPLETED       netboot_notify_ip_ready
+#define NOTIFY_DHCP_STATE         netboot_notify_dhcp_state
 
 /*
  * Prototype for callback (the actual function name is #define'd in above)
  */
-void NOTIFY_DHCP_COMPLETED(void);
+void NOTIFY_DHCP_STATE(enum dhcp_state_t state);
 
 /* ------------------------------------------------------------------------- */
 

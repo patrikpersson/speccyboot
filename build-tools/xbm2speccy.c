@@ -79,10 +79,6 @@ static uint8_t uncompressed_speccy_buf[IMAGE_SIZE_BYTES];
 
 /* ------------------------------------------------------------------------- */
 
-/*
- * write NUL N, where N denotes the number of NULs. If N is 0, it should
- * be interpreted as 256.
- */
 void write_untranslated_byte(uint8_t b)
 {
   static uint16_t nbr_bytes = 0;
@@ -101,16 +97,30 @@ void write_untranslated_byte(uint8_t b)
  * length of current sequence of NULs
  * if zero, no compression is currently taking place
  */
-static uint8_t run_length = 0;
+static uint16_t run_length = 0;
 
+/* ------------------------------------------------------------------------- */
+
+/*
+ * A single NUL is written as NUL.
+ * Two or more NULs are written as NUL NUL (n), where N is the number of NULs
+ * minus two:
+ * NUL NUL 0 <=> two NULs
+ * NUL NUL 1 <=> three NULs
+ * and so on.
+ */
 static void
-finish_sequence(void)
+flush_compression_sequence(void)
 {
-  if (run_length) {
+  if (run_length == 1) {
     write_untranslated_byte(0);
-    write_untranslated_byte(run_length);
-    run_length = 0;
   }
+  else if (run_length >= 2) {
+    write_untranslated_byte(0);
+    write_untranslated_byte(0);
+    write_untranslated_byte(run_length - 2);
+  }
+  run_length = 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -120,14 +130,16 @@ finish_sequence(void)
  */
 void write_byte(uint8_t b)
 {
-  if (1 || b) {
-    finish_sequence();
+  if (b) {
+    if (run_length) {
+      flush_compression_sequence();
+    }
     write_untranslated_byte(b);
   }
   else {              /* another NUL in an ongoing compressed sequence */
     run_length ++;
-    if (run_length == 0) {
-      finish_sequence();
+    if (run_length == 0x0101) {     /* maximal number of NULs in one go */
+      flush_compression_sequence();
     }
   }
 }
@@ -136,30 +148,17 @@ void write_byte(uint8_t b)
 
 int main(void) {
   /*
-   * Re-order bytes to Spectrum style
+   * Write compressed data
    */
   {
-    uint16_t r;
-    for (r = 0; r < IMAGE_HEIGHT; r++) {
-      uint16_t c;
-      for (c = 0; c < IMAGE_ROW_BYTES; c++) {
-        uint16_t dest_row_offset = ((r & 0x07) * 0x0100) + ((r >> 3) * 0x020);
-        uint8_t bits = speccyboot_bits[r * IMAGE_ROW_BYTES + c];
-        uncompressed_speccy_buf[dest_row_offset + c] = FLIP_BITS(bits);
-      }
-    }
-  }
-  
-  /*
-   * Write as binary, as an absolute-addressed definition for SDCC
-   */
-  {
-    printf("const unsigned char splash_screen[] = {");
     uint16_t i;
+
+    printf("#include <stdint.h>\nconst uint8_t splash_screen[] = {");
     for (i = 0; i < IMAGE_SIZE_BYTES; i++) {
-      write_byte(uncompressed_speccy_buf[i]);
+      write_byte(FLIP_BITS(speccyboot_bits[i]));
     }
-    finish_sequence();      /* just to be sure */
+    
+    flush_compression_sequence();
     printf("};\n");
   }
   

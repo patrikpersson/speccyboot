@@ -16,17 +16,19 @@
   ;;
   ;; Set up interrupts, enter a sensible RESET state for the ENC28J60, delay
   ;; for 200ms (for 128k reset logic to settle)
+  ;;
+  ;; The CPU stack is placed at 0x5BFF (255 bytes after video RAM). This should
+  ;; make stack overruns visible.
   ;; --------------------------------------------------------------------------  
   
   .org 	0
   di
-
-  xor   a                 ;; Write all port values as zero (the hardware just
-  out   (0x9f), a         ;; initializes bits 4/5 as zero, the rest are random)
-
   im    1
 
-  ld    sp, #0xffff       ;; TODO: find a better place for the stack
+  ld    a, #0x08          ;; CS high, RST low
+  out   (0x9f), a
+
+  ld    sp, #0x5BFF
   
   ld    a, #2
   out   (0xfe), a         ;; set border red during delay

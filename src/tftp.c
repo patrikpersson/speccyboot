@@ -36,7 +36,6 @@
 
 #include "tftp.h"
 
-#include "spectrum.h"
 #include "logging.h"
 
 #include "eth.h"
@@ -56,7 +55,7 @@
 /*
  * A single error: "illegal operation"
  */
-#define TFTP_ERROR_ILLEGAL        (3)
+#define TFTP_ERROR_ILLEGAL        (4)
 
 /*
  * TFTP DATA packets have a maximal size of 512 bytes, unless options are set
@@ -198,10 +197,6 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
       }
     }
   }
-  else if (packet->opcode == ntohs(TFTP_OPCODE_ERROR)) {
-    logging_add_entry("TFTP: received ERROR 0x" HEX8_ARG HEX8_ARG,
-                      (uint8_t *) &packet->error.error_code);
-  }
   else {
     logging_add_entry("TFTP: unexpected opcode", NULL);
   }
@@ -213,13 +208,15 @@ void
 tftp_read_request(const char *filename)
 {
   static const uint16_t rrq_opcode   = htons(TFTP_OPCODE_RRQ);
-  static const uint8_t  rrq_option[] = "octet\000" "octet\000" "octet\000";
-  const uint16_t      filename_len   = strlen(filename);
+  // static const uint8_t  rrq_option[] = "netascii\000";
+  static const uint8_t  rrq_option[] = "octet\000";
+  // static const uint8_t  rrq_option[] = "octet\000blksize\000512\000";
+  const uint16_t      filename_len   = strlen(filename) + 1 /* NUL */;
   const uint16_t         total_len   = sizeof(rrq_opcode)
                                        + sizeof(rrq_option)
                                        + filename_len;
 
-  static const ipv4_address_t JOX = 0x0102a8c0;
+  //static const ipv4_address_t JOX = 0x0102a8c0;
   
   udp_set_tftp_port(tftp_select_port());
   expected_tftp_block_no = 1;
@@ -229,13 +226,13 @@ tftp_read_request(const char *filename)
    * the RRQ packet is broadcast.
    */
   udp_create_packet(&eth_broadcast_address,
-                    // &JOX,
+                    //&JOX,
                     &ip_config.broadcast_address,
                     udp_get_tftp_port(),
                     htons(UDP_PORT_TFTP_SERVER),
                     total_len);
   udp_add_payload_to_packet(rrq_opcode);
-  udp_add_variable_payload_to_packet(filename, filename_len + 1 /* NUL */);
+  udp_add_variable_payload_to_packet(filename, filename_len);
   udp_add_payload_to_packet(rrq_option);
   udp_send_packet(total_len);
 }

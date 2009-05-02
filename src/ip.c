@@ -38,7 +38,6 @@
 #include "udp.h"
 #include "icmp.h"
 
-#include "spectrum.h"
 #include "logging.h"
 
 #include "eth.h"

@@ -37,6 +37,7 @@
 #include "enc28j60_spi.h"
 
 #include "speccyboot.h"
+#include "util.h"
 #include "logging.h"
 
 /* ========================================================================= */
@@ -250,7 +251,7 @@ enc28j60_poll_register(uint16_t register_descr,
     logging_add_entry("SPI: poll failed for " HEX8_ARG ":" HEX8_ARG, x);
   }
   
-  fatal_error("polling timed out");
+  fatal_error(FATAL_ERROR_SPI_POLL_FAIL);
 }
 
 /* ------------------------------------------------------------------------- */

@@ -36,6 +36,24 @@
 
 #include <stdint.h>
 
+/* -------------------------------------------------------------------------
+ * String constants used by spectrum_print_at
+ *
+ * HEX16 refers to a little-endian 16-bit number stored in two consecutive
+ * uint8_t's in the array. A big endian 16-bit number would be represented
+ * as two HEX8_ARGs.
+ * ------------------------------------------------------------------------- */
+#define HEX8_ARG         "\001"
+#define HEX8_ARG_CHAR    '\001'
+#define HEX16_ARG        "\002"
+#define HEX16_ARG_CHAR   '\002'
+#define DEC8_ARG         "\003"
+#define DEC8_ARG_CHAR    '\003'
+#define BOLD_ON          "\004"
+#define BOLD_ON_CHAR     '\004'
+#define BOLD_OFF         "\005"
+#define BOLD_OFF_CHAR    '\005'
+
 #ifdef VERBOSE_LOGGING
 /* -------------------------------------------------------------------------
  * Initialize logging: clear screen, show cursor

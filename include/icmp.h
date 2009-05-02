@@ -38,7 +38,6 @@
 
 #include "eth.h"
 #include "ip.h"
-#include "spectrum.h"
 
 /* -------------------------------------------------------------------------
  * Called by IP when an ICMP packet has been identified

@@ -34,18 +34,13 @@
 
 #include <stdint.h>
 
-#include "spectrum.h"
-
-/* -------------------------------------------------------------------------
- * I/O ports implemented by SpeccyBoot
- * ------------------------------------------------------------------------- */
-
-Z80_PORT(0x009f) sbt_cfg_port;        /* speccyboot config */
+#include "platform.h"
 
 /* -------------------------------------------------------------------------
  * Values of bits in OUT register
  * ------------------------------------------------------------------------- */
 
+#if 0
 enum speccyboot_out_port_bit_t {
   BIT_SPI_SCK   = 0,
   BIT_UNUSED_1  = 1,
@@ -56,36 +51,19 @@ enum speccyboot_out_port_bit_t {
   BIT_SPI_RST   = 6,    /* RESET pin for ENC28J60 */
   BIT_SPI_MOSI  = 7     /* SPI data to ENC28J60 */
 };
+#endif
 
-#define SPI_SCK              (1 << BIT_SPI_SCK)
-#define SPI_CS               (1 << BIT_SPI_CS)
-#define SPI_RST              (1 << BIT_SPI_RST)
-#define SPI_MOSI             (1 << BIT_SPI_MOSI)
-
-#define SELECT_INTERNAL_ROM  (1 << BIT_FRAM_CS)
-#define SELECT_FRAM_BANK_2   (1 << BIT_FRAM_A14)
+// #define EN_SCK              (0x01)
+#define EN_CS               (0x08)
+#define FRAM_CS             (0x20)
+#define EN_RST              (0x40)
+// #define EN_MOSI             (0x80)
 
 /* -------------------------------------------------------------------------
  * Values of bits in IN register
  * ------------------------------------------------------------------------- */
 
-enum speccyboot_in_port_bit_t {
-  BIT_SPI_MISO  = 0,    /* SPI data from ENC28J60 */
-  BIT_EN_WOL    = 1,    /* WOL pin from ENC28J60 */    
-  BIT_EN_INT    = 2     /* INT pin from ENC28J60 */
-};
-
-#define SPI_MISO             (1 << BIT_SPI_MISO)
-
-#define EN_WOL               (1 << BIT_EN_WOL)
-#define EN_INT               (1 << BIT_EN_INT)
-
-/* -------------------------------------------------------------------------
- * SPI buffers
- * ------------------------------------------------------------------------- */
-
-#define SPI_CHUNK_SIZE    (128)
-#define SPI_BUFFER_ADDR   (0x5B00)
+// #define EN_MISO             (0x01)
 
 /* ------------------------------------------------------------------------- */
 

@@ -38,7 +38,7 @@
 #include "enc28j60_spi.h"
 #include "arp.h"
 #include "ip.h"
-#include "spectrum.h"
+#include "util.h"
 #include "speccyboot.h"
 #include "logging.h"
 
@@ -53,6 +53,12 @@ PACKED_STRUCT(eth_header_t) {
   struct mac_address_t  src_addr;
   uint16_t              ethertype;
 };
+
+/*
+ * Minimal payload -- short frame will be padded
+ */
+// #define ETH_MINIMAL_PAYLOAD   (64)
+// #define ETH_MINIMAL_PAYLOAD   (64 - sizeof(struct eth_header_t))
 
 /* ========================================================================= */
 
@@ -116,8 +122,11 @@ const struct mac_address_t eth_local_address = {
  *                      frame class CRITICAL. On time-outs, this frame will be
  *                      re-transmitted (if valid).
  *
- * 0xXXXX+1...0x1FFF    TX buffer 2/scratchpad. This buffer is used for frames
- *                      where no reply is expected -- frame class OPTIONAL.
+ * 0xXXXX+1...0x1FA8    TX buffer 2. This buffer is used for frames where no
+ *                      reply is expected -- frame class OPTIONAL.
+ *
+ * 0x1FA9 ... 0x1FFF    Reserved for temporary storage during snapshot
+ *                      loading (see netboot.c)
  *
  * Also see the comment for eth_frame_class_t (eth.h).
  */
@@ -200,17 +209,7 @@ perform_transmission(void)
    * NOTE: this code assumes the MIREGADR/MICMD registers to be configured
    *       for continuous scanning of PHSTAT2 -- see eth_init()
    */
-#if 0
-  {
-    int i;
-    for (i = 0; i < 50; i++) {
-      uint8_t v = enc28j60_read_register(MIRDH);
-      logging_add_entry("ETH: PHSTAT2H=" HEX8_ARG, &v);
-    }
-  }
-#endif
-  // enc28j60_poll_until_set(MIRDH, PHSTAT2_HI_LSTAT);
-  // logging_add_entry("ETH: transmitting", NULL);
+  enc28j60_poll_until_set(MIRDH, PHSTAT2_HI_LSTAT);
   
   enc28j60_bitfield_set(ECON1, ECON1_TXRTS);
   enc28j60_poll_until_clear(ECON1, ECON1_TXRTS);
@@ -220,7 +219,7 @@ perform_transmission(void)
     
     logging_add_entry("ETH: send fail ESTAT=" HEX8_ARG, &estat);
     
-    fatal_error("transmission failed");
+    fatal_error(FATAL_ERROR_TX_FAIL);
   }
 }
 
@@ -388,6 +387,34 @@ void
 eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
                enum eth_frame_class_t  frame_class)
 {
+  uint16_t end_address;
+
+#if 0
+  /*
+   * I don't trust the ENC28J60's automatic frame padding. Wireshark reports
+   * bad FCSs for short frames.
+   *
+   * This is not the fastest way to do it, but it doesn't matter in this
+   * application (transmission rate for small packets is not a bottleneck)
+   */
+  if (total_nbr_of_bytes_in_payload < ETH_MINIMAL_PAYLOAD) {
+    /*
+     * Need to explicitly set write pointer, since any previous checksum
+     * calculations will have moved it around
+     */
+    enc28j60_addr_t padding_address = TXBUF_FOR_CLASS(frame_class)
+                                      + sizeof(struct eth_header_t) + 1
+                                      + total_nbr_of_bytes_in_payload;
+    enc28j60_write_memory_at(padding_address, (const uint8_t *) &zero_u16, 1);
+    total_nbr_of_bytes_in_payload ++;
+
+    while (total_nbr_of_bytes_in_payload < ETH_MINIMAL_PAYLOAD) {
+      enc28j60_write_memory_cont((const uint8_t *) &zero_u16, 1);
+      total_nbr_of_bytes_in_payload ++;
+    }
+  }
+#endif
+  
   /*
    * Last address = start
    *              + 1 (per-packet control byte)
@@ -396,10 +423,10 @@ eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
    *              - 1 (point to last byte, not after it)
    *              = start + sizeof(struct eth_header_t) + nbr_bytes
    */
-  uint16_t end_address = TXBUF_FOR_CLASS(frame_class)
-                       + sizeof(struct eth_header_t)
-                       + total_nbr_of_bytes_in_payload;
-
+  end_address = TXBUF_FOR_CLASS(frame_class)
+              + sizeof(struct eth_header_t)
+              + total_nbr_of_bytes_in_payload;
+  
   if (frame_class == ETH_FRAME_PRIORITY) {
     end_of_critical_frame = end_address;
   }
@@ -528,7 +555,7 @@ eth_handle_incoming_frames(void)
     rx_ptr = rx_header_buf.next_ptr;
     
     if (rx_ptr > ENC28J60_RXBUF_END) {
-      fatal_error("rx_ptr out of range");
+      fatal_error(FATAL_ERROR_RX_PTR_FAIL);
     }
 
     enc28j60_write_register(ERXRDPTL, LOBYTE(rx_ptr - 1));

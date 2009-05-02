@@ -5,19 +5,18 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-
 OBJCOPY     = objcopy
 CC          = sdcc
 AS          = as-z80
 ECHO        = @/bin/echo
 
-CFLAGS      = --std-sdcc99 -mz80 --Werror -I$(INCLUDEDIR)
-LDFLAGS     = --out-fmt-ihx --no-std-crt0 --code-loc 0x0048 --data-loc 0x5B00
+CFLAGS      = --std-sdcc99 -mz80 --Werror -I$(INCLUDEDIR) --opt-code-speed
+LDFLAGS     = --out-fmt-ihx --no-std-crt0
+LDFLAGS    += --code-loc 0x0048 --code-size 0x3FB8 --data-loc 0x5C00
 LDFLAGS_RAM = $(LDFLAGS) --code-loc 0x8100 --data-loc 0xc000
 
 # SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
 CFLAGS     += -Dbool=BOOL
-
 
 # =============================================================================
 # COMPONENTS
@@ -29,18 +28,26 @@ SPLASH_XBM   = speccyboot.xbm
 # Auto-generated data for splash image (from SPLASH_XBM)
 SPLASH_C     = tmp-splash-image.c
 
-# C modules (module = source + header)
-MODULES      = spectrum netboot
-MODULES     += eth enc28j60_spi ip arp icmp udp dhcp tftp
+# Common modules (module = source + header)
+MODULES      = util netboot
 
-# DEBUG/LOGGING BUILD (enable by 'make LOGGING=yes')
-LOGGING			 = yes
+# EMULATOR BUILD (uses a 128k .z80 image with 48k image embedded for testing)
+
+ifdef EMULATOR_TEST
+CFLAGS			+= -DEMULATOR_TEST
+else
+MODULES     += eth enc28j60_spi ip arp icmp udp dhcp tftp
+endif
+
+# DEBUG/LOGGING BUILD
+# (enable by 'make LOGGING=yes')
+
 ifdef LOGGING
 CFLAGS		  += -DVERBOSE_LOGGING
 MODULES		  += logging
 endif
 
-OTHER_HFILES = speccyboot.h
+OTHER_HFILES = platform.h speccyboot.h
 OTHER_CFILES = main.c $(SPLASH_C)
 
 CFILES       = $(MODULES:%=%.c) $(OTHER_CFILES)
@@ -49,15 +56,19 @@ OFILES       = crt0.o $(CFILES:.c=.o)
 
 OFILES_RAM   = $(OFILES:crt0.o=crt0_ramimage.o)
 
+ifdef EMULATOR_TEST
+CFILES			+= tftp_fake.c
+endif
+
 # -----------------------------------------------------------------------------
 
 # EXE:       binary file to be loaded into FRAM (address 0x0000)
+# ROM:			 like EXE, but padded to 16K (for use as a ROM in FUSE)
 # WAV:       .wav file of EXE, to be loaded by audio interface on real machine
-# Z80:       .z80 file to be tested in RAM on an emulator (address 0x8000)
 
 EXE          = speccyboot
+ROM					 = $(EXE).rom
 WAV          = $(EXE).wav
-Z80          = speccyboot-ramimage.z80
 
 
 # =============================================================================
@@ -82,10 +93,10 @@ vpath %.xbm  $(IMGDIR)
 # COMMAND-LINE TARGETS
 # =============================================================================
 
-all: $(EXE) $(WAV) $(Z80)
+all: $(EXE) $(ROM) $(WAV)
 
 clean:
-	rm -rf $(OBJDIR) $(AUTOGENDIR) $(EXE) $(WAV) $(Z80)
+	rm -rf $(OBJDIR) $(AUTOGENDIR) $(EXE) $(ROM) $(WAV)
 
 .SUFFIXES:
 
@@ -137,13 +148,7 @@ $(EXE): $(OFILES)
 	$(CC) $(LDFLAGS) -o $(OBJDIR)/$(EXE) $(OFILES:%=$(OBJDIR)/%)
 	$(OBJCOPY) -I ihex -O binary $(OBJDIR)/$(EXE).ihx $@
 
-# Generate a .z80 file. Crude, but it works.
-$(Z80): $(OFILES_RAM)
-	$(CC) $(LDFLAGS_RAM) -o $(OBJDIR)/tmp0 $(OFILES_RAM:%=$(OBJDIR)/%)
-	$(OBJCOPY) -I ihex -O binary $(OBJDIR)/tmp0.ihx $(OBJDIR)/tmp1
-	$(ECHO) Generating .z80 file...
-	@printf "afcblh\000\200\377\377"	 >  $(OBJDIR)/tmp2
-	@dd if=/dev/zero bs=1 count=16404 >> $(OBJDIR)/tmp2 2>/dev/null
-	@cat $(OBJDIR)/tmp1 >> $(OBJDIR)/tmp2
-	@dd if=/dev/zero bs=1 count=32768 >> $(OBJDIR)/tmp2 2>/dev/null
-	@dd if=$(OBJDIR)/tmp2 of=$@ bs=1 count=49182 2>/dev/null
+$(ROM): $(EXE)
+	cp $< $(OBJ)/rom.tmp
+	dd bs=1k count=16 if=/dev/zero >> $(OBJ)/rom.tmp
+	dd bs=1k count=16 if=$(OBJ)/rom.tmp of=$@

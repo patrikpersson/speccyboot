@@ -38,7 +38,6 @@
 #include "dhcp.h"
 #include "tftp.h"
 
-#include "spectrum.h"
 #include "logging.h"
 
 /* ------------------------------------------------------------------------- */
