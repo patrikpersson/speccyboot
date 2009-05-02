@@ -10,8 +10,8 @@ CC          = sdcc
 AS          = as-z80
 ECHO        = @/bin/echo
 
-CFLAGS      = --std-sdcc99 -mz80 --Werror -I$(INCLUDEDIR) --opt-code-speed
-LDFLAGS     = --out-fmt-ihx --no-std-crt0
+CFLAGS      = -mz80 --std-sdcc99 --Werror -I$(INCLUDEDIR) --opt-code-speed
+LDFLAGS     = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS    += --code-loc 0x0048 --code-size 0x3FB8 --data-loc 0x5C00
 LDFLAGS_RAM = $(LDFLAGS) --code-loc 0x8100 --data-loc 0xc000
 

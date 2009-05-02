@@ -9,8 +9,8 @@ OBJCOPY     = objcopy
 CC          = sdcc
 AS          = as-z80
 
-CFLAGS      = --std-sdcc99 -mz80 --Werror -Iinclude
-LDFLAGS     = --out-fmt-ihx --no-std-crt0
+CFLAGS      = -mz80 --std-sdcc99 --Werror -Iinclude
+LDFLAGS     = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS    += --code-loc 0x7020 --code-size 0x03E0
 
 HOSTCC			= gcc
