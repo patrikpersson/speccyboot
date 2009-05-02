@@ -67,9 +67,8 @@ extern const uint8_t splash_screen[];
 
 /* ------------------------------------------------------------------------- */
 
-// #define DIGIT_WIDTH   (15)
-#define DIGIT_ON      (PAPER(GREEN) + INK(GREEN) + BRIGHT)
-#define DIGIT_OFF     (PAPER(BLACK) + INK(BLACK))
+#define DIGIT_ON      (PAPER(GREEN) + INK(BLACK) + BRIGHT)
+#define DIGIT_OFF     (PAPER(BLACK) + INK(GREEN))
 
 #define BAR_LEFT      (0x0001)
 #define BAR_CENTER    (0x0002)
@@ -295,11 +294,11 @@ __naked
 {
   __asm
   
-  ;; TODO: add some hooks for secondary loader here
+    ;; TODO: add some hooks for secondary loader here
     
     ret
     
-    __endasm;
+  __endasm;
 }
 
 /* -------------------------------------------------------------------------

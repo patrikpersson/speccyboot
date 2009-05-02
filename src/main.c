@@ -69,7 +69,8 @@ void main(void) {
       __asm  
       
         ;; Stores the instruction 'out (0x9F), a' at 0xFFFE. Jumping there will
-        ;; page in ROM 0, and then continue to execute into it.
+        ;; page in the standard ROM (ROM0 on the 128), and then continue to
+        ;; execute into it.
         
         di
         ld  hl,   #0xFFFE
@@ -82,7 +83,11 @@ void main(void) {
       __endasm;
     }
     if (KEY_IS_PRESSED(keyboard_status, KEY_J)) {
+      /*
+       * Hide line about keys
+       */
       set_attrs(INK(BLACK) | PAPER(BLACK), 15, 0, 32);
+      
       netboot_do();
     }
   }

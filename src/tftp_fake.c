@@ -60,7 +60,7 @@ uint8_t timer_tick_count;
 
 /* ------------------------------------------------------------------------- */
 
-/*static*/ void transfer_block(uint8_t page, uint16_t addr)
+static void transfer_block(uint8_t page, uint16_t addr)
 __naked
 {
   /*
@@ -115,7 +115,7 @@ tftp_read_request(const char *filename)
     uint8_t j;
     for (j = 0; j < BLOCKS_PER_PAGE; j++) {
       transfer_block(page, ADDR_OF_BLOCK(j));
-      NOTIFY_TFTP_DATA(fake_tftp_block_buf, BLOCK_SIZE, false);
+      NOTIFY_TFTP_DATA(fake_tftp_block_buf, BLOCK_SIZE, true);
     }
   }
   

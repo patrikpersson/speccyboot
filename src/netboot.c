@@ -288,7 +288,7 @@ evacuate_header(const struct z80_snapshot_header_extended_t *header)
 
 /* ------------------------------------------------------------------------- */
 
-static void
+/*static*/ void
 accept_data(const uint8_t *received_data, uint16_t data_length)
 {
   static bool escape_byte_received;
@@ -415,6 +415,9 @@ netboot_notify_dhcp_state(enum dhcp_state_t state)
       break;
   }
   
+  /*
+   * Display a progress bar
+   */
   set_attrs(PAPER(WHITE) | INK(WHITE) | BRIGHT, 20, 4, bar_len);
   set_attrs(PAPER(GREEN) | INK(GREEN) | BRIGHT, 20, 4 + bar_len, 24 - bar_len);
 }
