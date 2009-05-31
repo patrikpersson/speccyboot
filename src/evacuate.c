@@ -492,6 +492,7 @@ i_done::
     ld    l, #Z80_OFFSET_F
     jp    _enc28j60_load_byte_at_address
 f_done::
+
     ld    h, #HIBYTE_BYTE_CONSTANTS
     ld    sp, hl
 
@@ -559,7 +560,7 @@ iy_done::
           
     pop   af
     ld    sp, (VRAM_TRAMPOLINE_WORD_STORAGE)
-          
+
     ;; 
     ;; Store constant bytes of trampoline (instruction opcodes)
     ;;
@@ -599,7 +600,7 @@ final_switch_without_interrupts::
     ;;
     ;; Restore F and SP
     ;;
-      
+  
     pop   af
     ld    sp, (VRAM_TRAMPOLINE_WORD_STORAGE)
 
@@ -611,7 +612,7 @@ final_switch_without_interrupts::
     ld    (VRAM_TRAMPOLINE_LD_A), a
     ld    a, #0xC3
     ld    (VRAM_TRAMPOLINE_JP), a
-    xor   a                           ;; NOP, less screen garbage than DI
+    ld    a, #0                       ;; NOP, less screen garbage than DI
     ld    (VRAM_TRAMPOLINE_EIDI), a
 
 #ifdef EMULATOR_TEST
