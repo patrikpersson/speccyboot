@@ -1,8 +1,8 @@
 /*
- * Module evacuate:
+ * Module context_switch:
  *
- * Protecting SpeccyBoot runtime data during snapshot loading, and restoring
- * Spectrum system state from header data.
+ * Protecting SpeccyBoot runtime data during snapshot loading, and switching to
+ * the final Spectrum system state from header data.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -32,8 +32,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SPECCYBOOT_EVACUATE_INCLUSION_GUARD
-#define SPECCYBOOT_EVACUATE_INCLUSION_GUARD
+#ifndef SPECCYBOOT_CONTEXT_SWITCH_INCLUSION_GUARD
+#define SPECCYBOOT_CONTEXT_SWITCH_INCLUSION_GUARD
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -156,7 +156,7 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 #define Z80_OFFSET_C           2
 #define Z80_OFFSET_B           3
 
-#define Z80_OFFSET_HL          4
+// #define Z80_OFFSET_HL          4
 
 #define Z80_OFFSET_L           4
 #define Z80_OFFSET_H           5
@@ -189,11 +189,11 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 #define Z80_OFFSET_AP          21
 #define Z80_OFFSET_FP          22
 
-#define Z80_OFFSET_IY          23
+// #define Z80_OFFSET_IY          23
 #define Z80_OFFSET_IY_LO       23
 #define Z80_OFFSET_IY_HI       24
 
-#define Z80_OFFSET_IX          25
+// #define Z80_OFFSET_IX          25
 #define Z80_OFFSET_IX_LO       25
 #define Z80_OFFSET_IX_HI       26
 
@@ -207,20 +207,20 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 /* ------------------------------------------------------------------------ */
 
 /*
- * Evacuate a .z80 header.
+ * Evacuate a .z80 header to ENC28J60 SRAM.
  * Copies up to sizeof(struct z80_snapshot_header_extended_t) bytes.
  */
 void evacuate_z80_header(const uint8_t *header_data);
 
 /*
- * Evacuate data from the temporary buffer.
+ * Evacuate data from the temporary buffer to ENC28J60 SRAM.
  */
 void evacuate_data(void);
 
 /*
- * Evacuate application data from the temporary buffer, restore register values
+ * Restore application data from ENC28J60 SRAM, restore register values
  * and system state from the stored .z80 header, and execute the application.
  */
-void restore_system_state(void);
+void context_switch(void);
 
-#endif /* SPECCYBOOT_EVACUATE_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_CONTEXT_SWITCH_INCLUSION_GUARD */

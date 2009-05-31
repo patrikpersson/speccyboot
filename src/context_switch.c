@@ -1,8 +1,8 @@
 /*
- * Module evacuate:
+ * Module context_switch:
  *
- * Protecting SpeccyBoot runtime data during snapshot loading, and restoring
- * Spectrum system state from header data.
+ * Protecting SpeccyBoot runtime data during snapshot loading, and switching to
+ * the final Spectrum system state from header data.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -32,7 +32,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "evacuate.h"
+#include "context_switch.h"
 
 #include "util.h"
 
@@ -228,7 +228,7 @@ __naked
  * Restore system state. Use a short trampoline, located in video RAM, for
  * the final step.
  */
-void restore_system_state_using_vram(void)
+void context_switch_using_vram(void)
 __naked
 {
   __asm
@@ -670,7 +670,7 @@ void evacuate_data(void)
 
 /* ------------------------------------------------------------------------ */
 
-void restore_system_state(void)
+void context_switch(void)
 {
-  restore_system_state_using_vram();
+  context_switch_using_vram();
 }

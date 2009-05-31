@@ -33,7 +33,7 @@
  */
 
 #include "z80_parser.h"
-#include "evacuate.h"
+#include "context_switch.h"
 #include "speccyboot.h"
 
 #include "util.h"
@@ -745,7 +745,7 @@ z80_receive_data(const uint8_t *received_tftp_data,
     
     if (LOBYTE(curr_write_pos) == 0) {
       if (kilobytes_loaded == 48) {    
-        restore_system_state();
+        context_switch();
       }
       
       /*

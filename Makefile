@@ -29,7 +29,7 @@ SPLASH_XBM   = speccyboot.xbm
 SPLASH_C     = tmp-splash-image.c
 
 # Common modules (module = source + header)
-MODULES      = util z80_parser evacuate
+MODULES      = util z80_parser context_switch
 
 # EMULATOR BUILD (uses a 128k .z80 image with 48k image embedded for testing)
 
