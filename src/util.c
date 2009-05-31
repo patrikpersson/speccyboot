@@ -67,209 +67,139 @@ extern const uint8_t splash_screen[];
 
 /* ------------------------------------------------------------------------- */
 
-#define DIGIT_ON      (PAPER(GREEN) + INK(BLACK) + BRIGHT)
-#define DIGIT_OFF     (PAPER(BLACK) + INK(GREEN))
-
-#define BAR_LEFT      (0x0001)
-#define BAR_CENTER    (0x0002)
-#define BAR_RIGHT     (0x0004)
-
 /*
- * Macro to encode all features of a digit into a single 16-bit (actually,
- * 15-bit) value
- */
-#define DIGIT_DATA(head, upper, center, lower, bottom)                        \
-(((head) << 12) | ((upper) << 9) | ((center) << 6) | ((lower) << 3) | bottom)
-
-/*
- * Macros to pick out the features of a digit
- */
-#define DIGIT_HEAD(d)     ((d) >> 12)
-#define DIGIT_UPPER(d)    ((d) >> 9)
-#define DIGIT_CENTER(d)   ((d) >> 6)
-#define DIGIT_LOWER(d)    ((d) >> 3)
-#define DIGIT_BOTTOM(d)   (d)
-
-/*
- * Index of letter 'E' in digit_features[] below
- */
-#define DIGIT_E_INDEX     (10)
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Feature data for ten decimal digits, plus E for error
+ * Feature data for digits
  *
- * Features, each described as a bitmask of BAR_{LEFT|CENTER|RIGHT}:
+ * Features, each one 
+ * assigned a value
+ * from 0 to 6          Row index
+ * -------------------  ---------
  *
- *   XXXXXXXXXXXXXXX   \
- *   XXXXXXXXXXXXXXX   |  Head
- *   XXXXXXXXXXXXXXX   |  (4 rows)
- *   XXXXXXXXXXXXXXX   /
- *   XXXX.......XXXX   \
- *   XXXX.......XXXX   |
- *   XXXX.......XXXX   |  Upper
- *   XXXX.......XXXX   |  (6 rows)
- *   XXXX.......XXXX   |
- *   XXXX.......XXXX   /
- *   XXXXXXXXXXXXXXX   \
- *   XXXXXXXXXXXXXXX   |  Center
- *   XXXXXXXXXXXXXXX   |  (4 rows)
- *   XXXXXXXXXXXXXXX   /
- *   XXXX.......XXXX   \
- *   XXXX.......XXXX   |
- *   XXXX.......XXXX   |  Lower
- *   XXXX.......XXXX   |  (6 rows)
- *   XXXX.......XXXX   |
- *   XXXX.......XXXX   /
- *   XXXXXXXXXXXXXXX   \
- *   XXXXXXXXXXXXXXX   |  Bottom
- *   XXXXXXXXXXXXXXX   |  (4 rows)
- *   XXXXXXXXXXXXXXX   /
+ *
+ *   .111111.         0
+ *   ..1111..         1
+ *   0......2         2
+ *   00....22         3
+ *   00....22         3
+ *   00....22         3
+ *   00....22         3
+ *   0......2         4
+ *   ..3333..         5
+ *   .333333.         6
+ *   ..3333..         7
+ *   4......5         8
+ *   44....55         9
+ *   44....55         9
+ *   44....55         9
+ *   44....55         9
+ *   4......5        10
+ *   ..6666..        11
+ *   .666666.        12
  */
 
-static const uint16_t digit_features[] = {
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 0 */
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT),
+#define DIGIT_ON      (PAPER(RED) + INK(BLACK) + BRIGHT)
+#define DIGIT_OFF     (PAPER(BLACK) + INK(RED))
 
-DIGIT_DATA(BAR_LEFT,                              /* 1 */
-           BAR_LEFT,
-           BAR_LEFT,
-           BAR_LEFT,
-           BAR_LEFT),
+/*
+ * Number of rows in digit image (see above)
+ */
+#define NBR_ROWS      (13)
 
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 2 */
-                                   BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-           BAR_LEFT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT),
+/*
+ * Features for each digit, where bit 0..6 correspond to the features in the
+ * drawing above.
+ */
+static const uint8_t digit_features[] = {
+  0x77,         /* 0 */
+  0x24,         /* 1 */
+  0x5e,         /* 2 */
+  0x6e,         /* 3 */
+  0x2d,         /* 4 */
+  0x6b,         /* 5 */
+  0x7b,         /* 6 */
+  0x26,         /* 7 */
+  0x7f,         /* 8 */
+  0x6f,         /* 9 */
+  0x3e,         /* A */
+  0x79,         /* b */
+  0x58,         /* c */
+  0x7c,         /* d */
+  0x5b,         /* E */
+  0x1b,         /* F */
+};
 
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 3 */
-                                   BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-                                   BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT),
-
-DIGIT_DATA(BAR_LEFT              + BAR_RIGHT,     /* 4 */
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-                                   BAR_RIGHT,
-                                   BAR_RIGHT),
-
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 5 */
-           BAR_LEFT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-                                   BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT),
-
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 6 */
-           BAR_LEFT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT),
-
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 7 */
-                                   BAR_RIGHT,
-                                   BAR_RIGHT,
-                                   BAR_RIGHT,
-                                   BAR_RIGHT),
-
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 8 */
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT),
-
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* 9 */
-           BAR_LEFT              + BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-                                   BAR_RIGHT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT),
-
-DIGIT_DATA(BAR_LEFT + BAR_CENTER + BAR_RIGHT,     /* E */
-           BAR_LEFT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT,
-           BAR_LEFT,
-           BAR_LEFT + BAR_CENTER + BAR_RIGHT)
+/*
+ * For each of the 11 rows, this structure holds the mask each feature
+ * contributes to that row.
+ *
+ * Each row has a length, indicating how many pairs of <feature, mask>
+ * that follow.
+ */
+static const uint8_t feature_rows[] = {
+  1,                  1, 0x7e,
+  1,                  1, 0x3c,
+  2,      0, 0x01,                2, 0x80,
+  2,      0, 0x03,                2, 0xc0,
+  2,      0, 0x01,                2, 0x80,
+  1,                  3, 0x3c,
+  1,                  3, 0x7e,
+  1,                  3, 0x3c,
+  2,      4, 0x01,                5, 0x80,
+  2,      4, 0x03,                5, 0xc0,
+  2,      4, 0x01,                5, 0x80,
+  1,                  6, 0x3c,
+  1,                  6, 0x7e
 };
 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Write 15 bits to the screen (attributes).
+ * Write 10 bits to the screen (attributes).
  *
- * bits:    Bitmask, where bits 0-2 indicate which parts to set
- *          (as a sum of BAR_LEFT, BAR_CENTER, BAR_RIGHT)
+ * bits:    Bitmask, indicating which of the 8 bits are set. Bit 0 represents
+ *          the leftmost attribute cell.
  */
 static void
 display_digit_row(uint8_t bits, uint8_t *start_address)
 {
-  uint8_t screen_value;
-
-  screen_value = (bits & BAR_LEFT) ? (DIGIT_ON) : (DIGIT_OFF);
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  
-  screen_value = (bits & BAR_CENTER) ? (DIGIT_ON) : (DIGIT_OFF);
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  
-  screen_value = (bits & BAR_RIGHT) ? (DIGIT_ON) : (DIGIT_OFF);
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address ++ = screen_value;
-  *start_address    = screen_value;
+  uint8_t i;
+  for (i = 0; i < 8; i++) {
+    *start_address ++ = (bits & 0x01) ? (DIGIT_ON) : (DIGIT_OFF);
+    bits >>= 1;
+  }
 }
 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Display a decimal digit
+ * Display a digit
  */
-/* static */ void
+static void
 display_digit_at(uint8_t digit, uint8_t *start_address)
 {
-  uint16_t features = digit_features[digit];
   uint8_t i;
+  uint8_t *src_row_ptr = feature_rows;
   
-  uint8_t bits = DIGIT_HEAD(features);
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < NBR_ROWS; i ++) {
+    uint8_t nbr_features_in_row = *src_row_ptr ++;
+    uint8_t j;
+    uint8_t bits = 0;
+    for (j = 0; j < nbr_features_in_row; j++) {
+      uint8_t feature = *src_row_ptr ++;
+      uint8_t mask    = *src_row_ptr ++;
+      if (digit_features[digit] & (1 << (feature))) {
+        bits |= mask;
+      }
+    }
     display_digit_row(bits, start_address);
     start_address += ROW_LENGTH;
-  }
-  
-  bits = DIGIT_UPPER(features);
-  for (i = 0; i < 6; i++) {
-    display_digit_row(bits, start_address);
-    start_address += ROW_LENGTH;
-  }
-  
-  bits = DIGIT_CENTER(features);
-  for (i = 0; i < 4; i++) {
-    display_digit_row(bits, start_address);
-    start_address += ROW_LENGTH;
-  }
-  
-  bits = DIGIT_LOWER(features);
-  for (i = 0; i < 6; i++) {
-    display_digit_row(bits, start_address);
-    start_address += ROW_LENGTH;
-  }
-  
-  bits = DIGIT_BOTTOM(features);
-  for (i = 0; i < 4; i++) {
-    display_digit_row(bits, start_address);
-    start_address += ROW_LENGTH;
+    if (i == 3 || i == 9) {
+      uint8_t j;
+      for (j = 0; j < 5; j++) {
+        display_digit_row(bits, start_address);
+        start_address += ROW_LENGTH;
+      }
+    }
   }
 }
 
@@ -337,22 +267,43 @@ display_splash(void)
 /* ------------------------------------------------------------------------- */
 
 void
+select_bank(uint8_t bank_id)
+{
+  static Z80_PORT(0x7FFD) bank_selection;
+  
+  bank_selection = bank_id;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
 display_digits(uint8_t value)
 {
-  static uint8_t current_digit_1 = 0x10;    /* force update */
-  static uint8_t current_digit_2 = 0x10;    /* force update */
+  static uint8_t current_digit_1 = 0x10;    /* force update first time */
+  static uint8_t current_digit_2 = 0x10;    /* force update first time */
   
   uint8_t digit1 = (value / 10);
   uint8_t digit2 = (value % 10);
   
   if (digit1 != current_digit_1) {
-    display_digit_at(digit1, (uint8_t *) ATTRS_BASE);
+    display_digit_at(digit1, (uint8_t *) ATTRS_BASE + 7);
     current_digit_1 = digit1;
   }
   if (digit2 != current_digit_2) {
     display_digit_at(digit2, (uint8_t *) (ATTRS_BASE + 17));
     current_digit_2 = digit2;
   }
+  
+#if 0
+  {
+    uint8_t i;
+    for (i = 0; i < 50; i++) {
+      __asm
+      halt
+      __endasm;
+    }
+  }
+#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -392,7 +343,7 @@ fatal_error(uint8_t error_code)
    * interesting logged information
    */
   set_screen_attrs(PAPER(BLACK) + INK(BLACK));
-  display_digit_at(DIGIT_E_INDEX, (uint8_t *) ATTRS_BASE);
+  display_digit_at(0x0E, (uint8_t *) ATTRS_BASE);
   display_digit_at(error_code, (uint8_t *) (ATTRS_BASE + 17));
 #endif
   

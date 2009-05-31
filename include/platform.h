@@ -64,8 +64,10 @@
 /*
  * Byteswapping/masking helpers
  */
-#define HIBYTE(x)       ((x & 0xff00u) ? ((x) >> 8) : 0)
-#define LOBYTE(x)       ((x) & 0x00ffu)
+#define HIBYTE(x)       (((uint16_t) (x)) >> 8)
+#define LOBYTE(x)       (((uint16_t) (x)) & 0x00ffu)
+//#define HIBYTE(x)       ((x & 0xff00u) ? ((x) >> 8) : 0)
+//#define LOBYTE(x)       ((x) & 0x00ffu)
 
 #define BYTESWAP16(x)   (LOBYTE(x) * 0x0100 + HIBYTE(x))
 #define htons(n)        BYTESWAP16(n)
@@ -107,7 +109,7 @@
  * function, it results in slightly more efficient code (JP instead of
  * CALL + RET).
  *
- * More importantly, it saves a bit of stack.
+ * It also saves a bit of stack.
  */
 #define JUMP_TO(ptr) ((void (*)(void)) (ptr))()
 

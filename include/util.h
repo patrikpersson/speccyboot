@@ -80,6 +80,12 @@ extern const uint16_t zero_u16;
 void
 display_splash(void);
 
+/* -------------------------------------------------------------------------
+ * Page the indicated page to bank at 0xc000
+ * ------------------------------------------------------------------------- */
+void
+select_bank(uint8_t bank_id);
+
 /* ------------------------------------------------------------------------- *
  * Set attributes for n elements, starting at (row, col). If (col+n) extends
  * beyond the end of the row, changes will continue at the beginning of the

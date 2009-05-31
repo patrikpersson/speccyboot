@@ -1,7 +1,7 @@
 /*
  * Module main:
  *
- * Present a menu to the user, and act on the selection made.
+ * Loads a file over TFTP upon user request.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -31,9 +31,16 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <stddef.h>
+
 #include "platform.h"
 #include "util.h"
-#include "netboot.h"
+#include "z80_parser.h"
+
+#include "dhcp.h"
+#include "tftp.h"
+
+#include "logging.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -44,6 +51,55 @@
 #define KEY_IS_PRESSED(status, key)   (((status) & (key)) == 0)
 
 /* ========================================================================= */
+
+static void
+netboot_do(void)
+{
+  logging_init();
+  
+#if EMULATOR_TEST
+  tftp_read_request(NULL);
+#else
+  eth_init();
+  dhcp_init();
+  
+  eth_handle_incoming_frames();
+#endif
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Called by DHCP (see dhcp.h)
+ */
+void
+notify_dhcp_state(enum dhcp_state_t state)
+{
+  uint16_t bar_len;
+  switch (state) {
+    case STATE_REQUESTING:
+      bar_len = 12;
+      break;
+    case STATE_BOUND:
+      bar_len = 24;
+      
+      tftp_read_request("test.scr");
+      
+      break;
+    case STATE_SELECTING:
+    default:
+      bar_len = 0;
+      break;
+  }
+  
+  /*
+   * Display a progress bar
+   */
+  set_attrs(PAPER(WHITE) | INK(WHITE) | BRIGHT, 20, 4, bar_len);
+  set_attrs(PAPER(GREEN) | INK(GREEN) | BRIGHT, 20, 4 + bar_len, 24 - bar_len);
+}
+
+/* ------------------------------------------------------------------------- */
 
 void main(void) {
   
@@ -87,7 +143,14 @@ void main(void) {
        * Hide line about keys
        */
       set_attrs(INK(BLACK) | PAPER(BLACK), 15, 0, 32);
-      
+      set_attrs(INK(WHITE) | PAPER(BLACK), 0, 0, 768);
+#if 0
+      display_digits(51);
+      __asm
+        di
+        halt
+      __endasm;
+#endif
       netboot_do();
     }
   }

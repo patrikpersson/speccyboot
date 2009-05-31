@@ -34,6 +34,8 @@
 
 #include "tftp.h"
 
+#include "enc28j60_spi.h"
+
 /* ------------------------------------------------------------------------- */
 
 #define BLOCK_SIZE                (512)
@@ -43,7 +45,7 @@
 /*
  * Default page for 0xc000..0xffff
  */
-#define DEFAULT_PAGE              (0)
+#define DEFAULT_PAGE              (1)
 
 #define BLOCKS_PER_PAGE           (0x4000 / BLOCK_SIZE)
 #define ADDR_OF_BLOCK(n)          (0xc000 + ((n) * BLOCK_SIZE))
@@ -60,6 +62,9 @@ uint8_t timer_tick_count;
 
 /* ------------------------------------------------------------------------- */
 
+/*
+ * Picks a 512-byte block from a given address, with a given page at 0xc000.
+ */
 static void transfer_block(uint8_t page, uint16_t addr)
 __naked
 {

@@ -54,7 +54,7 @@ enum dhcp_state_t {
  *
  * called when the states SELECTING/REQUESTING/BOUND states are entered.
  */
-#define NOTIFY_DHCP_STATE         netboot_notify_dhcp_state
+#define NOTIFY_DHCP_STATE         notify_dhcp_state
 
 /*
  * Prototype for callback (the actual function name is #define'd in above)

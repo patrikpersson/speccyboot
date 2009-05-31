@@ -9,21 +9,30 @@
  * - Areas 0x4000..0x6FFF and 0x7400..0xFFFF were loaded correctly
  * - Registers AF, BC, DE, HL, IX, IY, AF', BC', DE', HL', SP, I, R, and PC
  *   were initialized correctly
+ * - IFF1 == 0   (interrupts disabled)
  *
  * The following is NOT verified:
- * - Interrupt status (IFF1, IFF2, mode)
+ * - IFF2, interrupt mode
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "register-values.h"
 
-#define RAM_START           (0x4000)
+/*
+ * Check all RAM except
+ *
+ * - video RAM (verified by ocular inspection)
+ * - test application itself
+ */
+
+#define RAM_START           (0x5B00)
 #define APP_START           (0x7000)
 #define APP_END             (0x7400)
-#define RAM_END             (0xffff)
+#define RAM_END             (0x0000)
 
-#define EXPECTED_CHECKSUM   (0x00)
+#define EXPECTED_CHECKSUM   (0xE6)
 
 /*
  * Addresses of registers, as pushed on the stack in crt0.asm
@@ -73,15 +82,45 @@
 #define ADDR_OF_LP          (0x73E8)
 
 #define CHECK_REGISTER(name)                                            \
-  if (*((uint8_t *) ADDR_OF_ ## name ) != ( REG_ ## name ))  goto fail
+  if (*((uint8_t *) ADDR_OF_ ## name ) != ( REG_ ## name )) {           \
+    memcpy(attr_ptr, fail_attrs, sizeof(fail_attrs));                   \
+  }                                                                     \
+  else {                                                                \
+    memcpy(attr_ptr, pass_attrs, sizeof(pass_attrs));                   \
+  }                                                                     \
+  attr_ptr += 32
+
+/* ------------------------------------------------------------------------- */
+
+static const uint8_t fail_attrs[] = { 56, 56, 56, 56, 56, 56, 63, 63, 63, 63, 63,
+                                      151, 151, 151, 151 };
+static const uint8_t pass_attrs[] = { 56, 56, 56, 56, 56, 56, 32, 32, 32, 32,
+                                      63, 63, 63, 63, 63 };
+
+/* ------------------------------------------------------------------------- */
 
 void main(void)
 {
-  uint8_t  checksum = 0;
+  uint8_t *attr_ptr = (uint8_t *) 0x5800;
+  uint8_t  checksum = 0;    
+  uint16_t addr;
   static sfr at 0xFE border;     /* I/O address of ULA */
   
   CHECK_REGISTER(A);
   CHECK_REGISTER(F);
+
+  /*
+   * Special consideration for R: the pushed value is 3 more than initial R
+   */
+  if (*((uint8_t *) ADDR_OF_R ) != ( REG_R ) + 3) {
+    memcpy(attr_ptr, fail_attrs, sizeof(fail_attrs));
+  }
+  else {
+    memcpy(attr_ptr, pass_attrs, sizeof(pass_attrs));
+  }
+  attr_ptr += 32;
+
+  CHECK_REGISTER(I);
 
   CHECK_REGISTER(B);
   CHECK_REGISTER(C);
@@ -97,7 +136,6 @@ void main(void)
   
   CHECK_REGISTER(AP);
   CHECK_REGISTER(FP);
-  
   CHECK_REGISTER(BP);
   CHECK_REGISTER(CP);
   CHECK_REGISTER(DP);
@@ -105,39 +143,24 @@ void main(void)
   CHECK_REGISTER(HP);
   CHECK_REGISTER(LP);
   
-  CHECK_REGISTER(I);
-  
-  /*
-   * R needs a bit of care:
-   * the value stored equals (R + 3), since R increases automatically
-   */
-  {
-    uint8_t r_value = *((uint8_t *) ADDR_OF_R);
-    if (r_value - 3 != REG_R)  goto fail;
-  }
-
   /*
    * Check RAM contents
    */
-  {
-    uint16_t addr;
-    for (addr = RAM_START; addr < APP_START; addr++) {
-      checksum += *((const uint8_t *) addr);
-    }
-    for (addr = APP_END; addr < RAM_END; addr++) {
-      checksum += *((const uint8_t *) addr);
-    }
+  for (addr = RAM_START; addr != RAM_END; addr++) {
+    if (addr == APP_START) addr = APP_END;
+    checksum += *((const uint8_t *) addr);
+    border = (checksum & 0x07);
   }
   
-  if (checksum != EXPECTED_CHECKSUM)  goto fail;
+  if (checksum == EXPECTED_CHECKSUM)  {  
+    border = 4;     /* green */
+    __asm
+      halt          ;; verify interrupts are disabled
+    __endasm;
+  }
   
-  border = 4;     /* green */
-  goto stop;
-  
-fail:
   border = 2;     /* red */
   
-stop:
   __asm
     di
     halt

@@ -29,7 +29,7 @@ SPLASH_XBM   = speccyboot.xbm
 SPLASH_C     = tmp-splash-image.c
 
 # Common modules (module = source + header)
-MODULES      = util netboot
+MODULES      = util z80_parser evacuate
 
 # EMULATOR BUILD (uses a 128k .z80 image with 48k image embedded for testing)
 
@@ -149,6 +149,6 @@ $(EXE): $(OFILES)
 	$(OBJCOPY) -I ihex -O binary $(OBJDIR)/$(EXE).ihx $@
 
 $(ROM): $(EXE)
-	cp $< $(OBJ)/rom.tmp
-	dd bs=1k count=16 if=/dev/zero >> $(OBJ)/rom.tmp
-	dd bs=1k count=16 if=$(OBJ)/rom.tmp of=$@
+	cp $< $(OBJDIR)/rom.tmp
+	dd bs=1k count=16 if=/dev/zero >> $(OBJDIR)/rom.tmp
+	dd bs=1k count=16 if=$(OBJDIR)/rom.tmp of=$@

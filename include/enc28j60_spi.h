@@ -319,4 +319,4 @@ void
 enc28j60_write_memory_cont(const uint8_t   *src_addr,
                            uint16_t         nbr_bytes);
 
-#endif /* SPECCYBOOT_ETH_IP_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_ENC28J60_SPI_INCLUSION_GUARD */

@@ -1,7 +1,8 @@
 /*
- * Module netboot:
+ * Module z80_parser:
  *
- * Loads and executes a ZX Spectrum image over TFTP.
+ * Accepts a stream of bytes, unpacks it as a Z80 snapshot, loads it into
+ * RAM, and executes it.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -31,20 +32,14 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SPECCYBOOT_NETBOOT_INCLUSION_GUARD
-#define SPECCYBOOT_NETBOOT_INCLUSION_GUARD
+#ifndef SPECCYBOOT_Z80_PARSER_INCLUSION_GUARD
+#define SPECCYBOOT_Z80_PARSER_INCLUSION_GUARD
 
 #include <stdint.h>
 #include <stdbool.h>
 
 /* -------------------------------------------------------------------------
- * Boot over net (TFTP boot)
- * ------------------------------------------------------------------------- */
-void
-netboot_do(void);
-
-/* -------------------------------------------------------------------------
- * Called from ip.c when a TFTP DATA packet has been received.
+ * Called from tftp.c when a TFTP DATA datagram has been received.
  *
  * data:                pointer to received data
  * nbr_bytes_data:      number of bytes in the buffer pointed to by 'data'
@@ -52,8 +47,8 @@ netboot_do(void);
  *                      data in the file has been transferred
  * ------------------------------------------------------------------------- */
 void
-netboot_receive_data(const uint8_t *data,
-                     uint16_t       nbr_bytes_data,
-                     bool           more_data_expected);
+z80_receive_data(const uint8_t *data,
+                 uint16_t       nbr_bytes_data,
+                 bool           more_data_expected);
 
-#endif /* SPECCYBOOT_NETBOOT_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_Z80_PARSER_INCLUSION_GUARD */

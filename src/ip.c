@@ -42,8 +42,6 @@
 
 #include "eth.h"
 
-#include "netboot.h"
-
 /* ------------------------------------------------------------------------- */
 
 struct ip_config_t ip_config = {

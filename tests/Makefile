@@ -20,11 +20,15 @@ HOSTCFLAGS	= -DDEBUG
 
 GENZ80			= obj/gen-z80-image
 
-Z80_1				= obj/checker.z80
+Z80_1				= obj/checker1.z80
+Z80_2				= obj/checker2.z80
+Z80_3				= obj/checker3.z80
 
 IMG128_1		= obj/testimg1.z80
+IMG128_2		= obj/testimg2.z80
+IMG128_3		= obj/testimg3.z80
 
-all: $(IMG128_1)
+all: $(IMG128_1) $(IMG128_2) $(IMG128_3)
 
 clean:
 	rm -rf obj
@@ -39,7 +43,21 @@ $(Z80_1): $(GENZ80) obj/test_app
 	cat test1.data obj/test_app test2.data > $@.raw
 	$(GENZ80) 1 < $@.raw > $@
 
+$(Z80_2): $(GENZ80) obj/test_app
+	cat test1.data obj/test_app test2.data > $@.raw
+	$(GENZ80) 2 < $@.raw > $@
+
+$(Z80_3): $(GENZ80) obj/test_app
+	cat test1.data obj/test_app test2.data > $@.raw
+	$(GENZ80) 3 < $@.raw > $@
+
 $(IMG128_1): $(Z80_1)
+	$(GENZ80) 5 < $< > $@
+
+$(IMG128_2): $(Z80_2)
+	$(GENZ80) 5 < $< > $@
+
+$(IMG128_3): $(Z80_3)
 	$(GENZ80) 5 < $< > $@
 
 obj/test_app.o: test_app.c obj

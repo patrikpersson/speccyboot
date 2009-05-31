@@ -92,9 +92,9 @@ __naked
   __asm
   
   ld  bc, #(0x0800 | SPI_PORT)    ; B=8, C=SPI_PORT
-  ld  de, #0x4140                 ; D sets CS=1, E sets CS=0
+  ld  de, #0x4140                 ; D sets SCK=1, E sets SCK=0
 
-  out (c), e                      ; CS := 0
+  out (c), e                      ; SCK := 0
   
   ; 58 T-states per bit
   

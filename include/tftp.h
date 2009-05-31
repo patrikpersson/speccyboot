@@ -42,7 +42,7 @@
  *
  * called when data has been received over TFTP.
  */
-#define NOTIFY_TFTP_DATA       netboot_notify_tftp_data
+#define NOTIFY_TFTP_DATA       z80_receive_data
 
 /*
  * Prototype for callback (the actual function name is #define'd in above)
