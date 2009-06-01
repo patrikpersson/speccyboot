@@ -39,8 +39,6 @@
 #include "util.h"
 #include "logging.h"
 
-#include "enc28j60_spi.h"
-
 /*
  * Size of a memory bank/page
  */

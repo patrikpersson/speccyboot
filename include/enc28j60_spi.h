@@ -31,6 +31,10 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef EMULATOR_TEST
+#error This header cannot be used in EMULATOR_TEST builds!
+#endif
+
 #ifndef SPECCYBOOT_ENC28J60_SPI_INCLUSION_GUARD
 #define SPECCYBOOT_ENC28J60_SPI_INCLUSION_GUARD
 
@@ -318,5 +322,60 @@ enc28j60_write_memory_at(enc28j60_addr_t  dst_addr,
 void
 enc28j60_write_memory_cont(const uint8_t   *src_addr,
                            uint16_t         nbr_bytes);
+
+/* ========================================================================= */
+
+/*
+ * Set read pointer to address of a .z80 header element, read one byte, and
+ * jump to the address held in IY.
+ *
+ * NOTE: to be invoked from assembly code.
+ *
+ * On entry:
+ *
+ * L holds lower byte of header element address
+ * IY holds return address
+ *
+ * On exit:
+ *
+ * L holds the read byte
+ * AF is destroyed
+ */
+void
+enc28j60_load_byte_at_address(void)     __naked;
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Restore previously evacuated application data: copy RUNTIME_DATA_LENGTH
+ * bytes from address EVACUATED_DATA in ENC28J60 SRAM to address RUNTIME_DATA
+ * in Spectrum RAM.
+ *
+ * Destroys AF, BC, DE, HL
+ */
+#pragma save
+#pragma preproc_asm -
+#define ENC28J60_RESTORE_APPDATA _asm
+FIXME
+_endasm
+#pragma restore
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Loads IY from the correct location. Note that the address of IY has to be
+ * hard-coded, since preprocessor symbols are not expanded in assembly macros
+ * in SDCC.
+ *
+ * address = EVACUATED_HEADER + Z80_OFFSET_IY_LO
+ *         = 0x1700 + 23
+ *         = 0x1717
+ */
+#pragma save
+#pragma preproc_asm -
+#define ENC28J60_LOAD_IY _asm
+FIXME
+_endasm
+#pragma restore
 
 #endif /* SPECCYBOOT_ENC28J60_SPI_INCLUSION_GUARD */

@@ -73,7 +73,7 @@
 * When data destined for these addresses are received, they are instead
 * stored in the ENC28J60's on-chip SRAM:
 *
-* 0x17A9 .. 0x17FF   87B   .z80 snapshot header
+* 0x1700 .. 0x17FF   256B  .z80 snapshot header + other config data
 * 0x1800 .. 0x1FFF   2K    data destined for addresses 0x5800 .. 0x5FFF in
 *                          the Spectrum RAM (temporary storage during loading)
 * ------------------------------------------------------------------------- */
@@ -104,7 +104,7 @@
 /*
  * Addresses to evacuated data in the ENC28J60 SRAM
  */
-#define EVACUATED_HEADER              0x17a9
+#define EVACUATED_HEADER              0x1700
 #define EVACUATED_DATA                0x1800
 /* ------------------------------------------------------------------------ */
 
@@ -156,8 +156,6 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 #define Z80_OFFSET_C           2
 #define Z80_OFFSET_B           3
 
-// #define Z80_OFFSET_HL          4
-
 #define Z80_OFFSET_L           4
 #define Z80_OFFSET_H           5
 
@@ -189,11 +187,9 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 #define Z80_OFFSET_AP          21
 #define Z80_OFFSET_FP          22
 
-// #define Z80_OFFSET_IY          23
 #define Z80_OFFSET_IY_LO       23
 #define Z80_OFFSET_IY_HI       24
 
-// #define Z80_OFFSET_IX          25
 #define Z80_OFFSET_IX_LO       25
 #define Z80_OFFSET_IX_HI       26
 

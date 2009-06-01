@@ -33,7 +33,6 @@
  */
 
 #include "context_switch.h"
-
 #include "util.h"
 
 #ifdef EMULATOR_TEST
@@ -75,7 +74,7 @@ static uint8_t __at(0xc000 + EVACUATED_DATA)
  * Emulation of the corresponding routine in enc28j60_spi.c
  *
  * IY holds return address
- * L holds offset of byte to read
+ * L holds lower byte of header element address
  *
  * AF destroyed
  *
@@ -99,9 +98,7 @@ __naked
   ld    bc, #0x7ffd
   out   (c), a
   
-  ld    h, #0xc0
-  ld    bc, #EVACUATED_HEADER
-  add   hl, bc
+  ld    h, #0xD7          ;; HIBYTE(saved_app_data)
   ld    l, (hl)
 
   ld    bc, #0x7ffd
@@ -121,51 +118,59 @@ __naked
 /* ------------------------------------------------------------------------ */
 
 /*
- * Emulation of the corresponding routine in enc28j60_spi.c
+ * Emulation of the corresponding macro in enc28j60_spi.c
  *
- * Loads IY from the correct location, then jumps to address
- * IY_JUMP_DONE.
+ * Loads IY from the correct location. Note that the address of IY has to be
+ * hard-coded, since preprocessor symbols are not expanded in assembly macros
+ * in SDCC.
+ *
+ * address = 0xc000 + EVACUATED_HEADER + Z80_OFFSET_IY_LO
+ *         = 0xc000 + 0x1700 + 23
+ *         = 0xD717
  */
+#pragma preproc_asm -
+#define ENC28J60_LOAD_IY _asm
+ld    (0x401c), bc        ; temporary storage (in video RAM)
+ld    (0x401e), hl        ; temporary storage (in video RAM)
+xor   a
+ld    bc, #0x7ffd
+out   (c), a
+ld    hl, #0xD717
+ld    a, (hl)
+.db   #0xFD
+ld    l, a      ;; ld IYl, a
+inc   hl
+ld    a, (hl)
+.db   #0xFD
+ld    h, a      ;; ld IYh, a
+ld    bc, #0x7ffd
+ld    a, #1
+out   (c), a
+ld    bc, (0x401c)
+ld    hl, (0x401e)
+_endasm
+#pragma preproc_asm +
 
-#define IY_JUMP_DONE    iy_done
+/* ------------------------------------------------------------------------ */
 
-static void
-enc28j60_load_iy_and_jump(void)
-__naked
-{
-  __asm
-  
-    ;; store BC and HL somewhere good (will distort picture in top right)
-      
-    ld    (0x401c), bc
-    ld    (0x401e), hl
-    
-    ;; switch to bank 0, read IY, switch back to bank 1
-      
-    xor   a
-    ld    bc, #0x7ffd
-    out   (c), a
-        
-    ld    hl, #0xc000 + EVACUATED_HEADER + Z80_OFFSET_IY_LO
-    ld    a, (hl)
-    .db   #0xFD
-    ld    l, a      ;; ld IYl, a
-    inc   hl
-    ld    a, (hl)
-    .db   #0xFD
-    ld    h, a      ;; ld IYh, a
-        
-    ld    bc, #0x7ffd
-    ld    a, #1
-    out   (c), a
-        
-    ld    bc, (0x401c)
-    ld    hl, (0x401e)
-          
-    jp    IY_JUMP_DONE
-      
-  __endasm;
-}
+/*
+ * Emulation of corresponding macro in enc28j60_spi.h
+ *
+ * Hardcoded addresses, since preprocessor symbols are not expanded in assembly
+ * macros in SDCC.
+ */
+#pragma save
+#pragma preproc_asm -
+#define ENC28J60_RESTORE_APPDATA _asm
+xor   a
+ld    bc, #0x7ffd
+out   (c), a                ;; load data from bank 0
+ld    hl, #0xD800
+ld    de, #0x5800
+ld    bc, #0x0800
+ldir
+_endasm
+#pragma restore
 
 /* ------------------------------------------------------------------------ */
 
@@ -179,6 +184,8 @@ __naked
 
 /*
  * Constant table for all 8-bit constants, defined in crt0.asm
+ *
+ * (used for loading F register using 'pop af')
  */
 #define HIBYTE_BYTE_CONSTANTS         (0x3e)
 
@@ -235,8 +242,7 @@ __naked
     
     di
   
-#ifdef EMULATOR_TEST
-  
+#ifdef EMULATOR_TEST 
     ld    iy, #c_done
     ld    l, #Z80_OFFSET_C
     jp    _enc28j60_load_byte_at_address
@@ -250,32 +256,14 @@ c_done::
 b_done::
     ld    a, l
     ld    (VRAM_TRAMPOLINE_LD_BC + 2), a
-
-    ;;
-    ;; Restore application data
-    ;;
-    
-    xor   a
-    ld    bc, #0x7ffd
-    out   (c), a
-    ld    hl, #_saved_app_data
-    ld    de, #RUNTIME_DATA
-    ld    bc, #RUNTIME_DATA_LENGTH
-    ldir
-      
 #else
-  
     ld    bc, #0x7FFD   ;; page register
     ld    a, #0x31      ;; page 1 at 0xc000, 48k ROM, lock paging
     out   (c), a
-      
-    ;;
-    ;; Restore application data
-    ;;
-    -- FIXME --
-      
 #endif
 
+    ASM_INVOKE_MACRO(ENC28J60_RESTORE_APPDATA)
+  
     ld    iy, #a_done
     ld    l, #Z80_OFFSET_A
     jp    _enc28j60_load_byte_at_address
@@ -338,7 +326,6 @@ ix_hi_done::
     
     ld    (VRAM_TRAMPOLINE_WORD_STORAGE), de
     ld    ix, (VRAM_TRAMPOLINE_WORD_STORAGE)
-
       
     ;;
     ;; Set up register IY using VRAM_TRAMPOLINE_WORD_STORAGE for
@@ -346,7 +333,7 @@ ix_hi_done::
     ;;
       
     ;;
-    ;; Load SP into VRAM_TRAMPOLINE_WORD_STORAGE
+    ;; Load final SP value into temporary storage (for later)
     ;;
     
     ld    iy, #sp_lo_done
@@ -467,22 +454,18 @@ i_done::
     ld    a, l
     ld    i, a
 
-#if 0
     ;;
     ;; Set up border
     ;;
-    
-#define DST   d
-#define ADDR  EVACUATED_HEADER + Z80_OFFSET_FLAGS
-#include  "read_byte_to_reg.asm-snippet"
-#undef DST
-#undef ADDR
-    
-    ld    a, d
+  
+    ld    iy, #flags_done
+    ld    l, #Z80_OFFSET_FLAGS
+    jp    _enc28j60_load_byte_at_address
+flags_done::
+    ld    a, l
     rra
     and   #7
     out   (254), a
-#endif
             
     ;;
     ;; Prepare temporary SP for restoring F
@@ -538,8 +521,7 @@ iff1_done::
     jp    _enc28j60_load_byte_at_address
 l_done::
     
-    jp    _enc28j60_load_iy_and_jump
-iy_done::
+    ASM_INVOKE_MACRO(ENC28J60_LOAD_IY)
       
     ;;
     ;; Select different final part depending on whether interrupts
