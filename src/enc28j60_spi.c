@@ -234,6 +234,18 @@ enc28j60_poll_register(uint16_t register_descr,
 
 /* ------------------------------------------------------------------------- */
 
+/*
+ * Read one bit to L, requires c=0x9f, h=0x40
+ */
+#define READ_BIT_TO_L         \
+  out   (c), h                \
+  in    a, (c)                \
+  rra                         \
+  rl    a, l                  \
+  inc   h                     \
+  out   (c), h                \
+  dec   h
+
 void
 enc28j60_read_memory(uint8_t         *dst_addr,
                      enc28j60_addr_t  src_addr,
@@ -244,43 +256,94 @@ enc28j60_read_memory(uint8_t         *dst_addr,
 
   spi_start_transaction(SPI_OPCODE_RBM);
 
-// #define DISABLE_OPTIMIZATIONS   "temporarily set"
-  
-#ifdef DISABLE_OPTIMIZATIONS
-  
-  while (nbr_bytes --) {
-    *dst_addr++ = spi_read_byte();
+  if (nbr_bytes == 512) {
+    /*
+     * Optimized case for reading an entire TFTP file block
+     */
+    __asm
+    
+    ;;
+    ;; assume dst_addr at (IX + 4)
+    ;;
+    
+    ld    e, 4(ix)
+    ld    d, 5(ix)
+    ld    bc, #0x809f   
+    ld    h, #0x40
+    
+    ;;
+    ;; B is set to 0x80, and increased until zero, so we get 128 iterations.
+    ;; The reason for this funny counting is to stay away from contended I/O
+    ;; addresses.
+    ;;
+    ;; http://www.worldofspectrum.org/faq/reference/48kreference.htm
+    ;;
+    
+99999$:
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+
+    ld    a, l
+    ld    (de), a
+    inc   de
+      
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    
+    ld    a, l
+    ld    (de), a
+    inc   de
+      
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    
+    ld    a, l
+    ld    (de), a
+    inc   de
+    
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    READ_BIT_TO_L
+    
+    ld    a, l
+    ld    (de), a
+    inc   de
+    
+    inc   b
+    jr    z, 99998$
+    jp    99999$
+    
+99998$:
+    __endasm;
+  }  
+  else {
+    while (nbr_bytes --) {
+      *dst_addr++ = spi_read_byte();
+    }
   }
-  
-#else   /* DISABLE_OPTIMIZATIONS */
-
-  (void) dst_addr, nbr_bytes;     /* parameters used by assembly code below */
-  
-  __asm
-  
-  ;;
-  ;; assume dst_addr at (IX + 4)
-  ;;        nbr_bytes at (IX + 8)
-  ;;
-  
-  ld    e, 4(ix)
-  ld    d, 5(ix)      ;; de = dst_addr
-  ld    c, 8(ix)
-  ld    b, 9(ix)      ;; bc = nbr_bytes
-  
-spi_read_memory_loop::
-  ENC28J60_READ_TO(l)
-  ld    a, l
-  ld    (de), a
-  dec   bc
-  inc   de
-  ld    a, b
-  or    c
-  jr    nz, spi_read_memory_loop
-
-  __endasm;
-  
-#endif  /* DISABLE_OPTIMIZATIONS */
   
   spi_end_transaction();
 }

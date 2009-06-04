@@ -153,13 +153,6 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
       }
       else {
         /*
-         * Received a DATA packet with a bad block ID
-         */
-        logging_add_entry("TFTP: bad block: want " HEX16_ARG,
-                          (uint8_t *) &expected_tftp_block_no);
-        logging_add_entry("TFTP: bad block: got" HEX8_ARG HEX8_ARG,
-                          (uint8_t *) &packet->data.block_no);
-        /*
          * Send a TFTP error packet, "illegal TFTP operation"
          */
         udp_create_packet(src_hwaddr,
@@ -169,20 +162,30 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
                           sizeof(tftp_error_packet));
         udp_add_payload_to_packet(tftp_error_packet);
         udp_send_packet(sizeof(tftp_error_packet));
-
+        
         return;
       }
     }
-
+    
     /*
-     * Received a DATA packet with the expected block ID. Acknowledge
-     * and consume it.
+     * Received a DATA packet with the expected block ID
      */
     {
       uint16_t nbr_bytes_data 
-        = nbr_bytes_in_packet - offsetof(struct tftp_data_packet_t, data);
+      = nbr_bytes_in_packet - offsetof(struct tftp_data_packet_t, data);
       bool more_data = (nbr_bytes_data == TFTP_DATA_MAXSIZE);
       
+      if (data_is_fresh) {
+        NOTIFY_TFTP_DATA(packet->data.data, nbr_bytes_data, more_data);
+        
+        expected_tftp_block_no ++;
+      }
+      
+      /*
+       * Acknowledge the packet. TODO: to this before consumption above (to
+       * save a few milliseconds). Currently, moving the acknowledgment this
+       * way results in corrupted ACK packets.
+       */
       udp_create_packet(src_hwaddr,
                         src,
                         udp_get_tftp_port(),
@@ -191,27 +194,10 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
       udp_add_payload_to_packet(ack_opcode);
       udp_add_payload_to_packet(packet->data.block_no);
       udp_send_packet(TFTP_SIZE_OF_ACK);
-      
-      if (data_is_fresh) {
-        NOTIFY_TFTP_DATA(packet->data.data, nbr_bytes_data, more_data);
-        
-        if (more_data) {
-          expected_tftp_block_no ++;
-        }
-        else {
-          /*
-           * All data received, stop bothering the TFTP server
-           */
-          eth_reset_retransmission_timer();
-        }
-      }
     }
   }
-  else {
-    logging_add_entry("TFTP: unexpected opcode", NULL);
-  }
 }
-
+  
 /* ------------------------------------------------------------------------- */
 
 void

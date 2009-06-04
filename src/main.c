@@ -82,7 +82,7 @@ notify_dhcp_state(enum dhcp_state_t state)
       set_border(YELLOW);
       break;
     case STATE_BOUND:
-      set_border(GREEN);
+      set_border(BLACK);
       
       set_attrs(INK(BLACK) | PAPER(BLACK), 0, 0, 768);
       tftp_read_request(DEFAULT_IMAGE);
