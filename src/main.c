@@ -44,6 +44,8 @@
 
 /* ------------------------------------------------------------------------- */
 
+#define DEFAULT_IMAGE                 "speccyboot/menu.z80"
+
 #define KEYBOARD_ROW_ADDRESS          (0xBFFE)
 #define KEY_ENTER                     (0x01)
 #define KEY_J                         (0x08)
@@ -75,28 +77,22 @@ netboot_do(void)
 void
 notify_dhcp_state(enum dhcp_state_t state)
 {
-  uint16_t bar_len;
   switch (state) {
     case STATE_REQUESTING:
-      bar_len = 12;
+      set_border(YELLOW);
       break;
     case STATE_BOUND:
-      bar_len = 24;
+      set_border(GREEN);
       
-      tftp_read_request("speccyboot/menu.z80");
+      set_attrs(INK(BLACK) | PAPER(BLACK), 0, 0, 768);
+      tftp_read_request(DEFAULT_IMAGE);
       
       break;
     case STATE_SELECTING:
     default:
-      bar_len = 0;
+      set_border(RED);
       break;
   }
-  
-  /*
-   * Display a progress bar
-   */
-  set_attrs(PAPER(WHITE) | INK(WHITE) | BRIGHT, 20, 4, bar_len);
-  set_attrs(PAPER(GREEN) | INK(GREEN) | BRIGHT, 20, 4 + bar_len, 24 - bar_len);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -143,14 +139,6 @@ void main(void) {
        * Hide line about keys
        */
       set_attrs(INK(BLACK) | PAPER(BLACK), 15, 0, 32);
-      set_attrs(INK(WHITE) | PAPER(BLACK), 0, 0, 768);
-#if 0
-      display_digits(51);
-      __asm
-        di
-        halt
-      __endasm;
-#endif
       netboot_do();
     }
   }

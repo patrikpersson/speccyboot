@@ -244,7 +244,7 @@ enc28j60_read_memory(uint8_t         *dst_addr,
 
   spi_start_transaction(SPI_OPCODE_RBM);
 
-#define DISABLE_OPTIMIZATIONS   "temporarily set"
+// #define DISABLE_OPTIMIZATIONS   "temporarily set"
   
 #ifdef DISABLE_OPTIMIZATIONS
   
@@ -260,13 +260,13 @@ enc28j60_read_memory(uint8_t         *dst_addr,
   
   ;;
   ;; assume dst_addr at (IX + 4)
-  ;;        nbr_bytes at (IX + 6)
+  ;;        nbr_bytes at (IX + 8)
   ;;
   
   ld    e, 4(ix)
   ld    d, 5(ix)      ;; de = dst_addr
-  ld    c, 6(ix)
-  ld    b, 7(ix)      ;; bc = nbr_bytes
+  ld    c, 8(ix)
+  ld    b, 9(ix)      ;; bc = nbr_bytes
   
 spi_read_memory_loop::
   ENC28J60_READ_TO(l)

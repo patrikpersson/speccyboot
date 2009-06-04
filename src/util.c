@@ -97,8 +97,8 @@ extern const uint8_t splash_screen[];
  *   .666666.        12
  */
 
-#define DIGIT_ON      (PAPER(RED) + INK(BLACK) + BRIGHT)
-#define DIGIT_OFF     (PAPER(BLACK) + INK(RED))
+#define DIGIT_ON      (PAPER(RED) + INK(RED) + BRIGHT)
+#define DIGIT_OFF     (PAPER(BLACK) + INK(BLACK))
 
 /*
  * Number of rows in digit image (see above)
@@ -293,17 +293,6 @@ display_digits(uint8_t value)
     display_digit_at(digit2, (uint8_t *) (ATTRS_BASE + 17));
     current_digit_2 = digit2;
   }
-  
-#if 0
-  {
-    uint8_t i;
-    for (i = 0; i < 50; i++) {
-      __asm
-      halt
-      __endasm;
-    }
-  }
-#endif
 }
 
 /* ------------------------------------------------------------------------- */
