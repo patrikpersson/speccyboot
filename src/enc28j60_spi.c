@@ -1,7 +1,8 @@
 /*
  * Module enc28j60_spi:
  *
- * Bit-banged SPI access to the Microchip ENC28J60 Ethernet host. 
+ * Bit-banged SPI access to the Microchip ENC28J60 Ethernet host. Some
+ * functionality emulated for EMULATOR_TEST builds.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -33,6 +34,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "enc28j60_spi.h"
 
@@ -47,40 +49,23 @@
  */
 #define REGISTER_REQUIRES_BANK_SWITCH(tuple) (REG(tuple) < 0x1A)
 
-/* ============================================================================
- * ENC28J60 SPI HELPERS
- * ========================================================================= */
-
-#define SPI_PORT                    (0x9f)
-
-/* ------------------------------------------------------------------------- */
-
 /*
- * Begin an SPI transaction by pulling SCK & CS low, then transmit opcode.
+ * Macros for beginning and ending an SPI transaction. The braces are there
+ * for checking that two matching calls are used.
  */
-#define spi_start_transaction(opcode)   spi_write_byte(opcode)
-
-/* ------------------------------------------------------------------------- */
+#define spi_start_transaction(opcode)   spi_write_byte(opcode); {
 
 /*
  * End an SPI transaction by pulling SCK low, then CS high.
  */
-static void
-spi_end_transaction(void)
-__naked
-{
-  __asm
-  
-  ld  a, #0x40        ; CS=0, RST=1, SCK=0
-  out (SPI_PORT), a
-  ld  a, #0x48        ; CS=1, RST=1, SCK=0
-  out (SPI_PORT), a
-  ret
-  
-  __endasm;
-}
+#define spi_end_transaction()     }   \
+  __asm                               \
+  ENC28J60_END_TRANSACTION            \
+  __endasm
 
-/* ------------------------------------------------------------------------- */
+/* ============================================================================
+ * ENC28J60 SPI HELPERS (C functions)
+ * ========================================================================= */
 
 /*
  * Read 8 bits from SPI.
@@ -124,7 +109,7 @@ __naked
 
   __asm
   
-  ; assumes x to be passed in (sp + 2)
+  ;; assumes x to be passed in (sp + 2)
   
   ld  hl, #2
   add hl, sp
@@ -132,7 +117,7 @@ __naked
   ld  b, #8
   ld  d, #0x80
   
-  ; 55 T-states per bit
+  ;; 55 T-states per bit
   
 spi_write_byte_lp:
   ld  a, d          ; a is now 0x80
@@ -244,13 +229,6 @@ enc28j60_poll_register(uint16_t register_descr,
     if ((r & mask) == value) return;
   }
   
-  {
-    uint8_t x[2];
-    x[0] = BANK(register_descr);
-    x[1] = REG(register_descr);
-    logging_add_entry("SPI: poll failed for " HEX8_ARG ":" HEX8_ARG, x);
-  }
-  
   fatal_error(FATAL_ERROR_SPI_POLL_FAIL);
 }
 
@@ -261,18 +239,49 @@ enc28j60_read_memory(uint8_t         *dst_addr,
                      enc28j60_addr_t  src_addr,
                      uint16_t         nbr_bytes)
 {
-  uint16_t i;
-  
   enc28j60_write_register(ERDPTH, HIBYTE(src_addr));
   enc28j60_write_register(ERDPTL, LOBYTE(src_addr));
-  
-  /*
-   * TODO: optimize (inline stuff, unroll loop)
-   */
+
   spi_start_transaction(SPI_OPCODE_RBM);
-  for (i = 0; i < nbr_bytes; i++) {
+
+#define DISABLE_OPTIMIZATIONS   "temporarily set"
+  
+#ifdef DISABLE_OPTIMIZATIONS
+  
+  while (nbr_bytes --) {
     *dst_addr++ = spi_read_byte();
   }
+  
+#else   /* DISABLE_OPTIMIZATIONS */
+
+  (void) dst_addr, nbr_bytes;     /* parameters used by assembly code below */
+  
+  __asm
+  
+  ;;
+  ;; assume dst_addr at (IX + 4)
+  ;;        nbr_bytes at (IX + 6)
+  ;;
+  
+  ld    e, 4(ix)
+  ld    d, 5(ix)      ;; de = dst_addr
+  ld    c, 6(ix)
+  ld    b, 7(ix)      ;; bc = nbr_bytes
+  
+spi_read_memory_loop::
+  ENC28J60_READ_TO(l)
+  ld    a, l
+  ld    (de), a
+  dec   bc
+  inc   de
+  ld    a, b
+  or    c
+  jr    nz, spi_read_memory_loop
+
+  __endasm;
+  
+#endif  /* DISABLE_OPTIMIZATIONS */
+  
   spi_end_transaction();
 }
 
@@ -283,10 +292,22 @@ enc28j60_write_memory_at(enc28j60_addr_t  dst_addr,
                          const uint8_t    *src_addr,
                          uint16_t         nbr_bytes)
 {
+#ifdef EMULATOR_TEST
+  
+  select_bank(0);
+  
+  memcpy(ENC28J60_EMULATED_SRAM_ADDR + dst_addr, src_addr, nbr_bytes);
+  
+  select_bank(1);
+  
+#else /* EMULATOR_TEST */  
+
   enc28j60_write_register(EWRPTH, HIBYTE(dst_addr));
   enc28j60_write_register(EWRPTL, LOBYTE(dst_addr));
   
   enc28j60_write_memory_cont(src_addr, nbr_bytes);
+  
+#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -302,4 +323,105 @@ enc28j60_write_memory_cont(const uint8_t   *src_addr,
     spi_write_byte(*src_addr++);
   }
   spi_end_transaction();
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+enc28j60_load_byte_at_address(void)
+__naked
+{
+  __asm
+
+#ifdef EMULATOR_TEST
+  
+  ;; store BC and H somewhere good (will distort picture in top right)
+  
+  ld    (0x401d), bc
+  ld    a, h
+  ld    (0x401f), a
+  
+  ;; switch to bank 0, read byte, switch back to bank 1
+  
+  xor   a
+  ld    bc, #0x7ffd
+  out   (c), a
+  
+  ld    h, #0xD7          ;; HIBYTE(saved_app_data)
+  ld    l, (hl)
+  
+  ld    bc, #0x7ffd
+  inc   a
+  out   (c), a
+  
+  ld    bc, (0x401d)
+  ld    a, (0x401f)
+  ld    h, a
+  ld    a, r      ;; ensure we do not somehow depend on value of A
+
+#else /* EMULATOR_TEST */
+  
+  ;;
+  ;; write constants 0x41 0x17 (ERDPTH := 0x17)
+  ;;
+  
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_1
+  
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_1
+  
+  ENC28J60_END_TRANSACTION
+  
+  ;;
+  ;; write constant 0x40 followed by L register (ERDPTL := L)
+  ;;
+
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+
+  ENC28J60_WRITE_FROM(l)
+
+  ENC28J60_END_TRANSACTION
+
+  ;;
+  ;; write constant 0x3A, then read one byte into L register (L := *ERDPTL)
+  ;;
+
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_0
+  ENC28J60_WRITE_BIT_1
+  ENC28J60_WRITE_BIT_0
+
+  ENC28J60_READ_TO(l)
+  
+  ENC28J60_END_TRANSACTION
+  
+#endif /* EMULATOR_TEST */
+  
+  jp    (iy)
+
+  __endasm;
 }

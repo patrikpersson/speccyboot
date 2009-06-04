@@ -29,14 +29,14 @@ SPLASH_XBM   = speccyboot.xbm
 SPLASH_C     = tmp-splash-image.c
 
 # Common modules (module = source + header)
-MODULES      = util z80_parser context_switch
+MODULES      = util z80_parser context_switch enc28j60_spi
 
 # EMULATOR BUILD (uses a 128k .z80 image with 48k image embedded for testing)
 
 ifdef EMULATOR_TEST
 CFLAGS			+= -DEMULATOR_TEST
 else
-MODULES     += eth enc28j60_spi ip arp icmp udp dhcp tftp
+MODULES     += eth ip arp icmp udp dhcp tftp
 endif
 
 # DEBUG/LOGGING BUILD

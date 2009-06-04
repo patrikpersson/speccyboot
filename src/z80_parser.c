@@ -740,15 +740,17 @@ z80_receive_data(const uint8_t *received_tftp_data,
   received_data_length = nbr_of_bytes_received;
   
   while (received_data_length != 0) {
-    
     if (LOBYTE(curr_write_pos) == 0) {
-      if (kilobytes_loaded == 48) {    
-        context_switch();
-      }
-      
       /*
        * Handle evacuation
        */
+
+#ifdef EMULATOR_TEST      
+      if (kilobytes_loaded == 48) {    
+        context_switch();
+      } 
+#endif
+      
       if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
         curr_write_pos = (uint8_t *) EVACUATION_TEMP_BUFFER;
         evacuating     = true;
@@ -770,6 +772,11 @@ z80_receive_data(const uint8_t *received_tftp_data,
   }
   
   if (! more_data_expected) {
+#ifndef EMULATOR_TEST      
+    if (kilobytes_loaded == 48) {    
+      context_switch();
+    } 
+#endif
     fatal_error(FATAL_ERROR_END_OF_DATA);
   }
 }

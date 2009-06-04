@@ -119,8 +119,8 @@ __naked
 {
   __asm
 
-    ;; Set HL to the return value. Network endian means byte-swapped on the
-    ;; Z80, so L is the high-order byte.
+    ;; Set HL to the return value
+  
     ld  a, r
     or  #0x80     ;; bit 7 is not random anyway
     ld  l, a
@@ -140,28 +140,38 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
                      uint16_t                     nbr_bytes_in_packet)
 {
   static const uint16_t ack_opcode = htons(TFTP_OPCODE_ACK);
-
+  bool data_is_fresh = true;
+  
   if (packet->opcode == ntohs(TFTP_OPCODE_DATA)) {
     if (packet->data.block_no != htons(expected_tftp_block_no)) {
-      /*
-       * Received a DATA packet with a bad block ID
-       */
-      logging_add_entry("TFTP: bad block: want " HEX16_ARG,
-                        (uint8_t *) &expected_tftp_block_no);
-      logging_add_entry("TFTP: bad block: got" HEX8_ARG HEX8_ARG,
-                        (uint8_t *) &packet->data.block_no);
-      /*
-       * Send a TFTP error packet, "illegal TFTP operation"
-       */
-      udp_create_packet(src_hwaddr,
-                        src,
-                        udp_get_tftp_port(),
-                        src_port_nw_order,
-                        sizeof(tftp_error_packet));
-      udp_add_payload_to_packet(tftp_error_packet);
-      udp_send_packet(sizeof(tftp_error_packet));
+      if (ntohs(packet->data.block_no) == (expected_tftp_block_no - 1)) {
+        /*
+         * Special case: DATA packet with the previous block ID. Seems our ACK
+         * got lost somewhere. Send another ack, but ignore the data.
+         */
+        data_is_fresh = false;
+      }
+      else {
+        /*
+         * Received a DATA packet with a bad block ID
+         */
+        logging_add_entry("TFTP: bad block: want " HEX16_ARG,
+                          (uint8_t *) &expected_tftp_block_no);
+        logging_add_entry("TFTP: bad block: got" HEX8_ARG HEX8_ARG,
+                          (uint8_t *) &packet->data.block_no);
+        /*
+         * Send a TFTP error packet, "illegal TFTP operation"
+         */
+        udp_create_packet(src_hwaddr,
+                          src,
+                          udp_get_tftp_port(),
+                          src_port_nw_order,
+                          sizeof(tftp_error_packet));
+        udp_add_payload_to_packet(tftp_error_packet);
+        udp_send_packet(sizeof(tftp_error_packet));
 
-      return;
+        return;
+      }
     }
 
     /*
@@ -182,16 +192,18 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
       udp_add_payload_to_packet(packet->data.block_no);
       udp_send_packet(TFTP_SIZE_OF_ACK);
       
-      NOTIFY_TFTP_DATA(packet->data.data, nbr_bytes_data, more_data);
-      
-      if (more_data) {
-        expected_tftp_block_no ++;
-      }
-      else {
-        /*
-         * All data received, stop bothering the TFTP server
-         */
-        eth_reset_retransmission_timer();
+      if (data_is_fresh) {
+        NOTIFY_TFTP_DATA(packet->data.data, nbr_bytes_data, more_data);
+        
+        if (more_data) {
+          expected_tftp_block_no ++;
+        }
+        else {
+          /*
+           * All data received, stop bothering the TFTP server
+           */
+          eth_reset_retransmission_timer();
+        }
       }
     }
   }
@@ -206,15 +218,11 @@ void
 tftp_read_request(const char *filename)
 {
   static const uint16_t rrq_opcode   = htons(TFTP_OPCODE_RRQ);
-  // static const uint8_t  rrq_option[] = "netascii\000";
-  static const uint8_t  rrq_option[] = "octet\000";
-  // static const uint8_t  rrq_option[] = "octet\000blksize\000512\000";
+  static const uint8_t  rrq_option[] = "octet";
   const uint16_t      filename_len   = strlen(filename) + 1 /* NUL */;
   const uint16_t         total_len   = sizeof(rrq_opcode)
                                        + sizeof(rrq_option)
                                        + filename_len;
-
-  //static const ipv4_address_t JOX = 0x0102a8c0;
   
   udp_set_tftp_port(tftp_select_port());
   expected_tftp_block_no = 1;
@@ -224,7 +232,6 @@ tftp_read_request(const char *filename)
    * the RRQ packet is broadcast.
    */
   udp_create_packet(&eth_broadcast_address,
-                    //&JOX,
                     &ip_config.broadcast_address,
                     udp_get_tftp_port(),
                     htons(UDP_PORT_TFTP_SERVER),

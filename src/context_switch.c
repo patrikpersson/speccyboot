@@ -34,151 +34,7 @@
 
 #include "context_switch.h"
 #include "util.h"
-
-#ifdef EMULATOR_TEST
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * ENC28J60 emulation on Spectrum 128k (for test)
- *
- * The Spectrum 128k pages are used as follows:
- *
- * 0      Temporary storage (emulating ENC28J60 on-chip SRAM)
- * 1      mapped to 0xc000 for 48k application
- * 2      mapped to 0x8000 (static)
- * 3      1st part of embedded .z80 snapshot
- * 4      2nd part of embedded .z80 snapshot
- * 5      mapped to 0x4000 (static)
- * 6      3d part of embedded .z80 snapshot
- * 7      4th part of embedded .z80 snapshot
- */
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * Storage for header data
- */
-static uint8_t __at(0xc000 + EVACUATED_HEADER)
-  saved_header_data[Z80_HEADER_SIZE];
-
-/*
- * Storage for evacuated application data
- */
-static uint8_t __at(0xc000 + EVACUATED_DATA)
-  saved_app_data[RUNTIME_DATA_LENGTH];
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * Emulation of the corresponding routine in enc28j60_spi.c
- *
- * IY holds return address
- * L holds lower byte of header element address
- *
- * AF destroyed
- *
- * The byte is returned in L
- */
-static void
-enc28j60_load_byte_at_address(void)
-__naked
-{
-  __asm
-
-  ;; store BC and H somewhere good (will distort picture in top right)
-  
-  ld    (0x401d), bc
-  ld    a, h
-  ld    (0x401f), a
-  
-  ;; switch to bank 0, read byte, switch back to bank 1
-    
-  xor   a
-  ld    bc, #0x7ffd
-  out   (c), a
-  
-  ld    h, #0xD7          ;; HIBYTE(saved_app_data)
-  ld    l, (hl)
-
-  ld    bc, #0x7ffd
-  inc   a
-  out   (c), a
-    
-  ld    bc, (0x401d)
-  ld    a, (0x401f)
-  ld    h, a
-  ld    a, r      ;; ensure we do not somehow depend on value of A
-    
-  jp    (iy)
-  
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * Emulation of the corresponding macro in enc28j60_spi.c
- *
- * Loads IY from the correct location. Note that the address of IY has to be
- * hard-coded, since preprocessor symbols are not expanded in assembly macros
- * in SDCC.
- *
- * address = 0xc000 + EVACUATED_HEADER + Z80_OFFSET_IY_LO
- *         = 0xc000 + 0x1700 + 23
- *         = 0xD717
- */
-#pragma preproc_asm -
-#define ENC28J60_LOAD_IY _asm
-ld    (0x401c), bc        ; temporary storage (in video RAM)
-ld    (0x401e), hl        ; temporary storage (in video RAM)
-xor   a
-ld    bc, #0x7ffd
-out   (c), a
-ld    hl, #0xD717
-ld    a, (hl)
-.db   #0xFD
-ld    l, a      ;; ld IYl, a
-inc   hl
-ld    a, (hl)
-.db   #0xFD
-ld    h, a      ;; ld IYh, a
-ld    bc, #0x7ffd
-ld    a, #1
-out   (c), a
-ld    bc, (0x401c)
-ld    hl, (0x401e)
-_endasm
-#pragma preproc_asm +
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * Emulation of corresponding macro in enc28j60_spi.h
- *
- * Hardcoded addresses, since preprocessor symbols are not expanded in assembly
- * macros in SDCC.
- */
-#pragma save
-#pragma preproc_asm -
-#define ENC28J60_RESTORE_APPDATA _asm
-xor   a
-ld    bc, #0x7ffd
-out   (c), a                ;; load data from bank 0
-ld    hl, #0xD800
-ld    de, #0x5800
-ld    bc, #0x0800
-ldir
-_endasm
-#pragma restore
-
-/* ------------------------------------------------------------------------ */
-
-#else
-
 #include "enc28j60_spi.h"
-
-#endif
 
 /* ------------------------------------------------------------------------ */
 
@@ -235,9 +91,16 @@ _endasm
  * Restore system state. Use a short trampoline, located in video RAM, for
  * the final step.
  */
-void context_switch_using_vram(void)
-__naked
+static void
+context_switch_using_vram(void)
 {
+#ifndef EMULATOR_TEST
+  /*
+   * Select the correct register bank for RDPT operations
+   */
+  enc28j60_select_bank(BANK(ERDPTH));
+#endif
+  
   __asm
     
     di
@@ -258,12 +121,12 @@ b_done::
     ld    (VRAM_TRAMPOLINE_LD_BC + 2), a
 #else
     ld    bc, #0x7FFD   ;; page register
-    ld    a, #0x31      ;; page 1 at 0xc000, 48k ROM, lock paging
+    ld    a, #0x30      ;; page 0 at 0xc000, 48k ROM, lock paging
     out   (c), a
 #endif
 
-    ASM_INVOKE_MACRO(ENC28J60_RESTORE_APPDATA)
-  
+    ENC28J60_RESTORE_APPDATA
+
     ld    iy, #a_done
     ld    l, #Z80_OFFSET_A
     jp    _enc28j60_load_byte_at_address
@@ -326,11 +189,6 @@ ix_hi_done::
     
     ld    (VRAM_TRAMPOLINE_WORD_STORAGE), de
     ld    ix, (VRAM_TRAMPOLINE_WORD_STORAGE)
-      
-    ;;
-    ;; Set up register IY using VRAM_TRAMPOLINE_WORD_STORAGE for
-    ;; temporary storage
-    ;;
       
     ;;
     ;; Load final SP value into temporary storage (for later)
@@ -521,7 +379,7 @@ iff1_done::
     jp    _enc28j60_load_byte_at_address
 l_done::
     
-    ASM_INVOKE_MACRO(ENC28J60_LOAD_IY)
+    ENC28J60_LOAD_IY
       
     ;;
     ;; Select different final part depending on whether interrupts
@@ -614,45 +472,45 @@ final_switch_without_interrupts::
 #else
     ld    a, #0x20      ;; page out FRAM, pull reset on ENC28J60 low
 #endif
+    
+    ld    hl, #0x7400
+    ld    sp, hl
+    ld    a, #0x00
+    ld    (VRAM_TRAMPOLINE_JP + 1), a
+    ld    a, #0x70
+    ld    (VRAM_TRAMPOLINE_JP + 2), a
 
+    ld    a, #0x20
+  
     jp    VRAM_TRAMPOLINE_START
-                
+  
     __endasm;
 }
 
 /* ------------------------------------------------------------------------ */
 
-void evacuate_z80_header(const uint8_t *header_data)
+void
+evacuate_z80_header(const uint8_t *header_data)
 {
-  uint8_t i;
-  
-  select_bank(0);
-  
-  for (i = 0; i < Z80_HEADER_SIZE; i++) {
-    saved_header_data[i] = header_data[i];
-  }
-  
-  select_bank(1);
+  enc28j60_write_memory_at(EVACUATED_HEADER,
+                           header_data,
+                           Z80_HEADER_SIZE);
 }
 
 /* ------------------------------------------------------------------------ */
 
-void evacuate_data(void)
+void
+evacuate_data(void)
 {
-  uint16_t i;
-  
-  select_bank(0);
-  
-  for (i = 0; i < RUNTIME_DATA_LENGTH; i++) {
-    saved_app_data[i] = *((uint8_t *) EVACUATION_TEMP_BUFFER + i);
-  }
-  
-  select_bank(1);
+  enc28j60_write_memory_at(EVACUATED_DATA,
+                           (uint8_t *) EVACUATION_TEMP_BUFFER,
+                           RUNTIME_DATA_LENGTH);
 }
 
 /* ------------------------------------------------------------------------ */
 
-void context_switch(void)
+void
+context_switch(void)
 {
   context_switch_using_vram();
 }

@@ -83,7 +83,7 @@ notify_dhcp_state(enum dhcp_state_t state)
     case STATE_BOUND:
       bar_len = 24;
       
-      tftp_read_request("test.scr");
+      tftp_read_request("speccyboot/menu.z80");
       
       break;
     case STATE_SELECTING:

@@ -337,7 +337,7 @@ void
 fatal_error(uint8_t error_code)
 {
   logging_add_entry("FATAL ERROR 0x" HEX8_ARG, &error_code);
-#ifndef VERBOSE_LOGGING
+#if 0 //ndef VERBOSE_LOGGING
   /*
    * Only display error number if loggging is disabled, to avoid writing over
    * interesting logged information

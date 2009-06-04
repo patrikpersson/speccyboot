@@ -50,11 +50,11 @@
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t fake_tftp_block_buf[BLOCK_SIZE];
+static uint8_t fake_tftp_block_buf[BLOCK_SIZE];
 
 /*
  * This thing is referenced (and increased) by crt0.asm. Normally lives in
- * eth.c, put here to avoid link errors.
+ * eth.c, just here to avoid link errors.
  */
 uint8_t timer_tick_count;
 
@@ -112,7 +112,8 @@ tftp_read_request(const char *filename)
   static const uint8_t pages_with_image[] = {3, 4, 6, 7};
   uint8_t i;
   
-  (void) filename;
+  (void) filename;        /* ignored argument */
+  
   for (i = 0; i < sizeof(pages_with_image); i++) {
     uint8_t page = pages_with_image[i];
     uint8_t j;
