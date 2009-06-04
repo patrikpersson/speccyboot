@@ -538,12 +538,12 @@ ENC28J60_END_TRANSACTION
  *
  * On entry:
  *
- * L holds lower byte of header element address
- * IY holds return address
+ * C holds lower byte of header element address
+ * HL holds return address
  *
  * On exit:
  *
- * L holds the read byte
+ * C holds the read byte
  * AF is destroyed
  */
 void
@@ -552,46 +552,38 @@ enc28j60_load_byte_at_address(void)     __naked;
 /* ------------------------------------------------------------------------- */
 
 /*
- * Loads IY from the correct location. Note that the address of IY has to be
- * hard-coded, since preprocessor symbols are not expanded in assembly macros
- * in SDCC.
+ * Loads HL from the correct location.
  *
  * AF is destroyed by this macro.
- *
- * address = EVACUATED_HEADER + Z80_OFFSET_IY_LO
- *         = 0x1700 + 23
- *         = 0x1717
- *
- * SPI transactions:
- * write 0x41 0x17                ERDPTH := 0x17
- * write 0x40 0x17                ERDPTL := 0x17
- * write 0x3A, read 2 bytes       read memory
  */
 #ifdef EMULATOR_TEST
 
-#define ENC28J60_LOAD_IY                                    \
-  ld    (0x401c), bc                                        \
-  ld    (0x401e), hl                                        \
+#define ENC28J60_LOAD_HL                                    \
+  ld    (0x401e), bc                                        \
   xor   a, a                                                \
   ld    bc, #0x7ffd                                         \
   out   (c), a                                              \
-  ld    hl, #0xc000 + EVACUATED_HEADER + Z80_OFFSET_IY_LO   \
-  ld    a, (hl)                                             \
-  .db   #0xFD                                               \
+  ld    bc, #0xc000 + EVACUATED_HEADER + Z80_OFFSET_L       \
+  ld    a, (bc)                                             \
   ld    l, a                                                \
-  inc   hl                                                  \
-  ld    a, (hl)                                             \
-  .db   #0xFD                                               \
+  inc   bc                                                  \
+  ld    a, (bc)                                             \
   ld    h, a                                                \
   ld    bc, #0x7ffd                                         \
   ld    a, #1                                               \
   out   (c), a                                              \
-  ld    bc, (0x401c)                                        \
-  ld    hl, (0x401e)
+  ld    bc, (0x401e)
 
 #else    /* EMULATOR_TEST */
 
-#define ENC28J60_LOAD_IY    \
+/*
+ * SPI transactions:
+ * write 0x41 0x17                ERDPTH := 0x17
+ * write 0x40 0x04                ERDPTL := 0x04
+ * write 0x3A, read 2 bytes       read memory
+ */
+
+#define ENC28J60_LOAD_HL    \
   ENC28J60_WRITE_BIT_0      \
   ENC28J60_WRITE_BIT_1      \
   ENC28J60_WRITE_BIT_0      \
@@ -624,11 +616,11 @@ enc28j60_load_byte_at_address(void)     __naked;
   ENC28J60_WRITE_BIT_0      \
   ENC28J60_WRITE_BIT_0      \
   ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
+  ENC28J60_WRITE_BIT_0      \
   ENC28J60_WRITE_BIT_0      \
   ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_1      \
+  ENC28J60_WRITE_BIT_0      \
+  ENC28J60_WRITE_BIT_0      \
                             \
   ENC28J60_END_TRANSACTION  \
                             \
@@ -641,23 +633,8 @@ enc28j60_load_byte_at_address(void)     __naked;
   ENC28J60_WRITE_BIT_1      \
   ENC28J60_WRITE_BIT_0      \
                             \
-  ENC28J60_READ_BIT_TO_IYL  \
-  ENC28J60_READ_BIT_TO_IYL  \
-  ENC28J60_READ_BIT_TO_IYL  \
-  ENC28J60_READ_BIT_TO_IYL  \
-  ENC28J60_READ_BIT_TO_IYL  \
-  ENC28J60_READ_BIT_TO_IYL  \
-  ENC28J60_READ_BIT_TO_IYL  \
-  ENC28J60_READ_BIT_TO_IYL  \
-                            \
-  ENC28J60_READ_BIT_TO_IYH  \
-  ENC28J60_READ_BIT_TO_IYH  \
-  ENC28J60_READ_BIT_TO_IYH  \
-  ENC28J60_READ_BIT_TO_IYH  \
-  ENC28J60_READ_BIT_TO_IYH  \
-  ENC28J60_READ_BIT_TO_IYH  \
-  ENC28J60_READ_BIT_TO_IYH  \
-  ENC28J60_READ_BIT_TO_IYH  \
+  ENC28J60_READ_TO(L)       \
+  ENC28J60_READ_TO(H)       \
                             \
   ENC28J60_END_TRANSACTION
 

@@ -106,18 +106,18 @@ context_switch_using_vram(void)
     di
   
 #ifdef EMULATOR_TEST 
-    ld    iy, #c_done
-    ld    l, #Z80_OFFSET_C
+    ld    hl, #c_done
+    ld    c, #Z80_OFFSET_C
     jp    _enc28j60_load_byte_at_address
 c_done::
-    ld    a, l
+    ld    a, c
     ld    (VRAM_TRAMPOLINE_LD_BC + 1), a
         
-    ld    iy, #b_done
-    ld    l, #Z80_OFFSET_B
+    ld    hl, #b_done
+    ld    c, #Z80_OFFSET_B
     jp    _enc28j60_load_byte_at_address
 b_done::
-    ld    a, l
+    ld    a, c
     ld    (VRAM_TRAMPOLINE_LD_BC + 2), a
 #else
     ld    bc, #0x7FFD   ;; page register
@@ -127,171 +127,173 @@ b_done::
 
     ENC28J60_RESTORE_APPDATA
 
-    ld    iy, #a_done
-    ld    l, #Z80_OFFSET_A
+    ld    hl, #a_done
+    ld    c, #Z80_OFFSET_A
     jp    _enc28j60_load_byte_at_address
 a_done::
-    ld    a, l
+    ld    a, c
     ld    (VRAM_TRAMPOLINE_LD_A + 1), a
 
     ;;
     ;; pick correct PC value, depending on snapshot format version
     ;;
     
-    ld    iy, #pc_lo_done1
-    ld    l, #Z80_OFFSET_PC_LO
+    ld    hl, #pc_lo_done1
+    ld    c, #Z80_OFFSET_PC_LO
     jp    _enc28j60_load_byte_at_address
 pc_lo_done1::
-    ld    e, l
+    ld    e, c
       
-    ld    iy, #pc_hi_done1
-    ld    l, #Z80_OFFSET_PC_HI
+    ld    hl, #pc_hi_done1
+    ld    c, #Z80_OFFSET_PC_HI
     jp    _enc28j60_load_byte_at_address
 pc_hi_done1::
-    ld    a, l
+    ld    a, c
     or    e
       
     jr    nz, header_version_1
 
-    ld    iy, #pc_lo_done2
-    ld    l, #Z80_OFFSET_PC_V2_LO
+    ld    hl, #pc_lo_done2
+    ld    c, #Z80_OFFSET_PC_V2_LO
     jp    _enc28j60_load_byte_at_address
 pc_lo_done2::
-    ld    e, l
+    ld    e, c
     
-    ld    iy, #pc_hi_done2
-    ld    l, #Z80_OFFSET_PC_V2_HI
+    ld    hl, #pc_hi_done2
+    ld    c, #Z80_OFFSET_PC_V2_HI
     jp    _enc28j60_load_byte_at_address
 pc_hi_done2::
       
 header_version_1::
     ld    a, e
     ld    (VRAM_TRAMPOLINE_JP + 1), a
-    ld    a, l
+    ld    a, c
     ld    (VRAM_TRAMPOLINE_JP + 2), a
 
     ;;
-    ;; Set up register IX VRAM_TRAMPOLINE_WORD_STORAGE for
+    ;; Set up registers IX & IY using VRAM_TRAMPOLINE_WORD_STORAGE for
     ;; temporary storage
     ;;
-
-    ld    iy, #ix_lo_done
-    ld    l, #Z80_OFFSET_IX_LO
+  
+    ld    hl, #ix_lo_done
+    ld    c, #Z80_OFFSET_IX_LO
     jp    _enc28j60_load_byte_at_address
 ix_lo_done::
-    ld    e, l
+    ld    e, c
       
-    ld    iy, #ix_hi_done
-    ld    l, #Z80_OFFSET_IX_HI
+    ld    hl, #ix_hi_done
+    ld    c, #Z80_OFFSET_IX_HI
     jp    _enc28j60_load_byte_at_address
 ix_hi_done::
-    ld    d, l
+    ld    d, c
     
     ld    (VRAM_TRAMPOLINE_WORD_STORAGE), de
     ld    ix, (VRAM_TRAMPOLINE_WORD_STORAGE)
-      
-    ;;
-    ;; Load final SP value into temporary storage (for later)
-    ;;
+  
+    ld    hl, #iy_lo_done
+    ld    c, #Z80_OFFSET_IY_LO
+    jp    _enc28j60_load_byte_at_address
+iy_lo_done::
+    ld    e, c
     
-    ld    iy, #sp_lo_done
-    ld    l, #Z80_OFFSET_SP_LO
+    ld    hl, #iy_hi_done
+    ld    c, #Z80_OFFSET_IY_HI
     jp    _enc28j60_load_byte_at_address
-sp_lo_done::
-    ld    e, l
-      
-    ld    iy, #sp_hi_done
-    ld    l, #Z80_OFFSET_SP_HI
-    jp    _enc28j60_load_byte_at_address
-sp_hi_done::
-    ld    d, l
+iy_hi_done::
+    ld    d, c
     
     ld    (VRAM_TRAMPOLINE_WORD_STORAGE), de
-        
+    ld    iy, (VRAM_TRAMPOLINE_WORD_STORAGE)
+  
     ;;
     ;; Set up registers AF', BC', DE', HL'
     ;;
     
-    ld    iy, #ap_done
-    ld    l, #Z80_OFFSET_AP
+    ld    hl, #ap_done
+    ld    c, #Z80_OFFSET_AP
     jp    _enc28j60_load_byte_at_address
 ap_done::
-    ld    e, l
+    ld    e, c
       
-    ld    iy, #fp_done
-    ld    l, #Z80_OFFSET_FP
+    ld    hl, #fp_done
+    ld    c, #Z80_OFFSET_FP
     jp    _enc28j60_load_byte_at_address
 fp_done::
     ld    h, #HIBYTE_BYTE_CONSTANTS
+    ld    l, c
     ld    sp, hl
     pop   af
     ld    a, e
     ex    af, af'     ;; this apostrophe ' is just to fix syntax coloring...
       
-    ld    iy, #bp_done
-    ld    l, #Z80_OFFSET_BP
-    jp    _enc28j60_load_byte_at_address
-bp_done::
-    ld    b, l
-      
-    ld    iy, #cp_done
-    ld    l, #Z80_OFFSET_CP
-    jp    _enc28j60_load_byte_at_address
-cp_done::
-    ld    c, l
-      
-    ld    iy, #dp_done
-    ld    l, #Z80_OFFSET_DP
+    ld    hl, #dp_done
+    ld    c, #Z80_OFFSET_DP
     jp    _enc28j60_load_byte_at_address
 dp_done::
-    ld    d, l
+    ld    d, c
       
-    ld    iy, #ep_done
-    ld    l, #Z80_OFFSET_EP
+    ld    hl, #ep_done
+    ld    c, #Z80_OFFSET_EP
     jp    _enc28j60_load_byte_at_address
 ep_done::
-    ld    e, l
+    ld    e, c
       
-    ld    iy, #hp_done
-    ld    l, #Z80_OFFSET_HP
+    ld    hl, #hp_done
+    ld    c, #Z80_OFFSET_HP
     jp    _enc28j60_load_byte_at_address
 hp_done::
-    ld    h, l
+    ld    a, c
+    ld    (VRAM_TRAMPOLINE_WORD_STORAGE + 1), a
       
-    ld    iy, #lp_done
-    ld    l, #Z80_OFFSET_LP
+    ld    hl, #lp_done
+    ld    c, #Z80_OFFSET_LP
     jp    _enc28j60_load_byte_at_address
 lp_done::      
-    exx
-      
-#ifndef EMULATOR_TEST
+    ld    a, c
+    ld    (VRAM_TRAMPOLINE_WORD_STORAGE), a
+  
+    ld    hl, #bp_done
+    ld    c, #Z80_OFFSET_BP
+    jp    _enc28j60_load_byte_at_address
+bp_done::
+    ld    b, c
+    
+    ld    hl, #cp_done
+    ld    c, #Z80_OFFSET_CP
+    jp    _enc28j60_load_byte_at_address
+cp_done::
 
+    ld    hl, (VRAM_TRAMPOLINE_WORD_STORAGE)
+
+    exx
+  
     ;;
-    ;; Restore BC
+    ;; Load final SP value into temporary storage (for later)
     ;;
     
-    ld    iy, #c_done
-    ld    l, #Z80_OFFSET_C
+    ld    hl, #sp_lo_done
+    ld    c, #Z80_OFFSET_SP_LO
     jp    _enc28j60_load_byte_at_address
-c_done::
-    ld    c, l
-      
-    ld    iy, #b_done
-    ld    l, #Z80_OFFSET_B
+sp_lo_done::
+    ld    e, c
+    
+    ld    hl, #sp_hi_done
+    ld    c, #Z80_OFFSET_SP_HI
     jp    _enc28j60_load_byte_at_address
-b_done::
-    ld    b, l
-#endif
+sp_hi_done::
+    ld    d, c
+    
+    ld    (VRAM_TRAMPOLINE_WORD_STORAGE), de
       
     ;;
     ;; Set up interrupt mode and I register
     ;;
     
-    ld    iy, #im_done
-    ld    l, #Z80_OFFSET_IM
+    ld    hl, #im_done
+    ld    c, #Z80_OFFSET_IM
     jp    _enc28j60_load_byte_at_address
 im_done::
-    ld    a, l
+    ld    a, c
     and   #3     ;; ignore bits 2-7
     jr    z, set_im0
     cp    #1
@@ -305,22 +307,22 @@ set_im1::
     im    1
 im_set::
 
-    ld    iy, #i_done
-    ld    l, #Z80_OFFSET_I
+    ld    hl, #i_done
+    ld    c, #Z80_OFFSET_I
     jp    _enc28j60_load_byte_at_address
 i_done::
-    ld    a, l
+    ld    a, c
     ld    i, a
 
     ;;
     ;; Set up border
     ;;
   
-    ld    iy, #flags_done
-    ld    l, #Z80_OFFSET_FLAGS
+    ld    hl, #flags_done
+    ld    c, #Z80_OFFSET_FLAGS
     jp    _enc28j60_load_byte_at_address
 flags_done::
-    ld    a, l
+    ld    a, c
     rra
     and   #7
     out   (254), a
@@ -329,57 +331,64 @@ flags_done::
     ;; Prepare temporary SP for restoring F
     ;;
 
-    ld    iy, #f_done
-    ld    l, #Z80_OFFSET_F
+    ld    hl, #f_done
+    ld    c, #Z80_OFFSET_F
     jp    _enc28j60_load_byte_at_address
 f_done::
-
     ld    h, #HIBYTE_BYTE_CONSTANTS
+    ld    l, c
+
     ld    sp, hl
 
     ;;
-    ;; Restore DE & H (wait with L until below)
+    ;; Restore DE
     ;;
     
-    ld    iy, #d_done
-    ld    l, #Z80_OFFSET_D
+    ld    hl, #d_done
+    ld    c, #Z80_OFFSET_D
     jp    _enc28j60_load_byte_at_address
 d_done::
-    ld    d, l
+    ld    d, c
       
-    ld    iy, #e_done
-    ld    l, #Z80_OFFSET_E
+    ld    hl, #e_done
+    ld    c, #Z80_OFFSET_E
     jp    _enc28j60_load_byte_at_address
 e_done::
-    ld    e, l
-      
-    ld    iy, #h_done
-    ld    l, #Z80_OFFSET_H
-    jp    _enc28j60_load_byte_at_address
-h_done::
-    ld    h, l
+    ld    e, c
 
     ;;
     ;; Load IFF1 into address VRAM_TRAMPOLINE_LD_A (temporarily)
     ;;
           
-    ld    iy, #iff1_done
-    ld    l, #Z80_OFFSET_IFF1
+    ld    hl, #iff1_done
+    ld    c, #Z80_OFFSET_IFF1
     jp    _enc28j60_load_byte_at_address
 iff1_done::
-    ld    a, l
+    ld    a, c
     ld    (VRAM_TRAMPOLINE_LD_A), a
-      
+  
+#ifndef EMULATOR_TEST
     ;;
-    ;; Restore L and IY
+    ;; Restore BC
     ;;
-      
-    ld    iy, #l_done
-    ld    l, #Z80_OFFSET_L
-    jp    _enc28j60_load_byte_at_address
-l_done::
     
-    ENC28J60_LOAD_IY
+    ld    hl, #b_done
+    ld    c, #Z80_OFFSET_B
+    jp    _enc28j60_load_byte_at_address
+b_done::
+    ld    b, c
+    
+    ld    hl, #c_done
+    ld    c, #Z80_OFFSET_C
+    jp    _enc28j60_load_byte_at_address
+c_done::
+#endif
+  
+    ;;
+    ;; Restore HL
+    ;;
+    
+    ENC28J60_LOAD_HL
       
     ;;
     ;; Select different final part depending on whether interrupts
@@ -472,7 +481,12 @@ final_switch_without_interrupts::
 #else
     ld    a, #0x20      ;; page out FRAM, pull reset on ENC28J60 low
 #endif
-    
+  
+    /*
+     * Enable the snippet below to hard-code SP and PC values to the
+     * values used by the test image (useful when debuggning SPI reads)
+     */
+#if 0
     ld    hl, #0x7400
     ld    sp, hl
     ld    a, #0x00
@@ -481,6 +495,7 @@ final_switch_without_interrupts::
     ld    (VRAM_TRAMPOLINE_JP + 2), a
 
     ld    a, #0x20
+#endif
   
     jp    VRAM_TRAMPOLINE_START
   

@@ -213,6 +213,10 @@ DEFINE_STATE(s_header)
     = (const struct z80_snapshot_header_extended_t *) received_data;
   uint16_t header_length = sizeof(header->default_header);
   uint8_t          flags = header->default_header.snapshot_flags;
+
+#ifdef EMULATOR_TEST
+  select_bank(1);
+#endif
   
   if (header->default_header.pc != 0) {
     /*

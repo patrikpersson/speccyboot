@@ -335,11 +335,9 @@ __naked
 
 #ifdef EMULATOR_TEST
   
-  ;; store BC and H somewhere good (will distort picture in top right)
+  ;; store BC somewhere good (will distort picture in top right)
   
-  ld    (0x401d), bc
-  ld    a, h
-  ld    (0x401f), a
+  ld    (0x401e), bc
   
   ;; switch to bank 0, read byte, switch back to bank 1
   
@@ -347,16 +345,19 @@ __naked
   ld    bc, #0x7ffd
   out   (c), a
   
-  ld    h, #0xD7          ;; HIBYTE(saved_app_data)
-  ld    l, (hl)
+  ld    b, #0xD7          ;; HIBYTE(saved_app_data)
+  ld    a, (0x401e)
+  ld    c, a
+  ld    a, (bc)
+  ld    (0x401d), a
   
   ld    bc, #0x7ffd
-  inc   a
+  ld    a, #1
   out   (c), a
   
-  ld    bc, (0x401d)
-  ld    a, (0x401f)
-  ld    h, a
+  ld    bc, (0x401e)
+  ld    a, (0x401d)
+  ld    c, a
   ld    a, r      ;; ensure we do not somehow depend on value of A
 
 #else /* EMULATOR_TEST */
@@ -386,7 +387,7 @@ __naked
   ENC28J60_END_TRANSACTION
   
   ;;
-  ;; write constant 0x40 followed by L register (ERDPTL := L)
+  ;; write constant 0x40 followed by C register (ERDPTL := C)
   ;;
 
   ENC28J60_WRITE_BIT_0
@@ -398,12 +399,12 @@ __naked
   ENC28J60_WRITE_BIT_0
   ENC28J60_WRITE_BIT_0
 
-  ENC28J60_WRITE_FROM(l)
+  ENC28J60_WRITE_FROM(c)
 
   ENC28J60_END_TRANSACTION
 
   ;;
-  ;; write constant 0x3A, then read one byte into L register (L := *ERDPTL)
+  ;; write constant 0x3A, then read one byte into C register (C := *ERDPTL)
   ;;
 
   ENC28J60_WRITE_BIT_0
@@ -415,13 +416,13 @@ __naked
   ENC28J60_WRITE_BIT_1
   ENC28J60_WRITE_BIT_0
 
-  ENC28J60_READ_TO(l)
+  ENC28J60_READ_TO(c)
   
   ENC28J60_END_TRANSACTION
   
 #endif /* EMULATOR_TEST */
   
-  jp    (iy)
+  jp    (hl)
 
   __endasm;
 }
