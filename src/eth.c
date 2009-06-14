@@ -38,6 +38,7 @@
 #include "enc28j60_spi.h"
 #include "arp.h"
 #include "ip.h"
+#include "udp.h"
 #include "util.h"
 #include "speccyboot.h"
 #include "logging.h"
@@ -53,12 +54,6 @@ PACKED_STRUCT(eth_header_t) {
   struct mac_address_t  src_addr;
   uint16_t              ethertype;
 };
-
-/*
- * Minimal payload -- short frame will be padded
- */
-// #define ETH_MINIMAL_PAYLOAD   (64)
-// #define ETH_MINIMAL_PAYLOAD   (64 - sizeof(struct eth_header_t))
 
 /* ========================================================================= */
 
@@ -84,13 +79,6 @@ const struct mac_address_t eth_local_address = {
  * Administrative overhead in received frames
  */
 #define ENC28J60_RX_ADM         (4)
-
-/*
- * Size of a transmission buffer: administrative data, Ethernet header,
- *                                payload, padded up to an even number of bytes
- */
-#define guckENC28J60_TXBUF1_SIZE    ((MAX_TX_FRAME_SIZE + ENC28J60_TX_ADM + 1) \
-                                     & 0xfffe)
 
 /*
  * Worst-case frame size
@@ -122,10 +110,10 @@ const struct mac_address_t eth_local_address = {
  *                      frame class CRITICAL. On time-outs, this frame will be
  *                      re-transmitted (if valid).
  *
- * 0xXXXX+1...0x1FA8    TX buffer 2. This buffer is used for frames where no
+ * 0xXXXX+1...0xYYYY    TX buffer 2. This buffer is used for frames where no
  *                      reply is expected -- frame class OPTIONAL.
  *
- * 0x1FA9 ... 0x1FFF    Reserved for temporary storage during snapshot
+ * 0x1600 ... 0x1FFF    Reserved for temporary storage during snapshot
  *                      loading (see netboot.c)
  *
  * Also see the comment for eth_frame_class_t (eth.h).
@@ -145,6 +133,11 @@ const struct mac_address_t eth_local_address = {
 #define TXBUFSZ_FOR_CLASS(cl)   ( (cl == ETH_FRAME_PRIORITY)                  \
                                   ? (ENC28J60_TXBUF1_SIZE)                    \
                                   : (ENC28J60_TXBUF2_SIZE) )
+
+/*
+ * Position of next frame to read from the ENC28J60
+ */
+static enc28j60_addr_t next_frame = ENC28J60_RXBUF_START;
 
 /* =========================================================================
  * HOST-SIDE RX BUFFERS
@@ -210,14 +203,26 @@ perform_transmission(void)
    *       for continuous scanning of PHSTAT2 -- see eth_init()
    */
   enc28j60_poll_until_set(MIRDH, PHSTAT2_HI_LSTAT);
+
+  /*
+   * Errata, #10:
+   *
+   * Reset transmit logic before transmitting a frame
+   */
+  enc28j60_bitfield_set(ECON1, ECON1_TXRST);
+  enc28j60_bitfield_clear(ECON1, ECON1_TXRST);
   
+  enc28j60_bitfield_clear(EIE, EIE_TXIE);
+  enc28j60_bitfield_clear(EIR, EIR_TXIF + EIR_TXERIF);
+
   enc28j60_bitfield_set(ECON1, ECON1_TXRTS);
   enc28j60_poll_until_clear(ECON1, ECON1_TXRTS);
+  enc28j60_poll_until_set(EIR, EIR_TXIF);
   
   if ((enc28j60_read_register(ESTAT) & ESTAT_TXABRT) != 0) {
     uint8_t estat = enc28j60_read_register(ESTAT);
     
-    logging_add_entry("ETH: send fail ESTAT=" HEX8_ARG, &estat);
+    log_error("ETH", "tx failed ESTAT=0x%x", estat);
     
     fatal_error(FATAL_ERROR_TX_FAIL);
   }
@@ -234,6 +239,10 @@ eth_init(void)
   
   /*
    * ETH initialization
+   *
+   * Since the ENC28J60 doesn't support auto-negotiation, we will need to
+   * stick to half duplex. Not a problem, since Ethernet performance is not
+   * really a bottleneck on the Spectrum..
    */
   enc28j60_write_register(ERXSTL, LOBYTE(ENC28J60_RXBUF_START));
   enc28j60_write_register(ERXSTH, HIBYTE(ENC28J60_RXBUF_START));
@@ -249,26 +258,25 @@ eth_init(void)
   enc28j60_poll_until_set(ESTAT, ESTAT_CLKRDY);
   
   /*
-   * MAC initialization: full duplex
+   * MAC initialization: half duplex
    */
-  enc28j60_write_register(MACON1,
-                          MACON1_MARXEN + MACON1_RXPAUS + MACON1_TXPAUS);
+  enc28j60_write_register(MACON1, MACON1_MARXEN);
   /*
    * MACON3:
    * set bits PADCFG0..2 to pad all frames to at least 64B and append CRC
    */
-  enc28j60_write_register(MACON3, 0xE0 + MACON3_TXCRCEN + MACON3_FULDPX);
+  enc28j60_write_register(MACON3, 0xE0 + MACON3_TXCRCEN);
   enc28j60_write_register(MACON4, MACON4_DEFER);
-  
-  enc28j60_write_register(MABBIPG, 0x15);    /* as per datasheet section 6.5 */
-  enc28j60_write_register(MAIPGL,  0x12);    /* as per datasheet section 6.5 */
-  // enc28j60_write_register(MAIPGH,  0x0C);    /* as per datasheet section 6.5 */
-  
-  // enc28j60_write_register(MACLCON1, 0x0F);   /* default (reset) value */
-  // enc28j60_write_register(MACLCON2, 0x37);   /* default (reset) value */
   
   enc28j60_write_register(MAMXFLL, LOBYTE(MAX_FRAME_SIZE));
   enc28j60_write_register(MAMXFLH, HIBYTE(MAX_FRAME_SIZE));
+  
+  enc28j60_write_register(MABBIPG, 0x12);    /* as per datasheet section 6.5 */
+  enc28j60_write_register(MAIPGL,  0x12);    /* as per datasheet section 6.5 */
+  enc28j60_write_register(MAIPGH,  0x0C);    /* as per datasheet section 6.5 */
+  
+  // enc28j60_write_register(MACLCON1, 0x0F);   /* default (reset) value */
+  // enc28j60_write_register(MACLCON2, 0x37);   /* default (reset) value */
   
   enc28j60_write_register(MAADR1, MAC_ADDR_0);
   enc28j60_write_register(MAADR2, MAC_ADDR_1);
@@ -280,11 +288,11 @@ eth_init(void)
   /*
    * PHY initialization
    *
-   * PHCON1 := 0x0100 -- full duplex
+   * PHCON1 := 0x0100 -- half duplex
    */
   enc28j60_write_register(MIREGADR, PHCON1);
-  enc28j60_write_register(MIWRL, LOBYTE(0x0100));
-  enc28j60_write_register(MIWRH, HIBYTE(0x0100));
+  enc28j60_write_register(MIWRL, LOBYTE(0x0000));
+  enc28j60_write_register(MIWRH, HIBYTE(0x0000));
   enc28j60_poll_until_clear(MISTAT, MISTAT_BUSY);
 
   /*
@@ -297,18 +305,6 @@ eth_init(void)
    */
   enc28j60_write_register(MIREGADR, PHSTAT2);
   enc28j60_bitfield_set(MICMD, MICMD_MIISCAN);
-  __asm
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  __endasm;
   
   /*
    * Enable reception and transmission
@@ -316,7 +312,7 @@ eth_init(void)
   enc28j60_write_register(EIE, 0x00);    /* Disable all interrupts */
   enc28j60_write_register(EIR, 0x00);    /* No pending interrupts */
   enc28j60_write_register(ECON2, ECON2_AUTOINC);
-  enc28j60_write_register(ECON1, ECON1_CSUMEN + ECON1_RXEN);
+  enc28j60_write_register(ECON1, ECON1_RXEN);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -388,32 +384,6 @@ eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
                enum eth_frame_class_t  frame_class)
 {
   uint16_t end_address;
-
-#if 0
-  /*
-   * I don't trust the ENC28J60's automatic frame padding. Wireshark reports
-   * bad FCSs for short frames.
-   *
-   * This is not the fastest way to do it, but it doesn't matter in this
-   * application (transmission rate for small packets is not a bottleneck)
-   */
-  if (total_nbr_of_bytes_in_payload < ETH_MINIMAL_PAYLOAD) {
-    /*
-     * Need to explicitly set write pointer, since any previous checksum
-     * calculations will have moved it around
-     */
-    enc28j60_addr_t padding_address = TXBUF_FOR_CLASS(frame_class)
-                                      + sizeof(struct eth_header_t) + 1
-                                      + total_nbr_of_bytes_in_payload;
-    enc28j60_write_memory_at(padding_address, (const uint8_t *) &zero_u16, 1);
-    total_nbr_of_bytes_in_payload ++;
-
-    while (total_nbr_of_bytes_in_payload < ETH_MINIMAL_PAYLOAD) {
-      enc28j60_write_memory_cont((const uint8_t *) &zero_u16, 1);
-      total_nbr_of_bytes_in_payload ++;
-    }
-  }
-#endif
   
   /*
    * Last address = start
@@ -433,40 +403,8 @@ eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
   
   enc28j60_write_register(ETXNDL, LOBYTE(end_address));
   enc28j60_write_register(ETXNDH, HIBYTE(end_address));
-
+  
   perform_transmission();
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-eth_outgoing_ip_checksum(uint16_t                start_offset,
-                         uint16_t                number_of_bytes_to_checksum,
-                         uint16_t                checksum_offset,
-                         enum eth_frame_class_t  frame_class)
-{
-  uint8_t checksum[2];
-  uint16_t payload_addr  = TXBUF_FOR_CLASS(frame_class)
-                           + 1  /* per-packet control byte */
-                           + sizeof(struct eth_header_t);
-  uint16_t start_addr    = payload_addr + start_offset;
-  uint16_t checksum_addr = payload_addr + checksum_offset;
-  uint16_t end_addr      = start_addr   + number_of_bytes_to_checksum - 1;
-  
-  enc28j60_write_register(EDMASTL, LOBYTE(start_addr));
-  enc28j60_write_register(EDMASTH, HIBYTE(start_addr));
-  
-  enc28j60_write_register(EDMANDL, LOBYTE(end_addr));
-  enc28j60_write_register(EDMANDH, HIBYTE(end_addr));
-  
-  enc28j60_bitfield_set(ECON1, ECON1_DMAST);
-  enc28j60_poll_until_clear(ECON1, ECON1_DMAST);
-  
-  /* big-endian checksum (apparently) */
-  checksum[0] = enc28j60_read_register(EDMACSH);
-  checksum[1] = enc28j60_read_register(EDMACSL);
-
-  enc28j60_write_memory_at(checksum_addr, checksum, sizeof(uint16_t));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -483,7 +421,7 @@ eth_reset_retransmission_timer(void)
 void
 eth_handle_incoming_frames(void)
 {
-  enc28j60_addr_t rx_ptr = ENC28J60_RXBUF_START;
+  uint16_t bytes_in_frame;              /* size of current frame payload */
   
   for (;;) {
     /*
@@ -498,49 +436,53 @@ eth_handle_incoming_frames(void)
         eth_reset_retransmission_timer();
         
         if (end_of_critical_frame != NO_FRAME_NEEDS_RETRANSMISSION) {
-
+          
           enc28j60_write_register(ETXSTH, HIBYTE(ENC28J60_TXBUF1_START));
           enc28j60_write_register(ETXSTL, LOBYTE(ENC28J60_TXBUF1_START));
           
           enc28j60_write_register(ETXNDL, LOBYTE(end_of_critical_frame));
           enc28j60_write_register(ETXNDH, HIBYTE(end_of_critical_frame));
-
-          perform_transmission();
           
-          // logging_add_entry("ETH: retransmitted!", NULL);
+          perform_transmission();
         }
       }
     }
 
     /*
-     * Read ENC28J60 frame status info + Ethernet header
+     * Parse the packet, pass it on to IP or ARP
      */
-    enc28j60_read_memory((uint8_t *) rx_header_buf,
-                         rx_ptr,
-                         sizeof(rx_header_buf));
+    enc28j60_read_memory_at((uint8_t *) rx_header_buf,
+                            next_frame,
+                            sizeof(rx_header_buf));
     
+    next_frame     = rx_header_buf.next_ptr;
+    bytes_in_frame = rx_header_buf.nbr_bytes
+                     - sizeof(struct eth_header_t)
+                     - 4 /* Ethernet CRC */;
+    
+    enc28j60_bitfield_set(ECON2, ECON2_PKTDEC);         /* decrease EPKTCNT */
+    
+    if (bytes_in_frame <= sizeof(rx_frame_buf)          /* paranoia */
+        && (   rx_header_buf.eth_header.src_addr.addr[0] != MAC_ADDR_0
+            || rx_header_buf.eth_header.src_addr.addr[1] != MAC_ADDR_1
+            || rx_header_buf.eth_header.src_addr.addr[2] != MAC_ADDR_2
+            || rx_header_buf.eth_header.src_addr.addr[3] != MAC_ADDR_3
+            || rx_header_buf.eth_header.src_addr.addr[4] != MAC_ADDR_4
+            || rx_header_buf.eth_header.src_addr.addr[5] != MAC_ADDR_5))
     {
-      uint16_t bytes_in_frame = rx_header_buf.nbr_bytes
-                                - sizeof(struct eth_header_t)
-                                - 4 /* Ethernet CRC */;
+      enc28j60_read_memory_cont(rx_frame_buf, bytes_in_frame);
       
-      if (bytes_in_frame <= sizeof(rx_frame_buf)) {   /* paranoia */
-        enc28j60_read_memory(rx_frame_buf,
-                             rx_ptr + sizeof(rx_header_buf),
+      switch (rx_header_buf.eth_header.ethertype) {
+        case htons(ETHERTYPE_IP):
+          ip_frame_received(&rx_header_buf.eth_header.src_addr,
+                            rx_frame_buf,
+                            bytes_in_frame);
+          break;
+        case htons(ETHERTYPE_ARP):
+          arp_frame_received(&rx_header_buf.eth_header.src_addr,
+                             rx_frame_buf,
                              bytes_in_frame);
-        
-        switch (rx_header_buf.eth_header.ethertype) {
-          case htons(ETHERTYPE_IP):
-            ip_frame_received(&rx_header_buf.eth_header.src_addr,
-                              rx_frame_buf,
-                              bytes_in_frame);
-            break;
-          case htons(ETHERTYPE_ARP):
-            arp_frame_received(&rx_header_buf.eth_header.src_addr,
-                               rx_frame_buf,
-                               bytes_in_frame);
-            break;
-        }
+          break;
       }
     }
     
@@ -550,20 +492,14 @@ eth_handle_incoming_frames(void)
      * Datasheet, #6.1: EXRDPT is written in order ERXRDPTL, ERXRDPTH
      * Errata B5, #11:  EXRDPT must always be written with an odd value
      *
-     * (rx_ptr itself is always even -- padded by ENC28J60 if necessary)
-     */
-    rx_ptr = rx_header_buf.next_ptr;
+     * (next_frame itself is always even -- padded by ENC28J60 if necessary)
+     */    
     
-    if (rx_ptr > ENC28J60_RXBUF_END) {
+    if (next_frame > ENC28J60_RXBUF_END) {
       fatal_error(FATAL_ERROR_RX_PTR_FAIL);
     }
 
-    enc28j60_write_register(ERXRDPTL, LOBYTE(rx_ptr - 1));
-    enc28j60_write_register(ERXRDPTH, HIBYTE(rx_ptr - 1));
-
-    /*
-     * Decrease EPKTCNT
-     */
-    enc28j60_bitfield_set(ECON2, ECON2_PKTDEC);
+    enc28j60_write_register(ERXRDPTL, LOBYTE(next_frame - 1));
+    enc28j60_write_register(ERXRDPTH, HIBYTE(next_frame - 1));
   }
 }

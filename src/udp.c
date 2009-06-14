@@ -42,6 +42,42 @@
 
 /* ------------------------------------------------------------------------- */
 
+static bool
+udp_checksum(const struct udp_header_t *udp_data,
+             uint16_t                   udp_payload_length,
+             const ipv4_address_t      *src,
+             const ipv4_address_t      *dst)
+{
+  ip_checksum_state_t checksum = htons(IP_PROTOCOL_UDP);
+
+  if (udp_data->checksum != 0) {
+    /* IPv4 pseudo header */
+    ip_checksum_add(checksum, src, sizeof(ipv4_address_t));
+    ip_checksum_add(checksum, dst, sizeof(ipv4_address_t));
+    ip_checksum_add(checksum, &udp_data->length, 2);
+    
+    /* UDP header except checksum */
+    ip_checksum_add(checksum, udp_data, offsetof(struct udp_header_t, checksum));
+    
+    /* UDP payload */
+    ip_checksum_add(checksum,
+                    ((const uint8_t *) udp_data) + sizeof(struct udp_header_t),
+                    udp_payload_length);
+    
+    if (ip_checksum_value(checksum) != udp_data->checksum) {
+      log_warning("UDP",
+                  "checksum mismatch (received %x, computed %x), packet dropped",
+                  udp_data->checksum, ip_checksum_value(checksum));
+      
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/* ------------------------------------------------------------------------- */
+
 uint16_t tftp_port_nw_endian = 0;
 
 /* ------------------------------------------------------------------------- */
@@ -49,21 +85,24 @@ uint16_t tftp_port_nw_endian = 0;
 void
 udp_packet_received(const struct mac_address_t  *src_hwaddr,
                     const ipv4_address_t        *src,
-                    const uint8_t               *payload,
-                    uint16_t                     nbr_bytes_in_payload)
+                    const ipv4_address_t        *dst,
+                    const uint8_t               *payload)
 {
   const struct udp_header_t *header = (const struct udp_header_t *) payload;
   const uint8_t *udp_payload = payload + sizeof(struct udp_header_t);
+  uint16_t udp_payload_length = ntohs(header->length) - sizeof(struct udp_header_t);
   
-  if (header->dst_port == tftp_port_nw_endian) {
-    tftp_packet_received(src_hwaddr,
-                         src,
-                         header->src_port,
-                         (const union tftp_packet_t *) udp_payload,
-                         nbr_bytes_in_payload - sizeof(struct udp_header_t));
-  }
-  else if (header->dst_port == htons(UDP_PORT_DHCP_CLIENT)) {
-    dhcp_packet_received(src, (const struct dhcp_header_t *) udp_payload);
+  if (dst/*udp_checksum(header, udp_payload_length, src, dst)*/) {
+    if (header->dst_port == tftp_port_nw_endian) {
+      tftp_packet_received(src_hwaddr,
+                           src,
+                           header->src_port,
+                           (const union tftp_packet_t *) udp_payload,
+                           udp_payload_length);
+    }
+    else if (header->dst_port == htons(UDP_PORT_DHCP_CLIENT)) {
+      dhcp_packet_received(src, (const struct dhcp_header_t *) udp_payload);
+    }
   }
 }
 
@@ -74,9 +113,9 @@ udp_create_packet(const struct mac_address_t  *dst_hwaddr,
                   const ipv4_address_t        *dst_ipaddr,
                   uint16_t                     src_port,
                   uint16_t                     dst_port,
-                  uint16_t                     udp_payload_length)
+                  uint16_t                     udp_payload_length,
+                  enum eth_frame_class_t       frame_class)
 {
-  static const uint16_t zero = 0;
   uint16_t udp_length       = udp_payload_length + sizeof(struct udp_header_t);
   uint16_t nw_endian_length = htons(udp_length);
   
@@ -84,39 +123,11 @@ udp_create_packet(const struct mac_address_t  *dst_hwaddr,
                    dst_ipaddr,
                    udp_length,
                    IP_PROTOCOL_UDP,
-                   ETH_FRAME_PRIORITY);
+                   frame_class);
   
   /* UDP header */
   udp_add_payload_to_packet(src_port);
   udp_add_payload_to_packet(dst_port);
   udp_add_payload_to_packet(nw_endian_length);
-  udp_add_payload_to_packet(zero);
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-udp_send_packet(uint16_t udp_payload_length)
-{
-  /*
-   * Compute UDP checksum. Store the UDP length (as a component of the
-   * IP pseudo-header) in the 'identification' field.
-   */
-  uint16_t udp_length       = udp_payload_length + sizeof(struct udp_header_t);
-  uint16_t nw_endian_length = htons(udp_length);
-  
-  eth_rewrite_frame(offsetof(struct ipv4_header_t, identification),
-                    &nw_endian_length,
-                    sizeof(uint16_t),
-                    ETH_FRAME_PRIORITY);
-  
-  eth_outgoing_ip_checksum(offsetof(struct ipv4_header_t, identification),
-                           udp_length + (sizeof(struct ipv4_header_t)
-                                         - offsetof(struct ipv4_header_t,
-                                                    identification)),
-                           sizeof(struct ipv4_header_t)
-                           + offsetof(struct udp_header_t, checksum),
-                           ETH_FRAME_PRIORITY);
-  
-  ip_send_packet(udp_length, ETH_FRAME_PRIORITY);
+  udp_add_payload_to_packet(zero_u16);      /* no checksum */
 }

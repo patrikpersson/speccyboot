@@ -36,6 +36,7 @@
 #include <stddef.h>
 
 #include "util.h"
+#include "eth.h"
 
 #include "platform.h"
 #include "logging.h"
@@ -293,6 +294,8 @@ display_digits(uint8_t value)
     display_digit_at(digit2, (uint8_t *) (ATTRS_BASE + 17));
     current_digit_2 = digit2;
   }
+  
+  // log_info("progress: 0x%b", value);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -325,16 +328,11 @@ set_attrs(uint8_t screen_attrs,
 void
 fatal_error(uint8_t error_code)
 {
-  logging_add_entry("FATAL ERROR 0x" HEX8_ARG, &error_code);
-#if 0 //ndef VERBOSE_LOGGING
-  /*
-   * Only display error number if loggging is disabled, to avoid writing over
-   * interesting logged information
-   */
-  set_screen_attrs(PAPER(BLACK) + INK(BLACK));
-  display_digit_at(0x0E, (uint8_t *) ATTRS_BASE);
-  display_digit_at(error_code, (uint8_t *) (ATTRS_BASE + 17));
-#endif
+  eth_init();               /* in case the device has entered an error state */
+  
+  display_digits(140 + error_code);         /* 'E' + error code */
+  
+  log_emergency("FATAL", "error %b", error_code);
   
   __asm
 

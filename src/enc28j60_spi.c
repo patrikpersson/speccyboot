@@ -235,117 +235,167 @@ enc28j60_poll_register(uint16_t register_descr,
 /* ------------------------------------------------------------------------- */
 
 /*
- * Read one bit to L, requires c=0x9f, h=0x40
+ * Read a number of bytes from a given address in on-chip SRAM
  */
-#define READ_BIT_TO_L         \
-  out   (c), h                \
-  in    a, (c)                \
-  rra                         \
-  rl    a, l                  \
-  inc   h                     \
-  out   (c), h                \
-  dec   h
-
-void
-enc28j60_read_memory(uint8_t         *dst_addr,
-                     enc28j60_addr_t  src_addr,
-                     uint16_t         nbr_bytes)
+uint16_t
+enc28j60_read_memory_at(uint8_t         *dst_addr,
+                        enc28j60_addr_t  src_addr,
+                        uint16_t         nbr_bytes)
 {
+  (void) dst_addr, nbr_bytes;
+  
   enc28j60_write_register(ERDPTH, HIBYTE(src_addr));
   enc28j60_write_register(ERDPTL, LOBYTE(src_addr));
 
+  return enc28j60_read_memory_cont(dst_addr, nbr_bytes);
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Read one bit to accumulator, requires C=0x9f, H=0x40. Destroys F, L.
+ */
+#define READ_BIT_TO_ACC   \
+  out   (c), h            \
+  in    l, (c)            \
+  rr    a, l              \
+  rla                     \
+  inc   h                 \
+  out   (c), h            \
+  dec   h
+
+/*
+ * Read one word to (de), increase de, add to checksum.
+ *
+ * Requires c=0x9f, h=0x40. Destroys af and l.
+ */
+#define READ_WORD_TO_DE_INC         \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  ld    (de), a                     \
+  inc   de                          \
+  exx                               \
+  ld    c, a                        \
+  exx                               \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  READ_BIT_TO_ACC                   \
+  ld    (de), a                     \
+  inc   de                          \
+  exx                               \
+  ld    b, a                        \
+  add   hl, bc                      \
+  adc   hl, de                      \
+  exx
+
+uint16_t
+enc28j60_read_memory_cont(uint8_t *dst_addr,
+                          uint16_t nbr_bytes)
+{
+  (void) dst_addr, nbr_bytes;
+  
   spi_start_transaction(SPI_OPCODE_RBM);
 
-  if (nbr_bytes == 512) {
-    /*
-     * Optimized case for reading an entire TFTP file block
-     */
-    __asm
+  /*
+   * Unroll loop: pick 8 bytes at a time
+   */
+  __asm
     
     ;;
-    ;; assume dst_addr at (IX + 4)
+    ;; assume dst_addr  at (IX + 4)
+    ;;        nbr_bytes at (IX + 6)
+    ;;
+  
+    ;;
+    ;; register allocation:
+    ;;
+    ;; primary bank
+    ;; ------------
+    ;; B   loop counter, using scheme described below
+    ;; C   0x9f     for SPI access
+    ;; DE  destination in RAM
+    ;; H   0x40     for SPI access
+    ;; L   temp register for SPI reads
+    ;;
+    ;; secondary bank
+    ;; --------------
+    ;; BC  temp register for one term in sum above
+    ;; DE  0/zero, to allow use of "ADC HL, DE" for adding C flag to HL
+    ;; HL  cumulative 16-bit one-complement sum
     ;;
     
-    ld    e, 4(ix)
+    ld    de, #0
+    ld    hl, #0
+    exx
+
+    ld    c, #0x9f
     ld    d, 5(ix)
-    ld    bc, #0x809f   
+    ld    e, 4(ix)
     ld    h, #0x40
+  
+    ld    a, 7(ix)
+    ld    l, 6(ix)
+    rra
+    rr    l
+    rra
+    rr    l
+    rra
+    rr    l
+    xor   a
+    sub   l
+    jp    z, unroll_end
+    
+    ld    b, a
     
     ;;
-    ;; B is set to 0x80, and increased until zero, so we get 128 iterations.
-    ;; The reason for this funny counting is to stay away from contended I/O
+    ;; B is initalized to (0x100 - (N >> 3)), and increased until zero. The
+    ;; reason for this funny counting is to stay away from contended I/O
     ;; addresses.
     ;;
     ;; http://www.worldofspectrum.org/faq/reference/48kreference.htm
     ;;
     
-99999$:
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-
-    ld    a, l
-    ld    (de), a
-    inc   de
-      
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    
-    ld    a, l
-    ld    (de), a
-    inc   de
-      
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    
-    ld    a, l
-    ld    (de), a
-    inc   de
-    
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    READ_BIT_TO_L
-    
-    ld    a, l
-    ld    (de), a
-    inc   de
-    
+unrolled_loop:
+    READ_WORD_TO_DE_INC
+    READ_WORD_TO_DE_INC
+    READ_WORD_TO_DE_INC
+    READ_WORD_TO_DE_INC
+  
     inc   b
-    jr    z, 99998$
-    jp    99999$
+    jp    nz, unrolled_loop
     
-99998$:
-    __endasm;
-  }  
-  else {
-    while (nbr_bytes --) {
-      *dst_addr++ = spi_read_byte();
-    }
-  }
+unroll_end::
+
+    /*
+     * Pick out the last 0..7 bytes (that could not be unrolled)
+     */
+    ld    a, 8(ix)
+    and   #0x07
+    jr    z, no_unroll_trailer
+    ld    b, a
+
+unroll_trailer::
+  ;;READ_BYTE_TO_DE_INC    FIXME
+    djnz  unroll_trailer
+  
+no_unroll_trailer::
+  
+  __endasm;
   
   spi_end_transaction();
+  
+  return 0; // FIXME
 }
 
 /* ------------------------------------------------------------------------- */
@@ -384,6 +434,24 @@ enc28j60_write_memory_cont(const uint8_t   *src_addr,
   spi_start_transaction(SPI_OPCODE_WBM);
   for (i = 0; i < nbr_bytes; i++) {
     spi_write_byte(*src_addr++);
+  }
+  spi_end_transaction();
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
+                         uint16_t         nbr_bytes)
+{
+  uint16_t i;
+  
+  enc28j60_write_register(EWRPTH, HIBYTE(dst_addr));
+  enc28j60_write_register(EWRPTL, LOBYTE(dst_addr));
+  
+  spi_start_transaction(SPI_OPCODE_WBM);
+  for (i = 0; i < nbr_bytes; i++) {
+    spi_write_byte(0);
   }
   spi_end_transaction();
 }

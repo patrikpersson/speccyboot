@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include "util.h"
+#include "platform.h"
 
 /* ========================================================================= */
 
@@ -112,11 +113,23 @@ extern struct ip_config_t {
 #define ip_valid_address()        (ip_config.host_address != 0x00000000)
 
 /* -------------------------------------------------------------------------
+ * IP-style checksum computation
+ * ------------------------------------------------------------------------- */
+
+typedef uint16_t ip_checksum_state_t;
+
+#define ip_checksum_add(_c, _addr, _n)  (ip_checksum_add_impl(&(_c), (_addr), (_n)))
+#define ip_checksum_value(_c)           (~(_c))
+
+/* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an IP packet has been
  * received.
  *
  * If the frame is a TFTP data packet, the function netboot_receive_data()
  * will be called.
+ *
+ * The 'address_in_eth' argument points to the address of the received IP
+ * payload in ENC28J60 memory (for checksum verification).
  * ------------------------------------------------------------------------- */
 void
 ip_frame_received(const struct mac_address_t *src,
@@ -144,8 +157,17 @@ ip_create_packet(const struct mac_address_t  *dst_hwaddr,
  * total_nbr_of_bytes_in_payload:   number of bytes in payload, excluding
  *                                  header.
  * ------------------------------------------------------------------------- */
+#define ip_send_packet(_total_nbr_of_bytes_in_ip_payload, _ip_frame_class)    \
+  eth_send_frame((_total_nbr_of_bytes_in_ip_payload)                          \
+                   + sizeof(struct ipv4_header_t),                            \
+                 (_ip_frame_class))
+
+/* -------------------------------------------------------------------------
+ * Internal routine for ip_checksum_* macros above
+ * ------------------------------------------------------------------------- */
 void
-ip_send_packet(uint16_t                total_nbr_of_bytes_in_payload,
-               enum eth_frame_class_t  frame_class);
+ip_checksum_add_impl(uint16_t *checksum,
+                     const void *start_addr,
+                     uint16_t nbr_bytes);
 
 #endif /* SPECCYBOOT_ETH_IP_INCLUSION_GUARD */

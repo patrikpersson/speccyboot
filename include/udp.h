@@ -69,28 +69,41 @@ PACKED_STRUCT(udp_header_t) {
 };
 
 /* -------------------------------------------------------------------------
+ * IP pseudo-header for UDP checksum computation
+ * ------------------------------------------------------------------------- */
+
+PACKED_STRUCT(udp_ip_pseudo_header_t) {
+  ipv4_address_t  src_addr;
+  ipv4_address_t  dst_addr;
+  uint8_t         zero;         /* always zero */
+  uint8_t         protocol;     /* always for UDP */
+  uint16_t        udp_length;
+};
+
+/* -------------------------------------------------------------------------
  * Called by IP when a UDP packet has been identified
  * ------------------------------------------------------------------------- */
 void
 udp_packet_received(const struct mac_address_t  *src_hwaddr,
                     const ipv4_address_t        *src,
-                    const uint8_t               *payload,
-                    uint16_t                     nbr_bytes_in_payload);
+                    const ipv4_address_t        *dst,
+                    const uint8_t               *payload);
 
 /* -------------------------------------------------------------------------
  * Create UDP packet
  *
- * NOTE: source and destination headers are passed in network endian order.
+ * NOTE: source and destination ports are passed in network endian order.
  * ------------------------------------------------------------------------- */
 void
 udp_create_packet(const struct mac_address_t  *dst_hwaddr,
                   const ipv4_address_t        *dst_ipaddr,
                   uint16_t                     src_port_nw_endian,
                   uint16_t                     dst_port_nw_endian,
-                  uint16_t                     udp_length);
+                  uint16_t                     udp_length,
+                  enum eth_frame_class_t       frame_class);
 
 /* -------------------------------------------------------------------------
- * Append payload to a UDP packet created using udp_create_packet()
+ * Append payload to a UDP packet, previously created with udp_create_packet()
  * ------------------------------------------------------------------------- */
 #define  udp_add_payload_to_packet(_data)                                     \
   ip_add_payload_to_packet(&(_data), sizeof(_data))
@@ -99,12 +112,12 @@ udp_create_packet(const struct mac_address_t  *dst_hwaddr,
   ip_add_payload_to_packet((_data), (_len))
 
 /* -------------------------------------------------------------------------
- * Send a completed UDP packet. Computes a checksum and stores it in the
- * UDP header.
+ * Send a completed UDP packet.
  *
  * The 'udp_length' field MUST match the one passed to udp_create_packet().
  * ------------------------------------------------------------------------- */
-void
-udp_send_packet(uint16_t udp_length);
+#define udp_send_packet(_udp_payload_length, _udp_frame_class)                \
+  ip_send_packet((_udp_payload_length) + sizeof(struct udp_header_t),         \
+                 (_udp_frame_class))
 
 #endif /* SPECCYBOOT_UDP_INCLUSION_GUARD */

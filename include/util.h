@@ -48,6 +48,14 @@
 #define FATAL_ERROR_END_OF_DATA     (5)
 
 /* -------------------------------------------------------------------------
+ * Address of a constant copy of the given character
+ * (since we need a table of all 256 byte values for the context switch,
+ * we can reuse that for obtaining pointers to arbitrary characters)
+ * ------------------------------------------------------------------------- */
+
+#define ADDRESS_OF_CHAR(_c)         (0x3e00 + (_c))
+
+/* -------------------------------------------------------------------------
  * Spectrum attributes
  * ------------------------------------------------------------------------- */
 
@@ -67,6 +75,17 @@
 #define PAPER(x)      ((x) << 3)
 
 #define ROW_LENGTH    (32)
+
+/* ------------------------------------------------------------------------- */
+
+#define check_stack()                                                         \
+{                                                                             \
+  uint16_t stack_remaining = 0;                                               \
+  const uint8_t *stack_low = (const uint8_t *) 0x5B00;                        \
+  while (stack_low[stack_remaining++] == 0xAB)                                \
+    ;                                                                         \
+  log_info("STACK_CHK", "0x%x bytes remain", stack_remaining);                \
+}
 
 /* -------------------------------------------------------------------------
  * A simple zero value -- useful for passing pointers to zero

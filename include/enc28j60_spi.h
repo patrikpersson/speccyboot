@@ -168,10 +168,15 @@
  * Individual bits in ETH, MAC, MII registers
  * ------------------------------------------------------------------------- */
 
+#define EIE_TXIE                (0x08)
+#define EIR_TXIF                (0x08)
+#define EIR_TXERIF              (0x02)
 #define ESTAT_CLKRDY            (0x01)
 #define ESTAT_TXABRT            (0x02)
 #define ECON2_PKTDEC            (0x40)
 #define ECON2_AUTOINC           (0x80)
+#define ECON1_TXRST             (0x80)
+#define ECON1_RXRST             (0x40)
 #define ECON1_DMAST             (0x20)
 #define ECON1_CSUMEN            (0x10)
 #define ECON1_TXRTS             (0x08)
@@ -310,12 +315,25 @@ enc28j60_poll_register(uint16_t register_descr,
 /* ------------------------------------------------------------------------- */
 
 /*
- * Read a number of bytes from on-chip SRAM
+ * Read a number of bytes from a given address in on-chip SRAM.
+ *
+ * Returns the 16-bit one-complement sum of the words in the buffer.
  */
-void
-enc28j60_read_memory(uint8_t         *dst_addr,
-                     enc28j60_addr_t  src_addr,
-                     uint16_t         nbr_bytes);
+uint16_t
+enc28j60_read_memory_at(uint8_t         *dst_addr,
+                        enc28j60_addr_t  src_addr,
+                        uint16_t         nbr_bytes);
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Read a number of bytes from on-chip SRAM, continuing from previous read.
+ *
+ * Returns the 16-bit one-complement sum of the words in the buffer.
+ */
+uint16_t
+enc28j60_read_memory_cont(uint8_t         *dst_addr,
+                          uint16_t         nbr_bytes);
 
 /* ------------------------------------------------------------------------- */
 
@@ -335,6 +353,15 @@ enc28j60_write_memory_at(enc28j60_addr_t  dst_addr,
 void
 enc28j60_write_memory_cont(const uint8_t   *src_addr,
                            uint16_t         nbr_bytes);
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Write a number of zero bytes to on-chip SRAM at a given address
+ */
+void
+enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
+                         uint16_t         nbr_bytes);
 
 /* ============================================================================
  * ENC28J60 SPI HELPERS (assembly macros)

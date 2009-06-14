@@ -40,6 +40,14 @@
 #define ETHERTYPE_ARP           (0x0806)
 
 /* -------------------------------------------------------------------------
+ * Broadcast an ARP announcement for the local IP address.
+ *
+ * A valid IP address must be set.
+ * ------------------------------------------------------------------------- */
+void
+arp_announce(void);
+
+/* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an ARP packet has been
  * received.
  *

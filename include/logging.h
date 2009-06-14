@@ -1,7 +1,7 @@
 /*
  * Module logging:
  *
- * Diagnostic output, line-by-line.
+ * BSD-style syslog support (RFC 3164)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -34,47 +34,42 @@
 #ifndef SPECCYBOOT_LOGGING_INCLUSION_GUARD
 #define SPECCYBOOT_LOGGING_INCLUSION_GUARD
 
-#include <stdint.h>
-
 /* -------------------------------------------------------------------------
- * String constants used by spectrum_print_at
  *
- * HEX16 refers to a little-endian 16-bit number stored in two consecutive
- * uint8_t's in the array. A big endian 16-bit number would be represented
- * as two HEX8_ARGs.
+ * Logging using log_info(), log_warning(), log_error(). Work like printf,
+ * but with special format specifiers:
+ *
+ * %x       native endian, 16 bits
+ * %b       8 bits
+ * %a       pointer to IP address (32 bits, network order)
+ * %s       pointer to NUL-terminated string
  * ------------------------------------------------------------------------- */
-#define HEX8_ARG         "\001"
-#define HEX8_ARG_CHAR    '\001'
-#define HEX16_ARG        "\002"
-#define HEX16_ARG_CHAR   '\002'
-#define DEC8_ARG         "\003"
-#define DEC8_ARG_CHAR    '\003'
-#define BOLD_ON          "\004"
-#define BOLD_ON_CHAR     '\004'
-#define BOLD_OFF         "\005"
-#define BOLD_OFF_CHAR    '\005'
 
-#ifdef VERBOSE_LOGGING
-/* -------------------------------------------------------------------------
- * Initialize logging: clear screen, show cursor
- * ------------------------------------------------------------------------- */
-void
-logging_init(void);
+#ifdef UDP_LOGGING_SERVER_IP_ADDRESS
+#define UDP_LOGGING
+#endif
 
-/* -------------------------------------------------------------------------
- * Scroll everything one line up, and add a new entry at the bottom.
- * Arguments work like spectrum_print_at().
- * ------------------------------------------------------------------------- */
+#ifdef UDP_LOGGING
+
+/*
+ * All log messages are labeled as 'kernel', so we can use the resulting
+ * character directly
+ */
+#define log_emergency(_tag, ...)          _log_udp_msg('0', _tag, __VA_ARGS__)
+#define log_error(_tag, ...)              _log_udp_msg('3', _tag, __VA_ARGS__)
+#define log_warning(_tag, ...)            _log_udp_msg('4', _tag, __VA_ARGS__)
+#define log_info(_tag, ...)               _log_udp_msg('6', _tag, __VA_ARGS__)
+
 void
-logging_add_entry(const char *msg, const uint8_t *args);
+_log_udp_msg(char severity, const char *tag, const char *fmt, ...);
 
 #else
-/* VERBOSE_LOGGING */
 
-#define logging_init()
-#define logging_add_entry(msg, args)    ((void) msg, args)
+#define log_emergency(...)
+#define log_error(...)
+#define log_warning(...)
+#define log_info(...)
 
 #endif
-/* VERBOSE_LOGGING */
 
 #endif /* SPECCYBOOT_LOGGING_INCLUSION_GUARD */

@@ -77,7 +77,9 @@ icmp_packet_received(const struct mac_address_t  *src_hwaddr,
                      IP_PROTOCOL_ICMP,
                      ETH_FRAME_OPTIONAL);
     ip_add_payload_to_packet(payload, nbr_bytes_in_payload);
-    
+
+#if 0
+    // FIXME
     /*
      * ICMP checksum
      */
@@ -86,6 +88,7 @@ icmp_packet_received(const struct mac_address_t  *src_hwaddr,
                              sizeof(struct ipv4_header_t)   // FIXME below
                                + 2/* offsetof(struct icmp_header_t, checksum)*/,
                              ETH_FRAME_OPTIONAL);
+#endif
     
     ip_send_packet(nbr_bytes_in_payload, ETH_FRAME_OPTIONAL);
   }

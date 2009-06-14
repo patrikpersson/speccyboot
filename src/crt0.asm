@@ -17,7 +17,7 @@
   ;; Set up interrupts, enter a sensible RESET state for the ENC28J60, delay
   ;; for 200ms (for 128k reset logic to settle)
   ;;
-  ;; The CPU stack is placed at 0x5BFF (255 bytes after video RAM). This should
+  ;; The CPU stack is placed at 0x5D00 (512 bytes after video RAM). This should
   ;; make stack overruns visible.
   ;; --------------------------------------------------------------------------  
   
@@ -28,7 +28,7 @@
   ld    a, #0x08          ;; CS high, RST low
   out   (0x9f), a
 
-  ld    sp, #0x5BFF
+  ld    sp, #0x5D00
   
   ld    a, #2
   out   (0xfe), a         ;; set border red during delay
@@ -39,8 +39,23 @@ reset_delay_loop::        ;; each loop iteration is 6+4+4+12 = 26 T-states
   ld    a, b
   or    c
   jr    nz, reset_delay_loop
+
+  ;; --------------------------------------------------------------------------  
+  ;; Paint the stack
+  ;; --------------------------------------------------------------------------  
+
+  ld    a, #4
+  out   (0xfe), a         ;; set border green while painting
+  ld    hl, #0x5B00
+  ld    de, #0x5B01
+  ld    bc, #0x01FF
+  ld    a, #0xAB
+  ld    (hl), a
+  ldir
   
-  jp    gsinit            ;; run static initalizers
+  ld    a, #1
+  out   (0xfe), a         ;; set border blue while running static initializers
+  jp    gsinit
 
   ;; --------------------------------------------------------------------------  
   ;; RST 0x30 ENTRYPOINT
@@ -126,6 +141,9 @@ timer_50hz_saturated::
 
   .area	_DATA
   .area _BSS
+  ;; this label allows us to check where the _DATA segment ends (by
+  ;; looking in speccyboot.sym)
+end_of_data::
   .area _HEAP
 
   .area _CODE

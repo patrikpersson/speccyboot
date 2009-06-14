@@ -12,8 +12,7 @@ ECHO        = @/bin/echo
 
 CFLAGS      = -mz80 --std-sdcc99 --Werror -I$(INCLUDEDIR) --opt-code-speed
 LDFLAGS     = -mz80 --out-fmt-ihx --no-std-crt0
-LDFLAGS    += --code-loc 0x0048 --code-size 0x3FB8 --data-loc 0x5C00
-LDFLAGS_RAM = $(LDFLAGS) --code-loc 0x8100 --data-loc 0xc000
+LDFLAGS    += --code-loc 0x0048 --code-size 0x3FB8 --data-loc 0x5D00
 
 # SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
 CFLAGS     += -Dbool=BOOL
@@ -29,7 +28,9 @@ SPLASH_XBM   = speccyboot.xbm
 SPLASH_C     = tmp-splash-image.c
 
 # Common modules (module = source + header)
-MODULES      = util z80_parser context_switch enc28j60_spi
+MODULES      = util z80_parser context_switch enc28j60_spi logging
+
+# -----------------------------------------------------------------------------
 
 # EMULATOR BUILD (uses a 128k .z80 image with 48k image embedded for testing)
 
@@ -39,13 +40,14 @@ else
 MODULES     += eth ip arp icmp udp dhcp tftp
 endif
 
-# DEBUG/LOGGING BUILD
-# (enable by 'make LOGGING=yes')
+# -----------------------------------------------------------------------------
 
-ifdef LOGGING
-CFLAGS		  += -DVERBOSE_LOGGING
-MODULES		  += logging
-endif
+# UDP logging (BSD syslog style): to enable, uncomment this line & configure to
+# match your system. View from syslog or from a console using 'nc -lu 514'.
+
+CFLAGS += -DUDP_LOGGING_SERVER_IP_ADDRESS=0x0102A8C0
+
+# -----------------------------------------------------------------------------
 
 OTHER_HFILES = platform.h speccyboot.h
 OTHER_CFILES = main.c $(SPLASH_C)

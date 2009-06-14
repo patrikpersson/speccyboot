@@ -31,12 +31,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stddef.h>
-
 #include "eth.h"
 #include "arp.h"
 #include "ip.h"
-
 #include "logging.h"
 
 /* ========================================================================= */
@@ -73,18 +70,37 @@ PACKED_STRUCT(arp_ip_ethernet_t) {
   ipv4_address_t       tpa;
 };
 
-/*
- * Header data for IP-to-Ethernet ARP replies
- */
-static const struct arp_header_t arp_ip_ethernet_reply_header = {
-  htons(ETH_HWTYPE),
-  htons(ETHERTYPE_IP),
-  sizeof(struct mac_address_t),
-  sizeof(ipv4_address_t),
-  htons(ARP_OPER_REPLY)
-};
-
 /* ========================================================================= */
+
+void
+arp_announce(void)
+{
+  static const struct arp_header_t arp_ip_ethernet_announce_header = {
+    /* Header data for IP-to-Ethernet ARP announcements (using ARP REQUEST) */
+    htons(ETH_HWTYPE),
+    htons(ETHERTYPE_IP),
+    sizeof(struct mac_address_t),
+    sizeof(ipv4_address_t),
+    htons(ARP_OPER_REQUEST)
+  };
+
+  eth_create_frame(&eth_broadcast_address, ETHERTYPE_ARP, ETH_FRAME_OPTIONAL);
+  
+  eth_add_payload_to_frame(&arp_ip_ethernet_announce_header,
+                           sizeof(struct arp_header_t));
+  eth_add_payload_to_frame(eth_local_address.addr,
+                           sizeof(struct mac_address_t));
+  eth_add_payload_to_frame(&ip_config.host_address,
+                           sizeof(ipv4_address_t));
+  eth_add_payload_to_frame(&eth_broadcast_address,
+                           sizeof(struct mac_address_t));
+  eth_add_payload_to_frame(&ip_config.host_address,
+                           sizeof(ipv4_address_t));
+  
+  eth_send_frame(sizeof(struct arp_ip_ethernet_t), ETH_FRAME_OPTIONAL);
+}
+
+/* ------------------------------------------------------------------------- */
 
 void
 arp_frame_received(const struct mac_address_t *src,
@@ -93,24 +109,34 @@ arp_frame_received(const struct mac_address_t *src,
 {
   const struct arp_ip_ethernet_t *arp_packet
     = (const struct arp_ip_ethernet_t *) payload;
-
+  
   /*
    * Check that the ARP packet concerns the right protocols
-   * (IP-to-Ethernet mapping)
+   * (IP-to-Ethernet mapping), that it is an ARP request, and that it is for
+   * this host
    */
-  if (       (nbr_bytes_in_payload <  sizeof(struct arp_ip_ethernet_t))
-      || (arp_packet->header.htype != htons(ETH_HWTYPE))
-      || (arp_packet->header.ptype != htons(ETHERTYPE_IP))
-      ||  (arp_packet->header.hlen != sizeof(struct mac_address_t))
-      ||  (arp_packet->header.plen != sizeof(ipv4_address_t)))
+  if (       (nbr_bytes_in_payload >=  sizeof(struct arp_ip_ethernet_t))
+      &&  (arp_packet->header.oper == htons(ARP_OPER_REQUEST))
+      && (arp_packet->header.ptype == htons(ETHERTYPE_IP))
+      && (ip_valid_address())
+      &&          (arp_packet->tpa == ip_config.host_address)
+      && (arp_packet->header.htype == htons(ETH_HWTYPE))
+      &&  (arp_packet->header.hlen == sizeof(struct mac_address_t))
+      &&  (arp_packet->header.plen == sizeof(ipv4_address_t)))
   {
-    return;
-  }
+    static const struct arp_header_t arp_ip_ethernet_reply_header = {
+      /* Header data for IP-to-Ethernet ARP replies */
+      htons(ETH_HWTYPE),
+      htons(ETHERTYPE_IP),
+      sizeof(struct mac_address_t),
+      sizeof(ipv4_address_t),
+      htons(ARP_OPER_REPLY)
+    };
 
-  if ( (ip_valid_address())
-      &&         (arp_packet->tpa == ip_config.host_address)
-      && (arp_packet->header.oper == htons(ARP_OPER_REQUEST)))
-  {
+    log_info("ARP", "REQUEST for %a from %a",
+             &arp_packet->tpa,
+             &arp_packet->spa);
+
     eth_create_frame(src, ETHERTYPE_ARP, ETH_FRAME_OPTIONAL);
     
     eth_add_payload_to_frame(&arp_ip_ethernet_reply_header,

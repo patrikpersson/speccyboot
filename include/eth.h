@@ -37,6 +37,7 @@
 #include <stdbool.h>
 
 #include "speccyboot.h"
+#include "enc28j60_spi.h"
 
 /* ========================================================================= */
 
@@ -140,37 +141,9 @@ eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
                enum eth_frame_class_t  frame_class);
 
 /* -------------------------------------------------------------------------
- * Compute an IP-style checksum (one's complement of one's complement 16-bit
- * sum) of a range within a frame about to be transmitted. The checksum
- * field (denoted by 'checksum_offset') must be set to 0 (zero) before this
- * call.
- *
- * The reason for doing this here, rather than ip.c, is that the ENC28J60
- * DMA hardware supports hardware-accelerated checksum computation.
- *
- * start_offset:                  offset within frame payload of
- *                                checksummed area
- * number_of_bytes_to_checksum:   length of checksummed area
- * checksum_offset:               offset within frame payload of
- *                                checksum value
- * frame_class:                   MUST be the same as used for
- *                                eth_create_frame(), or Bad Things will
- *                                happen
- *
- * NOTE: Offsets are within the frame _payload_ -- excluding Ethernet header.
- * NOTE: This call modifies the internal write pointer, so any calls to
- *       eth_add_payload_to_frame() will make Bad Things happen. That is,
- *       call after eth_add_payload_to_frame(), before eth_send_frame().
- * ------------------------------------------------------------------------- */
-void
-eth_outgoing_ip_checksum(uint16_t                start_offset,
-                         uint16_t                number_of_bytes_to_checksum,
-                         uint16_t                checksum_offset,
-                         enum eth_frame_class_t  frame_class);
-
-/* -------------------------------------------------------------------------
  * Reset re-transmission timer. If this is not called, the last frame
- * created with 'retransmit_on_timeout' set will be re-transmitted.
+ * created with 'retransmit_on_timeout' set will be re-transmitted when the
+ * timer expires.
  * ------------------------------------------------------------------------- */
 void
 eth_reset_retransmission_timer(void);

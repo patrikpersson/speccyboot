@@ -39,7 +39,6 @@
 
 #include "dhcp.h"
 #include "tftp.h"
-
 #include "logging.h"
 
 /* ------------------------------------------------------------------------- */
@@ -57,7 +56,7 @@
 static void
 netboot_do(void)
 {
-  logging_init();
+  /*log_info("network boot started, x=%x", 0x1234);*/
   
 #if EMULATOR_TEST
   tftp_read_request(NULL);

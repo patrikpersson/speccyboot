@@ -34,6 +34,7 @@
 #include <stddef.h>
 
 #include "udp.h"
+#include "arp.h"
 #include "dhcp.h"
 
 #include "logging.h"
@@ -221,11 +222,13 @@ dhcp_init(void)
                     &generic_broadcast_address,
                     htons(UDP_PORT_DHCP_CLIENT),
                     htons(UDP_PORT_DHCP_SERVER),
-                    SIZEOF_DHCP_DISCOVER);
+                    SIZEOF_DHCP_DISCOVER,
+                    ETH_FRAME_PRIORITY);
   udp_add_payload_to_packet(dhcp_header);
   udp_add_payload_to_packet(dhcp_discover_options);
   udp_add_payload_to_packet(dhcp_common_options);
-  udp_send_packet(SIZEOF_DHCP_DISCOVER);
+  udp_send_packet(SIZEOF_DHCP_DISCOVER,
+                  ETH_FRAME_PRIORITY);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -244,7 +247,7 @@ dhcp_packet_received(const ipv4_address_t        *src,
       || ((dhcp_state == STATE_REQUESTING)
              && (*src != dhcp_server_address)))
   {
-    logging_add_entry("DHCP: ignoring packet", NULL);
+    log_info("DHCP", "ignoring packet");
     return;
   }
   
@@ -282,8 +285,6 @@ dhcp_packet_received(const ipv4_address_t        *src,
       options += option_length;
     }
     
-    // logging_add_entry("DHCP: got message " DEC8_ARG, &msg_type);
-    
     switch (msg_type) {
       case DHCPACK:
         if (dhcp_state != STATE_REQUESTING)  break;
@@ -299,6 +300,8 @@ dhcp_packet_received(const ipv4_address_t        *src,
         ip_config.broadcast_address = broadcast_address;
         dhcp_state = STATE_BOUND;
         
+        arp_announce();
+        
         eth_reset_retransmission_timer();   /* Don't ask for more ACKs */
         
         NOTIFY_DHCP_STATE(dhcp_state);
@@ -308,34 +311,28 @@ dhcp_packet_received(const ipv4_address_t        *src,
       case DHCPOFFER:
         dhcp_server_address = *src;
         dhcp_state          = STATE_REQUESTING;
-
+        
         NOTIFY_DHCP_STATE(dhcp_state);
-
-        /*logging_add_entry("DHCP: offer for "
-                          DEC8_ARG "." DEC8_ARG "." DEC8_ARG "." DEC8_ARG,
-                          (uint8_t *) &packet->yiaddr);*/
         
         udp_create_packet(&eth_broadcast_address,
                           &generic_broadcast_address,
                           htons(UDP_PORT_DHCP_CLIENT),
                           htons(UDP_PORT_DHCP_SERVER),
-                          SIZEOF_DHCP_REQUEST);
+                          SIZEOF_DHCP_REQUEST,
+                          ETH_FRAME_PRIORITY);
         udp_add_payload_to_packet(dhcp_header);
         udp_add_payload_to_packet(dhcp_request_options_ipaddr);
         udp_add_payload_to_packet(packet->yiaddr);
         udp_add_payload_to_packet(dhcp_request_options_server);
         udp_add_payload_to_packet(dhcp_server_address);
         udp_add_payload_to_packet(dhcp_common_options);
-        udp_send_packet(SIZEOF_DHCP_REQUEST);
+        udp_send_packet(SIZEOF_DHCP_REQUEST,
+                        ETH_FRAME_PRIORITY);
         
         break;
         
       default:
-        logging_add_entry("DHCP: unexpected msgtype", NULL);
         break;
     }
-  }
-  else {
-    logging_add_entry("DHCP: unexpected opcode", NULL);
   }
 }

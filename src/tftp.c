@@ -66,6 +66,11 @@
  */
 #define TFTP_SIZE_OF_ACK          (4)
 
+/*
+ * Error message in a TFTP ERROR packet
+ */
+#define TFTP_ERROR_MESSAGE        "DATA blocks out of sequence"
+
 /* =========================================================================
  * TFTP packets
  * ========================================================================= */
@@ -79,7 +84,7 @@ PACKED_STRUCT(tftp_data_packet_t) {
 PACKED_STRUCT(tftp_error_packet_t) {
   uint16_t        opcode;                   /* opcode == TFTP_OPCODE_ERROR */
   uint16_t        error_code;               /* TFTP_ERROR_ILLEGAL */
-  char            error_msg_nul;            /* NUL -- no error message  */
+  char            msg[sizeof(TFTP_ERROR_MESSAGE)];
 };
 
 /*
@@ -98,7 +103,7 @@ union tftp_packet_t {
 static const struct tftp_error_packet_t tftp_error_packet = {
   htons(TFTP_OPCODE_ERROR),
   htons(TFTP_ERROR_ILLEGAL),
-  '\000'
+  TFTP_ERROR_MESSAGE
 };
 
 /* =========================================================================
@@ -110,8 +115,8 @@ static uint16_t expected_tftp_block_no = 1;
 /* ------------------------------------------------------------------------- */
 
 /*
- * Returns a pseudo-random value in the range 0x8000..0xFFFF, as a
- * network-endian 16-bit number.
+ * Returns a pseudo-random value in the range 0xC000..0xFFFF, in network
+ * order, to use as a ephemeral port for TFTP.
  */
 static uint16_t
 tftp_select_port(void)
@@ -119,12 +124,13 @@ __naked
 {
   __asm
 
-    ;; Set HL to the return value
+    ;; Set HL to the return value. Since we swap bytes, L is the most
+    ;; significant byte.
   
     ld  a, r
-    or  #0x80     ;; bit 7 is not random anyway
-    ld  l, a
     ld  h, a
+    or  #0xC0     ;; bit 7 is not random anyway
+    ld  l, a
     ret
   
   __endasm;
@@ -139,11 +145,11 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
                      const union tftp_packet_t   *packet,
                      uint16_t                     nbr_bytes_in_packet)
 {
-  static const uint16_t ack_opcode = htons(TFTP_OPCODE_ACK);
   bool data_is_fresh = true;
   
   if (packet->opcode == ntohs(TFTP_OPCODE_DATA)) {
     if (packet->data.block_no != htons(expected_tftp_block_no)) {
+      
       if (ntohs(packet->data.block_no) == (expected_tftp_block_no - 1)) {
         /*
          * Special case: DATA packet with the previous block ID. Seems our ACK
@@ -159,9 +165,11 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
                           src,
                           udp_get_tftp_port(),
                           src_port_nw_order,
-                          sizeof(tftp_error_packet));
+                          sizeof(tftp_error_packet),
+                          ETH_FRAME_OPTIONAL);
         udp_add_payload_to_packet(tftp_error_packet);
-        udp_send_packet(sizeof(tftp_error_packet));
+        udp_send_packet(sizeof(tftp_error_packet),
+                        ETH_FRAME_OPTIONAL);
         
         return;
       }
@@ -174,26 +182,30 @@ tftp_packet_received(const struct mac_address_t  *src_hwaddr,
       uint16_t nbr_bytes_data 
       = nbr_bytes_in_packet - offsetof(struct tftp_data_packet_t, data);
       bool more_data = (nbr_bytes_data == TFTP_DATA_MAXSIZE);
-      
       if (data_is_fresh) {
         NOTIFY_TFTP_DATA(packet->data.data, nbr_bytes_data, more_data);
         
         expected_tftp_block_no ++;
       }
-      
-      /*
-       * Acknowledge the packet. TODO: to this before consumption above (to
-       * save a few milliseconds). Currently, moving the acknowledgment this
-       * way results in corrupted ACK packets.
-       */
+    }
+    
+    /*
+     * Acknowledge the packet. TODO: do this before consumption above (to
+     * save a few milliseconds). Currently, moving the acknowledgment this
+     * way results in corrupted ACK packets (for some reason).
+     */
+    {
+      static const uint16_t ack_opcode = htons(TFTP_OPCODE_ACK);
       udp_create_packet(src_hwaddr,
                         src,
                         udp_get_tftp_port(),
                         src_port_nw_order,
-                        TFTP_SIZE_OF_ACK);
+                        TFTP_SIZE_OF_ACK,
+                        ETH_FRAME_PRIORITY);
       udp_add_payload_to_packet(ack_opcode);
       udp_add_payload_to_packet(packet->data.block_no);
-      udp_send_packet(TFTP_SIZE_OF_ACK);
+      udp_send_packet(TFTP_SIZE_OF_ACK,
+                      ETH_FRAME_PRIORITY);
     }
   }
 }
@@ -221,9 +233,11 @@ tftp_read_request(const char *filename)
                     &ip_config.broadcast_address,
                     udp_get_tftp_port(),
                     htons(UDP_PORT_TFTP_SERVER),
-                    total_len);
+                    total_len,
+                    ETH_FRAME_PRIORITY);
   udp_add_payload_to_packet(rrq_opcode);
   udp_add_variable_payload_to_packet(filename, filename_len);
   udp_add_payload_to_packet(rrq_option);
-  udp_send_packet(total_len);
+  udp_send_packet(total_len,
+                  ETH_FRAME_PRIORITY);
 }
