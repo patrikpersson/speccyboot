@@ -39,7 +39,6 @@
 #include "util.h"
 #include "eth.h"
 
-#include "platform.h"
 #include "syslog.h"
 
 #include "rxbuffer.h"

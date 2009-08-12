@@ -87,7 +87,7 @@ all: bin
 bin: $(EXE) $(WAV)
 
 clean:
-	rm -rf $(OBJDIR) $(AUTOGENDIR) $(EXE) $(WAV)
+	rm -rf $(OBJDIR) $(EXE) $(WAV)
 
 .SUFFIXES:
 

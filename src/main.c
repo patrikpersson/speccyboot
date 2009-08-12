@@ -33,7 +33,6 @@
 
 #include <stddef.h>
 
-#include "platform.h"
 #include "util.h"
 #include "z80_parser.h"
 
