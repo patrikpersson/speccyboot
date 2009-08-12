@@ -68,7 +68,7 @@ WAV          = $(EXE:.rom=.wav)
 
 SRCDIR       = src
 INCLUDEDIR   = include
-TOOLSDIR     = utils/build
+TOOLSDIR     = ../utils/build
 OBJDIR       = obj
 
 VPATH        = $(OBJDIR)
