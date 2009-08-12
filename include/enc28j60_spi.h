@@ -271,6 +271,15 @@ enc28j60_internal_write8plus8(uint8_t opcode,
 /* ------------------------------------------------------------------------- */
 
 /*
+ * Writes the lower 8 bits of 'new_value' to 'register_descr', then writes
+ * the higher 8 bits of 'new_value' to the successor of 'register_descr'.
+ */
+void
+enc28j60_write_register16(uint16_t register_descr, uint16_t new_value);
+
+/* ------------------------------------------------------------------------- */
+
+/*
  * Return value of indicated ETH/MAC/MII register
  */
 uint8_t
@@ -309,31 +318,31 @@ enc28j60_poll_register(uint16_t register_descr,
  *
  * If the flag is not set within a few seconds, fatal_error() is called.
  */
-#define enc28j60_poll_until_set(reg, flag)                                  \
+#define enc28j60_poll_until_set(reg, flag)                                    \
   enc28j60_poll_register((reg), (flag), (flag))
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Read a number of bytes from a given address in on-chip SRAM.
- *
- * Returns the 16-bit one-complement sum of the words in the buffer.
- */
-uint16_t
-enc28j60_read_memory_at(uint8_t         *dst_addr,
-                        enc28j60_addr_t  src_addr,
-                        uint16_t         nbr_bytes);
 
 /* ------------------------------------------------------------------------- */
 
 /*
  * Read a number of bytes from on-chip SRAM, continuing from previous read.
  *
- * Returns the 16-bit one-complement sum of the words in the buffer.
+ * Returns the 16-bit one-complement sum of the words in the buffer, using
+ * checksum_in as the initial value.
  */
 uint16_t
 enc28j60_read_memory_cont(uint8_t         *dst_addr,
-                          uint16_t         nbr_bytes);
+                          uint16_t         nbr_bytes,
+                          uint16_t         checksum_in);
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Read a number of bytes from a given address in on-chip SRAM.
+ */
+#define enc28j60_read_memory_at(_dst, _src, _n)  {                            \
+  enc28j60_write_register(ERDPTH, HIBYTE(_src));                              \
+  enc28j60_write_register(ERDPTL, LOBYTE(_src));                              \
+  enc28j60_read_memory_cont((_dst), (_n), 0);    }
 
 /* ------------------------------------------------------------------------- */
 
@@ -353,6 +362,15 @@ enc28j60_write_memory_at(enc28j60_addr_t  dst_addr,
 void
 enc28j60_write_memory_cont(const uint8_t   *src_addr,
                            uint16_t         nbr_bytes);
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Write 2 network-order (i.e., swapped) bytes to on-chip SRAM, continuing
+ * after previous write
+ */
+void
+enc28j60_write_nwu16_cont(uint16_t nw_order_value);
 
 /* ------------------------------------------------------------------------- */
 

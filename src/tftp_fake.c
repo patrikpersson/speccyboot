@@ -52,12 +52,6 @@
 
 static uint8_t fake_tftp_block_buf[BLOCK_SIZE];
 
-/*
- * This thing is referenced (and increased) by crt0.asm. Normally lives in
- * eth.c, just here to avoid link errors.
- */
-uint8_t timer_tick_count;
-
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -111,17 +105,76 @@ tftp_read_request(const char *filename)
 {
   static const uint8_t pages_with_image[] = {3, 4, 6, 7};
   uint8_t i;
+  bool is_snapshot = false;   /* true for snapshot, false for snapshot list */
   
-  (void) filename;        /* ignored argument */
-  
-  for (i = 0; i < sizeof(pages_with_image); i++) {
-    uint8_t page = pages_with_image[i];
-    uint8_t j;
-    for (j = 0; j < BLOCKS_PER_PAGE; j++) {
-      transfer_block(page, ADDR_OF_BLOCK(j));
-      NOTIFY_TFTP_DATA(fake_tftp_block_buf, BLOCK_SIZE, true);
-    }
+  {
+    char p;
+    while (p = *filename++) {
+      if (p == '.') {
+        is_snapshot = (*filename == 'z');   /* crude */
+        break;
+      }
+    };
   }
   
-  fatal_error(FATAL_ERROR_END_OF_DATA);
+  if (is_snapshot) {
+    for (i = 0; i < sizeof(pages_with_image); i++) {
+      uint8_t page = pages_with_image[i];
+      uint8_t j;
+      for (j = 0; j < BLOCKS_PER_PAGE; j++) {
+        transfer_block(page, ADDR_OF_BLOCK(j));
+        NOTIFY_TFTP_DATA(fake_tftp_block_buf, BLOCK_SIZE, true);
+      }
+    }
+    
+    fatal_error("unexpected end of data");
+  }
+  else {
+    static const char fake_menu_pt1[]  = 
+    "A001.z80\n"
+    "A002.z80\n"
+    "A003.z80\n"
+    "A004.z80\n"
+    "A005.z80\n"
+    "Arkanoid.z80\n"
+    "B001.z80\n"
+    "B002.z80\n"
+    "B003.z80\n"
+    "B004.z80\n"
+    "B005.z80\n"
+    "Bomb Jack.z80\n"
+    "Bubble Bobble.z80\n"
+    "C001.z80\n"
+    "C002.z80\n"
+    "C003.z80\n"
+    "C004.z80\n"
+    "C005.z80\n"
+    "Carrier Command.z80\n"
+    "Chuckie Egg.z80\n"
+    "Dan Dare.z80\n";
+    static const char fake_menu_pt2[]  = 
+    "Dynamite Dan.z80\n"
+    "Enduro Racer.z80\n"
+    "Fighter Pilot.z80\n"
+    "Flight Simulation.z80\n"
+    "Frankie Goes To Hollywood.z80\n"
+    "Gauntlet.z80\n"
+    "Gunship.z80\n"
+    "Jet Set Willy.z80\n"
+    "Manic Miner.z80\n"
+    "Paperboy.z80\n"
+    "Pssst.z80\n"
+    "Saboteur.z80\n"
+    "Short Circuit - 48k.z80\n"
+    "Silent Service.z80\n"
+    "Strike Force Harrier.z80\n"
+    "Tetris.z80\n"
+    "Thanatos.z80\n"
+    "The Great Escape.z80\n"
+    "Wizball.z80\n"
+    "Yie Ar Kung Fu.z80\n"
+;
+    NOTIFY_TFTP_DATA(fake_menu_pt1, sizeof(fake_menu_pt1), true);
+    NOTIFY_TFTP_DATA(fake_menu_pt2, sizeof(fake_menu_pt2), false);
+  }
 }

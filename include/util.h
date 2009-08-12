@@ -1,7 +1,8 @@
 /*
  * Module util:
  *
- * Access to ZX Spectrum features (screen, keyboard, joystick, ...)
+ * Miscellaneous utility functions, including access to ZX Spectrum features
+ * (screen, keyboard, sound, ...)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -35,25 +36,79 @@
 #define SPECCYBOOT_UTIL_INCLUSION_GUARD
 
 #include <stdint.h>
+#include <stddef.h>
+
+#include "syslog.h"
 
 /* -------------------------------------------------------------------------
- * Error messages (passed to fatal_error())
+ * MAC address
  * ------------------------------------------------------------------------- */
 
-#define FATAL_ERROR_INTERNAL        (0)
-#define FATAL_ERROR_TX_FAIL         (1)
-#define FATAL_ERROR_SPI_POLL_FAIL   (2)
-#define FATAL_ERROR_RX_PTR_FAIL     (3)
-#define FATAL_ERROR_INCOMPATIBLE    (4)
-#define FATAL_ERROR_END_OF_DATA     (5)
+#ifndef MAC_ADDR_0
+
+/*
+ * These definitions can be overridden by passing new ones from Makefile
+ * using -DMAC_ADDR_x=y
+ *
+ * (you need to do this to have more than one SpeccyBoot on the same LAN)
+ *
+ * NOTE: this is an LAA (Locally Administered Address), as signified by
+ * bit 1 in MAC_ADDR_0.
+ */
+
+#define MAC_ADDR_0    (0xba)
+#define MAC_ADDR_1    (0xdb)
+#define MAC_ADDR_2    (0xad)
+#define MAC_ADDR_3    (0xc0)
+#define MAC_ADDR_4    (0xff)
+#define MAC_ADDR_5    (0xee)
+
+#endif
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Byteswapping/masking helpers
+ */
+#define HIBYTE(x)       (((uint16_t) (x)) >> 8)
+#define LOBYTE(x)       (((uint16_t) (x)) & 0x00ffu)
+
+#define BYTESWAP16(x)   (LOBYTE(x) * 0x0100 + HIBYTE(x))
+#define htons(n)        BYTESWAP16(n)
+#define ntohs           htons
+
+#define BITS0TO7(x)     LOBYTE(x)
+#define BITS8TO15(x)    (((x) >> 8) & 0x00ffu)
+#define BITS16TO23(x)   (((x) >> 16) & 0x00ffu)
+#define BITS24TO31(x)   (((x) >> 24) & 0x00ffu)
+
+#define BYTESWAP32(x)   (  BITS0TO7(x)   * 0x01000000u                        \
++ BITS8TO15(x)  * 0x00010000u                        \
++ BITS16TO23(x) * 0x00000100u                        \
++ BITS24TO31(x) )
+
+#define htonl(n)        BYTESWAP32(n)
+#define ntohl           htonl
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Packed structs
+ */
+
+#ifdef SDCC
+/* SDCC packs structs by default */
+#define PACKED_STRUCT(name)  struct name
+#else
+#error Need to configure packed structs for compiler!
+#endif
 
 /* -------------------------------------------------------------------------
- * Address of a constant copy of the given character
- * (since we need a table of all 256 byte values for the context switch,
- * we can reuse that for obtaining pointers to arbitrary characters)
+ * Interrupt control
  * ------------------------------------------------------------------------- */
 
-#define ADDRESS_OF_CHAR(_c)         (0x3e00 + (_c))
+#define DISABLE_INTERRUPTS      __asm  di  _endasm
+#define ENABLE_INTERRUPTS       __asm  ei  _endasm
 
 /* -------------------------------------------------------------------------
  * Spectrum attributes
@@ -78,32 +133,72 @@
 
 /* ------------------------------------------------------------------------- */
 
+#define BITMAP_BASE     (0x4000)
+#define BITMAP_SIZE     (0x1800)
+#define ATTRS_BASE      ((BITMAP_BASE) + (BITMAP_SIZE))
+#define ATTRS_SIZE      (0x300)
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Offset of a pixel byte in the Spectrum's video memory, as a function of
+ * the index (as it would be represented in a 'normal' linear framebuffer)
+ */
+#define PIXEL_ADDRESS(idx)                                                    \
+( (((idx) & 0x00E0) << 3) + (HIBYTE(idx) << 5) + ((idx) & 0x001f) )
+
+#define CELL_ADDRESS(_r, _c)                                                \
+  (0x4000 + ((((uint16_t) _r) & 0x07) << 5) + ((((uint16_t) _r) & 0x18) << 8) + (_c))
+
+#define FONTDATA_ADDRESS(_ch)                                                 \
+  (0x6F00 + (((uint16_t) (_ch)) << 3))
+
+/* ------------------------------------------------------------------------- */
+
+typedef char key_t;
+
+#define KEY_NONE                0
+#define KEY_ENTER               13
+#define KEY_UP                  '7'
+#define KEY_DOWN                '6'
+
+/* ------------------------------------------------------------------------- */
+
+#ifdef CHECK_STACK
 #define check_stack()                                                         \
 {                                                                             \
   uint16_t stack_remaining = 0;                                               \
   const uint8_t *stack_low = (const uint8_t *) 0x5B00;                        \
-  while (stack_low[stack_remaining++] == 0xAB)                                \
-    ;                                                                         \
-  log_info("STACK_CHK", "0x%x bytes remain", stack_remaining);                \
+  while (stack_low[stack_remaining++] == 0xA8)          ;                     \
+  syslog("STK", "0x%b left", stack_remaining);                        \
 }
+#else
+#define check_stack()
+#endif
+
+/* ------------------------------------------------------------------------- */
+
+#define TICKS_PER_SECOND                (50)
+
+/*
+ * Type of a timer value
+ */
+typedef uint16_t timer_t;
 
 /* -------------------------------------------------------------------------
- * A simple zero value -- useful for passing pointers to zero
- * ------------------------------------------------------------------------- */
-
-extern const uint16_t zero_u16;
-
-/* -------------------------------------------------------------------------
- * Display splash screen
+ * Clear screen and set all attributes to INK 0, PAPER 0.
+ *
+ * Defined in crt0.asm.
  * ------------------------------------------------------------------------- */
 void
-display_splash(void);
+cls(void);
 
 /* -------------------------------------------------------------------------
  * Page the indicated page to bank at 0xc000
  * ------------------------------------------------------------------------- */
-void
-select_bank(uint8_t bank_id);
+#define select_bank(_bank_id)   _bank_selection = (_bank_id)
+
+sfr banked at(0x7FFD) _bank_selection;
 
 /* ------------------------------------------------------------------------- *
  * Set attributes for n elements, starting at (row, col). If (col+n) extends
@@ -114,31 +209,117 @@ void
 set_attrs(uint8_t screen_attrs,
           uint8_t row,
           uint8_t col,
-          uint16_t n);
+          uint8_t n);
 
 /* ------------------------------------------------------------------------- *
- * Display number (in range 0..99) as two decimal digits in full-screen
+ * Set a single attribute byte
+ * ------------------------------------------------------------------------- */
+#define set_attr_byte(_attrs, _row, _col)                                     \
+  *((uint8_t *) (ATTRS_BASE + ((_row) << 5) + (_col))) = (_attrs)
+
+/* ------------------------------------------------------------------------- *
+ * Display progress as kilobyte digits and a progress bar
  * ------------------------------------------------------------------------- */
 void
-display_digits(uint8_t value);
+display_progress(uint8_t kilobytes_loaded, uint8_t kilobytes_expected);
 
 /* ------------------------------------------------------------------------- *
  * Set border attributes
  * ------------------------------------------------------------------------- */
+sfr at(0xfe) _ula_port;
+
+#define set_border(_clr)      _ula_port = (_clr) & 0x07
+
+/* -------------------------------------------------------------------------
+ * Load font data into RAM
+ * ------------------------------------------------------------------------- */
 void
-set_border(uint8_t border_attrs);
+load_font_data(void);
+
+/* -------------------------------------------------------------------------
+ * Display NUL-terminated string at given coordinates, in 8x8 font.
+ * ------------------------------------------------------------------------- */
+void
+print_at(uint8_t line, uint8_t column, const char *s);
+
+/* -------------------------------------------------------------------------
+ * Display single char at given coordinates, in 8x8 font
+ * ------------------------------------------------------------------------- */
+void
+print_char_at(uint8_t row, uint8_t column, char c);
+
+/* -------------------------------------------------------------------------
+ * Display 8x8 pattern at given location
+ * ------------------------------------------------------------------------- */
+void
+print_pattern_at(uint8_t row, uint8_t col, const uint8_t *pattern);
+
+/* -------------------------------------------------------------------------
+ * Display 8x8 pattern at given location
+ * ------------------------------------------------------------------------- */
+void
+print_pattern_with_attrs_at(uint8_t attrs,
+                            uint8_t row,
+                            uint8_t col,
+                            const uint8_t *pattern);
+
+/* -------------------------------------------------------------------------
+ * Poll keyboard: return currently pressed key, or KEY_NONE
+ *
+ * Defined in crt0.asm
+ * ------------------------------------------------------------------------- */
+key_t
+poll_key(void);
+
+/* -------------------------------------------------------------------------
+ * Wait for keypress. Handles repeat events.
+ * ------------------------------------------------------------------------- */
+key_t
+wait_key(void);
+
+/* -------------------------------------------------------------------------
+ * Make a short sound, for a key click. This function will paint the border
+ * black, regardless of its previous state.
+ *
+ * Defined in crt0.asm
+ * ------------------------------------------------------------------------- */
+void
+key_click(void);
+
+/* -------------------------------------------------------------------------
+ * Reset/initialize a timer (set it to zero)
+ * ------------------------------------------------------------------------- */
+#define timer_reset(_tmr)                                                     \
+  DISABLE_INTERRUPTS;                                                         \
+  (_tmr) = timer_tick_count;                                                  \
+  ENABLE_INTERRUPTS
+
+extern volatile timer_t timer_tick_count;
+
+/* -------------------------------------------------------------------------
+ * Returns the value of the given timer, in ticks since it was reset
+ * ------------------------------------------------------------------------- */
+timer_t
+timer_value(timer_t timer);
+
+/* -------------------------------------------------------------------------
+ * Wait for the next tick (vertical sync interrupt)
+ * ------------------------------------------------------------------------- */
+#define wait_for_tick()    __asm halt __endasm
 
 /* ------------------------------------------------------------------------- *
- * Set attributes of entire screen
+ * Returns a pseudo-random byte value in the range 0..31. Taken from the R
+ * register + a MAC address-dependent value.
  * ------------------------------------------------------------------------- */
-#define set_screen_attrs(_ATTRS)  set_attrs(_ATTRS, 0, 0, 0x300)
+uint8_t
+rand5bits(void) __naked;
 
 /* ------------------------------------------------------------------------- *
  * Signal a fatal error message. Terminate all network activity, display
  * the message, and wait for the user to reset the machine.
  * ------------------------------------------------------------------------- */
 void
-fatal_error(uint8_t error_code);
+fatal_error(const char *message);
 
 #endif /* SPECCYBOOT_UTIL_INCLUSION_GUARD */
 

@@ -33,12 +33,15 @@
 
 #include <stddef.h>
 
+#include "rxbuffer.h"
+
 #include "eth.h"
 #include "ip.h"
 #include "udp.h"
 #include "icmp.h"
+#include "context_switch.h"
 
-#include "logging.h"
+#include "syslog.h"
 
 #include "eth.h"
 
@@ -48,6 +51,11 @@ struct ip_config_t ip_config = {
   IP_DEFAULT_HOST_ADDRESS,
   IP_DEFAULT_BCAST_ADDRESS
 };
+
+/* ------------------------------------------------------------------------- */
+
+static uint16_t                     current_packet_length;
+static enum eth_frame_class_t       current_frame_class;
 
 /* ------------------------------------------------------------------------- */
 
@@ -67,39 +75,6 @@ static struct ipv4_header_t header_template = {
 
 /* ------------------------------------------------------------------------- */
 
-static bool
-ip_header_checksum(const struct ipv4_header_t *header,
-                   uint16_t                    header_size)
-{
-  uint16_t option_size = header_size - sizeof(struct ipv4_header_t);
-  ip_checksum_state_t checksum = 0;
-
-  ip_checksum_add(checksum, header, offsetof(struct ipv4_header_t, checksum));
-  ip_checksum_add(checksum,
-                  &(header->src_addr),
-                  2 * sizeof(ipv4_address_t));  /* src + dst */
-  if (option_size != 0) {
-    ip_checksum_add(checksum,
-                    ((const uint8_t *) header) + sizeof(struct ipv4_header_t),
-                    option_size);
-  }
-  
-  if (ip_checksum_value(checksum) != header->checksum) {
-    log_warning("IP",
-                "checksum mismatch in frame 0x%x "
-                "(received 0x%x, computed 0x%x), packet dropped",
-                header->identification,
-                header->checksum,
-                ip_checksum_value(checksum));
-    
-    return false;
-  }
-  
-  return true;
-}
-
-/* ------------------------------------------------------------------------- */
-
 void
 ip_create_packet(const struct mac_address_t  *dst_hwaddr,
                  const ipv4_address_t        *dst,
@@ -107,13 +82,16 @@ ip_create_packet(const struct mac_address_t  *dst_hwaddr,
                  uint8_t                      protocol,
                  enum eth_frame_class_t       frame_class)
 {
-  ip_checksum_state_t checksum = 0;
+  uint16_t checksum = 0;
+
+  current_packet_length          = total_length + sizeof(struct ipv4_header_t);
+  current_frame_class            = frame_class;
 
   /*
    * Modify the header template, and write it to the ENC28J60
    */
-  header_template.total_length   = htons(total_length
-                                   + sizeof(struct ipv4_header_t));
+  
+  header_template.total_length   = htons(current_packet_length);
   header_template.identification ++;
   header_template.protocol       = protocol;
   header_template.checksum       = 0;      /* temporary value for computation */
@@ -130,56 +108,77 @@ ip_create_packet(const struct mac_address_t  *dst_hwaddr,
 /* ------------------------------------------------------------------------- */
 
 void
-ip_frame_received(const struct mac_address_t *src_hwaddr,
-                  const uint8_t              *payload,
-                  uint16_t                    nbr_bytes_in_payload)
+ip_frame_received(uint16_t nbr_bytes_in_payload)
 {
-  const struct ipv4_header_t *header = (const struct ipv4_header_t *) payload;
-  
-  uint8_t  version_and_size = header->version_and_header_length;
-  uint16_t fraginfo         = ntohs(header->fragment_info & 0x1fffu);
-  uint16_t ip_total_len     = ntohs(header->total_length);
+  /*
+   * Read a minimal IPv4 header; if the actual header is longer (options), that
+   * is handled below
+   */
+  uint16_t cs               = ip_retrieve_payload(&rx_frame.ip,
+                                                  sizeof(struct ipv4_header_t),
+                                                  0);
+  uint8_t  version_and_size = rx_frame.ip.version_and_header_length;
+  uint16_t fraginfo         = ntohs(rx_frame.ip.fragment_info & 0x1fffu);
+  uint16_t ip_total_len     = ntohs(rx_frame.ip.total_length);
   uint8_t  header_size      = (version_and_size & 0x0f) << 2;
   
   /*
    * Once an IP address is set, multicasts/broadcasts are ignored
    */
-  if (((ip_valid_address()) && (header->dst_addr != ip_config.host_address))
+  if (((ip_valid_address()) && (rx_frame.ip.dst_addr != ip_config.host_address))
       ||  (version_and_size <  0x45)     /* IPv4 tag, minimal header length */
       ||  (version_and_size >  0x4f)     /* IPv4 tag, maximal header length */
       ||      (ip_total_len >  nbr_bytes_in_payload)
-      ||         (fraginfo  != 0)
-      || !ip_header_checksum(header, header_size))
+      ||         (fraginfo  != 0))
   {
     return;
   }
+
+  /*
+   * Discard options (if any) by reading them into UDP payload area
+   * (unused so far)
+   */
+  if (header_size > sizeof(struct ipv4_header_t)) {
+    cs = ip_retrieve_payload(&rx_frame.udp.header,
+                             header_size - sizeof(struct ipv4_header_t),
+                             cs);
+  }
   
-  switch (header->protocol) {
+  if (! ip_checksum_ok(cs)) {
+    syslog("bad IP checksum %, dropped", cs);
+    return;
+  }
+  
+  switch (rx_frame.ip.protocol) {
     case IP_PROTOCOL_UDP:
-        udp_packet_received(src_hwaddr,
-                            &(header->src_addr),
-                            &(header->dst_addr),
-                            payload + header_size);
+      udp_packet_received(ip_total_len - header_size);
       break;
     case IP_PROTOCOL_ICMP:
-      icmp_packet_received(src_hwaddr,
-                           &(header->src_addr),
-                           payload + header_size,
-                           ip_total_len - header_size);
-      break;
-    default:
+      icmp_packet_received(ip_total_len - header_size);
       break;
   }
 }
 
-/* -------------------------------------------------------------------------
- * Can't use the ENC28J60's checksum offload (errata, item #15)
- * ------------------------------------------------------------------------- */
+
+/* ------------------------------------------------------------------------- */
+
+void
+ip_send_packet(void)
+{
+  eth_send_frame(current_packet_length, current_frame_class);
+}
+
+/* ------------------------------------------------------------------------- */
+
 void
 ip_checksum_add_impl(uint16_t *checksum,
                      const void *start_addr,
                      uint16_t nbr_bytes)
 {
+  /* -----------------------------------------------------------------------
+   * Can't use the ENC28J60's checksum offload (errata, item #15)
+   * ----------------------------------------------------------------------- */
+
   uint16_t nbr_words = nbr_bytes >> 1;
   const uint16_t *p = (const uint16_t *) start_addr;
   /* FIXME: odd-sized payloads */

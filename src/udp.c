@@ -31,78 +31,70 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stddef.h>
+#include "rxbuffer.h"
 
 #include "udp.h"
 
 #include "dhcp.h"
 #include "tftp.h"
 
-#include "logging.h"
+#include "syslog.h"
 
 /* ------------------------------------------------------------------------- */
 
-static bool
-udp_checksum(const struct udp_header_t *udp_data,
-             uint16_t                   udp_payload_length,
-             const ipv4_address_t      *src,
-             const ipv4_address_t      *dst)
-{
-  ip_checksum_state_t checksum = htons(IP_PROTOCOL_UDP);
+/*
+ * Beginning of range of ephemeral port
+ */
+#define EPHEMERAL_PORT_START      ntohs(0xc000)
 
-  if (udp_data->checksum != 0) {
-    /* IPv4 pseudo header */
-    ip_checksum_add(checksum, src, sizeof(ipv4_address_t));
-    ip_checksum_add(checksum, dst, sizeof(ipv4_address_t));
-    ip_checksum_add(checksum, &udp_data->length, 2);
-    
-    /* UDP header except checksum */
-    ip_checksum_add(checksum, udp_data, offsetof(struct udp_header_t, checksum));
-    
-    /* UDP payload */
-    ip_checksum_add(checksum,
-                    ((const uint8_t *) udp_data) + sizeof(struct udp_header_t),
-                    udp_payload_length);
-    
-    if (ip_checksum_value(checksum) != udp_data->checksum) {
-      log_warning("UDP",
-                  "checksum mismatch (received %x, computed %x), packet dropped",
-                  udp_data->checksum, ip_checksum_value(checksum));
-      
-      return false;
-    }
-  }
-  
-  return true;
-}
+/*
+ * Constant data used for IPv4 pseudo header in udp_packet_received()
+ */
+static const uint16_t pseudo_header_prot = htons(IP_PROTOCOL_UDP);
 
 /* ------------------------------------------------------------------------- */
 
-uint16_t tftp_port_nw_endian = 0;
+uint16_t udp_port_tftp_client = EPHEMERAL_PORT_START;
 
 /* ------------------------------------------------------------------------- */
 
 void
-udp_packet_received(const struct mac_address_t  *src_hwaddr,
-                    const ipv4_address_t        *src,
-                    const ipv4_address_t        *dst,
-                    const uint8_t               *payload)
+udp_packet_received(uint16_t udp_packet_length)
 {
-  const struct udp_header_t *header = (const struct udp_header_t *) payload;
-  const uint8_t *udp_payload = payload + sizeof(struct udp_header_t);
-  uint16_t udp_payload_length = ntohs(header->length) - sizeof(struct udp_header_t);
+  uint16_t cs = ip_retrieve_payload(&rx_frame.udp.header,
+                                    udp_packet_length,
+                                    0);
   
-  if (dst/*udp_checksum(header, udp_payload_length, src, dst)*/) {
-    if (header->dst_port == tftp_port_nw_endian) {
-      tftp_packet_received(src_hwaddr,
-                           src,
-                           header->src_port,
-                           (const union tftp_packet_t *) udp_payload,
-                           udp_payload_length);
+  if (   (udp_packet_length >= sizeof(struct udp_header_t))
+      && (udp_packet_length >= ntohs(rx_frame.udp.header.length)))
+  {
+    if (rx_frame.udp.header.checksum != 0) {   /* valid UDP checksum */
+      /*
+       * Include IPv4 pseudo header in UDP checksum
+       */
+      ip_checksum_add(cs, &pseudo_header_prot,         sizeof(uint16_t));
+      ip_checksum_add(cs, &rx_frame.ip.src_addr,       sizeof(ipv4_address_t));
+      ip_checksum_add(cs, &rx_frame.ip.dst_addr,       sizeof(ipv4_address_t));
+      ip_checksum_add(cs, &rx_frame.udp.header.length, sizeof(uint16_t));
+      
+      if (! ip_checksum_ok(cs)) {
+        syslog("bad UDP checksum %, dropped", cs);
+        return;
+      }
     }
-    else if (header->dst_port == htons(UDP_PORT_DHCP_CLIENT)) {
-      dhcp_packet_received(src, (const struct dhcp_header_t *) udp_payload);
+    
+    if (rx_frame.udp.header.dst_port == udp_port_tftp_client) {
+      tftp_packet_received(ntohs(rx_frame.udp.header.length)
+                           - sizeof(struct udp_header_t));
     }
+    else if (rx_frame.udp.header.dst_port == htons(UDP_PORT_DHCP_CLIENT)) {
+      dhcp_packet_received();
+    }
+  }
+  else {
+    syslog("truncated packet (UDP says % bytes, IP says %)",
+           ntohs(rx_frame.udp.header.length),
+           udp_packet_length);
   }
 }
 
@@ -111,13 +103,12 @@ udp_packet_received(const struct mac_address_t  *src_hwaddr,
 void
 udp_create_packet(const struct mac_address_t  *dst_hwaddr,
                   const ipv4_address_t        *dst_ipaddr,
-                  uint16_t                     src_port,
-                  uint16_t                     dst_port,
+                  uint16_t                     src_port_nw_endian,
+                  uint16_t                     dst_port_nw_endian,
                   uint16_t                     udp_payload_length,
                   enum eth_frame_class_t       frame_class)
 {
-  uint16_t udp_length       = udp_payload_length + sizeof(struct udp_header_t);
-  uint16_t nw_endian_length = htons(udp_length);
+  uint16_t udp_length = udp_payload_length + sizeof(struct udp_header_t);
   
   ip_create_packet(dst_hwaddr,
                    dst_ipaddr,
@@ -126,8 +117,22 @@ udp_create_packet(const struct mac_address_t  *dst_hwaddr,
                    frame_class);
   
   /* UDP header */
-  udp_add_payload_to_packet(src_port);
-  udp_add_payload_to_packet(dst_port);
-  udp_add_payload_to_packet(nw_endian_length);
-  udp_add_payload_to_packet(zero_u16);      /* no checksum */
+  udp_add_payload_to_packet(src_port_nw_endian);
+  udp_add_payload_to_packet(dst_port_nw_endian);
+  udp_add_payload_nwu16_to_frame(udp_length);
+  udp_add_payload_byte_to_packet(0);
+  udp_add_payload_byte_to_packet(0);
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+udp_create_reply(uint16_t udp_payload_length)
+{
+  udp_create_packet(&rx_eth_adm.eth_header.src_addr,
+                    &rx_frame.ip.src_addr,
+                    rx_frame.udp.header.dst_port,
+                    rx_frame.udp.header.src_port,
+                    udp_payload_length,
+                    ETH_FRAME_PRIORITY);
 }

@@ -6,7 +6,6 @@
   .module crt0
   
   .globl	_main
-  .globl	_rst30_handler
   .globl	_timer_tick_count
 
   .area	_HEADER (ABS)
@@ -17,75 +16,72 @@
   ;; Set up interrupts, enter a sensible RESET state for the ENC28J60, delay
   ;; for 200ms (for 128k reset logic to settle)
   ;;
-  ;; The CPU stack is placed at 0x5D00 (512 bytes after video RAM). This should
-  ;; make stack overruns visible.
+  ;; The CPU stack is placed at 0x5C00 (256 bytes after video RAM). This should
+  ;; make stack overruns clearly visible by mere ocular inspection.
   ;; --------------------------------------------------------------------------  
   
   .org 	0
   di
+
+  ld    a, #0x08          ;; reset ETH controller
+  out   (0x9f), a         ;; CS high, RST low
+
   im    1
-
-  ld    a, #0x08          ;; CS high, RST low
-  out   (0x9f), a
-
-  ld    sp, #0x5D00
   
-  ld    a, #2
-  out   (0xfe), a         ;; set border red during delay
-  
-  ld    bc, #27284        ;; 27284 x 26 = 709384 T-states = 200ms @3.5469MHz
+  ld    bc, #27284        ;; 27284 x 26 = 709384 T-states > 200ms @3.5469MHz
 reset_delay_loop::        ;; each loop iteration is 6+4+4+12 = 26 T-states
   dec   bc
   ld    a, b
   or    c
   jr    nz, reset_delay_loop
 
-  ;; --------------------------------------------------------------------------  
-  ;; Paint the stack
-  ;; --------------------------------------------------------------------------  
+  ;; If Caps Shift is being pressed, jump to BASIC
+  ;; (we do this after the delay loop above, to make sure the top RAM page
+  ;; is initialized properly)
+  
+  ld    a, #0xFE          ;; 0xFEFE: keyboard scan row CAPS..V
+  in    a, (0xFE)         ;; avoid touching BC, assigned above, used below
+  rra
+  jr    nc, go_to_basic
 
-  ld    a, #4
-  out   (0xfe), a         ;; set border green while painting
   ld    hl, #0x5B00
   ld    de, #0x5B01
-  ld    bc, #0x01FF
-  ld    a, #0xAB
-  ld    (hl), a
-  ldir
-  
-  ld    a, #1
-  out   (0xfe), a         ;; set border blue while running static initializers
-  jp    gsinit
+  dec   c                 ;; bc is zero after loop above => BC=0x00ff
+  ld    (hl), #0xA8
+  ldir                    ;; paint stack
 
-  ;; --------------------------------------------------------------------------  
-  ;; RST 0x30 ENTRYPOINT
-  ;;
-  ;; Just jump to a handler defined elsewhere
-  ;; --------------------------------------------------------------------------  
+  ld    sp, #0x5C00
+  call  gsinit
+  ei
+  jp _main
 
-  .org	0x30
-  jp    _rst30_handler
+  ;; Stores the instruction 'out (0x9F), a' at 0xFFFE, then jumps there.
+  ;; The value 0x28 pages in the standard ROM (ROM0 on the 128), and keeps
+  ;; ETH in reset.
+
+go_to_basic::
+  ld    hl, #0xFFFF
+  ld    (hl), #0x9F
+  dec   hl
+  ld    (hl), #0xD3
+  ld    a, #0x28
+  jp    (hl)
 
   ;; --------------------------------------------------------------------------  
   ;; RST 0x38 (50HZ INTERRUPT) ENTRYPOINT
   ;;
-  ;; Increase 8-bit value at '_timer_tick_count', saturate at 0xff
+  ;; Increase 16-bit value at '_timer_tick_count'
   ;; --------------------------------------------------------------------------  
 
   .org	0x38
-  push  af
   push  hl
-  ld    hl, #_timer_tick_count
-  ld    a, (hl)
-  inc   a
-  jr z, timer_50hz_saturated    ;; don't wrap around to zero
-  ld    (hl), a
-timer_50hz_saturated::
+  ld	hl, (_timer_tick_count)
+  inc	hl
+  ld	(_timer_tick_count), hl
   pop   hl
-  pop   af
   ei
   ret
-
+		
   ;; --------------------------------------------------------------------------  
   ;; 8-bit constant table
   ;;
@@ -121,13 +117,223 @@ timer_50hz_saturated::
   .db #0xfa, #0xfb, #0xfc, #0xfd, #0xfe, #0xff
 
   ;; --------------------------------------------------------------------------  
+  ;; Various constant stuff, moved here to exploit the 'hole' between
+  ;; the 8-bit constant table and the VRAM trampoline
+  ;; --------------------------------------------------------------------------
+
+  ;; --------------------------------------------------------------------------
+  ;; Keyboard mapping (used by _poll_key above)
+  ;:
+  ;; ZX Spectrum BASIC Programming (Vickers), Chapter 23:
+  ;;
+  ;; IN 65278 reads the half row CAPS SHIFT to V
+  ;; IN 65022 reads the half row A to G
+  ;; IN 64510 reads the half row Q to T
+  ;; IN 63486 reads the half row 1 to 5
+  ;; IN 61438 reads the half row O to 6
+  ;; IN 57342 reads the half row P to 7
+  ;; IN 49150 reads the half row ENTER to H
+  ;; IN 32766 reads the half row SPACE to B
+  ;;
+  ;; http://www.worldofspectrum.org/ZXBasicManual/index.html
+  ;;
+  ;; A '0' in the table means that key is to be ignored. The rows are ordered
+  ;; for the high byte in the row address to take values in the following order
+  ;;
+  ;; 01111111
+  ;; 10111111
+  ;; 11011111
+  ;; 11101111
+  ;; 11110111
+  ;; 11111011
+  ;; 11111101
+  ;; 11111110
+  ;; --------------------------------------------------------------------------
+
+key_rows::
+  .db 0x20, 0, 0x4d, 0x4e, 0x42     ;; 7FFE: space, shift, 'M', 'N', 'B'
+  .db 13, 0x4c, 0x4b, 0x4a, 0x48    ;; BFFE: enter, 'L', 'K', 'J', 'H'
+  .db 0x50, 0x4f, 0x49, 0x55, 0x59  ;; DFFE: 'P', 'O', 'I', 'U', 'Y'
+  .db 0x30, 0x39, 0x38, 0x37, 0x36  ;; EFFE: '0', '9', '8', '7', '6'
+  .db 0x31, 0x32, 0x33, 0x34, 0x35  ;; F7FE: '1', '2', '3', '4', '5'
+  .db 0x51, 0x57, 0x45, 0x52, 0x54  ;; FBDE: 'Q', 'W', 'E', 'R', 'T'
+  .db 0x41, 0x53, 0x44, 0x46, 0x47  ;; FDFE: 'A', 'S', 'D', 'F', 'G'
+  .db 0, 0x5a, 0x58, 0x43, 0x56     ;; FEFE: shift, 'Z', 'X', 'C', 'V'
+
+  ;; --------------------------------------------------------------------------
+  ;; Keyboard polling routine
+  ;; --------------------------------------------------------------------------
+  
+_poll_key::  
+  ld    hl, #key_rows
+  ld    bc, #0x7ffe
+poll_outer::
+  in    d, (c)
+  
+  ld    e, #5       ;; number of keys in each row
+  
+poll_inner::
+  ld    a, (hl)
+  inc   hl
+  rr    d
+  jr    c, not_pressed
+  or    a
+  jr    nz, poll_done
+  
+not_pressed::
+  dec   e
+  jr    nz, poll_inner
+  
+  rrc   b
+  jr    c, poll_outer
+  
+  xor   a         ;; KEY_NONE == 0
+  
+poll_done::
+  ld    l, a
+  ret
+
+  ;; --------------------------------------------------------------------------
+  ;; Tiny sound, for a key click
+  ;; --------------------------------------------------------------------------
+_key_click::
+  ld    bc, #0x14FE
+  ld    d, #0x10
+  ld    a, d
+  di
+keyclick_loop::
+  out   (c), a
+  xor   a, d
+  djnz  keyclick_loop
+  ei
+  ret
+
+  ;; --------------------------------------------------------------------------
+  ;; Clear screen
+  ;; --------------------------------------------------------------------------
+
+_cls::
+  ld  hl, #0x4000
+  ld  de, #0x4001
+  ld  bc, #0x1AFF
+  ld  (hl), #0
+  ldir
+  ret
+
+  ;; --------------------------------------------------------------------------
+  ;; Print 8x8 pattern
+  ;; --------------------------------------------------------------------------
+
+_print_pattern_at::
+
+  ;; assume row             at (sp + 2)
+  ;;        col             at (sp + 3)
+  ;;        LOBYTE(pattern) at (sp + 4)
+  ;;        HIBYTE(pattern) at (sp + 5)
+  ;;
+  ;; use:
+  ;;
+  ;; de = destination in VRAM
+  ;; hl = pattern
+  
+  ld    hl, #2
+  add   hl, sp
+  
+  ;; compute d as 0x40 + (row & 0x18)
+  
+  ld    a, (hl)    ;; row
+  and   a, #0x18
+  add   a, #0x40
+  ld    d, a
+  
+  ;; compute e as ((row & 7) << 5) + col
+  
+  ld    a, (hl)   ;; row
+  inc   hl        ;; now points to col
+  and   a, #7
+  rrca            ;; rotate right by 3 == rotate left by 5, for values <= 7
+  rrca
+  rrca
+  add   a, (hl)   ;; col
+  inc   hl        ;; now points to LOBYTE(pattern)
+  ld    e, a
+    
+  ld    c, (hl)
+  inc   hl
+  ld    h, (hl)
+  ld    l, c
+    
+  ld    b, #8
+print_pattern_at_loop::
+  ld    a, (hl)
+  ld    (de), a
+  inc   d
+  inc   hl
+  djnz  print_pattern_at_loop
+  
+  ret
+    
+  ;; --------------------------------------------------------------------------
+  ;; Digit font data (for progress display, used by util.c)
+  ;; --------------------------------------------------------------------------
+
+_digit_features::
+  .db 0x77          ;;  0
+  .db 0xa4          ;;  1
+  .db 0x5e          ;;  2
+  .db 0x6e          ;;  3
+  .db 0x2d          ;;  4
+  .db 0x6b          ;;  5
+  .db 0x7b          ;;  6
+  .db 0x26          ;;  7
+  .db 0x7f          ;;  8
+  .db 0x6f          ;;  9
+
+_feature_rows::
+  .db  4,      0, 0x01,    1, 0xff,    2, 0x80,    7, 0x40
+  .db  2,      0, 0x01,                2, 0x80
+  .db  5,      0, 0x01,    3, 0xff,    2, 0x80
+  .db          4, 0x01,                5, 0x80
+  .db  2,      4, 0x01,                5, 0x80
+  .db  3,      4, 0x01,    6, 0xff,    5, 0x80
+
+  ;; --------------------------------------------------------------------------
+  ;; Various bitmaps for menu display (main.c)
+  ;; --------------------------------------------------------------------------
+  
+_bottom_left_arc::
+  .db 0, 0x80   ;; , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+_top_left_arc::
+  .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80  ;; , 0
+_bottom_right_arc::
+  .db 0, 0x01   ;; , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+_top_right_arc::
+  .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01  ;; , 0
+_bottom_half::
+  .db 0, 0      ;; , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+_top_half::
+  .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0
+_offset_bottom::
+  .db 0x1F, 0x0E    ;; , 0, 0, 0, 0, 0, 0
+_offset_top::
+  .db 0, 0, 0, 0, 0, 0, 0x0E    ;; , 0x3F
+_offset_bar::
+  .db 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F
+_left_blob::
+  .db 0x1F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x1F
+_right_blob::
+  .db 0xF8, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xF8
+  
+  ;; --------------------------------------------------------------------------  
   ;; Initial part of VRAM trampoline
   ;;
   ;; located adjacent to VRAM, to allow execution to continue directly into
   ;; VRAM
   ;; --------------------------------------------------------------------------
   
+vram_trampoline_before::
   .org  0x3ffe
+vram_trampoline_initial::
   out   (0x9f), a
 
   ;; --------------------------------------------------------------------------  
@@ -141,20 +347,16 @@ timer_50hz_saturated::
 
   .area	_DATA
   .area _BSS
-  ;; this label allows us to check where the _DATA segment ends (by
-  ;; looking in speccyboot.sym)
+
 end_of_data::
+
   .area _HEAP
 
   .area _CODE
   .area _GSINIT
-gsinit::
-
-  .area   _GSFINAL
-
-  ;; --------------------------------------------------------------------------  
-  ;; Executed after static initializers
-  ;; --------------------------------------------------------------------------  
   
-  ei
-  jp	_main
+gsinit::
+  .area   _GSFINAL
+  ret
+  
+end_of_code::

@@ -34,10 +34,10 @@
 
 #include "z80_parser.h"
 #include "context_switch.h"
-#include "speccyboot.h"
 
 #include "util.h"
-#include "logging.h"
+#include "rxbuffer.h"
+#include "syslog.h"
 
 /*
  * Size of a memory bank/page
@@ -61,22 +61,21 @@
 #define SNAPSHOT_FLAGS_BORDER(f)        (((f) >> 1) & 0x07)
 
 /*
- * The only value for hw_type we support
+ * Hardware types supported. Versions 2 and 3 of the .z80 header format use
+ * different constants to indicate a Spectrum 128k.
  */
 #define HW_TYPE_SPECTRUM_48K            (0)
+#define HW_TYPE_SPECTRUM_128K_V2        (3)
+#define HW_TYPE_SPECTRUM_128K_V3        (4)
 
 #define Z80_ESCAPE                      (0xED)
-
-/* ------------------------------------------------------------------------- */
-
-#define Z80_SNAPSHOT_FILENAME           "speccyboot_stage2.z80"
 
 /* ------------------------------------------------------------------------- */
 
 /*
  * Current position to write to (starts in video RAM)
  */
-static uint8_t *curr_write_pos = (uint8_t *) 0x4000;
+static uint8_t *curr_write_pos;
 
 /*
  * Bytes remaining to unpack in current chunk
@@ -117,6 +116,7 @@ static uint16_t received_data_length;
  * For progress display
  */
 static uint8_t kilobytes_loaded = 0;
+static uint8_t kilobytes_expected;
 
 /* ========================================================================= */
 
@@ -136,21 +136,10 @@ static uint8_t kilobytes_loaded = 0;
 #define SET_NEXT_STATE(s)               current_state = &s
 
 /*
- * Determine how many bytes are left to the next integral number of 
- * kilobytes from a pointer. If the pointer currently points to an even
- * kilobyte, the distance to the next is returned (i.e., 0x0400).
- */
-#define LEFT_TO_NEXT_KILOBYTE(p) \
-  (((((uint16_t) (p)) + 0x0400) & 0xfc00) - (p))
-
-/*
  * True if p is an integral number of kilobytes
  */
 #define IS_KILOBYTE(p) \
   ((LOBYTE(p)) == 0 && ((HIBYTE(p) & 0x03) == 0))
-
-#define MIN(a,b)                        ((a) < (b) ? (a) : (b))
-#define MIN3(a,b,c)                     MIN(a, MIN(b, c))
 
 /*
  * Syntactic sugar for declaring and defining states.
@@ -164,30 +153,23 @@ typedef void state_func_t(void);
 
 /*
  * State functions
- *
- * HEADER                       expecting header (initial state)
- *
- * CHUNK_UNCOMPRESSED           expecting uncompressed data
- * CHUNK_COMPRESSED             expecting compressed data
- *
- * CHUNK_HEADER                 expecting 3-byte header for a memory page
- * CHUNK_UNCOMPRESSED           expecting uncompressed memory page
- * CHUNK_COMPRESSED             expecting compressed memory page
  */
 DECLARE_STATE(s_header);
 
-DECLARE_STATE(s_chunk_uncompressed);
-DECLARE_STATE(s_chunk_compressed);
+DECLARE_STATE(s_chunk_uncompressed);  /* uncompressed data */
+DECLARE_STATE(s_chunk_compressed);    /* compressed data */
 
-DECLARE_STATE(s_chunk_header);
-DECLARE_STATE(s_chunk_header2);
-DECLARE_STATE(s_chunk_header3);
+DECLARE_STATE(s_chunk_header);        /* first byte of chunk 3-byte header */
+DECLARE_STATE(s_chunk_header2);       /* second byte of chunk 3-byte header */
+DECLARE_STATE(s_chunk_header3);       /* third byte of chunk 3-byte header */
 
-DECLARE_STATE(s_chunk_compressed_escape);
-DECLARE_STATE(s_chunk_single_escape);
-DECLARE_STATE(s_chunk_repcount);
-DECLARE_STATE(s_chunk_repvalue);
-DECLARE_STATE(s_chunk_repetition);
+DECLARE_STATE(s_chunk_compressed_escape); /* escape byte found */
+DECLARE_STATE(s_chunk_single_escape);     /* single escape, no repetition */
+DECLARE_STATE(s_chunk_repcount);          /* repetition length */
+DECLARE_STATE(s_chunk_repvalue);          /* repetition value */
+DECLARE_STATE(s_chunk_repetition);        /* write repeated value */
+
+DECLARE_STATE(s_raw_data);                /* receive raw data file */
 
 /* ------------------------------------------------------------------------- */
 
@@ -195,6 +177,23 @@ DECLARE_STATE(s_chunk_repetition);
  * We expect to receive a header before anything else
  */
 static const state_func_t *current_state = &s_header;
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Increase kilobyte counter, update status display
+ */
+static void
+update_progress(void)
+{
+  display_progress((++kilobytes_loaded), kilobytes_expected);
+  
+  if (   (kilobytes_loaded != 0)
+      && (kilobytes_loaded == kilobytes_expected))
+  {
+    context_switch();
+  } 
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -213,17 +212,14 @@ DEFINE_STATE(s_header)
     = (const struct z80_snapshot_header_extended_t *) received_data;
   uint16_t header_length = sizeof(header->default_header);
   uint8_t          flags = header->default_header.snapshot_flags;
-
-#ifdef EMULATOR_TEST
-  select_bank(1);
-#endif
+  uint8_t  paging_config = 0x31;    /* default: 48k, page 1 in, lock */
   
   if (header->default_header.pc != 0) {
     /*
      * Version 1 header found
      */
     if (flags & SNAPSHOT_FLAGS_SAMROM_MASK) {
-      fatal_error(FATAL_ERROR_INCOMPATIBLE);
+      fatal_error("incompatible snapshot");
     }
     
     /*
@@ -231,6 +227,7 @@ DEFINE_STATE(s_header)
      * earlier, but that is handled in the outer loop.
      */
     chunk_state.bytes = 0xc000;
+    kilobytes_expected = 48;
     
     if (flags & SNAPSHOT_FLAGS_COMPRESSED_MASK) {
       SET_NEXT_STATE(s_chunk_compressed);
@@ -238,21 +235,58 @@ DEFINE_STATE(s_header)
     else {
       SET_NEXT_STATE(s_chunk_uncompressed);
     }
+    
+    select_bank(1);     /* Use this bank permanently */
   }
   else {
     /*
      * Version 2 or version 3 header found
      */
+    bool is_version_2 = (header->extended_header_bytes == 23);
     header_length += header->extended_header_bytes + 2;
 
-    if (header->hw_type != HW_TYPE_SPECTRUM_48K) {
-      fatal_error(FATAL_ERROR_INCOMPATIBLE);
+    if (header->hw_type == HW_TYPE_SPECTRUM_48K) {
+      if (header->hw_mod & 0x80) {    /* HW modified bit */
+        kilobytes_expected = 16;
+      }
+      else {
+        kilobytes_expected = 48;
+      }
+    }
+    else if ((is_version_2 && (header->hw_type == HW_TYPE_SPECTRUM_128K_V2))
+             || ((!is_version_2) && (header->hw_type == HW_TYPE_SPECTRUM_128K_V3)))
+    {
+      kilobytes_expected = 128;
+      
+      /*
+       * Write sound register contents (no need to postpone this to the
+       * actual context switch, it's easier from C code)
+       */
+      {
+        static sfr banked at(0xfffd) register_select;
+        static sfr banked at(0xbffd) register_value;
+        
+        uint8_t reg;
+        
+        for (reg = 0; reg < 16; reg++) {
+          register_select = reg;
+          register_value  = header->hw_state_snd[reg];
+        }
+        register_select = header->hw_state_fffd;
+      }
+      
+      paging_config = header->hw_state_7ffd;
+    }
+    else {
+      fatal_error("incompatible snapshot");
     }
 
     SET_NEXT_STATE(s_chunk_header);
   }
   
-  evacuate_z80_header(received_data);
+  display_progress(0, kilobytes_expected);
+
+  evacuate_z80_header(received_data, paging_config);
 
   received_data        += header_length;
   received_data_length -= header_length;
@@ -289,22 +323,49 @@ DEFINE_STATE(s_chunk_header2)
 DEFINE_STATE(s_chunk_header3)
 {
   /*
-   * Receive ID of the page the chunk belongs to
+   * Receive ID of the page the chunk belongs to. Use the 128k Spectrum
+   * page numbering (0..7).
+   *
+   * See http://www.worldofspectrum.org/faq/reference/z80format.htm
    */
+  uint8_t page_id = (*received_data++) - 3;
   received_data_length--;
   
-  switch (*received_data++) {
-    case 4:
+  if (page_id > 7) {
+    fatal_error("incompatible snapshot");
+  }
+  
+  /*
+   * There is a discrepancy between the .z80 snapshot format and the way
+   * a 128k Spectrum works.
+   *
+   * In .z80, the 0x8000..0xbfff region of a 48k Spectrum is stored as
+   * page 1, but on the 128k Spectrum, page 2 is used instead. It seems to
+   * me that pages 1 and 2 have somehow been mixed up in the .z80 format
+   * when a 48k snapshot is stored.
+   */
+  if (kilobytes_expected != 128) { /* could be 16 or 48 */
+    if (page_id == 1) {
+      page_id = 2;
+    }
+    else if (page_id == 2) {
+      page_id = 1;
+    }
+  }
+  
+  switch (page_id) {
+    case 2:
+      /* 128k page 2, 48k 0x8000..0xbfff */
       curr_write_pos = (uint8_t *) 0x8000;
       break;
     case 5:
-      curr_write_pos = (uint8_t *) 0xc000;
-      break;
-    case 8:
+      /* 128k page 5, 48k 0x4000..0x7fff */
       curr_write_pos = (uint8_t *) 0x4000;
       break;
     default:
-      fatal_error(FATAL_ERROR_INCOMPATIBLE);
+      /* 128k page 0, 1, 3, 4, 6, 7 */
+      select_bank(page_id);
+      curr_write_pos = (uint8_t *) 0xc000;
       break;
   }
 
@@ -332,7 +393,7 @@ DEFINE_STATE(s_chunk_uncompressed)
 
   ld  hl, #_curr_write_pos + 1
   ld  a, (hl)
-  add #4            ;; round up to next kilobyte
+  add #4            ;; round up to next 512-bytes boundary
   and #0xfc         ;; clears C flag, so sbc below works fine
   ld  h, a
   xor a
@@ -424,15 +485,9 @@ no_new_state::
   ld  a, d
   and #0x03
   jr  nz, no_copy
-    
-  ld  hl, #_kilobytes_loaded
-  inc (hl)
-  ld  a, (hl)
-  push  af
-  inc sp
-  call  _display_digits
-  inc sp
 
+  call  _update_progress
+  
 no_copy::
 
   __endasm;
@@ -502,14 +557,8 @@ s_chunk_compressed_loop::
   ld  (_received_data_length), de
   ld  (_curr_write_pos), hl
   ld  (_received_data), iy
-      
-  ld  hl, #_kilobytes_loaded
-  inc (hl)
-  ld  a, (hl)
-  push  af
-  inc sp
-  call  _display_digits
-  inc sp
+  
+  call _update_progress
   jr  s_chunk_compressed_done
 
   ;;
@@ -623,7 +672,7 @@ DEFINE_STATE(s_chunk_compressed_escape)
     rep_state.plain_byte = b;
 
     if (IS_KILOBYTE(curr_write_pos)) {
-      display_digits(++ kilobytes_loaded);
+      update_progress();
     }
     
     SET_NEXT_STATE(s_chunk_single_escape);
@@ -637,7 +686,7 @@ DEFINE_STATE(s_chunk_single_escape)
   *curr_write_pos++ = rep_state.plain_byte;
   
   if (IS_KILOBYTE(curr_write_pos)) {
-    display_digits(++ kilobytes_loaded);
+    update_progress();
   }
   
   SET_NEXT_STATE(s_chunk_compressed);
@@ -701,14 +750,8 @@ s_chunk_repetition_loop::
   ld  a, b
   ld  (_rep_state), a
   ld  (_curr_write_pos), hl
-        
-  ld  hl, #_kilobytes_loaded
-  inc (hl)
-  ld  a, (hl)
-  push  af
-  inc sp
-  call  _display_digits
-  inc sp
+
+  call  _update_progress
   jr  s_chunk_repetition_done
 
 s_chunk_repetition_write_back::
@@ -725,7 +768,47 @@ s_chunk_repetition_done::
 __endasm;
 }
 
+/* ------------------------------------------------------------------------- */
+
+/*
+ * State RAW_DATA:
+ *
+ * Simply copies received data to the indicated location.
+ */
+DEFINE_STATE(s_raw_data)
+{
+  /* FIXME: check for max size */
+  
+  __asm
+  ld  de, (_curr_write_pos)
+  ld  hl, (_received_data)
+  ld  bc, (_received_data_length)
+  ldir
+  ld  (_curr_write_pos), de
+  ld  (_received_data_length), bc
+  __endasm;
+}
+
 /* ========================================================================= */
+
+void
+z80_expect_snapshot(void)
+{
+  curr_write_pos = (uint8_t *) 0x4000;
+  current_state  = &s_header;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+z80_expect_raw_data(void *dest, uint16_t maxsz)
+{
+  curr_write_pos    = dest;
+  chunk_state.bytes = maxsz;
+  current_state     = &s_raw_data;
+}
+
+/* ------------------------------------------------------------------------- */
 
 /*
  * Called by TFTP (see tftp.h) when data is received
@@ -744,16 +827,7 @@ z80_receive_data(const uint8_t *received_tftp_data,
   received_data_length = nbr_of_bytes_received;
   
   while (received_data_length != 0) {
-    if (LOBYTE(curr_write_pos) == 0) {
-      /*
-       * Handle evacuation
-       */
-
-#ifdef EMULATOR_TEST      
-      if (kilobytes_loaded == 48) {    
-        context_switch();
-      } 
-#endif
+    if ((LOBYTE(curr_write_pos) == 0) && (current_state != &s_raw_data)) {
       
       if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
         curr_write_pos = (uint8_t *) EVACUATION_TEMP_BUFFER;
@@ -769,18 +843,15 @@ z80_receive_data(const uint8_t *received_tftp_data,
       }
     }
     
-    /*
-     * Execute code for current state
-     */
     (*current_state)();
   }
-  
+
   if (! more_data_expected) {
-#ifndef EMULATOR_TEST      
-    if (kilobytes_loaded == 48) {    
-      context_switch();
-    } 
-#endif
-    fatal_error(FATAL_ERROR_END_OF_DATA);
+    if (current_state == &s_raw_data) {
+      NOTIFY_FILE_LOADED(curr_write_pos);
+    }
+    else {
+      fatal_error("end of data");
+    }
   }
 }

@@ -36,8 +36,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "speccyboot.h"
 #include "enc28j60_spi.h"
+#include "util.h"
 
 /* ========================================================================= */
 
@@ -52,6 +52,29 @@
 PACKED_STRUCT(mac_address_t) {
   uint8_t addr[6];      /* 48 bits */
 };
+
+/*
+ * Ethernet and administrative data, as written by ENC28J60 reception logic
+ * (datasheet, 7.2.2)
+ */
+PACKED_STRUCT(eth_adm_t) {
+  enc28j60_addr_t       next_ptr;    /* written as little-endian by ENC28J60 */
+  uint16_t              nbr_bytes;   /* written as little-endian by ENC28J60 */
+  uint8_t               rsv16to23;
+  uint8_t               rsv24to31;
+  
+  /*
+   * Ethernet header
+   * http://en.wikipedia.org/wiki/Ethernet
+   */
+  PACKED_STRUCT(eth_header_t) {
+    struct mac_address_t  dst_addr;
+    struct mac_address_t  src_addr;
+    uint16_t              ethertype;
+  } eth_header;
+};
+
+/* ========================================================================= */
 
 /*
  * Ethernet HW type (as used by, e.g., ARP)
@@ -111,22 +134,21 @@ eth_create_frame(const struct mac_address_t *destination,
 /* -------------------------------------------------------------------------
  * Append payload to a frame previously created with eth_create_frame().
  * ------------------------------------------------------------------------- */
-void
-eth_add_payload_to_frame(const void *payload,
-                         uint16_t    nbr_bytes);
+#define eth_add_payload_to_frame(_pld, _n)                                    \
+  enc28j60_write_memory_cont((const uint8_t *) (_pld), (_n))
 
 /* -------------------------------------------------------------------------
- * Re-write outgoing packet
- *
- * NOTE: This call modifies the internal write pointer, so any calls to
- *       eth_add_payload_to_frame() will make Bad Things happen. That is,
- *       call after eth_add_payload_to_frame(), before eth_send_frame().
+ * Append a byte-size payload to a frame previously created with
+ * eth_create_frame().
  * ------------------------------------------------------------------------- */
 void
-eth_rewrite_frame(uint16_t                offset,
-                  const void             *payload,
-                  uint16_t                nbr_bytes,
-                  enum eth_frame_class_t  frame_class);
+eth_add_payload_byte_to_frame(uint8_t b);
+
+/* -------------------------------------------------------------------------
+ * Append a 16-bit network-order payload to a frame previously created with
+ * eth_create_frame().
+ * ------------------------------------------------------------------------- */
+#define eth_add_payload_nwu16_to_frame  enc28j60_write_nwu16_cont
 
 /* -------------------------------------------------------------------------
  * Send an Ethernet frame, previously created with eth_create_frame().
@@ -139,14 +161,6 @@ eth_rewrite_frame(uint16_t                offset,
 void
 eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
                enum eth_frame_class_t  frame_class);
-
-/* -------------------------------------------------------------------------
- * Reset re-transmission timer. If this is not called, the last frame
- * created with 'retransmit_on_timeout' set will be re-transmitted when the
- * timer expires.
- * ------------------------------------------------------------------------- */
-void
-eth_reset_retransmission_timer(void);
 
 /* -------------------------------------------------------------------------
  * Handle incoming frames, and invoke corresponding protocol handlers. If

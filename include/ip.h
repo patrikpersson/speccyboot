@@ -64,6 +64,8 @@
  */
 #define IP_MAX_PAYLOAD          (644)
 
+#define UDP_MAX_PAYLOAD         (576)
+
 /*
  * An IPv4 address: 32 bits, network order
  */
@@ -99,27 +101,30 @@ extern struct ip_config_t {
   ipv4_address_t broadcast_address;
 } ip_config;
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Maximal (worst-case) IP header size
- */
-#define IP_MAX_HEADER_SIZE        (60)
-
 /* -------------------------------------------------------------------------
  * Returns true if a valid IP address has been set
+ * (assumes first byte is always non-zero when valid)
  * ------------------------------------------------------------------------- */
 
-#define ip_valid_address()        (ip_config.host_address != 0x00000000)
+#define ip_valid_address()       (*((const uint8_t *) &ip_config.host_address))
 
 /* -------------------------------------------------------------------------
  * IP-style checksum computation
  * ------------------------------------------------------------------------- */
 
-typedef uint16_t ip_checksum_state_t;
-
 #define ip_checksum_add(_c, _addr, _n)  (ip_checksum_add_impl(&(_c), (_addr), (_n)))
 #define ip_checksum_value(_c)           (~(_c))
+
+/*
+ * Logical true if the computed IP-style checksum is OK.
+ *
+ * If the packet is intact, the computed sum is the sum of
+ *   the actual packet contents, excluding checksum       (~_cs_rx)
+ * + the checksum itself in one's complement              ( _cs_rx)
+ *
+ * Since X+~X == 0xffff for all X, the checksum must be 0xffff.
+ */
+#define ip_checksum_ok(_cs_comp)  ((_cs_comp) == 0xffffu)
 
 /* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an IP packet has been
@@ -132,9 +137,7 @@ typedef uint16_t ip_checksum_state_t;
  * payload in ENC28J60 memory (for checksum verification).
  * ------------------------------------------------------------------------- */
 void
-ip_frame_received(const struct mac_address_t *src,
-                  const uint8_t              *payload,
-                  uint16_t                    nbr_bytes_in_payload);
+ip_frame_received(uint16_t nbr_bytes_in_payload);
 
 /* -------------------------------------------------------------------------
  * Create an IP packet with header
@@ -149,18 +152,24 @@ ip_create_packet(const struct mac_address_t  *dst_hwaddr,
 /* -------------------------------------------------------------------------
  * Append payload to a packet previously created with ip_create_packet()
  * ------------------------------------------------------------------------- */
-#define ip_add_payload_to_packet      eth_add_payload_to_frame
+#define ip_add_payload_to_packet        eth_add_payload_to_frame
+#define ip_add_payload_byte_to_packet   eth_add_payload_byte_to_frame
+#define ip_add_payload_nwu16_to_frame   eth_add_payload_nwu16_to_frame
 
 /* -------------------------------------------------------------------------
  * Send an IP packet, previously created with ip_create_packet()
- *
- * total_nbr_of_bytes_in_payload:   number of bytes in payload, excluding
- *                                  header.
  * ------------------------------------------------------------------------- */
-#define ip_send_packet(_total_nbr_of_bytes_in_ip_payload, _ip_frame_class)    \
-  eth_send_frame((_total_nbr_of_bytes_in_ip_payload)                          \
-                   + sizeof(struct ipv4_header_t),                            \
-                 (_ip_frame_class))
+void
+ip_send_packet(void);
+
+/* -------------------------------------------------------------------------
+ * Read more payload from currently parsed packet. Returns 16-bit checksum
+ * of retrieved data, using _checksum_in as the initial value.
+ * ------------------------------------------------------------------------- */
+#define ip_retrieve_payload(_buf_ptr, _nbr_bytes, _checksum_in)               \
+  enc28j60_read_memory_cont((const uint8_t *) (_buf_ptr),                     \
+                            (_nbr_bytes),                                     \
+                            (_checksum_in))
 
 /* -------------------------------------------------------------------------
  * Internal routine for ip_checksum_* macros above
@@ -170,4 +179,4 @@ ip_checksum_add_impl(uint16_t *checksum,
                      const void *start_addr,
                      uint16_t nbr_bytes);
 
-#endif /* SPECCYBOOT_ETH_IP_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_IP_INCLUSION_GUARD */

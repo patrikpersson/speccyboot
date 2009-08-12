@@ -39,24 +39,34 @@
 
 #define ETHERTYPE_ARP           (0x0806)
 
-/* -------------------------------------------------------------------------
- * Broadcast an ARP announcement for the local IP address.
- *
- * A valid IP address must be set.
- * ------------------------------------------------------------------------- */
-void
-arp_announce(void);
+/*
+ * ARP header
+ */
+PACKED_STRUCT(arp_header_t) {
+  uint16_t htype;
+  uint16_t ptype;
+  uint8_t  hlen;
+  uint8_t  plen;
+  uint16_t oper;
+};
+
+/*
+ * ARP packet for IP-to-Ethernet mapping
+ */
+PACKED_STRUCT(arp_ip_ethernet_t) {
+  struct arp_header_t  header;
+  
+  struct mac_address_t sha;
+  ipv4_address_t       spa;
+  struct mac_address_t tha;
+  ipv4_address_t       tpa;
+};
 
 /* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an ARP packet has been
  * received.
- *
- * If the frame informs us about the MAC address of the TFTP server, the
- * ip_server_address_resolved() function will be called.
  * ------------------------------------------------------------------------- */
 void
-arp_frame_received(const struct mac_address_t *src,
-                   const uint8_t              *payload,
-                   uint16_t                    nbr_bytes_in_payload);
+arp_frame_received(uint16_t nbr_bytes_in_payload);
 
 #endif /* SPECCYBOOT_ARP_INCLUSION_GUARD */

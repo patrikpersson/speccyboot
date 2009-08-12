@@ -1,5 +1,7 @@
 /*
- * Speccyboot hardware-related definitions.
+ * Module rxbuffer:
+ *
+ * Buffer for received frame (global)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -29,38 +31,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SPECCYBOOT_SPECCYBOOT_INCLUSION_GUARD
-#define SPECCYBOOT_SPECCYBOOT_INCLUSION_GUARD
+#include "rxbuffer.h"
 
-#include <stdint.h>
+/* ========================================================================= */
 
-#include "platform.h"
-
-/* -------------------------------------------------------------------------
- * Values of bits in OUT register
- * ------------------------------------------------------------------------- */
-
-#if 0
-enum speccyboot_out_port_bit_t {
-  BIT_SPI_SCK   = 0,
-  BIT_UNUSED_1  = 1,
-  BIT_UNUSED_2  = 2,
-  BIT_SPI_CS    = 3,    /* CS pin for ENC28J60 */
-  BIT_FRAM_A14  = 4,    /* Address bit A14 for FRAM (bank select) */
-  BIT_FRAM_CS   = 5,    /* 0=enable FRAM, 1=disable FRAM */
-  BIT_SPI_RST   = 6,    /* RESET pin for ENC28J60 */
-  BIT_SPI_MOSI  = 7     /* SPI data to ENC28J60 */
-};
-#endif
-
-#define EN_CS               (0x08)
-#define FRAM_CS             (0x20)
-#define EN_RST              (0x40)
-
-/* -------------------------------------------------------------------------
- * Values of bits in IN register
- * ------------------------------------------------------------------------- */
-
-/* ------------------------------------------------------------------------- */
-
-#endif /* SPECCYBOOT_SPECCYBOOT_INCLUSION_GUARD */
+union rx_frame_t  rx_frame;
+struct eth_adm_t  rx_eth_adm;

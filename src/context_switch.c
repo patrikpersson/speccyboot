@@ -33,7 +33,6 @@
  */
 
 #include "context_switch.h"
-#include "util.h"
 #include "enc28j60_spi.h"
 
 /* ------------------------------------------------------------------------ */
@@ -87,13 +86,37 @@
 
 /* ------------------------------------------------------------------------ */
 
+void
+evacuate_z80_header(const uint8_t *header_data, uint8_t paging_cfg)
+{
+  enc28j60_write_memory_at(EVACUATED_HEADER,
+                           header_data,
+                           Z80_HEADER_SIZE);
+  
+  enc28j60_write_memory_at(SAVED_PAGING_CFG, &paging_cfg, sizeof(uint8_t));
+}
+
+/* ------------------------------------------------------------------------ */
+
+void
+evacuate_data(void)
+{
+  enc28j60_write_memory_at(EVACUATED_DATA,
+                           (uint8_t *) EVACUATION_TEMP_BUFFER,
+                           RUNTIME_DATA_LENGTH);
+}
+
+/* ------------------------------------------------------------------------ */
+
 /*
  * Restore system state. Use a short trampoline, located in video RAM, for
  * the final step.
  */
-static void
-context_switch_using_vram(void)
+void
+context_switch(void)
 {
+  check_stack();
+  
 #ifndef EMULATOR_TEST
   /*
    * Select the correct register bank for RDPT operations
@@ -120,9 +143,30 @@ b_done::
     ld    a, c
     ld    (VRAM_TRAMPOLINE_LD_BC + 2), a
 #else
-    ld    bc, #0x7FFD   ;; page register
-    ld    a, #0x30      ;; page 0 at 0xc000, 48k ROM, lock paging
+    ld    hl, #hw_7ffd_done
+    ld    c, #OFFSET_PAGING_CONFIG
+    jp    _enc28j60_load_byte_at_address
+hw_7ffd_done::
+    ld    d, c
+    ld    a, c
+  
+    ;; First write the ROM selection bit to 0x1FFD bit 2 for +3/+2A:
+    ;; this should give us either ROM0 (128k editor) or ROM3 (48k ROM).
+    ;; On a regular 128k Spectrum, this write will end up in the 0x7FFD
+    ;; register due to incomplete address decoding. However, the correct value
+    ;; will be stored immediately after below.
+    rra
+    rra
+    and   #0x04         ;; stay away from the disk motor, use normal paging
+    ld    bc, #0x1FFD   ;; 128k +2A/+3 page register
+#if 0
+    TODO ->> enable this when 128k verified to work
     out   (c), a
+#endif
+
+    ld    b, #0x7F      ;; 128k page register
+    out   (c), d
+
 #endif
 
     ENC28J60_RESTORE_APPDATA
@@ -500,32 +544,4 @@ final_switch_without_interrupts::
     jp    VRAM_TRAMPOLINE_START
   
     __endasm;
-}
-
-/* ------------------------------------------------------------------------ */
-
-void
-evacuate_z80_header(const uint8_t *header_data)
-{
-  enc28j60_write_memory_at(EVACUATED_HEADER,
-                           header_data,
-                           Z80_HEADER_SIZE);
-}
-
-/* ------------------------------------------------------------------------ */
-
-void
-evacuate_data(void)
-{
-  enc28j60_write_memory_at(EVACUATED_DATA,
-                           (uint8_t *) EVACUATION_TEMP_BUFFER,
-                           RUNTIME_DATA_LENGTH);
-}
-
-/* ------------------------------------------------------------------------ */
-
-void
-context_switch(void)
-{
-  context_switch_using_vram();
 }

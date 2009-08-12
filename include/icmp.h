@@ -37,15 +37,21 @@
 #include <stdint.h>
 
 #include "eth.h"
-#include "ip.h"
+
+/* ------------------------------------------------------------------------- */
+
+PACKED_STRUCT(icmp_header_t) {                /* ICMP header */
+  uint8_t         type;
+  uint8_t         code;
+  uint16_t        checksum;
+  uint16_t        id;
+  uint16_t        seq;
+};
 
 /* -------------------------------------------------------------------------
  * Called by IP when an ICMP packet has been identified
  * ------------------------------------------------------------------------- */
 void
-icmp_packet_received(const struct mac_address_t  *src_hwaddr,
-                     const ipv4_address_t        *src,
-                     const uint8_t               *payload,
-                     uint16_t                     nbr_bytes_in_payload);
+icmp_packet_received(uint16_t nbr_bytes_in_payload);
 
 #endif /* SPECCYBOOT_ICMP_INCLUSION_GUARD */

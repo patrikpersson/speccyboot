@@ -33,6 +33,7 @@
 #ifndef SPECCYBOOT_DHCP_INCLUSION_GUARD
 #define SPECCYBOOT_DHCP_INCLUSION_GUARD
 
+#include "eth.h"
 #include "udp.h"
 
 /* ------------------------------------------------------------------------- */
@@ -41,8 +42,7 @@
  * DHCP state
  */
 enum dhcp_state_t {
-  STATE_INIT,
-  STATE_SELECTING,
+  STATE_INIT,         /* INIT + SELECTING according to RFC */
   STATE_REQUESTING,
   STATE_BOUND
 };
@@ -52,34 +52,79 @@ enum dhcp_state_t {
 /*
  * Notification callback:
  *
- * called when the states SELECTING/REQUESTING/BOUND states are entered.
+ * called when the BOUND state is entered.
  */
-#define NOTIFY_DHCP_STATE         notify_dhcp_state
+#define NOTIFY_DHCP_BOUND         notify_dhcp_bound
 
 /*
  * Prototype for callback (the actual function name is #define'd in above)
  */
-void NOTIFY_DHCP_STATE(enum dhcp_state_t state);
+void NOTIFY_DHCP_BOUND(void);
+
+/* =========================================================================
+ * DHCP packets
+ * ========================================================================= */
+
+/*
+ * DHCP header excluding server and file names (always zero in outgoing
+ * packets) and options.
+ *
+ * The reason for breaking the header into this subheader and "the rest" is
+ * that we need to define a constant value of dhcp_sub_header_t, and using
+ * dhcp_header_t for that value would result in 200+ zero bytes (waste of
+ * space).
+ */
+PACKED_STRUCT(dhcp_sub_header_t) {
+  uint8_t                   op;
+  uint8_t                   htype;
+  uint8_t                   hlen;
+  uint8_t                   hops;
+  uint32_t                  xid;
+  uint16_t                  secs;
+  uint16_t                  flags;
+  ipv4_address_t            ciaddr;
+  ipv4_address_t            yiaddr;
+  ipv4_address_t            siaddr;
+  ipv4_address_t            giaddr;
+  struct mac_address_t      chaddr;
+};
 
 /* ------------------------------------------------------------------------- */
 
-struct dhcp_header_t;
+#define DHCP_SIZEOF_CHADDR  (16)
+#define DHCP_SIZEOF_SNAME   (64)
+#define DHCP_SIZEOF_FILE    (128)
+
+#define DHCP_SIZEOF_ZEROS   ((DHCP_SIZEOF_CHADDR                              \
+                              - sizeof(struct mac_address_t))                 \
+                             + 64                                             \
+                             + 128 )
+
+#define DHCP_SIZEOF_TOTAL   (576)
+
+PACKED_STRUCT(dhcp_header_t) {              /* DHCP packet excluding options */
+  struct dhcp_sub_header_t  sub;
+  uint8_t                   zeros[DHCP_SIZEOF_ZEROS];
+  uint32_t                  magic;          /* magic cookie for DHCP options */
+};
+
+/* ------------------------------------------------------------------------- */
+
+PACKED_STRUCT(dhcp_packet_t) {
+  struct dhcp_header_t header;
+  uint8_t              options[DHCP_SIZEOF_TOTAL
+                               - sizeof(struct dhcp_header_t)];
+};
 
 /* -------------------------------------------------------------------------
  * Called by when a DHCP packet has been received
  * ------------------------------------------------------------------------- */
-
 void
-dhcp_packet_received(const ipv4_address_t        *src,
-                     const struct dhcp_header_t  *packet);
+dhcp_packet_received(void);
 
 /* -------------------------------------------------------------------------
- * Obtain an IP address using DHCP.
- *
- * When an address has been obtained, the function referenced by the
- * DHCP_COMPLETED_HANDLER macro is called.
+ * Obtain an IP address using DHCP. Calls callback upon state transitions.
  * ------------------------------------------------------------------------- */
-
 void
 dhcp_init(void);
 

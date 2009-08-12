@@ -1,7 +1,7 @@
 /*
- * Module icmp:
+ * Module rxbuffer:
  *
- * Internet Control Message Protocol (ICMP, RFC 792)
+ * Buffer for received frame (global)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -31,56 +31,50 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "eth.h"
+#include "udp.h"
 #include "icmp.h"
-#include "ip.h"
-#include "rxbuffer.h"
-
-#include "syslog.h"
+#include "arp.h"
+#include "dhcp.h"
+#include "tftp.h"
 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Supported ICMP operations
+ * Administrative Ethernet information, including Ethernet header
  */
-#define ICMP_ECHO_REPLY           (0)
-#define ICMP_ECHO_REQUEST         (8)
+extern struct eth_adm_t           rx_eth_adm;
 
 /* ------------------------------------------------------------------------- */
 
-void
-icmp_packet_received(uint16_t nbr_bytes_in_payload)
-{
-  if (  (rx_frame.icmp.header.type == ICMP_ECHO_REQUEST)
-      &&     (nbr_bytes_in_payload >= sizeof(rx_frame.icmp)))
-  {
-    uint16_t cs = ip_retrieve_payload(&rx_frame.icmp.header,
-                                       nbr_bytes_in_payload,
-                                       0);
+/*
+ * This union is NOT designed for reading an entire Ethernet frame in one go:
+ * this is not practical since, for example, the IP header has variable size.
+ *
+ * Instead, the purpose of this union is to preserve static memory by allowing
+ * buffers to overlap whenever possible.
+ */
+extern union rx_frame_t {
+  /* --------------------------------------------------------- Raw IP header */
+  struct ipv4_header_t            ip;
+  
+  /* ------------------------------------------------------------------- UDP */
+  PACKED_STRUCT() {
+    struct ipv4_header_t          ip_header;
+    struct udp_header_t           header;
     
-    /*
-     * Respond to ping by re-writing request into a reply, with updated
-     * checksum
-     *
-     * TODO: check checksum
-     */
-    
-    (void) cs;
-    
-    rx_frame.icmp.header.type     = ICMP_ECHO_REPLY;
-    rx_frame.icmp.header.checksum = 0;
-    ip_checksum_add(rx_frame.icmp.header.checksum,
-                    &rx_frame.icmp,
-                    nbr_bytes_in_payload);
-    rx_frame.icmp.header.checksum
-      = ip_checksum_value(rx_frame.icmp.header.checksum);
-    
-    ip_create_packet(&rx_eth_adm.eth_header.src_addr,
-                     rx_frame.ip.src_addr,
-                     nbr_bytes_in_payload,
-                     IP_PROTOCOL_ICMP,
-                     ETH_FRAME_OPTIONAL);
-    ip_add_payload_to_packet(&rx_frame.icmp, nbr_bytes_in_payload);
-    
-    ip_send_packet();
-  }
-}
+    union {
+      struct dhcp_packet_t        dhcp;
+      struct tftp_data_packet_t   tftp;
+    } app;
+  } udp;
+  
+  /* ------------------------------------------------------------------ ICMP */
+  PACKED_STRUCT() {
+    struct ipv4_header_t          ip_header;
+    struct icmp_header_t          header;
+  } icmp;
+  
+  /* ------------------------------------------------------------------- ARP */
+  struct arp_ip_ethernet_t        arp;
+} rx_frame;

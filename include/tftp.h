@@ -38,11 +38,29 @@
 /* ------------------------------------------------------------------------- */
 
 /*
+ * This prefix is prepended to all file names requested.
+ */
+#define TFTP_FILE_PREFIX      "speccyboot/"
+
+/*
  * Notification callback:
  *
  * called when data has been received over TFTP.
  */
 #define NOTIFY_TFTP_DATA       z80_receive_data
+
+/*
+ * Notification callback:
+ *
+ * called when the server responds with an error to a read request.
+ */
+#define NOTIFY_TFTP_ERROR      notify_tftp_error
+
+/*
+ * TFTP DATA packets have a maximal size of 512 bytes, unless options are set
+ * by the client (this client won't)
+ */
+#define TFTP_DATA_MAXSIZE         (512)
 
 /*
  * Prototype for callback (the actual function name is #define'd in above)
@@ -55,23 +73,30 @@
 void NOTIFY_TFTP_DATA(const uint8_t *received_data,
                       uint16_t       nbr_of_bytes_received,
                       bool           more_data_expected);
+/*
+ * Prototype for callback (the actual function name is #define'd in above)
+ */
+void NOTIFY_TFTP_ERROR(void);
 
-/* ------------------------------------------------------------------------- */
+/* =========================================================================
+ * TFTP packets
+ * ========================================================================= */
 
-union tftp_packet_t;
+PACKED_STRUCT(tftp_data_packet_t) {
+  uint16_t        opcode;
+  uint16_t        block_no;
+  uint8_t         data[TFTP_DATA_MAXSIZE];
+};
 
 /* -------------------------------------------------------------------------
  * Called by UDP when a TFTP packet has been identified
  * ------------------------------------------------------------------------- */
 void
-tftp_packet_received(const struct mac_address_t  *src_hwaddr,
-                     const ipv4_address_t        *src,
-                     uint16_t                     src_port_nw_order,
-                     const union tftp_packet_t   *packet,
-                     uint16_t                     nbr_bytes_in_packet);
+tftp_packet_received(uint16_t nbr_bytes_in_packet);
 
 /* -------------------------------------------------------------------------
- * Initiate a file transfer from server
+ * Initiate a file transfer from server. The prefix TFTP_FILE_PREFIX is
+ * prepended automatically.
  * ------------------------------------------------------------------------- */
 void
 tftp_read_request(const char *filename);

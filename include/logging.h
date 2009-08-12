@@ -1,5 +1,5 @@
 /*
- * Module logging:
+ * Module syslog:
  *
  * BSD-style syslog support (RFC 3164)
  *
@@ -31,45 +31,21 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SPECCYBOOT_LOGGING_INCLUSION_GUARD
-#define SPECCYBOOT_LOGGING_INCLUSION_GUARD
+#ifndef SPECCYBOOT_SYSLOG_INCLUSION_GUARD
+#define SPECCYBOOT_SYSLOG_INCLUSION_GUARD
 
 /* -------------------------------------------------------------------------
+ * Logging. Works like printf, but with a single special format specifier:
  *
- * Logging using log_info(), log_warning(), log_error(). Work like printf,
- * but with special format specifiers:
- *
- * %x       native endian, 16 bits
- * %b       8 bits
- * %a       pointer to IP address (32 bits, network order)
- * %s       pointer to NUL-terminated string
+ * %        native endian, 16 bits, always formatted as exactly 4 hex digits
  * ------------------------------------------------------------------------- */
 
-#ifdef UDP_LOGGING_SERVER_IP_ADDRESS
-#define UDP_LOGGING
-#endif
-
-#ifdef UDP_LOGGING
-
-/*
- * All log messages are labeled as 'kernel', so we can use the resulting
- * character directly
- */
-#define log_emergency(_tag, ...)          _log_udp_msg('0', _tag, __VA_ARGS__)
-#define log_error(_tag, ...)              _log_udp_msg('3', _tag, __VA_ARGS__)
-#define log_warning(_tag, ...)            _log_udp_msg('4', _tag, __VA_ARGS__)
-#define log_info(_tag, ...)               _log_udp_msg('6', _tag, __VA_ARGS__)
-
-void
-_log_udp_msg(char severity, const char *tag, const char *fmt, ...);
-
+#ifdef EMULATOR_TEST
+#define syslog(...)
 #else
 
-#define log_emergency(...)
-#define log_error(...)
-#define log_warning(...)
-#define log_info(...)
+void
+syslog(const char *fmt, ...);
 
-#endif
-
-#endif /* SPECCYBOOT_LOGGING_INCLUSION_GUARD */
+#endif /* EMULATOR_TEST */
+#endif /* SPECCYBOOT_SYSLOG_INCLUSION_GUARD */

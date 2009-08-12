@@ -4,6 +4,8 @@
  * Accepts a stream of bytes, unpacks it as a Z80 snapshot, loads it into
  * RAM, and executes it.
  *
+ * Also handles reading of raw data files.
+ *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
  * ----------------------------------------------------------------------------
@@ -37,6 +39,35 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+/*
+ * Notification callback:
+ *
+ * called when the a data file has been loaded. NOT called when snapshots
+ * are loaded -- a context switch is then performed instead.
+ */
+#define NOTIFY_FILE_LOADED         notify_file_loaded
+
+/*
+ * Prototype for callback (the actual function name is #define'd in above).
+ * The 'next_addr' argument points to the first byte *NOT* written to,
+ * so the number of bytes can be deduced as 'next_addr - A' where A is the
+ * address originally passed to z80_receive_data().
+ */
+void NOTIFY_FILE_LOADED(const void *next_addr);
+
+/* -------------------------------------------------------------------------
+ * Prepare for receiving a .z80 snapshot.
+ * ------------------------------------------------------------------------- */
+void
+z80_expect_snapshot(void);
+
+/* -------------------------------------------------------------------------
+ * Prepare for receiving a data file. The data file will be loaded to
+ * address 'dest', and at most 'maxsz' bytes will be accepted.
+ * ------------------------------------------------------------------------- */
+void
+z80_expect_raw_data(void *dest, uint16_t maxsz);
 
 /* -------------------------------------------------------------------------
  * Called from tftp.c when a TFTP DATA datagram has been received.

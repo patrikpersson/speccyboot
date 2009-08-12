@@ -1,7 +1,8 @@
 /*
  * Module util:
  *
- * Access to ZX Spectrum features (screen, keyboard, joystick, ...)
+ * Miscellaneous utility functions, including access to ZX Spectrum features
+ * (screen, keyboard, sound, ...)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -32,39 +33,22 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #include <stdbool.h>
-#include <stddef.h>
 
 #include "util.h"
 #include "eth.h"
 
 #include "platform.h"
-#include "logging.h"
+#include "syslog.h"
 
-/* ------------------------------------------------------------------------- */
-
-const uint16_t zero_u16 = 0u;
+#include "rxbuffer.h"
 
 /* ------------------------------------------------------------------------- */
 /* Screen memory                                                             */
 /* ------------------------------------------------------------------------- */
 
-#define BITMAP_BASE   (0x4000)
-#define BITMAP_SIZE   (0x1800)
-#define ATTRS_BASE    ((BITMAP_BASE) + (BITMAP_SIZE))
-#define ATTRS_SIZE    (0x300)
-
-/*
- * defined in splash_screen.c
- */
-extern const uint8_t splash_screen[];
-
-/*
- * Offset of a pixel byte in the Spectrum's video memory, as a function of
- * the index (as it would be represented in a 'normal' linear framebuffer)
- */
-#define PIXEL_ADDRESS(idx)                                                    \
-  ( (((idx) & 0x00E0) << 3) + (HIBYTE(idx) << 5) + ((idx) & 0x001f) )
+#define PROGRESS_BASE   ((ATTRS_BASE) + 0x200)
 
 /* ------------------------------------------------------------------------- */
 
@@ -73,102 +57,67 @@ extern const uint8_t splash_screen[];
  *
  * Features, each one 
  * assigned a value
- * from 0 to 6          Row index
- * -------------------  ---------
+ * from 0 to 6        Row index
+ * -----------------  ---------
  *
  *
- *   .111111.         0
- *   ..1111..         1
- *   0......2         2
- *   00....22         3
- *   00....22         3
- *   00....22         3
- *   00....22         3
- *   0......2         4
- *   ..3333..         5
- *   .333333.         6
- *   ..3333..         7
- *   4......5         8
- *   44....55         9
- *   44....55         9
- *   44....55         9
- *   44....55         9
- *   4......5        10
- *   ..6666..        11
- *   .666666.        12
+ *   x11111zy         0   x=0&1, y=1&2, z=1&2&7
+ *   0......2         1
+ *   x333333y         2   x=0&3&4, y=2&3&5
+ *   4......5         3
+ *   x666666y         4   x=4&6, y=5&6
  */
-
-#define DIGIT_ON      (PAPER(RED) + INK(RED) + BRIGHT)
-#define DIGIT_OFF     (PAPER(BLACK) + INK(BLACK))
 
 /*
  * Number of rows in digit image (see above)
  */
-#define NBR_ROWS      (13)
+#define NBR_ROWS      (5)
 
 /*
- * Features for each digit, where bit 0..6 correspond to the features in the
+ * Features for each digit, where bit 0..7 correspond to the features in the
  * drawing above.
+ *
+ * Defined in crt0.asm.
  */
-static const uint8_t digit_features[] = {
-  0x77,         /* 0 */
-  0x24,         /* 1 */
-  0x5e,         /* 2 */
-  0x6e,         /* 3 */
-  0x2d,         /* 4 */
-  0x6b,         /* 5 */
-  0x7b,         /* 6 */
-  0x26,         /* 7 */
-  0x7f,         /* 8 */
-  0x6f,         /* 9 */
-  0x3e,         /* A */
-  0x79,         /* b */
-  0x58,         /* c */
-  0x7c,         /* d */
-  0x5b,         /* E */
-  0x1b,         /* F */
-};
+extern const uint8_t digit_features[];
 
 /*
- * For each of the 11 rows, this structure holds the mask each feature
+ * For each of the 5 rows, this structure holds the mask each feature
  * contributes to that row.
  *
  * Each row has a length, indicating how many pairs of <feature, mask>
  * that follow.
+ *
+ * Defined in crt0.asm.
  */
-static const uint8_t feature_rows[] = {
-  1,                  1, 0x7e,
-  1,                  1, 0x3c,
-  2,      0, 0x01,                2, 0x80,
-  2,      0, 0x03,                2, 0xc0,
-  2,      0, 0x01,                2, 0x80,
-  1,                  3, 0x3c,
-  1,                  3, 0x7e,
-  1,                  3, 0x3c,
-  2,      4, 0x01,                5, 0x80,
-  2,      4, 0x03,                5, 0xc0,
-  2,      4, 0x01,                5, 0x80,
-  1,                  6, 0x3c,
-  1,                  6, 0x7e
-};
+extern const uint8_t feature_rows[];
 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Write 10 bits to the screen (attributes).
+ * Repeat time-outs: between the keypress and the first repetition, and for
+ * any subsequent repetitions
  *
- * bits:    Bitmask, indicating which of the 8 bits are set. Bit 0 represents
- *          the leftmost attribute cell.
+ * (measured in ticks of 20ms)
  */
-static void
-display_digit_row(uint8_t bits, uint8_t *start_address)
-{
-  uint8_t i;
-  for (i = 0; i < 8; i++) {
-    *start_address ++ = (bits & 0x01) ? (DIGIT_ON) : (DIGIT_OFF);
-    bits >>= 1;
-  }
-}
+#define REPEAT_FIRST_TIMEOUT    (20)
+#define REPEAT_NEXT_TIMEOUT     (5)
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Buffer for font data: stored in an absolute position outside of the
+ * runtime data. This means that the font data will be written over by the
+ * loaded snapshot.
+ */
+static uint8_t __at(0x7000) font_data[0x300];
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Tick count, increased by the 50Hz timer ISR in crt0.asm
+ */
+volatile timer_t timer_tick_count = 0;
 
 /* ------------------------------------------------------------------------- */
 
@@ -192,43 +141,94 @@ display_digit_at(uint8_t digit, uint8_t *start_address)
         bits |= mask;
       }
     }
-    display_digit_row(bits, start_address);
-    start_address += ROW_LENGTH;
-    if (i == 3 || i == 9) {
-      uint8_t j;
-      for (j = 0; j < 5; j++) {
-        display_digit_row(bits, start_address);
-        start_address += ROW_LENGTH;
-      }
+
+    for (j = 0; j < 8; j++) {
+      *start_address ++ = (bits & 0x01) ? (PAPER(WHITE) + INK(WHITE))
+                                        : (PAPER(BLACK) + INK(BLACK));
+      bits >>= 1;
     }
+    
+    start_address += (ROW_LENGTH - 8);
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+static void
+display_digits(bool three_digits,
+               uint8_t digit1, uint8_t digit2, uint8_t digit3)
+{
+  /*
+   * Always assume last digit needs updating
+   */
+  static uint8_t current_digit_1 = 0x10;    /* force update first time */
+  static uint8_t current_digit_2 = 0x10;    /* force update first time */
+  
+  if (three_digits) {
+    if (digit1 != current_digit_1) {
+      display_digit_at(digit1, (uint8_t *) PROGRESS_BASE + 2);
+      current_digit_1 = digit1;
+    }
+    if (digit2 != current_digit_2) {
+      display_digit_at(digit2, (uint8_t *) (PROGRESS_BASE + 12));
+      current_digit_2 = digit2;
+    }
+    display_digit_at(digit3, (uint8_t *) (PROGRESS_BASE + 22));
+  }
+  else {
+    if (digit1 != current_digit_1) {
+      display_digit_at(digit1, (uint8_t *) PROGRESS_BASE + 7);
+      current_digit_1 = digit1;
+    }
+    display_digit_at(digit2, (uint8_t *) (PROGRESS_BASE + 17));
   }
 }
 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Store a byte in the Spectrum's video memory using a linear index
+ * Code snippet for loading font data from ROM to RAM. This snippet will be
+ * copied to RAM before execution, so it cannot use any absolute addressing.
  */
 static void
-store_splash_byte(uint8_t b, uint16_t dst_index)
-{
-  *((uint8_t *) BITMAP_BASE + 0x0800 + PIXEL_ADDRESS(dst_index)) = b;
-}
-
-/* -------------------------------------------------------------------------
- * RST30 entry point (software interrupt)
- * ------------------------------------------------------------------------- */
-
-void
-rst30_handler(void)
+font_data_loader(void)
 __naked
 {
   __asm
   
-    ;; TODO: add some hooks for secondary loader here
-    
-    ret
-    
+  di
+
+#ifndef EMULATOR_TEST
+  ld    a, #0x28
+  out   (0x9f), a   ;; page out SpeccyBoot, keep ETH in reset
+#endif
+  
+  ld    a, #0x10    ;; page in ROM1, page 0, no lock
+  ld    bc, #0x7ffd
+  out   (c), a      ;; page in ROM1 (48k BASIC)
+  
+  ld    hl, #0x3d00 ;; address of font data in ROM1
+  ld    de, #_font_data
+  ld    bc, #0x0300
+  ldir
+
+#ifdef EMULATOR_TEST
+  xor   a           ;; page in ROM0, page 0, no lock
+  ld    bc, #0x7ffd
+  out   (c), a      ;; page in ROM1 (48k BASIC)
+#else
+  ld    a, #0x08
+  out   (0x9f), a   ;; page in SpeccyBoot
+#endif
+
+  ei
+  ret
+  
+  ;;
+  ;; Label necessary for copying to RAM
+  ;;
+end_of_font_data_loader::
+  
   __endasm;
 }
 
@@ -237,75 +237,35 @@ __naked
  * ------------------------------------------------------------------------- */
 
 void
-display_splash(void)
+display_progress(uint8_t kilobytes_loaded, uint8_t kilobytes_expected)
 {
-  uint16_t dst_index = 0;
-  uint16_t src_index = 0;
-  const uint8_t *src = splash_screen;
-  
-  while(dst_index < 0x0800) {
-    uint8_t b = *src++;
-    if (b) {
-      store_splash_byte(b, dst_index ++);
+  {
+    /*
+     * Progress bar
+     */
+    uint8_t progress = (((uint16_t) kilobytes_loaded) << 5) / kilobytes_expected;
+    set_attrs(PAPER(WHITE) + INK(WHITE), 23, 0, progress);
+    set_attrs(PAPER(BLUE) + INK(BLUE) | BRIGHT, 23, progress, 32 - progress);
+  }
+
+  {
+    bool three_digits = (kilobytes_expected >= 100);
+    uint8_t digit1;
+    uint8_t digit2;
+    uint8_t digit3 = 0;
+    
+    if (three_digits) {
+      digit1 = (kilobytes_loaded / 100);
+      digit2 = ((kilobytes_loaded / 10) % 10);
+      digit3 = (kilobytes_loaded % 10);
     }
     else {
-      uint8_t b = *src++;
-      if (b) {    /* NUL followed by a non-NUL byte */
-        store_splash_byte(0, dst_index ++);
-        store_splash_byte(b, dst_index ++);
-      }
-      else {
-        uint16_t len = *src++ + 2;
-        while (len) {
-          store_splash_byte(0, dst_index ++);
-          len --;
-        }
-      }
+      digit1 = (kilobytes_loaded / 10);
+      digit2 = (kilobytes_loaded % 10);
     }
+    
+    display_digits(three_digits, digit1, digit2, digit3);
   }
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-select_bank(uint8_t bank_id)
-{
-  static Z80_PORT(0x7FFD) bank_selection;
-  
-  bank_selection = bank_id;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-display_digits(uint8_t value)
-{
-  static uint8_t current_digit_1 = 0x10;    /* force update first time */
-  static uint8_t current_digit_2 = 0x10;    /* force update first time */
-  
-  uint8_t digit1 = (value / 10);
-  uint8_t digit2 = (value % 10);
-  
-  if (digit1 != current_digit_1) {
-    display_digit_at(digit1, (uint8_t *) ATTRS_BASE + 7);
-    current_digit_1 = digit1;
-  }
-  if (digit2 != current_digit_2) {
-    display_digit_at(digit2, (uint8_t *) (ATTRS_BASE + 17));
-    current_digit_2 = digit2;
-  }
-  
-  // log_info("progress: 0x%b", value);
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-set_border(uint8_t border_attrs)
-{
-  static Z80_PORT(0x00fe) ula_port;
-
-  Z80_PORT_WRITE(ula_port, border_attrs & 0x07);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -314,9 +274,9 @@ void
 set_attrs(uint8_t screen_attrs,
           uint8_t row,
           uint8_t col,
-          uint16_t n)
+          uint8_t n)
 {
-  uint16_t i;
+  uint8_t i;
   uint8_t *p = ((uint8_t *) ATTRS_BASE) + col + (row * ROW_LENGTH);
   for (i = 0; i < n; i++) {
     *p++ = screen_attrs;
@@ -326,24 +286,142 @@ set_attrs(uint8_t screen_attrs,
 /* ------------------------------------------------------------------------- */
 
 void
-fatal_error(uint8_t error_code)
+load_font_data(void)
 {
-  eth_init();               /* in case the device has entered an error state */
-  
-  display_digits(140 + error_code);         /* 'E' + error code */
-  
-  log_emergency("FATAL", "error %b", error_code);
-  
   __asm
-
-    ;; Display infinite psychedelic border pattern
-
-    di
-  panic_loop::
-    ld  a, r
-    and #7      ;; stay away from loadspeaker bit...
-    out (0xFE), a
-    jr panic_loop
   
+  ;; copy the funtion 'font_data_loader' to RAM (0x7300) and call it.
+  
+  ld  hl, #_font_data_loader
+  ld  de, #_font_data + 0x0300
+  ld  bc, #end_of_font_data_loader - _font_data_loader
+  ldir
+  
+  call    _font_data + 0x0300
+  
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+print_at(uint8_t line, uint8_t column, const char *s)
+{
+  char c;
+  while (c = *s++) {
+    print_char_at(line, column ++, c);
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+print_char_at(uint8_t row, uint8_t column, char c)
+{
+  print_pattern_at(row, column, FONTDATA_ADDRESS(c));
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+print_pattern_with_attrs_at(uint8_t attrs,
+                            uint8_t row,
+                            uint8_t col,
+                            const uint8_t *pattern)
+{
+  print_pattern_at(row, col, pattern);
+  set_attrs(attrs, row, col, 1);
+}
+
+/* ------------------------------------------------------------------------- */
+
+key_t
+wait_key(void)
+{
+  static timer_t repeat_timer;
+  static key_t previous_key = KEY_NONE;
+  static bool first_repetition;
+  
+  key_t key = poll_key();
+  if (key != KEY_NONE && key == previous_key) {
+    /*
+     * The previous key is still being pressed. See if it remains
+     * pressed until the repetition timer expires.
+     */
+    while(poll_key() == previous_key) {
+      if ((first_repetition
+           && timer_value(repeat_timer) >= REPEAT_FIRST_TIMEOUT)
+          || ((! first_repetition)
+              && timer_value(repeat_timer) >= REPEAT_NEXT_TIMEOUT))
+      {
+        timer_reset(repeat_timer);
+        first_repetition = false;
+        return previous_key;
+      }
+    }
+  }
+  do {
+    key = poll_key();
+  } while (key == KEY_NONE);
+  
+  timer_reset(repeat_timer);
+  previous_key = key;
+  first_repetition = true;
+  return key;
+}
+
+/* ------------------------------------------------------------------------- */
+
+timer_t
+timer_value(timer_t timer)
+{
+  timer_t current_value;
+  DISABLE_INTERRUPTS;
+  current_value = timer_tick_count;
+  ENABLE_INTERRUPTS;
+  return current_value - timer;
+}
+
+/* ------------------------------------------------------------------------- */
+
+uint8_t
+rand5bits(void)
+__naked
+{
+  __asm
+  
+    ld    a, r
+    add   a, #MAC_ADDR_0+MAC_ADDR_1+MAC_ADDR_2+MAC_ADDR_3+MAC_ADDR_4+MAC_ADDR_5
+    and   a, #0x1f
+    ld    l, a
+  
+    ret
+  
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+fatal_error(const char *message)
+{
+  cls();
+
+  load_font_data();
+  
+  print_at(4, 10, "Fatal error");
+  set_attrs(INK(BLUE) | PAPER(WHITE) | BRIGHT | FLASH, 4, 9, 13);
+  
+  print_at(16, (32 - strlen(message)) >> 1, message);
+  set_attrs(INK(WHITE) | PAPER(BLACK) | BRIGHT, 16, 0, 32);
+
+#ifndef EMULATOR_TEST
+  eth_init();
+  syslog(message);
+#endif
+
+  __asm
+    di
+    halt
   __endasm;
 }

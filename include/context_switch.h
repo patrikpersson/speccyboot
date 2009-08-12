@@ -38,48 +38,50 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "platform.h"
+#include "util.h"
 
 /* -------------------------------------------------------------------------
-* Evacuation concerns protecting the RAM used by SpeccyBoot (runtime data)
-* while a snapshot is being loaded into RAM. It is performed in three steps:
-*
-* 1. When loading the snapshot's RAM contents for runtime data area, the
-*    loaded data is instead stored in a temporary evacuation buffer (within
-*    Spectrum RAM).
-*
-* 2. When the last byte of the loaded data above has been loaded, the entire
-*    temporary evacuation buffer is written to ENC28J60 on-chip SRAM.
-*
-* 3. When the entire .z80 snapshot has been loaded, the runtime data is
-*    overwritten with the corresponding data from ENC28J60 on-chip SRAM.
-*
-* NOTE: when the EMULATOR_TEST build flag is set, 128k RAM bank 0 is used
-* instead of ENC28J60 SRAM.
-*
-* Memory layout for evacuation:
-*
-* address range      size  contents
-* -------------      ----  --------
-* 0x0000 .. 0x3FFF   16kB  SpeccyBoot ROM
-* 0x4000 .. 0x57FF   6kB   Video RAM (bitmap)
-* 0x5800 .. 0x5AFF   768B  Video RAM (attributes)            \
-* 0x5B00 .. 0x5BFF   256B  CPU stack (initial value 0x5BFF)   |   runtime data
-* 0x5C00 .. 0x5FFF   1K    static variables                  /
-*
-* 0x6000 .. 0x67FF   2K    temporary evacuation buffer
-* 
-* The area 0x5800 - 0x5FFF needs to be preserved during snapshot loading.
-* When data destined for these addresses are received, they are instead
-* stored in the ENC28J60's on-chip SRAM:
-*
-* 0x1700 .. 0x17FF   256B  .z80 snapshot header + other config data
-* 0x1800 .. 0x1FFF   2K    data destined for addresses 0x5800 .. 0x5FFF in
-*                          the Spectrum RAM (temporary storage during loading)
-* ------------------------------------------------------------------------- */
+ * Evacuation concerns protecting the RAM used by SpeccyBoot (runtime data)
+ * while a snapshot is being loaded into RAM. It is performed in three steps:
+ *
+ * 1. When loading the snapshot's RAM contents for runtime data area, the
+ *    loaded data is instead stored in a temporary evacuation buffer (within
+ *    Spectrum RAM).
+ *
+ * 2. When the last byte of the loaded data above has been loaded, the entire
+ *    temporary evacuation buffer is written to ENC28J60 on-chip SRAM.
+ *
+ * 3. When the entire .z80 snapshot has been loaded, the runtime data is
+ *    overwritten with the corresponding data from ENC28J60 on-chip SRAM.
+ *
+ * NOTE: when the EMULATOR_TEST build flag is set, 128k RAM bank 0 is used
+ * instead of ENC28J60 SRAM.
+ *
+ * Memory layout for evacuation:
+ *
+ * address range      size  contents
+ * -------------      ----  --------
+ * 0x0000 .. 0x3FFF   16kB  SpeccyBoot ROM
+ * 0x4000 .. 0x57FF   6kB   Video RAM (bitmap)
+ * 0x5800 .. 0x5AFF   768B  Video RAM (attributes, progress display)     (!)
+ * 0x5B00 .. 0x5BFF   256B  CPU stack (initial value 0x5BFF)             (!)
+ * 0x5C00 .. 0x5FFF   1K    static variables                             (!)
+ *
+ * 0x6000 .. 0x67FF   2K    temporary evacuation buffer
+ * 
+ * The area 0x5A00 - 0x5FFF, marked with (!) above, needs to be preserved
+ * during snapshot loading. When bytes destined for these addresses are
+ * received, they are instead stored in the ENC28J60's on-chip SRAM:
+ *
+ * 0x1700 .. 0x17FF   256B  .z80 snapshot header + other config data
+ * 0x1800 .. 0x1FFF   2kB   data destined for addresses 0x5A00 .. 0x5FFF in
+ *                          the Spectrum RAM (temporary storage during loading)
+ * ------------------------------------------------------------------------- */
 
 /*
- * Runtime data (the stuff to evacuate)
+ * Runtime data (the stuff to evacuate). Note that the z80_parser code
+ * currently requires RUNTIME_DATA_LENGTH to be a multiple of 0x400
+ * (for kilobyte counter display)
  */
 #define RUNTIME_DATA                  (0x5800)
 #define RUNTIME_DATA_LENGTH           (0x0800)
@@ -105,7 +107,10 @@
  * Addresses to evacuated data in the ENC28J60 SRAM
  */
 #define EVACUATED_HEADER              0x1700
+#define SAVED_PAGING_CFG              0x17EF
+#define SAVED_IP_CONFIG               0x17F0
 #define EVACUATED_DATA                0x1800
+
 /* ------------------------------------------------------------------------ */
 
 /*
@@ -133,7 +138,7 @@ PACKED_STRUCT(z80_snapshot_header_t) {
   uint16_t  ix;
   uint8_t   iff1;
   uint8_t   iff2;
-  uint8_t   int_mode;     /* only bits 0-1, other are bits ignored */
+  uint8_t   int_mode;       /* only bits 0-1, other are bits ignored */
 };
 
 /*
@@ -144,6 +149,11 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
   uint16_t                     extended_header_bytes;
   uint16_t                     pc;
   uint8_t                      hw_type;
+  uint8_t                      hw_state_7ffd;
+  uint8_t                      dummy_if1_timex;   /* not used */
+  uint8_t                      hw_mod;      /* bit 7 indicates 'modified hw' */
+  uint8_t                      hw_state_fffd;
+  uint8_t                      hw_state_snd[16];
   
   /*
    * Remaining contents of this header are useless for a real Spectrum
@@ -200,13 +210,16 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 #define Z80_OFFSET_PC_V2_LO    32
 #define Z80_OFFSET_PC_V2_HI    33
 
+#define OFFSET_PAGING_CONFIG   0xEF
+
 /* ------------------------------------------------------------------------ */
 
 /*
  * Evacuate a .z80 header to ENC28J60 SRAM.
- * Copies up to sizeof(struct z80_snapshot_header_extended_t) bytes.
+ * Copies sizeof(struct z80_snapshot_header_extended_t) bytes, and stored
+ * 'paging_cfg' as the final value to write to 128k paging register.
  */
-void evacuate_z80_header(const uint8_t *header_data);
+void evacuate_z80_header(const uint8_t *header_data, uint8_t paging_cfg);
 
 /*
  * Evacuate data from the temporary buffer to ENC28J60 SRAM.

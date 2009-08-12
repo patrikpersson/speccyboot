@@ -45,17 +45,10 @@
 #define UDP_PORT_DHCP_CLIENT      (68)
 #define UDP_PORT_TFTP_SERVER      (69)
 
-/* -------------------------------------------------------------------------
- * TFTP (ephemeral) port management
- *
- * NOTE: this value is always used in network byte order (i.e., it is not
- *       necessary to use htons() or ntohs() on it)
- * ------------------------------------------------------------------------- */
-
-extern uint16_t tftp_port_nw_endian;    /* Access using macros below */
-
-#define udp_set_tftp_port(p)      tftp_port_nw_endian = (p)
-#define udp_get_tftp_port()       (tftp_port_nw_endian)
+/*
+ * Ephemeral port for TFTP client, stored in network order
+ */
+extern uint16_t udp_port_tftp_client;
 
 /* -------------------------------------------------------------------------
  * UDP header
@@ -69,25 +62,10 @@ PACKED_STRUCT(udp_header_t) {
 };
 
 /* -------------------------------------------------------------------------
- * IP pseudo-header for UDP checksum computation
- * ------------------------------------------------------------------------- */
-
-PACKED_STRUCT(udp_ip_pseudo_header_t) {
-  ipv4_address_t  src_addr;
-  ipv4_address_t  dst_addr;
-  uint8_t         zero;         /* always zero */
-  uint8_t         protocol;     /* always for UDP */
-  uint16_t        udp_length;
-};
-
-/* -------------------------------------------------------------------------
  * Called by IP when a UDP packet has been identified
  * ------------------------------------------------------------------------- */
 void
-udp_packet_received(const struct mac_address_t  *src_hwaddr,
-                    const ipv4_address_t        *src,
-                    const ipv4_address_t        *dst,
-                    const uint8_t               *payload);
+udp_packet_received(uint16_t udp_packet_length);
 
 /* -------------------------------------------------------------------------
  * Create UDP packet
@@ -99,8 +77,15 @@ udp_create_packet(const struct mac_address_t  *dst_hwaddr,
                   const ipv4_address_t        *dst_ipaddr,
                   uint16_t                     src_port_nw_endian,
                   uint16_t                     dst_port_nw_endian,
-                  uint16_t                     udp_length,
+                  uint16_t                     udp_payload_length,
                   enum eth_frame_class_t       frame_class);
+
+/* -------------------------------------------------------------------------
+ * Create UDP reply to the sender of the most recently received packet.
+ * Source/destination ports are swapped. Frame class is ETH_FRAME_PRIORITY.
+ * ------------------------------------------------------------------------- */
+void
+udp_create_reply(uint16_t udp_payload_length);
 
 /* -------------------------------------------------------------------------
  * Append payload to a UDP packet, previously created with udp_create_packet()
@@ -111,13 +96,19 @@ udp_create_packet(const struct mac_address_t  *dst_hwaddr,
 #define  udp_add_variable_payload_to_packet(_data, _len)                      \
   ip_add_payload_to_packet((_data), (_len))
 
+#define udp_add_payload_byte_to_packet      ip_add_payload_byte_to_packet
+#define udp_add_payload_nwu16_to_frame      ip_add_payload_nwu16_to_frame
+
 /* -------------------------------------------------------------------------
  * Send a completed UDP packet.
- *
- * The 'udp_length' field MUST match the one passed to udp_create_packet().
  * ------------------------------------------------------------------------- */
-#define udp_send_packet(_udp_payload_length, _udp_frame_class)                \
-  ip_send_packet((_udp_payload_length) + sizeof(struct udp_header_t),         \
-                 (_udp_frame_class))
+#define udp_send_packet   ip_send_packet
+
+/* -------------------------------------------------------------------------
+ * Allocate a new ephemeral port for TFTP client
+ * (network order)
+ * ------------------------------------------------------------------------- */
+#define udp_new_tftp_port()                                                   \
+  udp_port_tftp_client += 0x0100
 
 #endif /* SPECCYBOOT_UDP_INCLUSION_GUARD */
