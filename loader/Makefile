@@ -5,7 +5,7 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION							= 1.0.0-work
+VERSION							= 1.0
 
 OBJCOPY							= objcopy
 CC									= sdcc

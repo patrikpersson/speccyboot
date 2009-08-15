@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>SpeccyBoot: How to use it</title>
+    </head>
+  
+  <link rel="stylesheet" type="text/css" href="speccyboot.css">
+    
+    <body>
+      
+        <div id="heading">
+          <div id="leftheading">SpeccyBoot</div>
+          <div id="rightheading">How to use it</div>
+          </div>
+        
+        <hr>
+        
+          <p>In addition to a SpeccyBoot-equipped Spectrum, two more machines
+          are needed in your network. However, your probably already have
+          them:</p>
+          
+          <ul>
+          <li>A DHCP server (virtually all broadband routers include this)</li>
+          <li>A TFTP server (a server application on a desktop/laptop
+          computer)</li>
+          </ul>
+
+          <p>These should be on the same network. Typically, you will just plug
+          in both your Spectrum and your TFTP server to your router.</p>
+          
+          <p><b>NOTE:</b> The current version of SpeccyBoot does not support
+          more than one SpeccyBoot on the same local network (the MAC address
+          is hard-coded).</p>
+          
+          <h2>TFTP server configuration</h2>
+          
+          <p>Your TFTP server <b>must be capable of responding to broadcast
+          requests</b>, since that is what SpeccyBoot uses. Most (but not all)
+          TFTP servers are, and some need an explicit option to enable this. I
+          used the built-in TFTP server of Mac OS X 10.5
+          (<a href="http://aplawrence.com/MacOSX/tftp.html">here's some hints
+          on how to enable that</a>), and most Linux distributions either
+          include a TFTP server by default, or allow you to install one
+          quite easily. I believe there are some third-party TFTP servers for
+          Windows too.</p>
+          
+          <h3>Preparing a directory of snapshots</h3>
+          
+          <p>Create a directory named <tt>speccyboot</tt> in your TFTP
+          servers's main directory (in the case of Mac OS X 10.5, this is
+          <tt>/private/tftpboot</tt>; many UNIX clones use <tt>/tftpboot</tt>).
+          Copy your Z80 snapshots to this <tt>speccyboot</tt> directory, and
+          create a (case-insensitively sorted) list of snapshots named
+          <tt>snapshots.lst</tt>. On a UNIX system, this can be done as
+          follows:</p>
+          
+          <p>
+          <code># sudo mkdir /private/tftpboot/speccyboot<br>
+          # sudo chown &lt;your-username&gt; /private/tftpboot/speccyboot<br>
+          # cd /private/tftpboot/speccyboot<br>
+          # cp &lt;path-to-snapshots&gt;/*.z80 .<br>
+          # ls -1 *.z80 | sort --ignore-case > snapshots.lst
+          </code>
+          </p>
+          
+          <p>A few notes on this:</p>
+          
+          <ul>
+          <li>It could be convenient to put the last line in a script, so you
+          can update the list easily whenever the directory is modified.</li>
+          <li>The sorting is not strictly required &mdash; but without it,
+          you will not be able to jump (predictably) in the snapshot list by
+          pressing an alphabetic key.</li>
+          </ul>
+          
+          <hr>
+                    
+          <h2>Loading snapshots</h2>
+
+          <p>If the steps above went well, you should now be able to turn on
+          your Spectrum, see it figure out its IP address aswell as that of the
+          TFTP server, and present your list of snapshots. You can now use
+          the arrow keys to navigate the list, the alphabetic keys to jump
+          directly to snapshots whose name begin with that letter, and Enter
+          to load the selected snapshot.</p>
+
+          <p>To boot into BASIC rather than the SpeccyBoot menu, press Caps
+          Shift and keep it pressed while power-cycling/resetting the
+          Spectrum.</p>
+
+          <h3>Demo video</h3>
+          
+          <object width="425" height="344"><param name="movie" value="http://www.youtube.com/v/PEy4VDO2IPs&hl=en&fs=1&"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed src="http://www.youtube.com/v/PEy4VDO2IPs&hl=en&fs=1&" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="425" height="344"></embed></object>
+                
+      </body>
+      <hr>
+      <i>&copy; 2009 Patrik Persson</i>
+    </html>

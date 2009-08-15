@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>SpeccyBoot: How to build one yourself</title>
+    </head>
+  
+  <link rel="stylesheet" type="text/css" href="speccyboot.css">
+    
+    <body>
+      
+      <div id="heading">
+        <div id="leftheading">SpeccyBoot</div>
+        <div id="rightheading">How to build one yourself</div>
+        </div>
+      
+      <hr>
+      
+      <p>There are three parts of building a SpeccyBoot: building the
+      hardware, building the software stack, and getting the software onto
+      the hardware.</p>
+      
+      <ul>
+        <li><a href="#hw">Building the hardware</a></li>
+        <li><a href="#sw">Building the software</a></li>
+        <li><a href="#prog">Getting the software onto the device</a></li>
+        </ul>
+      
+      <p><b>NOTE:</b> I assume no responsibility for what happens if you
+      connect this to your Spectrum. This design works well for me, but
+      please be aware that a mistake (yours or mine) may destroy your
+      dear Spectrum. You have been warned!</p>
+      
+      <hr>
+      
+      <a name="hw">
+        <h2>Building the hardware</h2>
+        </a>
+      
+      <p>I built the device (described by the rudimentary drawing below) on
+      a basic lab board. I'm not much of a soldering wizard, but you should
+      probably have some soldering experience to pull this off. A few notes
+      on the design:</p>
+      
+      <ul>
+        
+        <li>The drawing does not include power
+          supply details (5V to most circuits, except the ENC28J60 which
+          uses 3.3V). I used 5V/3.3V voltage regulators connected to
+          the Spectrum's +9V supply.</li>
+        
+        <li>The Spectrum +2B and +3 have slightly modified edge connectors;
+          specifically, the ROM CS signal has moved (and been split in two),
+          and there seems to be no +9V supply. I'm not familiar enough with
+          the ROM CS signals on the +2B/+3 to advise on how to connect
+          them.</li>
+        
+        <li>The FM1808 FRAM is 32k in size, but SpeccyBoot only uses 16k. You
+          can safely replace it with a 16k EPROM/EEPROM/equivalent (as long
+          as you have the equipment to program it). If you want to
+          simplify the design, you can remove the connection from the latch
+          (74'573) to FM1808's A14 and connect FM1808 A14 to either ground or
+          Vcc instead (if you are sure that you will not need the remaining
+          16k for something else).</li>
+        
+        <li>This design uses the
+          <a href="http://www.olimex.com/dev/enc28j60-h.html">ENC28J60-H
+            board from Olimex</a>. If you want to use the ENC28J60 chip
+          as-is, you will have to add a few more external components (such
+          as an Ethernet connector, obviously). Refer to the ENC28J60
+          data sheet for details.</li>
+        
+        <li>A friend informed me (a bit too late) about the 74'273, which could
+          be used to reduce the number of components in this design. In
+          particular, the logic connected to LE and D0/D1 (which is there to
+          provide a well-defined state on reset) could be removed entirely.
+          If/when my SpeccyBoot goes up in smoke, I'll use the 74'273 in the
+          next incarnation.</li>
+        
+        <li>There are two switches: S1 allows the FRAM to be permanently
+          disabled (useful when it contains garbage), and S2 is a
+          write-protection switch.</li>
+        
+        <li>The 74'138 decoder's Y0 output can be used as a fully decoded
+          select signal for a Kempston joystick interface. Just add a 74'240
+          buffer.</li>
+        
+        </ul>
+      
+      <p>Finally, you may use this hardware design as you wish. Feel free to sell
+      devices based on this design; if they look good, I'd like to buy one!</p>
+      
+      <img src="schematic.png"/>
+      
+      <hr>
+      
+      <a name="sw">
+        <h2>Building the software</h2>
+        </a>
+      
+      <p>To build the software, you will need the following:</p>
+      <ul>
+        <li><a href="http://gcc.gnu.org/">GCC (GNU Compiler Collection)</a></li>
+        <li><a href="http://www.gnu.org/software/make/">GNU Make</a></li>
+        <li><a href="http://sdcc.sourceforge.net/">SDCC (Small Device C Compiler)</a></li>
+        <li><a href="http://www.gnu.org/software/binutils/">GNU binutils</a>
+          (actually, you just need objcopy to convert Intel hex files to binary)</li>
+        </ul>
+      
+      <p>I used the standard GCC and Make versions included in Mac OS X 10.5
+      (basically 4.0.1 and 3.81, respectively), version 2.9.0 of SDCC, and
+      compiled binutils 2.19 for Mac OS X. Any reasonably modern UNIX or
+      Linux system should work for compilation. (Windows is probably fine
+      too, but don't have detailed instructions to share.)</p>
+      
+      <p>Check out the release you want (for example, 1.0) and build it:</p>
+      
+      <code># svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.0<br>
+        # cd speccyboot-1.0<br>
+        # make</code>
+      
+      <p>You should now have two files in the <tt>loader</tt> subdirectory:</p>
+      
+      <ul>
+        <li><tt>speccyboot.rom</tt> &mdash; a 16k ROM image to run on the device</li>
+        <li><tt>speccyboot.wav</tt> &mdash; a WAV file (audio) of the same data,
+          in ZX Spectrum cassette tape loader format</li>
+        </ul>
+      
+      <hr>
+      
+      <a name="prog">
+        <h2>Getting the software onto the device</h2>
+        </a>
+      
+      <p>If you used an EPROM/EEPROM or similar, you most likely use a
+      dedicated EPROM programmer to get the software onto the device. In
+      that case, you can stop reading now: these instructions are for
+      programming the SpeccyBoot FRAM from the Spectrum.</p>
+      
+      <p>There are two situations to consider: when the FRAM contains 
+      unusable code (such as the first time you use it, or if you have
+      modified the software in an unfortunate way), and when the FRAM
+      already contains a working SpeccyBoot stack.</p>
+      
+      <p>These instructions involve playing .TZX files to your Spectrum. You
+      will need a .TZX audio player (such as
+      <a href="ftp://ftp.worldofspectrum.org/pub/sinclair/tools/unix/playtzx-0.12c.tar.gz">
+        PlayTZX</a>) and an audio lead from your build machine to your Spectrum
+      to do this. (Note that you will likely need to turn the volume up for
+      the old Spectrum to catch the sound.)</p>
+      
+      <h4>Programming SpeccyBoot with non-functional FRAM contents</h4>
+      
+      <ol>
+        <li>Set the S1 switch to disable FRAM, and S2 to allow writing.</li>
+        <li>Load the program <tt>utils/target/fram-restore/fram-restore.tzx</tt>
+          to the Spectrum.</li>
+        <li>When the program has loaded, the border turns blue.</li>
+        <li>Set S1 to enable FRAM.</li>
+        <li>Press the space key, and keep it pressed.
+          <li>When the border changes colour again, set S2 to disallow writing,
+            and release the space key. The machine will likely crash, but that
+            doesn't matter.</li>
+          <li>Reset or power-cycle the Spectrum: it should bring up an ancient
+            (non-working) SpeccyBoot version.</li>
+          <li>Select "BASIC" with arrow keys/Enter to enter Spectrum BASIC.</li>
+          <li>Use the instructions below to program a suitable
+            version the SpeccyBoot stack onto the device.</li>
+          </ol>
+      
+      <h4>Replacing a working SpeccyBoot stack</h4>
+      
+      <ol>
+        <li>Ensure S1 is set to enable FRAM, and that you are in Spectrum BASIC.
+          (in recent version of SpeccyBoot, you do so by booting with 'caps shift'
+          pressed).</li>
+        <li>Set S2 to allow writing.</li>
+        <li>Load the program <tt>utils/target/fram-loader/fram-loader.tzx</tt>
+          to the Spectrum.</li>
+        <li>Play the <tt>speccyboot.wav</tt> file, produced by compilation
+          above, to the Spectrum.</li>
+        <li>Press 1, then R (for RUN), and Enter.</li>
+        <li>Set S2 to disallow writing.</li>
+        <li>Reset or power-cycle the Spectrum: you should now be running the
+          selected SpeccyBoot version.</li>
+        </ol>
+      
+      <hr>
+      <i>&copy; 2009 Patrik Persson</i>
+      </body>
+    </html>

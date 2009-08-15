@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>SpeccyBoot: How it works</title>
+    </head>
+  
+  <link rel="stylesheet" type="text/css" href="speccyboot.css">
+    
+    <body>
+      
+      <div id="heading">
+        <div id="leftheading">SpeccyBoot</div>
+        <div id="rightheading">How it works</div>
+        </div>
+      
+      <hr>
+      
+      <p>SpeccyBoot is about booting a ZX Spectrum over an Ethernet
+      network. Network booting was used for diskless workstation a few
+      years back, but is still used for booting embedded development
+      boards. I thought it'd be interesting to try this with the
+      Spectrum.</p>
+      
+      <h2>Network booting</h2>
+      
+      <p>In general, network booting works as follows:</p>
+      
+      <ul>
+        <li>The machine boots and uses DHCP or BOOTP to get an IP
+          address.</li>
+        <li>The machine then loads an executable file over TFTP from a
+          server.</li>
+        </ul>
+      
+      <p>SpeccyBoot is a device to do this with a Spectrum. The device
+      connects to the Spectrum's expansion port, and to your local network
+      using standard Ethernet. SpeccyBoot uses standard IP-based protocols,
+      so it works with standard software.</p>
+      
+      <p>This allows us to load virtually any program onto the Spectrum in
+      a matter of seconds, instead of the tedious and error-prone cassette
+      loading. Programs are packaged as Z80 snapshots, which can be
+      created from any modern Spectrum emulator, or obtained from the
+      <a href="http://www.worldofspectrum.org/">World of Spectrum</a>
+      archives.</p>
+      
+      <h2>SpeccyBoot internals</h2> 
+      
+      <p>The picture below gives a logical view of SpeccyBoot's internals.
+      The device connects to the Spectrum's expansion bus connector, and
+      uses the
+      <a href="http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en022889">MicroChip
+        ENC28J60 Ethernet Controller</a> to connect to Ethernet. The
+      controller communicates with the Spectrum using the
+      <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
+      protocol using a very simple SPI host. Finally, the device also
+      contains a 16kB ROM (EPROM/EEPROM/FRAM/Flash) with a dedicated
+      stack for the protocols involved.</p>
+      
+      <img src="concept-hw.png" />
+      
+      <hr>
+      
+      <h2>SpeccyBoot software stack</h2>
+      
+      <p>The software stack implements (needed parts of) the following
+      standard network protocols:</p>
+      
+      <table class="full_width">
+        <tr><td><a href="http://www.ietf.org/rfc/rfc0768.txt">RFC 768</a></td><td>UDP (User Datagram Protocol)</td><td>August 1980</td></tr>
+        <tr><td><a href="http://www.ietf.org/rfc/rfc791.txt">RFC 791</a></td><td>IP (Internet Protocol)</td><td>September 1981</td></tr>
+        <tr><td><a href="http://www.ietf.org/rfc/rfc826.txt">RFC 826</a></td><td>ARP (Address Resolution Protocol)</td><td>November 1982</td></tr>
+        <tr><td><a href="http://tools.ietf.org/html/rfc906">RFC 906</a></td><td>Bootstrap Loading using TFTP</td><td>June 1984</td></tr>
+        <tr><td><a href="http://tools.ietf.org/html/rfc1350">RFC 1350</a></td><td>TFTP (Trivial File Transfer Protocol)</td><td>July 1992</td></tr>
+        <tr><td><a href="http://www.ietf.org/rfc/rfc2131.txt">RFC 2131</a></td><td>DHCP (Dynamic Host Configuration Protocol)</td><td>March 1997</td></tr>
+        <tr><td><a href="http://www.ietf.org/rfc/rfc3164.txt">RFC 3164</a></td><td>BSD Syslog Protocol</td><td>August 2001</td></tr>
+        </table>
+      
+      <p>Although these protocols are as old as (in some cases, even older
+      than) the Spectrum, these IP-family protocols are
+      supported by all personal computers since the mid 1990s.</p>
+      
+      <p>SpeccyBoot also includes a bit-banged
+      <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
+      stack (capable of a transfer bandwidth of about 57kbit/s), a menu
+      selection facility, and support for loading and executing
+      <a href="http://www.worldofspectrum.org/faq/reference/z80format.htm">Z80
+        snapshots</a>.</p>
+      
+      <p>The code is available at
+      <a href="http://sourceforge.net/projects/speccyboot/">SourceForge</a>.</p>
+      
+      <h3>History</h3>
+      
+      <table class="full_width">
+        <tr><td class="milestone_date">August 13, 2009</td><td>Menu selection working</td></tr>
+        <tr><td class="milestone_date">June 4, 2009</td><td>Booted from .z80 snapshot over Ethernet</td></tr>
+        <tr><td class="milestone_date">May 9, 2009</td><td>Loaded .z80 snapshot in emulated environment (not yet over real Ethernet)</td></tr>
+        <tr><td class="milestone_date">April 26, 2009</td><td>DHCP client, TFTP file transfer working</td></tr>
+        <tr><td class="milestone_date">April 19, 2009</td><td>The Speccy responds to PING (ICMP REPLY)</td></tr>
+        <tr><td class="milestone_date">March 25, 2009</td><td>Booting from FRAM works (Hungry Horace, cartridge version)</td></tr>
+        <tr><td class="milestone_date">March 17, 2009</td><td>Bit-banged SPI works (BASIC hack to flash activity/link LEDs)</td></tr>
+        </table>
+      
+      </body>
+    <hr>
+    <i>&copy; 2009 Patrik Persson</i>
+    </html>

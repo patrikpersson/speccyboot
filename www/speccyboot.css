@@ -5,11 +5,6 @@ body, html {
   background-color: #e0e0d0;
 }
 
-#overview {
-  border-spacing: 1%;
-  border-width: 1px;
-};
-
 .row {
   width: 100%;
   clear: both;
@@ -21,17 +16,14 @@ body, html {
 
 .rowheading {
   font-size: 12pt;
-  margin-left: -1%;
-  padding: 1%;
-  width: 100%;
-  background-color: #000000 ;
-  color: #ffffff;
-  letter-spacing: 1px;
+  text-align: center;
+  padding: 5%;
+  font-weight: bold;
 }
 
 .rowimage_element {
   float: left;
-  width: 30%;
+  width: 33%;
 }
 
 .rowimage {
@@ -41,8 +33,15 @@ body, html {
 .rowtext {
   float: left;
   width: 68%;
+  height: 100%;
   margin-left: 1%;
   color: #000000;
+}
+
+.biglink {
+  font-size: 12pt;
+  text-align: center;
+  padding: 5%;
 }
 
 #leftheading {
@@ -65,93 +64,12 @@ body, html {
   margin-bottom: 12px;
 }
 
-#linear_text {
-  width: 100%;
-  clear: both;
-}
-
-#col1, #col2, #col3 {
-  background-color: #c0c0c0;
-  padding: 1%;
-}
-
-#row1 {
-  float: left;
-  width: 30%;
-  margin-right: 1%;
-}
-
-#row2 {
-  float: left;
-  width: 30%;
-  margin-left: 1%;
-  margin-right: 1%;
-}
-
-#row3 {
-  float: right;
-  width: 30%;
-  margin-left: 1%;
-}
-
 a:link, a:visited, a:active {
-  text-decoration: none;
   color: #000080;
-}
-
-a:hover {
-  text-decoration: none;
-  background-color: #ffff00;
 }
 
 table.full_width {
   width: 100%;
-}
-
-td.milestone_date, th.taskstatus {
-  width: 20%;
-}
-
-td.status_working, td.status_ongoing, td.status_remaining, th.tasks, th.taskstatus, td.tasks {
-  text-align: left;
-  padding: 8px;
-  border-color: #c0c0c0;
-  border-width: 1px;
-  border-style: solid;
-}
-
-td.status_working {
-  background-color: #80ff80;
-}
-
-td.status_ongoing {
-  background-color: #ffff80;
-}
-
-td.status_remaining {
-  background-color: #ff8080;
-}
-
-td.milestone_date {
-  text-align: right;
-  padding-right: 30px;
-  color: #505050;
-}
-
-th.grid {
-  width: 33%;
-  background-color: #c0c0c0;
-  color: #000000;
-  padding: 10px;
-}
-
-td.grid {
-  width: 33%;
-  background-color: #ffffff;
-  padding: 8px;
-  border-color: #c0c0c0;
-  border-width: 1px;
-  border-style: solid;
 }
 
 hr {

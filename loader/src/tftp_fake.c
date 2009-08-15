@@ -144,11 +144,6 @@ tftp_read_request(const char *filename)
     "B005.z80\n"
     "Bomb Jack.z80\n"
     "Bubble Bobble.z80\n"
-    "C001.z80\n"
-    "C002.z80\n"
-    "C003.z80\n"
-    "C004.z80\n"
-    "C005.z80\n"
     "Carrier Command.z80\n"
     "Chuckie Egg.z80\n"
     "Dan Dare.z80\n";

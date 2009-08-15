@@ -20,134 +20,37 @@
         <hr>
         
         <table class="full_width" id="overview">
-          
           <tr class="row">
             <td class="rowimage_element">
-              <img class="rowimage" src="concept.jpg"/>
-              </td>
-            <td class="rowtext">
               <div class="rowheading">Old dog, new tricks</div>
-              <p>
-              What if we could load any 48K Spectrum game into the real hardware in 15-20 seconds
-              &mdash; over the local network? Diskless workstation have done this for years, and
-              today lots of embedded development boards can also boot over a network. So why don't
-              we do this on the Spectrum?
-              </p>
-              <p>
-              <b>Welcome to SpeccyBoot!</b>
-              </p>
-              <p>
-              SpeccyBoot is a combination of hardware and software. The hardware includes an
-              Ethernet interface, and the software implements a minimalistic IP stack
-              to perform a network
-              (<a href="http://en.wikipedia.org/wiki/Trivial_File_Transfer_Protocol">TFTP</a>)
-              boot.
-              </p>
+              <a href="concept.html">
+                <img class="rowimage" src="concept.jpg"/>
+                </a>
+              <div class="biglink">
+                <a href="concept.html">Here's how it works</a>
+                </div>
               </td>
-            </tr>
-          
-          <tr class="row">
             <td class="rowimage_element">
-              <img class="rowimage" src="hardware.jpg"/>
+              <div class="rowheading">Simple hardware</div>
+              <a href="build.html">
+                <img class="rowimage" src="hardware.jpg"/>
+                </a>
+              <div class="biglink">
+                <a href="build.html">Here's how to build it yourself</a>
+                </div>
               </td>
-            <td class="rowtext">
-              <div class="rowheading">Build it yourself</div>
-              <p>
-              The SpeccyBoot hardware device connects to the Spectrum's expansion port, and
-              includes the following components:
-              </p>
-              <ul>
-                <li>A <a href="http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en0228
-                  89">Microchip ENC28J60</a>
-                  Ethernet controller, connected over <a href="http://en.wikipedia.org/wiki/Serial
-                    _Peripheral_Interface_Bus">SPI</a>.
-                  For simplicity and size, I used the
-                  <a href="http://www.olimex.com/dev/enc28j60-h.html">Olimex development board</a>.
-                  <li>32kB <a href="http://www.ramtron.com/products/nonvolatile-memory/parallel-pr
-                    oduct.aspx?id=51">Ramtron FM1808</a>
-                    <a href="http://en.wikipedia.org/wiki/Ferroelectric_RAM">ferro-electric
-                      RAM</a> (though only 16K is needed by SpeccyBoot)
-                    <li>A few supporting minor circuits (74-series gates, voltage regulators)
-                      </ul>
-              </p>
-              <p>The FRAM was chosen because it's easy to re-program. If you have the
-              equipment, any old EPROM/EEPROM (16K or larger) should be fine.</p>
-              </td>
-            </tr>
-          
-          <tr class="row">
             <td class="rowimage_element">
-              <img class="rowimage" src="menu.png"/>
-              </td>
-            <td class="rowtext">
               <div class="rowheading">Casual retro-gaming</div>
-              <p>The boot software will load a secondary loader (menu application) from the TFTP
-              server. The menu application, in turn, loads a .z80 snapshot directly into the
-              Spectrum's RAM.</p>
-              
-              <p>The boot software is stored in the FRAM, which temporarily replaces the
-              internal ROM during boot.</p>
+              <a href="usage.html">
+                <img class="rowimage" src="menu.png"/>
+                </a>
+              <div class="biglink">
+                <a href="usage.html">Here's how to use it</a>
+                </div>
               </td>
             </tr>
           </table>
-        
-        <div id="linear_text">  
-          <p>If you're interested in this project, you should also check out Winston's
-          <a href="http://spectrum.alioth.net/doc/index.php/Main_Page">Spectranet</a>
-          project to integrate the W5100 (Ethernet host with embedded on-chip TCP/IP
-          stack) with the Spectrum.</p>
-          
-          <hr>
-          
-          <h2>Demo video</h2>
-          
-          <object width="425" height="344"><param name="movie" value="http://www.youtube.com/v/PEy4VDO2IPs&hl=en&fs=1&"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed src="http://www.youtube.com/v/PEy4VDO2IPs&hl=en&fs=1&" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="425" height="344"></embed></object>
-          
-          <hr>
-          
-          <h2>Status (spring 2009)</h2>
-          
-          <p>This is my (Patrik Persson's) hobby project. I've been working on this in my spare time for a few months,
-          so it's still early days. I'm happy with the progress rate, though, so stay tuned for updates.</p>
-          
-          <table class="full_width">
-            <tr><th class="taskstatus">status</th><th class="tasks">task</th></tr>
-            <tr><td class="status_working">works</td><td class="tasks"><a href="http://tools.ietf.org/html/rfc906">RFC906</a> (minus RARP, noone uses that these days)</td></tr>
-            <tr><td class="status_working">works</td><td class="tasks">IP, ARP, UDP, and TFTP for the above</td></tr>
-            <tr><td class="status_working">works</td><td class="tasks">DHCP/BOOTP client</td></tr>
-            <tr><td class="status_working">works</td><td class="tasks">ICMP for PING responses</td></tr>
-            <tr><td class="status_working">working</td><td class="tasks">.z80 snapshot loading</td></tr>
-            <tr><td class="status_ongoing">ongoing</td><td class="tasks">Secondary loader (menu application loaded over TFTP)</td></tr>
-            </table>
-          
-          <h3>Recent progress</h3>
-          
-          <table class="full_width">
-            <tr><td class="milestone_date">June 4, 2009</td><td>Booted from .z80 snapshot over Ethernet</td></tr>
-            <tr><td class="milestone_date">May 9, 2009</td><td>Loaded .z80 snapshot in emulated environment (not yet over real Ethernet)</td></tr>
-            <tr><td class="milestone_date">April 26, 2009</td><td>DHCP client, TFTP file transfer working</td></tr>
-            <tr><td class="milestone_date">April 19, 2009</td><td>The Speccy responds to PING (ICMP REPLY)</td></tr>
-            <tr><td class="milestone_date">March 25, 2009</td><td>Booting from FRAM works (Hungry Horace, cartridge version)</td></tr>
-            <tr><td class="milestone_date">March 17, 2009</td><td>Bit-banged SPI works (BASIC hack to flash activity/link LEDs)</td></tr>
-            </table>
-          
-          <hr>
-          
-          <h2>Download</h2>
-          
-          <p>No releases of the software are available yet, but feel free to check out SVN:
-          <pre>svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/trunk speccyboot</pre></p>
-          
-          <p>The SourceForge page is here: <a href="https://sourceforge.net/projects/speccyboot/">https://sourceforge.net/projects/speccyboot/</a></p>
-          
-          <p>The hardware design is <a href="schematic.png">available here</a>, and you
-          may use it freely. The drawing is quite rudimentary, and does not include power
-          supply details (5V to most circuits, except the ENC28J60 which uses 3.3V). If you
-          are interested in building a SpeccyBoot device, please contact me.</a> 
-          </p>
-          
-          </div>
-        </div>
-      
-      </body>
+        </body>
+    <hr>
+    <i>&copy; 2009 Patrik Persson</i>
     </html>

@@ -5,6 +5,8 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
+export
+
 all clean:
 	$(MAKE) -C loader $@
 	$(MAKE) -C tests $@
