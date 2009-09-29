@@ -38,7 +38,6 @@
 #include "eth.h"
 #include "ip.h"
 #include "udp.h"
-#include "icmp.h"
 #include "context_switch.h"
 
 #include "syslog.h"
@@ -149,13 +148,8 @@ ip_frame_received(uint16_t nbr_bytes_in_payload)
     return;
   }
   
-  switch (rx_frame.ip.protocol) {
-    case IP_PROTOCOL_UDP:
-      udp_packet_received(ip_total_len - header_size);
-      break;
-    case IP_PROTOCOL_ICMP:
-      icmp_packet_received(ip_total_len - header_size);
-      break;
+  if (rx_frame.ip.protocol == IP_PROTOCOL_UDP) {
+    udp_packet_received(ip_total_len - header_size);
   }
 }
 

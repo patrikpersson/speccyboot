@@ -1,0 +1,15 @@
+v1.1 ():
+
+* Resolved a timing issue on the Spectrum 128 (leading to, among other things,
+  distorted sound in some games; a contended page was mistakenly paged into the
+  0xc000..0xffff region for 48k snapshots).
+  
+* Removed remaining non-functional parts of ICMP stack.
+
+* Addressed compiler warnings.
+
+-------------------------------------------------------------------------------
+
+v1.0 (August 13, 2009):
+
+* First release.

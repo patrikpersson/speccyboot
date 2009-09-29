@@ -5,7 +5,7 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION							= 1.0
+VERSION							= 1.1
 
 OBJCOPY							= objcopy
 CC									= sdcc
@@ -36,7 +36,7 @@ MODULES      = util z80_parser context_switch enc28j60_spi
 ifdef EMULATOR_TEST
 CFLAGS			+= -DEMULATOR_TEST
 else
-MODULES     += ip eth rxbuffer arp icmp udp dhcp tftp syslog
+MODULES     += ip eth rxbuffer arp udp dhcp tftp syslog
 endif
 
 ifdef CHECK_STACK

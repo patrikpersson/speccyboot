@@ -44,7 +44,6 @@
 /*
  * Supported IP protocols
  */
-#define IP_PROTOCOL_ICMP          (1)
 #define IP_PROTOCOL_UDP           (17)
 
 /*

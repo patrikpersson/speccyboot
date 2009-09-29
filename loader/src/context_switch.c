@@ -116,7 +116,7 @@ void
 context_switch(void)
 {
   check_stack();
-  
+    
 #ifndef EMULATOR_TEST
   /*
    * Select the correct register bank for RDPT operations

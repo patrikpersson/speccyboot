@@ -33,7 +33,6 @@
 
 #include "eth.h"
 #include "udp.h"
-#include "icmp.h"
 #include "arp.h"
 #include "dhcp.h"
 #include "tftp.h"
@@ -68,12 +67,6 @@ extern union rx_frame_t {
       struct tftp_data_packet_t   tftp;
     } app;
   } udp;
-  
-  /* ------------------------------------------------------------------ ICMP */
-  PACKED_STRUCT() {
-    struct ipv4_header_t          ip_header;
-    struct icmp_header_t          header;
-  } icmp;
   
   /* ------------------------------------------------------------------- ARP */
   struct arp_ip_ethernet_t        arp;

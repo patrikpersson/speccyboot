@@ -190,7 +190,7 @@ write_data_file(const char *filename)
   
   snprintf((char *) speccy_header,
            sizeof(speccy_header), "\003data      %c%c%c\200%c\200",
-           BITS0TO7(bytes_read),  BITS8TO15(bytes_read), 0, 0);
+           (int) BITS0TO7(bytes_read), (int) BITS8TO15(bytes_read), 0, 0);
   write_block(0x00, SIZEOF_SPECTRUM_HEADER, speccy_header);
   write_pause(500);
   write_block(0xff, (uint16_t) bytes_read, infile_buffer);

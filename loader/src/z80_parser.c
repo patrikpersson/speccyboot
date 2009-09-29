@@ -323,50 +323,36 @@ DEFINE_STATE(s_chunk_header2)
 DEFINE_STATE(s_chunk_header3)
 {
   /*
-   * Receive ID of the page the chunk belongs to. Use the 128k Spectrum
-   * page numbering (0..7).
+   * Receive ID of the page the chunk belongs to, range is 3..10
    *
    * See http://www.worldofspectrum.org/faq/reference/z80format.htm
    */
-  uint8_t page_id = (*received_data++) - 3;
+  uint8_t page_id = *received_data++;
   received_data_length--;
   
-  if (page_id > 7) {
+  if (page_id < 3 || page_id > 10) {
     fatal_error("incompatible snapshot");
   }
-  
-  /*
-   * There is a discrepancy between the .z80 snapshot format and the way
-   * a 128k Spectrum works.
-   *
-   * In .z80, the 0x8000..0xbfff region of a 48k Spectrum is stored as
-   * page 1, but on the 128k Spectrum, page 2 is used instead. It seems to
-   * me that pages 1 and 2 have somehow been mixed up in the .z80 format
-   * when a 48k snapshot is stored.
-   */
-  if (kilobytes_expected != 128) { /* could be 16 or 48 */
-    if (page_id == 1) {
-      page_id = 2;
-    }
-    else if (page_id == 2) {
-      page_id = 1;
-    }
+
+  if (kilobytes_expected == 128) {
+    select_bank(page_id - 3);
+    curr_write_pos = (uint8_t *) 0xc000;
   }
-  
-  switch (page_id) {
-    case 2:
-      /* 128k page 2, 48k 0x8000..0xbfff */
-      curr_write_pos = (uint8_t *) 0x8000;
-      break;
-    case 5:
-      /* 128k page 5, 48k 0x4000..0x7fff */
-      curr_write_pos = (uint8_t *) 0x4000;
-      break;
-    default:
-      /* 128k page 0, 1, 3, 4, 6, 7 */
-      select_bank(page_id);
-      curr_write_pos = (uint8_t *) 0xc000;
-      break;
+  else {
+    switch (page_id) {
+      case 4:
+        curr_write_pos = (uint8_t *) 0x8000;
+        break;
+      case 5:
+        curr_write_pos = (uint8_t *) 0xc000;
+        break;
+      case 8:
+        curr_write_pos = (uint8_t *) 0x4000;
+        break;
+      default:
+        fatal_error("incompatible snapshot");
+        break;
+    }
   }
 
   if (chunk_state.bytes == BANK_LENGTH_UNCOMPRESSED) {
