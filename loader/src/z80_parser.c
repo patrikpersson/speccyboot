@@ -212,8 +212,10 @@ DEFINE_STATE(s_header)
     = (const struct z80_snapshot_header_extended_t *) received_data;
   uint16_t header_length = sizeof(header->default_header);
   uint8_t          flags = header->default_header.snapshot_flags;
-  uint8_t  paging_config = 0x31;    /* default: 48k, page 1 in, lock */
-  
+  uint8_t  paging_config = 0x30 + DEFAULT_BANK;    /* ROM1, lock */
+
+  select_bank(DEFAULT_BANK);
+
   if (header->default_header.pc != 0) {
     /*
      * Version 1 header found
@@ -236,7 +238,6 @@ DEFINE_STATE(s_header)
       SET_NEXT_STATE(s_chunk_uncompressed);
     }
     
-    select_bank(1);     /* Use this bank permanently */
   }
   else {
     /*
@@ -287,7 +288,7 @@ DEFINE_STATE(s_header)
   display_progress(0, kilobytes_expected);
 
   evacuate_z80_header(received_data, paging_config);
-
+  
   received_data        += header_length;
   received_data_length -= header_length;
 }
@@ -808,7 +809,7 @@ z80_receive_data(const uint8_t *received_tftp_data,
    * Indicates an evacuation is ongoing (see below)
    */
   static bool evacuating = false;
-
+  
   received_data        = received_tftp_data;
   received_data_length = nbr_of_bytes_received;
   

@@ -1,7 +1,7 @@
 /*
  * Module arp:
  *
- * Address Resolution Protocol
+ * Address Resolution Protocol (ARP, RFC 826)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -33,10 +33,7 @@
 
 #include "eth.h"
 #include "arp.h"
-#include "ip.h"
 #include "rxbuffer.h"
-
-#include "syslog.h"
 
 /* ========================================================================= */
 
@@ -64,9 +61,9 @@ void
 arp_frame_received(uint16_t nbr_bytes_in_payload)
 {
   if (nbr_bytes_in_payload >= sizeof(struct arp_ip_ethernet_t)) {
-    (void) ip_retrieve_payload(&rx_frame.arp,
-                               sizeof(struct arp_ip_ethernet_t),
-                               0);
+    (void) eth_retrieve_payload(&rx_frame.arp,
+                                sizeof(struct arp_ip_ethernet_t),
+                                0);
     
     /*
      * Check that the ARP packet concerns the right protocols
@@ -94,7 +91,7 @@ arp_frame_received(uint16_t nbr_bytes_in_payload)
                                sizeof(struct mac_address_t));
       eth_add_payload_to_frame(&rx_frame.arp.spa, sizeof(ipv4_address_t));
       
-      eth_send_frame(sizeof(struct arp_ip_ethernet_t), ETH_FRAME_OPTIONAL);
+      eth_send_frame(sizeof(struct arp_ip_ethernet_t));
     }
   }
 }

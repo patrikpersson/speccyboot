@@ -42,7 +42,7 @@
 
 #ifdef EMULATOR_TEST
 /*
- * SRAM emulation in bank 0, size 8K
+ * SRAM emulation in bank 1, size 8K
  */
 #define ENC28J60_EMULATED_SRAM_ADDR     (0xC000)
 #endif  /* EMULATOR_TEST */
@@ -497,7 +497,7 @@ enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
 #ifdef EMULATOR_TEST
 
 #define ENC28J60_RESTORE_APPDATA                          \
-  xor   a, a                                              \
+  ld    a, #1                                             \
   ld    bc, #0x7ffd                                       \
   out   (c), a                                            \
   ld    hl, #ENC28J60_EMULATED_SRAM_ADDR + EVACUATED_DATA \
@@ -605,7 +605,7 @@ enc28j60_load_byte_at_address(void)     __naked;
 
 #define ENC28J60_LOAD_HL                                    \
   ld    (0x401e), bc                                        \
-  xor   a, a                                                \
+  ld    a, #1                                               \
   ld    bc, #0x7ffd                                         \
   out   (c), a                                              \
   ld    bc, #0xc000 + EVACUATED_HEADER + Z80_OFFSET_L       \
@@ -615,7 +615,7 @@ enc28j60_load_byte_at_address(void)     __naked;
   ld    a, (bc)                                             \
   ld    h, a                                                \
   ld    bc, #0x7ffd                                         \
-  ld    a, #1                                               \
+  xor   a, a                                                \
   out   (c), a                                              \
   ld    bc, (0x401e)
 

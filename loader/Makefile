@@ -36,7 +36,7 @@ MODULES      = util z80_parser context_switch enc28j60_spi
 ifdef EMULATOR_TEST
 CFLAGS			+= -DEMULATOR_TEST
 else
-MODULES     += ip eth rxbuffer arp udp dhcp tftp syslog
+MODULES     += rxbuffer eth arp udp_ip dhcp tftp syslog
 endif
 
 ifdef CHECK_STACK

@@ -1,6 +1,7 @@
 /*
- * Module ip:
+ * Module udp_ip:
  *
+ * User Datagram Protocol (UDP, RFC 768)
  * Internet Protocol (IP, RFC 791)
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
@@ -30,21 +31,20 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SPECCYBOOT_IP_INCLUSION_GUARD
-#define SPECCYBOOT_IP_INCLUSION_GUARD
+#ifndef SPECCYBOOT_UDP_IP_INCLUSION_GUARD
+#define SPECCYBOOT_UDP_IP_INCLUSION_GUARD
 
 #include <stdint.h>
 
+#include "eth.h"
 #include "util.h"
 
 /* ========================================================================= */
 
-#define ETHERTYPE_IP            (0x0800)
-
 /*
- * Supported IP protocols
+ * Ethertype indicating IPv4 payload in an Ethernet frame
  */
-#define IP_PROTOCOL_UDP           (17)
+#define ETHERTYPE_IP              (0x0800)
 
 /*
  * Default (power-on) IP addresses
@@ -60,9 +60,18 @@
  * ---
  * 644 bytes
  */
-#define IP_MAX_PAYLOAD          (644)
+#define IP_MAX_PAYLOAD            (644)
 
-#define UDP_MAX_PAYLOAD         (576)
+#define UDP_MAX_PAYLOAD           (576)
+
+/*
+ * Static UDP ports
+ */
+#define UDP_PORT_DHCP_SERVER      (67)
+#define UDP_PORT_DHCP_CLIENT      (68)
+#define UDP_PORT_TFTP_SERVER      (69)
+
+/* ========================================================================= */
 
 /*
  * An IPv4 address: 32 bits, network order
@@ -76,6 +85,15 @@ struct mac_address_t;
 
 /* ------------------------------------------------------------------------- */
 
+PACKED_STRUCT(udp_header_t) {                 /* UDP header */
+  uint16_t        src_port;
+  uint16_t        dst_port;
+  uint16_t        length;
+  uint16_t        checksum;
+};
+
+/* ------------------------------------------------------------------------- */
+
 PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
   uint8_t         version_and_header_length;
   uint8_t         type_of_service;
@@ -83,13 +101,13 @@ PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
   uint16_t        identification;
   uint16_t        fragment_info;
   uint8_t         time_to_live;
-  uint8_t         protocol;
+  uint8_t         prot;
   uint16_t        checksum;
   ipv4_address_t  src_addr;
   ipv4_address_t  dst_addr;
 };
 
-/* ------------------------------------------------------------------------- */
+/* ========================================================================= */
 
 /*
  * IP address configuration
@@ -99,82 +117,67 @@ extern struct ip_config_t {
   ipv4_address_t broadcast_address;
 } ip_config;
 
+/*
+ * Ephemeral port for TFTP client, stored in network order
+ */
+extern uint16_t udp_port_tftp_client;
+
+/* -------------------------------------------------------------------------
+ * Allocate a new ephemeral port for TFTP client
+ * (network order)
+ * ------------------------------------------------------------------------- */
+#define udp_new_tftp_port()     udp_port_tftp_client += 0x0100
+
 /* -------------------------------------------------------------------------
  * Returns true if a valid IP address has been set
  * (assumes first byte is always non-zero when valid)
  * ------------------------------------------------------------------------- */
-
 #define ip_valid_address()       (*((const uint8_t *) &ip_config.host_address))
-
-/* -------------------------------------------------------------------------
- * IP-style checksum computation
- * ------------------------------------------------------------------------- */
-
-#define ip_checksum_add(_c, _addr, _n)  (ip_checksum_add_impl(&(_c), (_addr), (_n)))
-#define ip_checksum_value(_c)           (~(_c))
-
-/*
- * Logical true if the computed IP-style checksum is OK.
- *
- * If the packet is intact, the computed sum is the sum of
- *   the actual packet contents, excluding checksum       (~_cs_rx)
- * + the checksum itself in one's complement              ( _cs_rx)
- *
- * Since X+~X == 0xffff for all X, the checksum must be 0xffff.
- */
-#define ip_checksum_ok(_cs_comp)  ((_cs_comp) == 0xffffu)
 
 /* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an IP packet has been
  * received.
- *
- * If the frame is a TFTP data packet, the function netboot_receive_data()
- * will be called.
- *
- * The 'address_in_eth' argument points to the address of the received IP
- * payload in ENC28J60 memory (for checksum verification).
  * ------------------------------------------------------------------------- */
 void
 ip_frame_received(uint16_t nbr_bytes_in_payload);
 
 /* -------------------------------------------------------------------------
- * Create an IP packet with header
+ * Create UDP packet (IP + UDP headers)
+ *
+ * NOTE: source and destination ports are passed in network endian order.
  * ------------------------------------------------------------------------- */
 void
-ip_create_packet(const struct mac_address_t  *dst_hwaddr,
-                 const ipv4_address_t        *dst,
-                 uint16_t                     total_length,
-                 uint8_t                      protocol,
-                 enum eth_frame_class_t       frame_class);
+udp_create_packet(const struct mac_address_t  *dst_hwaddr,
+                  const ipv4_address_t        *dst_ipaddr,
+                  uint16_t                     src_port_nw_endian,
+                  uint16_t                     dst_port_nw_endian,
+                  uint16_t                     udp_payload_length,
+                  eth_frame_class_t            frame_class);
 
 /* -------------------------------------------------------------------------
- * Append payload to a packet previously created with ip_create_packet()
- * ------------------------------------------------------------------------- */
-#define ip_add_payload_to_packet        eth_add_payload_to_frame
-#define ip_add_payload_byte_to_packet   eth_add_payload_byte_to_frame
-#define ip_add_payload_nwu16_to_frame   eth_add_payload_nwu16_to_frame
-
-/* -------------------------------------------------------------------------
- * Send an IP packet, previously created with ip_create_packet()
+ * Create UDP reply to the sender of the received packet currently processed.
+ * Source/destination ports are swapped. Frame class is ETH_FRAME_PRIORITY.
  * ------------------------------------------------------------------------- */
 void
-ip_send_packet(void);
+udp_create_reply(uint16_t udp_payload_length);
 
 /* -------------------------------------------------------------------------
- * Read more payload from currently parsed packet. Returns 16-bit checksum
- * of retrieved data, using _checksum_in as the initial value.
+ * Append payload to a UDP packet, previously created with udp_create_packet()
+ * or udp_create_reply()
  * ------------------------------------------------------------------------- */
-#define ip_retrieve_payload(_buf_ptr, _nbr_bytes, _checksum_in)               \
-  enc28j60_read_memory_cont((const uint8_t *) (_buf_ptr),                     \
-                            (_nbr_bytes),                                     \
-                            (_checksum_in))
+#define  udp_add_payload_to_packet(_data)                                     \
+  eth_add_payload_to_frame(&(_data), sizeof(_data))
+
+#define  udp_add_variable_payload_to_packet(_data, _len)                      \
+  eth_add_payload_to_frame((_data), (_len))
+
+#define udp_add_payload_byte_to_packet      eth_add_payload_byte_to_frame
+#define udp_add_payload_nwu16_to_frame      eth_add_payload_nwu16_to_frame
 
 /* -------------------------------------------------------------------------
- * Internal routine for ip_checksum_* macros above
+ * Send a completed UDP packet
  * ------------------------------------------------------------------------- */
 void
-ip_checksum_add_impl(uint16_t *checksum,
-                     const void *start_addr,
-                     uint16_t nbr_bytes);
+udp_send_packet(void);
 
-#endif /* SPECCYBOOT_IP_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_UDP_IP_INCLUSION_GUARD */

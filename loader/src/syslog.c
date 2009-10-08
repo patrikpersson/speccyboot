@@ -36,7 +36,7 @@
 #include <stdarg.h>
 
 #include "syslog.h"
-#include "udp.h"
+#include "udp_ip.h"
 
 #define SYSLOG_PORT                      (514)
 

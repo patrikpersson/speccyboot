@@ -33,7 +33,7 @@
 #define SPECCYBOOT_ARP_INCLUSION_GUARD
 
 #include "arp.h"
-#include "ip.h"
+#include "udp_ip.h"
 
 /* ========================================================================= */
 

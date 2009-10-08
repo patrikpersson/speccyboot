@@ -83,9 +83,9 @@
 #define BITS24TO31(x)   (((x) >> 24) & 0x00ffu)
 
 #define BYTESWAP32(x)   (  BITS0TO7(x)   * 0x01000000u                        \
-+ BITS8TO15(x)  * 0x00010000u                        \
-+ BITS16TO23(x) * 0x00000100u                        \
-+ BITS24TO31(x) )
+                         + BITS8TO15(x)  * 0x00010000u                        \
+                         + BITS16TO23(x) * 0x00000100u                        \
+                         + BITS24TO31(x) )
 
 #define htonl(n)        BYTESWAP32(n)
 #define ntohl           htonl
@@ -116,11 +116,6 @@
 
 #define BLACK         (0x00)
 #define BLUE          (0x01)
-#define RED           (0x02)
-#define MAGENTA       (0x03)
-#define GREEN         (0x04)
-#define CYAN          (0x05)
-#define YELLOW        (0x06)
 #define WHITE         (0x07)
 
 #define BRIGHT        (0x40)
@@ -139,16 +134,6 @@
 #define ATTRS_SIZE      (0x300)
 
 /* ------------------------------------------------------------------------- */
-
-/*
- * Offset of a pixel byte in the Spectrum's video memory, as a function of
- * the index (as it would be represented in a 'normal' linear framebuffer)
- */
-#define PIXEL_ADDRESS(idx)                                                    \
-( (((idx) & 0x00E0) << 3) + (HIBYTE(idx) << 5) + ((idx) & 0x001f) )
-
-#define CELL_ADDRESS(_r, _c)                                                \
-  (0x4000 + ((((uint16_t) _r) & 0x07) << 5) + ((((uint16_t) _r) & 0x18) << 8) + (_c))
 
 #define FONTDATA_ADDRESS(_ch)                                                 \
   (0x6F00 + (((uint16_t) (_ch)) << 3))
@@ -170,7 +155,7 @@ typedef char key_t;
   uint16_t stack_remaining = 0;                                               \
   const uint8_t *stack_low = (const uint8_t *) 0x5B00;                        \
   while (stack_low[stack_remaining++] == 0xA8)          ;                     \
-  syslog("STK", "0x%b left", stack_remaining);                        \
+  syslog("0x%b stack left", stack_remaining);                                 \
 }
 #else
 #define check_stack()
@@ -178,7 +163,14 @@ typedef char key_t;
 
 /* ------------------------------------------------------------------------- */
 
-#define TICKS_PER_SECOND                (50)
+/*
+ * Default RAM bank (for a 16k/48k snapshot). Has to be even (non-contended)
+ */
+#define DEFAULT_BANK              (0)
+
+/* ------------------------------------------------------------------------- */
+
+#define TICKS_PER_SECOND          (50)
 
 /*
  * Type of a timer value
@@ -194,7 +186,7 @@ void
 cls(void);
 
 /* -------------------------------------------------------------------------
- * Page the indicated page to bank at 0xc000
+ * Page in the indicated bank at 0xc000
  * ------------------------------------------------------------------------- */
 #define select_bank(_bank_id)   _bank_selection = (_bank_id)
 

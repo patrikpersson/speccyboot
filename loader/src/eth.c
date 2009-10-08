@@ -36,84 +36,17 @@
 
 #include "enc28j60_spi.h"
 #include "arp.h"
-#include "ip.h"
-#include "udp.h"
+#include "udp_ip.h"
 #include "util.h"
 #include "syslog.h"
 
 /* ========================================================================= */
 
-const struct mac_address_t eth_broadcast_address = {
-  { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
-};
+const struct mac_address_t eth_broadcast_address = BROADCAST_MAC_ADDR;
 
 const struct mac_address_t eth_local_address = {
   { MAC_ADDR_0, MAC_ADDR_1, MAC_ADDR_2, MAC_ADDR_3, MAC_ADDR_4, MAC_ADDR_5 }
 };
-
-/* -------------------------------------------------------------------------
- * ENC28J60 buffer management
- * ------------------------------------------------------------------------- */
-
-/*
- * Administrative overhead in transmission buffer
- * (1 per-packet control byte, 7 bytes transmission status vector)
- */
-#define ENC28J60_TX_ADM         (1 + 7)
-
-/*
- * Administrative overhead in received frames
- */
-#define ENC28J60_RX_ADM         (4)
-
-/*
- * Worst-case frame size
- */
-#define MAX_FRAME_SIZE          (sizeof(struct eth_header_t) + IP_MAX_PAYLOAD)
-
-/*
- * Transmission buffer size:
- * Ethernet header, payload, and administrative info stored by controller
- */
-#define ENC28J60_TXBUF_SIZE     (MAX_FRAME_SIZE + ENC28J60_TX_ADM)
-
-/*
- * Receive buffer: no header (stored separately), receive status vector
- */
-#define ENC28J60_RXBUF_SIZE     (IP_MAX_PAYLOAD + ENC28J60_RX_ADM)
-
-/*
- * MEMORY MAP
- * ==========
- *
- * Errata for silicon rev. B5, item #3: receive buffer must start at 0x0000
- *
- * 0x0000 ... 0x0FFF    4K receive buffer (FIFO): automatically filled with
- *                      received packets by the ENC28J60. The host updates
- *                      ERXRDPT to inform the ENC28J60 when data is consumed.
- *
- * 0x1000 ... 0xXXXX    TX buffer 1. This is the important one -- used for
- *                      frame class CRITICAL. On time-outs, this frame will be
- *                      re-transmitted (if valid).
- *
- * 0xXXXX+1...0xYYYY    TX buffer 2. This buffer is used for frames where no
- *                      reply is expected -- frame class OPTIONAL.
- *
- * 0x1600 ... 0x1FFF    Reserved for temporary storage during snapshot
- *                      loading (see context_switch.c)
- *
- * Also see the comment for eth_frame_class_t (eth.h).
- */
-
-#define ENC28J60_RXBUF_START    (0x0000)
-#define ENC28J60_RXBUF_END      (0x0FFF)
-#define ENC28J60_TXBUF1_START   (0x1000)
-#define ENC28J60_TXBUF1_END     (ENC28J60_TXBUF1_START + ENC28J60_TXBUF_SIZE-1)
-#define ENC28J60_TXBUF2_START   (ENC28J60_TXBUF1_START + ENC28J60_TXBUF_SIZE)
-
-#define TXBUF_FOR_CLASS(cl)     ( (cl == ETH_FRAME_PRIORITY)                  \
-                                  ? (ENC28J60_TXBUF1_START)                   \
-                                  : (ENC28J60_TXBUF2_START) )
 
 /*
  * Position of next frame to read from the ENC28J60
@@ -158,6 +91,13 @@ static enc28j60_addr_t end_of_critical_frame = NO_FRAME_NEEDS_RETRANSMISSION;
 /* ------------------------------------------------------------------------- */
 
 /*
+ * Points to start of the buffer for the frame currently being created
+ */
+static enc28j60_addr_t current_txbuf;
+
+/* ------------------------------------------------------------------------- */
+
+/*
  * An acknowledgment was recieved
  */
 static void
@@ -165,17 +105,6 @@ ack_received(void)
 {
   timer_reset(ack_timer);
   retransmission_timeout = RETRANSMISSION_TIMEOUT_MIN;
-}
-
-/* ------------------------------------------------------------------------- */
-
-static void
-setup_timer_for_retransmission(void)
-{
-  timer_reset(ack_timer);
-  if (retransmission_timeout < RETRANSMISSION_TIMEOUT_MAX) {
-    retransmission_timeout <<= 1;
-  }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -311,13 +240,13 @@ eth_init(void)
 void
 eth_create_frame(const struct mac_address_t *destination,
                  uint16_t                    ethertype,
-                 enum eth_frame_class_t      frame_class)
+                 eth_frame_class_t           frame_class)
 {
-  uint16_t tx_buf = TXBUF_FOR_CLASS(frame_class);
+  current_txbuf = frame_class;                  /* Maps directly to a buffer */
   
-  enc28j60_write_register16(EWRPTL, tx_buf);
+  enc28j60_write_register16(EWRPTL, current_txbuf);
   
-  enc28j60_write_memory_at(tx_buf,
+  enc28j60_write_memory_at(current_txbuf,
                            &per_packet_control_byte,
                            sizeof(per_packet_control_byte));
   enc28j60_write_memory_cont(destination->addr,
@@ -338,8 +267,7 @@ eth_add_payload_byte_to_frame(uint8_t b)
 /* ------------------------------------------------------------------------- */
 
 void
-eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
-               enum eth_frame_class_t  frame_class)
+eth_send_frame(uint16_t total_nbr_of_bytes_in_payload)
 {
   /*
    * Last address = start
@@ -349,11 +277,11 @@ eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
    *              - 1 (point to last byte, not after it)
    *              = start + sizeof(struct eth_header_t) + nbr_bytes
    */
-  uint16_t end_address = TXBUF_FOR_CLASS(frame_class)
+  uint16_t end_address = current_txbuf
                        + sizeof(struct eth_header_t)
                        + total_nbr_of_bytes_in_payload;
   
-  if (frame_class == ETH_FRAME_PRIORITY) {
+  if (current_txbuf == ETH_FRAME_PRIORITY) {
     end_of_critical_frame = end_address;
     
     /*
@@ -363,7 +291,7 @@ eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
     ack_received();
   }
   
-  perform_transmission(TXBUF_FOR_CLASS(frame_class), end_address);
+  perform_transmission(current_txbuf, end_address);
 }
 
 /* ------------------------------------------------------------------------- */

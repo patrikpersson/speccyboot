@@ -40,11 +40,6 @@
 
 #define PAGE_REG                  (0x7FFD)
 
-/*
- * Default page for 0xc000..0xffff
- */
-#define DEFAULT_PAGE              (1)
-
 #define BLOCKS_PER_PAGE           (0x4000 / BLOCK_SIZE)
 #define ADDR_OF_BLOCK(n)          (0xc000 + ((n) * BLOCK_SIZE))
 
@@ -90,7 +85,7 @@ __naked
     ldir
     
     ld  bc, #PAGE_REG
-    ld  a,  #DEFAULT_PAGE
+    ld  a,  #DEFAULT_BANK
     out (c), a
   
     ret

@@ -39,6 +39,73 @@
 #include "enc28j60_spi.h"
 #include "util.h"
 
+/* -------------------------------------------------------------------------
+ * ENC28J60 buffer management
+ * ------------------------------------------------------------------------- */
+
+/*
+ * Administrative overhead in transmission buffer
+ * (1 per-packet control byte, 7 bytes transmission status vector)
+ */
+#define ENC28J60_TX_ADM         (1 + 7)
+
+/*
+ * Administrative overhead in received frames
+ */
+#define ENC28J60_RX_ADM         (4)
+
+/*
+ * Worst-case frame size
+ */
+#define MAX_FRAME_SIZE          (sizeof(struct eth_header_t) + IP_MAX_PAYLOAD)
+
+/*
+ * Transmission buffer size:
+ * Ethernet header, payload, and administrative info stored by controller
+ */
+#define ENC28J60_TXBUF_SIZE     (MAX_FRAME_SIZE + ENC28J60_TX_ADM)
+
+/*
+ * Receive buffer: no header (stored separately), receive status vector
+ */
+#define ENC28J60_RXBUF_SIZE     (IP_MAX_PAYLOAD + ENC28J60_RX_ADM)
+
+/*
+ * MEMORY MAP
+ * ==========
+ *
+ * Errata for silicon rev. B5, item #3: receive buffer must start at 0x0000
+ *
+ * 0x0000 ... 0x0FFF    4K receive buffer (FIFO): automatically filled with
+ *                      received packets by the ENC28J60. The host updates
+ *                      ERXRDPT to inform the ENC28J60 when data is consumed.
+ *
+ * 0x1000 ... 0xXXXX    TX buffer 1. This is the important one -- used for
+ *                      frame class CRITICAL. On time-outs, this frame will be
+ *                      re-transmitted (if valid).
+ *
+ * 0xXXXX+1...0xYYYY    TX buffer 2. This buffer is used for frames where no
+ *                      reply is expected -- frame class OPTIONAL.
+ *
+ * 0x1600 ... 0x1FFF    Reserved for temporary storage during snapshot
+ *                      loading (see context_switch.c)
+ *
+ * Also see the comment for eth_frame_class_t (eth.h).
+ */
+
+#define ENC28J60_RXBUF_START    (0x0000)
+#define ENC28J60_RXBUF_END      (0x0FFF)
+#define ENC28J60_TXBUF1_START   (0x1000)
+#define ENC28J60_TXBUF1_END     (ENC28J60_TXBUF1_START + ENC28J60_TXBUF_SIZE-1)
+#define ENC28J60_TXBUF2_START   (ENC28J60_TXBUF1_START + ENC28J60_TXBUF_SIZE)
+
+/* ========================================================================= */
+
+/*
+ * Broadcast MAC address
+ */
+#define BROADCAST_MAC_ADDR      { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } }
+
 /* ========================================================================= */
 
 /*
@@ -87,21 +154,24 @@ PACKED_STRUCT(eth_adm_t) {
  * PRIORITY       Automatically re-transmitted when a timer expires. If
  *                another PRIORITY frame is transmitted, the timer is reset.
  *
- *                This means frames where we care about an answer.
+ *                This means frames where we care about an answer
+ *                (DHCP, TFTP).
  *
  * OPTIONAL       Not automatically re-transmitted. The timer is not affected
  *                in any way. The frame may be silently dropped if the
  *                on-chip storage is in use for other stuff -- see
  *                eth_store_data().
  *
- *                This means frames where we do NOT care about an answer.
+ *                This means frames where we do NOT care about an answer
+ *                (ARP replies, syslog).
  *
- * NOTE: the frame class determines the choice of transmission buffer.
+ * NOTE: the frame class value actually maps directly to a transmission buffer
+ *       address.
  */
-enum eth_frame_class_t {
-  ETH_FRAME_PRIORITY    = 1,
-  ETH_FRAME_OPTIONAL    = 2
-};
+typedef enc28j60_addr_t eth_frame_class_t;
+
+#define ETH_FRAME_PRIORITY      (ENC28J60_TXBUF1_START)
+#define ETH_FRAME_OPTIONAL      (ENC28J60_TXBUF2_START)
  
 /* ========================================================================= */
 
@@ -129,7 +199,7 @@ eth_init(void);
 void
 eth_create_frame(const struct mac_address_t *destination,
                  uint16_t                    ethertype,
-                 enum eth_frame_class_t      frame_class);
+                 eth_frame_class_t           frame_class);
 
 /* -------------------------------------------------------------------------
  * Append payload to a frame previously created with eth_create_frame().
@@ -154,13 +224,9 @@ eth_add_payload_byte_to_frame(uint8_t b);
  * Send an Ethernet frame, previously created with eth_create_frame().
  * total_nbr_of_bytes_in_payload:   number of bytes in payload
  *                                  (that is, excluding Ethernet header)
- * frame_class:                     MUST be the same as used for
- *                                  eth_create_frame(), or Bad Things will
- *                                  happen
  * ------------------------------------------------------------------------- */
 void
-eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
-               enum eth_frame_class_t  frame_class);
+eth_send_frame(uint16_t total_nbr_of_bytes_in_payload);
 
 /* -------------------------------------------------------------------------
  * Handle incoming frames, and invoke corresponding protocol handlers. If
@@ -171,5 +237,16 @@ eth_send_frame(uint16_t                total_nbr_of_bytes_in_payload,
  * ------------------------------------------------------------------------- */
 void
 eth_handle_incoming_frames(void);
+
+/* -------------------------------------------------------------------------
+ * Retrieve received Ethernet payload.  Returns 16-bit checksum of retrieved
+ * data, using _checksum_in as the initial value. 
+ *
+ * Assumes ERDPT points to the current reading location.
+ * ------------------------------------------------------------------------- */
+#define eth_retrieve_payload(_buf_ptr, _nbr_bytes, _checksum_in)              \
+  enc28j60_read_memory_cont((const uint8_t *) (_buf_ptr),                     \
+                            (_nbr_bytes),                                     \
+                            (_checksum_in))
 
 #endif /* SPECCYBOOT_ETH_INCLUSION_GUARD */

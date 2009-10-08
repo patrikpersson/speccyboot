@@ -32,7 +32,7 @@
  */
 
 #include "eth.h"
-#include "udp.h"
+#include "udp_ip.h"
 #include "arp.h"
 #include "dhcp.h"
 #include "tftp.h"
@@ -51,7 +51,7 @@ extern struct eth_adm_t           rx_eth_adm;
  * this is not practical since, for example, the IP header has variable size.
  *
  * Instead, the purpose of this union is to preserve static memory by allowing
- * buffers to overlap whenever possible.
+ * buffers to overlap whenever possible (unions).
  */
 extern union rx_frame_t {
   /* --------------------------------------------------------- Raw IP header */

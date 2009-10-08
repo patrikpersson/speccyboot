@@ -33,7 +33,7 @@
 #ifndef SPECCYBOOT_TFTP_INCLUSION_GUARD
 #define SPECCYBOOT_TFTP_INCLUSION_GUARD
 
-#include "udp.h"
+#include "udp_ip.h"
 
 /* ------------------------------------------------------------------------- */
 

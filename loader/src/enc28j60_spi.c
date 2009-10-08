@@ -62,6 +62,17 @@
   ENC28J60_END_TRANSACTION            \
   __endasm
 
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Bank used for emulating the ENC28J60's SRAM during test
+ */
+#ifdef EMULATOR_TEST
+#define EMULATED_ENC28J60_BANK        (1)
+#endif
+
+/* ------------------------------------------------------------------------- */
+
 /* ============================================================================
  * ENC28J60 SPI HELPERS (C functions)
  * ========================================================================= */
@@ -480,11 +491,11 @@ enc28j60_write_memory_at(enc28j60_addr_t  dst_addr,
 {
 #ifdef EMULATOR_TEST
   
-  select_bank(0);
+  select_bank(EMULATED_ENC28J60_BANK);
   
   memcpy(ENC28J60_EMULATED_SRAM_ADDR + dst_addr, src_addr, nbr_bytes);
   
-  select_bank(1);
+  select_bank(DEFAULT_BANK);
   
 #else /* EMULATOR_TEST */  
 
@@ -555,9 +566,9 @@ __naked
   
   ld    (0x401e), bc
   
-  ;; switch to bank 0, read byte, switch back to bank 1
+  ;; switch to ENC28J60 emulated SRAM, read byte, switch back to default bank
   
-  xor   a
+  ld    a, #EMULATED_ENC28J60_BANK
   ld    bc, #0x7ffd
   out   (c), a
   
@@ -568,7 +579,7 @@ __naked
   ld    (0x401d), a
   
   ld    bc, #0x7ffd
-  ld    a, #1
+  ld    a, #DEFAULT_BANK
   out   (c), a
   
   ld    bc, (0x401e)

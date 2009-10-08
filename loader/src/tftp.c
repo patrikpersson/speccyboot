@@ -92,7 +92,20 @@ static const PACKED_STRUCT(tftp_error_packet_t) {
 
 static uint16_t expected_tftp_block_no;
 
-/* ------------------------------------------------------------------------- */
+/* =========================================================================
+ * Address of TFTP server. Defaults to broadcast, updated when the server
+ * responds.
+ * ========================================================================= */
+
+static PACKED_STRUCT() {
+  struct mac_address_t  mac_addr;
+  ipv4_address_t        ip_addr;
+  bool                  valid;
+} tftp_server_addr = {
+  BROADCAST_MAC_ADDR,
+  IP_DEFAULT_BCAST_ADDRESS,
+  false
+};
 
 /*
  * Data for outgoing packets
@@ -117,6 +130,20 @@ tftp_packet_received(uint16_t nbr_bytes_in_packet)
         udp_send_packet();
         
         fatal_error(tftp_error_packet.msg);
+      }
+      
+      /*
+       * If we didn't already know the TFTP server address, we do now
+       */
+      if (! tftp_server_addr.valid) {
+        uint8_t i;
+        for (i = 0; i < sizeof(struct mac_address_t); i++) {
+          tftp_server_addr.mac_addr.addr[i]
+            = rx_eth_adm.eth_header.src_addr.addr[i];
+        }
+        
+        tftp_server_addr.ip_addr  = rx_frame.ip.src_addr;
+        tftp_server_addr.valid    = true;
       }
       
       /*
@@ -164,16 +191,23 @@ tftp_read_request(const char *filename)
                                        + TFTP_SIZE_OF_PREFIX
                                        + filename_len;
   
+  /*
+   * Broadcast the TFTP RRQ, unless we know about a better server address
+   */
+  const ipv4_address_t *ip_addr        = &ip_config.broadcast_address;
+  const struct mac_address_t *mac_addr = &eth_broadcast_address;
+  
+  if (tftp_server_addr.valid) {
+    ip_addr  = &tftp_server_addr.ip_addr;
+    mac_addr = &tftp_server_addr.mac_addr;
+  }
+  
   udp_new_tftp_port();
   
   expected_tftp_block_no = 1;
 
-  /*
-   * At this point, we don't yet know the address of the TFTP server, so
-   * the RRQ packet is broadcast.
-   */
-  udp_create_packet(&eth_broadcast_address,
-                    &ip_config.broadcast_address,
+  udp_create_packet(mac_addr,
+                    ip_addr,
                     udp_port_tftp_client,
                     htons(UDP_PORT_TFTP_SERVER),
                     total_len,

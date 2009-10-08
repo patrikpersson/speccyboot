@@ -129,6 +129,7 @@ context_switch(void)
     di
   
 #ifdef EMULATOR_TEST 
+
     ld    hl, #c_done
     ld    c, #Z80_OFFSET_C
     jp    _enc28j60_load_byte_at_address
@@ -478,11 +479,11 @@ c_done::
     ;;
           
     ld    bc, #0x7FFD   ;; page register, used by trampoline
-    ld    a, #0x31      ;; page 1 at 0xc000, 48k ROM, lock paging
+    ld    a, #0x30 + DEFAULT_BANK
 #else
     ld    a, #0x20      ;; page out FRAM, pull reset on ENC28J60 low
 #endif
-                        
+
     jp    VRAM_TRAMPOLINE_START
                         
     ;; ------------------------------------------------------------------------
@@ -521,7 +522,7 @@ final_switch_without_interrupts::
     ;;
           
     ld    bc, #0x7FFD   ;; page register, used by trampoline
-    ld    a, #0x31      ;; page 1 at 0xc000, 48k ROM, lock paging
+    ld    a, #0x30 + DEFAULT_BANK
 #else
     ld    a, #0x20      ;; page out FRAM, pull reset on ENC28J60 low
 #endif
@@ -540,7 +541,7 @@ final_switch_without_interrupts::
 
     ld    a, #0x20
 #endif
-  
+
     jp    VRAM_TRAMPOLINE_START
   
     __endasm;

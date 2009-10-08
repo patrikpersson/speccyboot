@@ -1,5 +1,7 @@
 /*
- * bin2wav: a crude hack to generate a .WAV file from a binary file.
+ * bin2wav: a crude hack to generate a .WAV file from a binary file. The .WAV
+ *          file includes a short BASIC loader that loads the following code
+ *          to address 32768, and executes it from that address.
  *
  * The resulting file is suitable for loading into a Sinclair ZX Spectrum
  * using a music player (e.g., iPod) connected to the EAR socket.
@@ -44,7 +46,20 @@
 #define LOW                       ('\000')
 #define HIGH                      ('\377')
 
+/*
+ * Tape header layout, see
+ * http://www.worldofspectrum.org/faq/reference/48kreference.htm
+ */
 #define SIZEOF_SPECTRUM_HEADER    (17)
+
+#define HEADER_PROGRAM            (0)
+#define HEADER_CODE               (3)
+
+#define HEADER_OFFSET_FILETYPE    (0)
+#define HEADER_OFFSET_FILENAME    (1)
+#define HEADER_OFFSET_FILELENGTH  (11)
+#define HEADER_OFFSET_PARAM1      (13)
+#define HEADER_OFFSET_PARAM2      (15)
 
 #define BITS0TO7(x)               ((x) & 0xffu)
 #define BITS8TO15(x)              (((x) >> 8) & 0xffu)
@@ -92,7 +107,7 @@ write_preliminary_header(void)
    */
   fprintf(file, "datayyyy");
 }
-          
+
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -168,9 +183,85 @@ write_block(uint8_t flag_byte, uint16_t data_length, const uint8_t *data)
 /* ------------------------------------------------------------------------- */
 
 static void
+write_header_block(uint8_t        file_type,
+                   uint16_t       file_length,
+                   const char    *file_name,
+                   uint16_t       param1,
+                   uint16_t       param2)
+{
+  static uint8_t speccy_header_prototype[SIZEOF_SPECTRUM_HEADER] = {
+    0,                                        /* file type */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,             /* file name */
+    0, 0,                                     /* file length */
+    0, 0,                                     /* parameter 1 */
+    0, 0                                      /* parameter 2 */
+  };
+  
+  snprintf((char *) &speccy_header_prototype[HEADER_OFFSET_FILENAME],
+           10,
+           "%-10s",
+           file_name);
+  
+  speccy_header_prototype[HEADER_OFFSET_FILETYPE]     = file_type;
+  speccy_header_prototype[HEADER_OFFSET_FILELENGTH]   = BITS0TO7(file_length);
+  speccy_header_prototype[HEADER_OFFSET_FILELENGTH+1] = BITS8TO15(file_length);
+  speccy_header_prototype[HEADER_OFFSET_PARAM1]       = BITS0TO7(param1);
+  speccy_header_prototype[HEADER_OFFSET_PARAM1+1]     = BITS8TO15(param1);
+  speccy_header_prototype[HEADER_OFFSET_PARAM2]       = BITS0TO7(param2);
+  speccy_header_prototype[HEADER_OFFSET_PARAM2+1]     = BITS8TO15(param2);
+  
+  write_block(0x00, SIZEOF_SPECTRUM_HEADER, speccy_header_prototype);
+  write_pause(500);
+}
+
+/* ------------------------------------------------------------------------- */
+
+static void
+write_data_block(const uint8_t *file_data,
+                 uint16_t       file_length)
+{
+  write_block(0xff, file_length, file_data);
+  write_pause(1000);
+}
+
+/* ------------------------------------------------------------------------- */
+
+static void
+write_basic_loader(void)
+{
+  static uint8_t basic_loader[] = {
+    0, 10,                              /* line 10 */
+    0, 0,                               /* length of code below */
+    253, '3', '2', '7', '6', '7',       /* CLEAR 32767 */
+    14, 0, 0, 255, 127, 0,              /* integer 32767 */
+    ':',                                /* : */
+    239, '"', '"', 175,                 /* LOAD "" CODE */
+    ':',                                /* : */
+    249, 192, '3', '2', '7', '6', '8',  /* RANDOMIZE USR 32768 */
+    14, 0, 0, 0, 128, 0,                /* integer 32768 */
+    13,                                 /* ENTER */
+    128                                 /* Sentinel: end of variable area */
+  };
+
+  /*
+   * Fix line length field
+   */
+  basic_loader[2] = BITS0TO7(sizeof(basic_loader) - 5);
+  basic_loader[3] = BITS8TO15(sizeof(basic_loader) - 5);
+  
+  write_header_block(HEADER_PROGRAM,
+                     (uint16_t) sizeof(basic_loader),
+                     "loader",
+                     0x8000 /* no auto-start */,
+                     (uint16_t) (sizeof(basic_loader) - 1));
+  write_data_block(basic_loader, (uint16_t) sizeof(basic_loader));
+}
+
+/* ------------------------------------------------------------------------- */
+
+static void
 write_data_file(const char *filename)
 {
-  static uint8_t speccy_header[SIZEOF_SPECTRUM_HEADER + 1];   /* include NUL */
   FILE *in_file = fopen(filename, "r");
   long bytes_read;
 
@@ -188,13 +279,8 @@ write_data_file(const char *filename)
     exit(1);
   }
   
-  snprintf((char *) speccy_header,
-           sizeof(speccy_header), "\003data      %c%c%c\200%c\200",
-           (int) BITS0TO7(bytes_read), (int) BITS8TO15(bytes_read), 0, 0);
-  write_block(0x00, SIZEOF_SPECTRUM_HEADER, speccy_header);
-  write_pause(500);
-  write_block(0xff, (uint16_t) bytes_read, infile_buffer);
-  write_pause(1000);
+  write_header_block(HEADER_CODE, (uint16_t) bytes_read, "code", 0x8000, 0x8000);
+  write_data_block(infile_buffer, (uint16_t) bytes_read);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -243,6 +329,7 @@ int main(int argc, char **argv)
   }
   
   write_preliminary_header();
+  write_basic_loader();
   write_data_file(argv[1]);
   complete_file();
   

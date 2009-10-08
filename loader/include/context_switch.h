@@ -54,7 +54,7 @@
  * 3. When the entire .z80 snapshot has been loaded, the runtime data is
  *    overwritten with the corresponding data from ENC28J60 on-chip SRAM.
  *
- * NOTE: when the EMULATOR_TEST build flag is set, 128k RAM bank 0 is used
+ * NOTE: when the EMULATOR_TEST build flag is set, 128k RAM bank 1 is used
  * instead of ENC28J60 SRAM.
  *
  * Memory layout for evacuation:
@@ -217,7 +217,8 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 /*
  * Evacuate a .z80 header to ENC28J60 SRAM.
  * Copies sizeof(struct z80_snapshot_header_extended_t) bytes, and stored
- * 'paging_cfg' as the final value to write to 128k paging register.
+ * 'paging_cfg' as the final value to write to 128k paging register during
+ * context switch.
  */
 void evacuate_z80_header(const uint8_t *header_data, uint8_t paging_cfg);
 

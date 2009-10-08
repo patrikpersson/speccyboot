@@ -35,7 +35,7 @@
 
 #include "rxbuffer.h"
 
-#include "udp.h"
+#include "udp_ip.h"
 #include "arp.h"
 #include "dhcp.h"
 

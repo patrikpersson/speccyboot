@@ -1,12 +1,14 @@
 v1.1 ():
 
-* Resolved a timing issue on the Spectrum 128 (leading to, among other things,
-  distorted sound in some games; a contended page was mistakenly paged into the
-  0xc000..0xffff region for 48k snapshots).
+* Resolved a timing issue on the Spectrum 128 (a contended page was mistakenly
+  paged into the 0xc000..0xffff region for 48k snapshots). This issue lead to,
+  among other things, distorted sound in some games.
   
 * Removed remaining non-functional parts of ICMP stack.
 
 * Addressed compiler warnings.
+
+* Now retains TFTP server address, avoiding unnecessary subnet broadcasts.
 
 -------------------------------------------------------------------------------
 

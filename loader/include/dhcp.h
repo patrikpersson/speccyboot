@@ -34,7 +34,7 @@
 #define SPECCYBOOT_DHCP_INCLUSION_GUARD
 
 #include "eth.h"
-#include "udp.h"
+#include "udp_ip.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -117,13 +117,14 @@ PACKED_STRUCT(dhcp_packet_t) {
 };
 
 /* -------------------------------------------------------------------------
- * Called by when a DHCP packet has been received
+ * Called by UDP when a DHCP packet has been received
  * ------------------------------------------------------------------------- */
 void
 dhcp_packet_received(void);
 
 /* -------------------------------------------------------------------------
- * Obtain an IP address using DHCP. Calls callback upon state transitions.
+ * Obtain an IP address using DHCP. Calls callback upon transition to BOUND
+ * state.
  * ------------------------------------------------------------------------- */
 void
 dhcp_init(void);
