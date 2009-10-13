@@ -56,10 +56,8 @@ endif
 # -----------------------------------------------------------------------------
 
 # EXE:       binary file to be loaded into FRAM (address 0x0000)
-# WAV:       .wav file of EXE, to be loaded by audio interface on real machine
 
 EXE          = speccyboot.rom
-WAV          = $(EXE:.rom=.wav)
 
 
 # =============================================================================
@@ -68,7 +66,7 @@ WAV          = $(EXE:.rom=.wav)
 
 SRCDIR       = src
 INCLUDEDIR   = include
-TOOLSDIR     = ../utils/build
+TOOLSDIR     = ../utils
 OBJDIR       = obj
 
 VPATH        = $(OBJDIR)
@@ -84,29 +82,14 @@ vpath %.h    $(INCLUDEDIR)
 
 all: bin
 
-bin: $(EXE) $(WAV)
+bin: $(EXE)
 
 clean:
-	rm -rf $(OBJDIR) $(EXE) $(WAV)
+	rm -rf $(OBJDIR) $(EXE)
 
 .SUFFIXES:
 
 .PHONY: clean
-
-# =============================================================================
-# BUILD TOOLS (bin2wav)
-# =============================================================================
-
-BIN2WAV     = $(OBJDIR)/bin2wav
-HOSTCC      = gcc
-
-# -----------------------------------------------------------------------------
-
-$(BIN2WAV): $(TOOLSDIR)/bin2wav.c
-	$(HOSTCC) $< -o $@
-
-%.wav: %.rom $(BIN2WAV)
-	$(BIN2WAV) $< $@
 
 # =============================================================================
 # CHECK CODE & DATA SIZES

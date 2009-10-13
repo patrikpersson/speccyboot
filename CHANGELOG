@@ -3,10 +3,13 @@ v1.1 ():
 * Resolved a timing issue on the Spectrum 128 (a contended page was mistakenly
   paged into the 0xc000..0xffff region for 48k snapshots). This issue lead to,
   among other things, distorted sound in some games.
+
+* Revised .WAV file generator, to include BASIC loader and firmware writer
+  in the generated file.
   
 * Removed remaining non-functional parts of ICMP stack.
 
-* Addressed compiler warnings.
+* Addressed minor compiler warnings.
 
 * Now retains TFTP server address, avoiding unnecessary subnet broadcasts.
 

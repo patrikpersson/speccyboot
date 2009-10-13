@@ -68,12 +68,10 @@
 
 /* ------------------------------------------------------------------------- */
 
-static FILE *file           = NULL;
-
 static uint32_t nbr_samples = 0;
 static uint32_t nbr_tstates = 0;
 
-static uint8_t infile_buffer[65536];    /* buffer for input data file */
+static uint8_t infile_buffer[49152];    /* buffer for input data file */
 
 /* ------------------------------------------------------------------------- */
 
@@ -83,7 +81,7 @@ write_preliminary_header(void)
   /*
    * Preliminary file header: no length yet, will be added later
    */
-  fprintf(file, "RIFFxxxxWAVE");
+  printf("RIFFxxxxWAVE");
   
   /*
    * Format chunk: uncompressed PCM, 1 channel, 44.1kHz, 8 bits
@@ -92,7 +90,7 @@ write_preliminary_header(void)
    * Need to feed the zeros separately, NUL characters otherwise
    * terminate the string...
    */
-  fprintf(file, "fmt "
+  printf("fmt "
           "\020%c%c%c"         /* 16 */
           "\001%c"             /* 1 */
           "\001%c"             /* 1 */
@@ -105,7 +103,7 @@ write_preliminary_header(void)
   /*
    * Data chunk: no length yet, will be added later
    */
-  fprintf(file, "datayyyy");
+  printf("datayyyy");
 }
 
 /* ------------------------------------------------------------------------- */
@@ -120,7 +118,7 @@ write_samples(uint8_t sample, uint32_t tstates_duration)
   while(((nbr_samples + 1) / ((double) SAMPLES_PER_SECOND))
       <= (nbr_tstates / ((double) TSTATES_PER_SECOND)))
   {
-    fputc(sample, file);
+    putchar(sample);
     nbr_samples ++;
   }
 }
@@ -198,7 +196,7 @@ write_header_block(uint8_t        file_type,
   };
   
   snprintf((char *) &speccy_header_prototype[HEADER_OFFSET_FILENAME],
-           10,
+           11,    /* truncated to 10 chars + NUL */
            "%-10s",
            file_name);
   
@@ -234,11 +232,15 @@ write_basic_loader(void)
     0, 0,                               /* length of code below */
     253, '3', '2', '7', '6', '7',       /* CLEAR 32767 */
     14, 0, 0, 255, 127, 0,              /* integer 32767 */
-    ':',                                /* : */
+    ':',
     239, '"', '"', 175,                 /* LOAD "" CODE */
-    ':',                                /* : */
+    ':',
+    251,                                /* CLS */
+    ':',
     249, 192, '3', '2', '7', '6', '8',  /* RANDOMIZE USR 32768 */
     14, 0, 0, 0, 128, 0,                /* integer 32768 */
+    ':',
+    226,                                /* STOP */
     13,                                 /* ENTER */
     128                                 /* Sentinel: end of variable area */
   };
@@ -252,7 +254,7 @@ write_basic_loader(void)
   write_header_block(HEADER_PROGRAM,
                      (uint16_t) sizeof(basic_loader),
                      "loader",
-                     0x8000 /* no auto-start */,
+                     10,  /* auto-start */
                      (uint16_t) (sizeof(basic_loader) - 1));
   write_data_block(basic_loader, (uint16_t) sizeof(basic_loader));
 }
@@ -260,20 +262,12 @@ write_basic_loader(void)
 /* ------------------------------------------------------------------------- */
 
 static void
-write_data_file(const char *filename)
+write_data_file(void)
 {
-  FILE *in_file = fopen(filename, "r");
-  long bytes_read;
-
-  if (in_file == NULL) {
-    perror("opening input file");
-    exit(1);
-  }
-  
-  bytes_read = fread(infile_buffer,
-                     sizeof(uint8_t),
-                     sizeof(infile_buffer),
-                     in_file);
+  long bytes_read = fread(infile_buffer,
+                          sizeof(uint8_t),
+                          sizeof(infile_buffer),
+                          stdin);
   if (bytes_read < 0) {
     perror("reading input file");
     exit(1);
@@ -288,50 +282,39 @@ write_data_file(const char *filename)
 static void
 complete_file(void)
 {
-  uint32_t file_length = ftell(file);
+  uint32_t file_length = ftell(stdout);
   uint32_t file_length_in_wav_header = file_length - 8;
   uint32_t data_chunk_length = file_length - 44;
 
   /*
    * Length field in RIFF header
    */
-  fseek(file, 4, SEEK_SET);
-  fprintf(file, "%c%c%c%c",
-          BITS0TO7(file_length_in_wav_header),
-          BITS8TO15(file_length_in_wav_header),
-          BITS16TO23(file_length_in_wav_header),
-          BITS24TO31(file_length_in_wav_header));
+  fseek(stdout, 4, SEEK_SET);
+  printf("%c%c%c%c",
+         BITS0TO7(file_length_in_wav_header),
+         BITS8TO15(file_length_in_wav_header),
+         BITS16TO23(file_length_in_wav_header),
+         BITS24TO31(file_length_in_wav_header));
 
   /*
    * Length field in data chunk
    */
-  fseek(file, 40, SEEK_SET);
-  fprintf(file, "%c%c%c%c",
-          BITS0TO7(data_chunk_length),
-          BITS8TO15(data_chunk_length),
-          BITS16TO23(data_chunk_length),
-          BITS24TO31(data_chunk_length));
+  fseek(stdout, 40, SEEK_SET);
+  printf("%c%c%c%c",
+         BITS0TO7(data_chunk_length),
+         BITS8TO15(data_chunk_length),
+         BITS16TO23(data_chunk_length),
+         BITS24TO31(data_chunk_length));
 }
 
 /* ------------------------------------------------------------------------- */
 
-int main(int argc, char **argv)
+int main()
 {
-  if (argc != 3) {
-    fprintf(stderr, "usage: bin2wav <binary-file> <wav-file>\n");
-    exit(1);
-  }
-  
-  file = fopen(argv[2], "w");
-  if (file == NULL) {
-    perror("opening output file");
-    exit(1);
-  }
-  
   write_preliminary_header();
   write_basic_loader();
-  write_data_file(argv[1]);
+  write_data_file();
   complete_file();
   
-  fclose(file);
+  return 0;
 }
