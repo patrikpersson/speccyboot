@@ -19,7 +19,8 @@ LDFLAGS							= -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS						 += --code-loc 0x0043 --data-loc 0x5C00
 
 # SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
-CFLAGS						 += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
+# CHECK_STACK reports stack use before context switch
+CFLAGS						 += -Dbool=BOOL -DVERSION='\"$(VERSION)\"' -DCHECK_STACK
 
 # =============================================================================
 # COMPONENTS
@@ -31,16 +32,11 @@ MODULES      = util z80_parser context_switch enc28j60_spi
 # -----------------------------------------------------------------------------
 
 # EMULATOR BUILD (uses a 128k .z80 image with 48k image embedded for testing)
-# CHECK_STACK build, reports stack use before context switch
 
 ifdef EMULATOR_TEST
 CFLAGS			+= -DEMULATOR_TEST
 else
 MODULES     += rxbuffer eth arp udp_ip dhcp tftp syslog
-endif
-
-ifdef CHECK_STACK
-CFLAGS			+= -DCHECK_STACK
 endif
 
 # -----------------------------------------------------------------------------
