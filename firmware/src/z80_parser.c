@@ -247,12 +247,12 @@ DEFINE_STATE(s_header)
     header_length += header->extended_header_bytes + 2;
 
     if (header->hw_type == HW_TYPE_SPECTRUM_48K) {
-      if (header->hw_mod & 0x80) {    /* HW modified bit */
-        kilobytes_expected = 16;
-      }
-      else {
-        kilobytes_expected = 48;
-      }
+      /*
+       * Ignore the HW modified bit. It can be used to identify a 16k Spectrum;
+       * however, it seems at least FUSE stores 48k of RAM in the snapshot even
+       * for these machines.
+       */
+      kilobytes_expected = 48;
     }
     else if ((is_version_2 && (header->hw_type == HW_TYPE_SPECTRUM_128K_V2))
              || ((!is_version_2) && (header->hw_type == HW_TYPE_SPECTRUM_128K_V3)))
@@ -337,25 +337,20 @@ DEFINE_STATE(s_chunk_header3)
 
   if (kilobytes_expected == 128) {
     select_bank(page_id - 3);
-    curr_write_pos = (uint8_t *) 0xc000;
-  }
-  else {
-    switch (page_id) {
-      case 4:
-        curr_write_pos = (uint8_t *) 0x8000;
-        break;
-      case 5:
-        curr_write_pos = (uint8_t *) 0xc000;
-        break;
-      case 8:
-        curr_write_pos = (uint8_t *) 0x4000;
-        break;
-      default:
-        fatal_error("incompatible snapshot");
-        break;
-    }
   }
 
+  switch (page_id) {
+    case 4:
+      curr_write_pos = (uint8_t *) 0x8000;
+      break;
+    case 8:
+      curr_write_pos = (uint8_t *) 0x4000;
+      break;
+    default:
+      curr_write_pos = (uint8_t *) 0xc000;
+      break;
+  }
+  
   if (chunk_state.bytes == BANK_LENGTH_UNCOMPRESSED) {
     chunk_state.bytes = PAGE_SIZE;
     SET_NEXT_STATE(s_chunk_uncompressed);
