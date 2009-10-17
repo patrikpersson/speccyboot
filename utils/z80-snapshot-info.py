@@ -154,6 +154,12 @@ if word_regs['pc'] == 0:     # version 2 or 3 sub-header follows
     hw_desc = ('48k', '48k + IF1', 'SamRam', '48k + MGT',
                '128k', '128k + IF1', '128k + MGT')[hw_type]
     nbr_banks = (3, 3, 5, 3, 8, 8, 8)[hw_type]
+  if hw_flags & 0x80:
+    if hw_desc == '48k':
+      hw_desc   = '16k'
+      # nbr_banks = 1    # seems FUSE saves 3 pages anyway
+    elif hw_desc == '128k':
+      hw_desc = '128k +2'
 else:
   version = 1
   hw_desc = '48k'
