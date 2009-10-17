@@ -1,8 +1,10 @@
-v1.1 ():
+v1.1 (2009-10-17):
 
 * Resolved a timing issue on the Spectrum 128 (a contended page was mistakenly
   paged into the 0xc000..0xffff region for 48k snapshots). This issue lead to,
   among other things, distorted sound in some games.
+
+* Preliminary support for 16k and 128k snapshots.
 
 * Revised .WAV file generator, to include BASIC loader and firmware writer
   in the generated file.
