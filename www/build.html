@@ -78,9 +78,8 @@
           If/when my SpeccyBoot goes up in smoke, I'll use the 74'273 in the
           next incarnation.</li>
         
-        <li>There are two switches: S1 allows the FRAM to be permanently
-          disabled (useful when it contains garbage), and S2 is a
-          write-protection switch.</li>
+        <li>There are two switches: S1 allows the FRAM to be disabled (useful
+          when it contains garbage), and S2 is a write-protection switch.</li>
         
         <li>The 74'138 decoder's Y0 output can be used as a fully decoded
           select signal for a Kempston joystick interface. Just add a 74'240
@@ -99,33 +98,35 @@
         <h2>Building the software</h2>
         </a>
       
-      <p>To build the software, you will need the following:</p>
+      <p>To obtain and build the software, you will need the following
+        tools:</p>
       <ul>
         <li><a href="http://gcc.gnu.org/">GCC (GNU Compiler Collection)</a></li>
         <li><a href="http://www.gnu.org/software/make/">GNU Make</a></li>
+        <li><a href="http://subversion.tigris.org/">Subversion</a></li>
         <li><a href="http://sdcc.sourceforge.net/">SDCC (Small Device C Compiler)</a></li>
         <li><a href="http://www.gnu.org/software/binutils/">GNU binutils</a>
           (actually, you just need objcopy to convert Intel hex files to binary)</li>
         </ul>
       
-      <p>I used the standard GCC and Make versions included in Mac OS X 10.5
-      (basically 4.0.1 and 3.81, respectively), version 2.9.0 of SDCC, and
-      compiled binutils 2.19 for Mac OS X. Any reasonably modern UNIX or
-      Linux system should work for compilation. (Windows is probably fine
-      too, but don't have detailed instructions to share.)</p>
+      <p>I used the standard GCC, Make and Subversion versions included in Mac
+      OS X 10.6, version 2.9.0 of SDCC, and compiled binutils 2.19 for Mac OS
+      X. Any reasonably modern UNIX or Linux system should work for
+      compilation. (Windows is probably fine too; I don't have detailed
+      instructions, but I suspect building under
+      <a href="http://www.cygwin.com/">Cygwin</a> is the simplest
+      alternative.)</p>
       
-      <p>Check out the release you want (for example, 1.0) and build it:</p>
+      <p>Check out the release you want (for example, 1.1) and build it:</p>
       
-      <code># svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.0<br>
-        # cd speccyboot-1.0<br>
+      <code># svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.1<br>
+        # cd speccyboot-1.1<br>
         # make</code>
       
-      <p>You should now have two files in the <tt>loader</tt> subdirectory:</p>
-      
-      <ul>
-        <li><tt>speccyboot.rom</tt> &mdash; a 16k ROM image to run on the device</li>
-        <li><tt>speccyboot.wav</tt> &mdash; a WAV file (audio) of the same data,
-          in ZX Spectrum cassette tape loader format</li>
+      <p>When the build completes, you should have a file named
+        <tt>speccyboot.wav</tt> in your working directory. This WAV file
+          includes the SpeccyBoot software and a loader application, both in
+          the format expected by the Spectrum.</li>
         </ul>
       
       <hr>
@@ -139,55 +140,33 @@
       that case, you can stop reading now: these instructions are for
       programming the SpeccyBoot FRAM from the Spectrum.</p>
       
-      <p>There are two situations to consider: when the FRAM contains 
-      unusable code (such as the first time you use it, or if you have
-      modified the software in an unfortunate way), and when the FRAM
-      already contains a working SpeccyBoot stack.</p>
-      
-      <p>These instructions involve playing .TZX files to your Spectrum. You
-      will need a .TZX audio player (such as
-      <a href="ftp://ftp.worldofspectrum.org/pub/sinclair/tools/unix/playtzx-0.12c.tar.gz">
-        PlayTZX</a>) and an audio lead from your build machine to your Spectrum
-      to do this. (Note that you will likely need to turn the volume up for
-      the old Spectrum to catch the sound.)</p>
-      
-      <h4>Programming SpeccyBoot with non-functional FRAM contents</h4>
-      
       <ol>
-        <li>Set the S1 switch to disable FRAM, and S2 to allow writing.</li>
-        <li>Load the program <tt>utils/target/fram-restore/fram-restore.tzx</tt>
-          to the Spectrum.</li>
-        <li>When the program has loaded, the border turns blue.</li>
-        <li>Set S1 to enable FRAM.</li>
-        <li>Press the space key, and keep it pressed.
-          <li>When the border changes colour again, set S2 to disallow writing,
-            and release the space key. The machine will likely crash, but that
-            doesn't matter.</li>
-          <li>Reset or power-cycle the Spectrum: it should bring up an ancient
-            (non-working) SpeccyBoot version.</li>
-          <li>Select "BASIC" with arrow keys/Enter to enter Spectrum BASIC.</li>
-          <li>Use the instructions below to program a suitable
-            version the SpeccyBoot stack onto the device.</li>
-          </ol>
-      
-      <h4>Replacing a working SpeccyBoot stack</h4>
-      
-      <ol>
-        <li>Ensure S1 is set to enable FRAM, and that you are in Spectrum BASIC.
-          (in recent version of SpeccyBoot, you do so by booting with 'caps shift'
-          pressed).</li>
-        <li>Set S2 to allow writing.</li>
-        <li>Load the program <tt>utils/target/fram-loader/fram-loader.tzx</tt>
-          to the Spectrum.</li>
-        <li>Play the <tt>speccyboot.wav</tt> file, produced by compilation
-          above, to the Spectrum.</li>
-        <li>Press 1, then R (for RUN), and Enter.</li>
-        <li>Set S2 to disallow writing.</li>
-        <li>Reset or power-cycle the Spectrum: you should now be running the
-          selected SpeccyBoot version.</li>
-        </ol>
+        <li>Boot to BASIC.</li>
+        <ul>
+          <li>If you have a previous version of the SpeccyBoot software on
+            the device, hold CAPS SHIFT pressed while resetting or powering
+            on your Spectrum.</li>
+          <li>Otherwise, set the S1 switch to disable FRAM, and power on your
+            Spectrum.</li>
+        </ul>
+        <li>Load the file <tt>speccyboot.wav</tt>, produced by building the
+          software above, to the Spectrum. After about 2 minutes of loading,
+          you should see the following screen:<br>
+          <img src="fw-loader-1.png" /></li>
+        <li>Set the S1 switch to enable FRAM, and S2 to allow writing.</li>
+        <li>Press Enter. The new software is written to FRAM.</li>
+        <li>A message indicating success (or failure) is displayed:<br>
+          <img src="fw-loader-2.png" />
+          <br>A short, high-pitched beep indicates success. A longer,
+          lower-pitched beep
+          indicates failure. If this step fails, ensure the switches S1
+          and S2 are set correctly (see step 3).</li>
+        <li>Set S2 to disallow writing, and reboot. You should now be running
+          the recently loaded software.</li>
+      </ol>
       
       <hr>
-      <i>&copy; 2009 Patrik Persson</i>
-      </body>
+      &copy; 2009
+      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT>
+    </body>
     </html>
