@@ -3,6 +3,13 @@
 # Patrik Persson, 2009
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+# -----------------------------------------------------------------------------
+#
+# Supported 'make' targets:
+#
+# make all             builds firmware and tests, as usual
+# make clean           removes all object files and other temporary files
+# make install         installs utility script(s)
 # =============================================================================
 
 
@@ -14,6 +21,9 @@ WAV         = speccyboot.wav
 export
 
 all: $(WAV) tests_all
+
+install:
+	$(MAKE) -C utils install
 
 $(WAV): $(FIRMWARE) $(BIN2WAV) $(LOADER)
 
