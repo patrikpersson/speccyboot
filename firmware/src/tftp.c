@@ -72,6 +72,11 @@
  */
 #define TFTP_ERROR_MESSAGE        "DATA block out of sequence"
 
+/*
+ * Value for 'current_server_src_port' indicating no current session
+ */
+#define TFTP_SRC_PORT_NONE        (0)
+
 /* =========================================================================
  * TFTP packets
  * ========================================================================= */
@@ -91,6 +96,12 @@ static const PACKED_STRUCT(tftp_error_packet_t) {
  * ========================================================================= */
 
 static uint16_t expected_tftp_block_no;
+
+/* =========================================================================
+ * Source port used by server in current session, 
+ * ========================================================================= */
+
+static uint16_t current_server_src_port;
 
 /* =========================================================================
  * Address of TFTP server. Defaults to broadcast, updated when the server
@@ -121,15 +132,20 @@ tftp_packet_received(uint16_t nbr_bytes_in_packet)
 {
   switch (rx_frame.udp.app.tftp.opcode) {
     case ntohs(TFTP_OPCODE_DATA):
-      if (ntohs(rx_frame.udp.app.tftp.block_no) > expected_tftp_block_no) {
+      if ((ntohs(rx_frame.udp.app.tftp.block_no) > expected_tftp_block_no)
+          || (current_server_src_port != TFTP_SRC_PORT_NONE
+              && (current_server_src_port != rx_frame.udp.header.src_port)))
+      {
         /*
-         * A packet out of sequence: send a TFTP error packet, then panic
+         * A packet out of sequence, or a packet from another session (earlier
+         * failures could lead re-transmissions for old sessions):
+         * send a TFTP error packet
          */
         udp_create_reply(sizeof(tftp_error_packet));
         udp_add_payload_to_packet(tftp_error_packet);
         udp_send_packet();
         
-        fatal_error(tftp_error_packet.msg);
+        return;
       }
       
       /*
@@ -139,11 +155,22 @@ tftp_packet_received(uint16_t nbr_bytes_in_packet)
         uint8_t i;
         for (i = 0; i < sizeof(struct mac_address_t); i++) {
           tftp_server_addr.mac_addr.addr[i]
-            = rx_eth_adm.eth_header.src_addr.addr[i];
+          = rx_eth_adm.eth_header.src_addr.addr[i];
         }
         
         tftp_server_addr.ip_addr  = rx_frame.ip.src_addr;
         tftp_server_addr.valid    = true;
+      }
+      
+      /*
+       * If we didn't already know the source port for this session, we do now
+       *
+       * NOTE: this is different from the server address above, because that
+       *       address is permanent over all sessions, but the source port
+       *       value is reset for each session.
+       */
+      if (current_server_src_port == TFTP_SRC_PORT_NONE) {
+        current_server_src_port = rx_frame.udp.header.src_port;
       }
       
       /*
@@ -204,8 +231,9 @@ tftp_read_request(const char *filename)
   
   udp_new_tftp_port();
   
-  expected_tftp_block_no = 1;
-
+  expected_tftp_block_no  = 1;
+  current_server_src_port = TFTP_SRC_PORT_NONE;
+  
   udp_create_packet(mac_addr,
                     ip_addr,
                     udp_port_tftp_client,
