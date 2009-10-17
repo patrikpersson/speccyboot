@@ -227,9 +227,20 @@ write_data_block(const uint8_t *file_data,
 static void
 write_basic_loader(void)
 {
-  static uint8_t basic_loader[] = {
+  /*
+   * A short BASIC snippet to load a code block at 32768 onwards, execute that
+   * code, and stop.
+   *
+   * Details about BASIC program representation found chapter 24 of
+   *
+   *   "Sinclair ZX Spectrum BASIC Programming" (Steven Vickers),
+   *   Sinclair Research Ltd, 1982
+   *
+   *   http://www.worldofspectrum.org/ZXBasicManual/
+   */
+  static const uint8_t basic_loader[] = {
     0, 10,                              /* line 10 */
-    0, 0,                               /* length of code below */
+    36, 0,                              /* length of code below */
     253, '3', '2', '7', '6', '7',       /* CLEAR 32767 */
     14, 0, 0, 255, 127, 0,              /* integer 32767 */
     ':',
@@ -244,12 +255,6 @@ write_basic_loader(void)
     13,                                 /* ENTER */
     128                                 /* Sentinel: end of variable area */
   };
-
-  /*
-   * Fix line length field
-   */
-  basic_loader[2] = BITS0TO7(sizeof(basic_loader) - 5);
-  basic_loader[3] = BITS8TO15(sizeof(basic_loader) - 5);
   
   write_header_block(HEADER_PROGRAM,
                      (uint16_t) sizeof(basic_loader),
