@@ -17,34 +17,50 @@
         
         <hr>
         
-          <p>In addition to a SpeccyBoot-equipped Spectrum, two more machines
-          are needed in your network. However, your probably already have
-          them:</p>
+          <p>When you switch on a SpeccyBoot-equipped Spectrum, it will do the
+          following:</p>
           
-          <ul>
-          <li>A DHCP server (virtually all broadband routers include this)</li>
-          <li>A TFTP server (a server application on a desktop/laptop
-          computer)</li>
-          </ul>
-
-          <p>These should be on the same network. Typically, you will just plug
-          in both your Spectrum and your TFTP server to your router.</p>
+          <ol>
+            <li>If Caps Shift is being pressed during start, the machine will
+            boot into BASIC.</li>
+            <li>An IP address is obtained using DHCP. (Your broadband router
+            will most likely handle this.)</li>
+            <li>A TFTP read request for the file <code>snapshots.lst</code>
+            is broadcast on your local network. (If the server has no such
+            file, a new TFTP read request is made, to load a snapshot named
+            <code>menu.z80</code> instead. If this fails, an error message is
+            displayed.)</li>
+            <li>The contents of <code>snapshots.lst</code> are displayed as a
+            menu. When a snapshot is selected, it will be loaded and
+            executed.</li>
+          </ol>
           
           <p><b>NOTE:</b> The current version of SpeccyBoot does not support
           more than one SpeccyBoot on the same local network (the MAC address
           is hard-coded).</p>
           
-          <h2>TFTP server configuration</h2>
+          <hr>
           
-          <p>Your TFTP server <b>must be capable of responding to broadcast
-          requests</b>, since that is what SpeccyBoot uses. Most (but not all)
-          TFTP servers are, and some need an explicit option to enable this. I
-          used the built-in TFTP server of Mac OS X 10.6
-          (<a href="http://aplawrence.com/MacOSX/tftp.html">here's some hints
-          on how to enable that</a>), and most Linux distributions either
-          include a TFTP server by default, or allow you to install one
-          quite easily. I believe there are some third-party TFTP servers for
-          Windows too.</p>
+          <h2>TFTP server configuration</h2>
+
+          <p>You will need to install and/or activate a TFTP server on a
+          computer in your local network. Fortunately, TFTP server software is
+          freely available for most platforms. Your TFTP server <b>must be
+          capable of responding to broadcast requests</b>, since that is what
+          SpeccyBoot uses. Most (but not all) TFTP servers are, and some need
+          an explicit option to enable this.</p>
+          
+          <p>I
+          used the built-in TFTP server of Mac OS X, which can be enabled like
+          this (tested on 10.5 and 10.6):</p>
+          
+          <p>
+          <code># sudo launchctl load -w /System/Library/LaunchDaemons/tftp.plist</code>
+          </p>
+          
+          <p>Most Linux distributions either include a TFTP server by default,
+          or allow you to install one quite easily. There are third-party TFTP
+          servers for Microsoft Windows too.</p>
           
           <h3>Preparing a directory of snapshots</h3>
           
@@ -70,7 +86,9 @@
           the script <tt>speccyboot-update</tt> can be used. It is located in
           the <code>utils</code> directory of the SpeccyBoot source code, and
           is installed into <code>/usr/local/bin</code> by <code>make
-          install</code>. 
+          install</code>.</p>
+          
+          <p>To update the snapshot index this way, just type:</p>
           
           <p>
           <code># speccyboot-update</code>

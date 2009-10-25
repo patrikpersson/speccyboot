@@ -22,8 +22,19 @@
       years back, but is still used for booting embedded development
       boards. I thought it'd be interesting to try this with the
       Spectrum.</p>
+
+      <h3>Contents</h3>
       
-      <h2>Network booting</h2>
+      <ul>
+      <li><a href="#network_booting">How network booting works</a></li>
+      <li><a href="#internals">SpeccyBoot internals</a></li>
+      <li><a href="#compatibility">Compatibility</a></li>
+      <li><a href="#history">History</a></li>
+      </ul>
+      
+      <hr>     
+      
+      <a name="network_booting"><h2>How network booting works</h2></a>
       
       <p>In general, network booting works as follows:</p>
       
@@ -45,8 +56,10 @@
       created from any modern Spectrum emulator, or obtained from the
       <a href="http://www.worldofspectrum.org/">World of Spectrum</a>
       archives.</p>
-      
-      <h2>SpeccyBoot internals</h2> 
+            
+      <hr>     
+
+      <a name="internals"><h2>SpeccyBoot internals</h2></a>
       
       <p>The picture below gives a logical view of SpeccyBoot's internals.
       The device connects to the Spectrum's expansion bus connector, and
@@ -56,19 +69,47 @@
       controller communicates with the Spectrum using the
       <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
       protocol using a very simple SPI host. Finally, the device also
-      contains a 16kB ROM (EPROM/EEPROM/FRAM/Flash) with a dedicated
+      contains a 16kB ROM (FRAM/Flash/EEPROM/EPROM) with a dedicated
       stack for the protocols involved.</p>
       
-      <img src="concept-hw.png" />
+      <p align=center>
+        <img src="concept-hw.png" />
+      </p>
       
-      <hr>
+      <h3>Hardware/software interface</h3>
+
+      <p>The SpeccyBoot hardware is controlled by writing to and reading from a
+      single 8-bit control register, located at address 0x9F in the Z80 I/O
+      address space. Data from SpeccyBoot is read back from the same address.
+      The individual bits have different have the following meaning:</p>
       
-      <h2>SpeccyBoot software stack</h2>
+      <table>
+        <tr><th>Bit</th><th width="45%">Meaning when written</th><th width="45%">Meaning when read</th></tr>
+        <tr><td>0</td><td><b>SPI SCK:</b> SPI clock signal (strobe).</td><td><b>SPI MISO:</b> SPI data from ENC28J60.</td></tr>
+        <tr><td>1-2</td><td>Unused: the SpeccyBoot stack will write 0 to these bits.</td><td rowspan=7>Unused: ignore</td></tr>
+        <tr><td>3</td><td><b>ETH CS:</b> Chip select signal for ENC28J60
+            (active low).</td></tr>
+        <tr><td>4</td><td><b>FRAM/EEPROM Bank select:</b> if set to 1, the
+            alternate half of the EEPROM/FRAM will be paged in. The SpeccyBoot
+            stack will write 0 to this bit. You can use the alternate page to
+            anything you like (hint:
+            <a href="http://www.worldofspectrum.org/int2roms/">Interface 2
+            images</a> work perfectly).
+            </td></tr>
+        <tr><td>5</td><td><b>FRAM/EEPROM CS:</b> Chip select signal for EEPROM/FRAM. When this signal is asserted (low),
+            the ROMCS signal (for the Spectrum's internal ROM) will
+            automatically be forced high (deasserted).</td></tr>
+        <tr><td>6</td><td><b>ETH RESET:</b> Reset signal for the ENC28J60 Ethernet controller
+            (active low).</td></tr>
+        <tr><td>7</td><td><b>SPI MOSI:</b> SPI data to ENC28J60.</td></tr>
+      </table>
+      
+      <h3>SpeccyBoot software stack</h3>
       
       <p>The software stack implements (needed parts of) the following
       standard IETF network protocols:</p>
       
-      <table class="full_width">
+      <table>
         <tr><td><a href="http://www.ietf.org/rfc/rfc0768.txt">RFC 768</a></td><td>UDP (User Datagram Protocol)</td><td>August 1980</td></tr>
         <tr><td><a href="http://www.ietf.org/rfc/rfc791.txt">RFC 791</a></td><td>IP (Internet Protocol)</td><td>September 1981</td></tr>
         <tr><td><a href="http://www.ietf.org/rfc/rfc826.txt">RFC 826</a></td><td>ARP (Address Resolution Protocol)</td><td>November 1982</td></tr>
@@ -91,18 +132,33 @@
       
       <p>The code is available at
       <a href="http://sourceforge.net/projects/speccyboot/">SourceForge</a>.</p>
+                  
+      <hr>     
+
+      <a name="compatibility"><h2>Compatibility</h2></a>
+
+      <p>I'm using SpeccyBoot with a Spectrum 128. It should work equally well
+      with a 48k machine. A 16k machine may work, but don't count on it.</p>
       
-      <h3>History</h3>
+      <p>The Amstrad Spectrum machines (+2/+2A/+3) have a different expansion
+      connector, and will not work directly with the SpeccyBoot as described
+      here. It's certainly possible to design a slightly modified SpeccyBoot
+      board to connect to one of these machines; I just haven't had the
+      opportunity to do so myself.</p>
       
-      <table class="full_width">
-        <tr><td class="milestone_date">October 17, 2009</td><td>Version 1.1: bug fixes, simplified .wav loader</td></tr>
-        <tr><td class="milestone_date">August 13, 2009</td><td>Version 1.0: Menu selection working</td></tr>
-        <tr><td class="milestone_date">June 4, 2009</td><td>Booted from .z80 snapshot over Ethernet</td></tr>
-        <tr><td class="milestone_date">May 9, 2009</td><td>Loaded .z80 snapshot in emulated environment (not yet over real Ethernet)</td></tr>
-        <tr><td class="milestone_date">April 26, 2009</td><td>DHCP client, TFTP file transfer working</td></tr>
-        <tr><td class="milestone_date">April 19, 2009</td><td>The Speccy responds to PING (ICMP REPLY)</td></tr>
-        <tr><td class="milestone_date">March 25, 2009</td><td>Booting from FRAM works (Hungry Horace, cartridge version)</td></tr>
-        <tr><td class="milestone_date">March 17, 2009</td><td>Bit-banged SPI works (BASIC hack to flash activity/link LEDs)</td></tr>
+      <hr>     
+
+      <a name="history"><h2>History</h2></a>
+      
+      <table>
+        <tr><td>October 17, 2009</td><td>Version 1.1: bug fixes, simplified .wav loader</td></tr>
+        <tr><td>August 13, 2009</td><td>Version 1.0: Menu selection working</td></tr>
+        <tr><td>June 4, 2009</td><td>Booted from .z80 snapshot over Ethernet</td></tr>
+        <tr><td>May 9, 2009</td><td>Loaded .z80 snapshot in emulated environment (not yet over real Ethernet)</td></tr>
+        <tr><td>April 26, 2009</td><td>DHCP client, TFTP file transfer working</td></tr>
+        <tr><td>April 19, 2009</td><td>The Speccy responds to PING (ICMP REPLY)</td></tr>
+        <tr><td>March 25, 2009</td><td>Booting from FRAM works (Hungry Horace, cartridge version)</td></tr>
+        <tr><td>March 17, 2009</td><td>Bit-banged SPI works (BASIC hack to flash activity/link LEDs)</td></tr>
         </table>
       
       </body>

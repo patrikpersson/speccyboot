@@ -22,9 +22,9 @@
       the hardware.</p>
       
       <ul>
-        <li><a href="#hw">Building the hardware</a></li>
-        <li><a href="#sw">Building the software</a></li>
-        <li><a href="#prog">Getting the software onto the device</a></li>
+        <li><a href="#hardware">Building the hardware</a></li>
+        <li><a href="#software">Building the software</a></li>
+        <li><a href="#install">Installing the software on the device</a></li>
         </ul>
       
       <p><b>NOTE:</b> I assume no responsibility for what happens if you
@@ -34,7 +34,7 @@
       
       <hr>
       
-      <a name="hw">
+      <a name="hardware">
         <h2>Building the hardware</h2>
         </a>
       
@@ -45,24 +45,11 @@
       
       <ul>
         
-        <li>The drawing does not include power
-          supply details (5V to most circuits, except the ENC28J60 which
-          uses 3.3V). I used 5V/3.3V voltage regulators connected to
-          the Spectrum's +9V supply.</li>
-        
         <li>The Spectrum +2B and +3 have slightly modified edge connectors;
           specifically, the ROM CS signal has moved (and been split in two),
           and there seems to be no +9V supply. I'm not familiar enough with
           the ROM CS signals on the +2B/+3 to advise on how to connect
           them.</li>
-        
-        <li>The FM1808 FRAM is 32k in size, but SpeccyBoot only uses 16k. You
-          can safely replace it with a 16k EPROM/EEPROM/equivalent (as long
-          as you have the equipment to program it). If you want to
-          simplify the design, you can remove the connection from the latch
-          (74'573) to FM1808's A14 and connect FM1808 A14 to either ground or
-          Vcc instead (if you are sure that you will not need the remaining
-          16k for something else).</li>
         
         <li>This design uses the
           <a href="http://www.olimex.com/dev/enc28j60-h.html">ENC28J60-H
@@ -71,30 +58,22 @@
           as an Ethernet connector, obviously). Refer to the ENC28J60
           data sheet for details.</li>
         
-        <li>A friend informed me (a bit too late) about the 74'273, which could
-          be used to reduce the number of components in this design. In
-          particular, the logic connected to LE and D0/D1 (which is there to
-          provide a well-defined state on reset) could be removed entirely.
-          If/when my SpeccyBoot goes up in smoke, I'll use the 74'273 in the
-          next incarnation.</li>
-        
         <li>There are two switches: S1 allows the FRAM to be disabled (useful
           when it contains garbage), and S2 is a write-protection switch.</li>
         
-        <li>The 74'138 decoder's Y0 output can be used as a fully decoded
-          select signal for a Kempston joystick interface. Just add a 74'240
-          buffer.</li>
-        
         </ul>
       
-      <p>Finally, you may use this hardware design as you wish. Feel free to sell
-      devices based on this design; if they look good, I'd like to buy one!</p>
+      <p>Finally, you may use this hardware design as you wish. Feel free to
+      build and sell devices based on this design; if they look good, I'd like
+      to buy one!</p>
       
-      <img src="schematic.png"/>
+      <a href="schematic.png">
+        <img src="schematic.png" width="100%"/>
+      </a>
       
       <hr>
       
-      <a name="sw">
+      <a name="software">
         <h2>Building the software</h2>
         </a>
       
@@ -131,8 +110,8 @@
       
       <hr>
       
-      <a name="prog">
-        <h2>Getting the software onto the device</h2>
+      <a name="install">
+        <h2>Installing the software on the device</h2>
         </a>
       
       <p>If you used an EPROM/EEPROM or similar, you most likely use a
