@@ -22,26 +22,41 @@
           
           <ol>
             <li>If Caps Shift is being pressed during start, the machine will
-            boot into BASIC.</li>
-            <li>An IP address is obtained using DHCP. (Your broadband router
-            will most likely handle this.)</li>
-            <li>A TFTP read request for the file <code>snapshots.lst</code>
-            is broadcast on your local network. (If the server has no such
-            file, a new TFTP read request is made, to load a snapshot named
-            <code>menu.z80</code> instead. If this fails, an error message is
-            displayed.)</li>
+            boot into BASIC, and not continue with the steps below.</li>
+            <li>An IP address is obtained using DHCP.</li>
+            <li>An attempt to load the file <code>snapshots.lst</code>
+            is made (using a TFTP read request, broadcast on your local
+            network). If the server has no such file, an attempt is made to
+            load and execute a snapshot named <code>menu.z80</code> instead.
+            If this also fails, an error message is displayed.</li>
             <li>The contents of <code>snapshots.lst</code> are displayed as a
             menu. When a snapshot is selected, it will be loaded and
             executed.</li>
           </ol>
           
-          <p><b>NOTE:</b> The current version of SpeccyBoot does not support
-          more than one SpeccyBoot on the same local network (the MAC address
-          is hard-coded).</p>
+          <p>Configuration is kept to an absolute minimum:</p>
           
+          <ul>
+            <li>Manual (static) assignment of IP address is not supported
+            &mdash; only dynamic (DHCP).</li>
+            <li>The TFTP server is found by broadcasting an initial read
+            request. Hence, you should not have more than one TFTP server on
+            your network.</li>
+            <li>More than one SpeccyBoot on the same local network is not
+            supported &mdash; the MAC address is fixed.</li>
+          </ul>
+          
+          <p>Here's how to set up SpeccyBoot:</p>
+          
+          <ul>
+            <li><a href="#tftpserver">TFTP server configuration</a></li>
+            <li><a href="#syslog">Syslog daemon configuration</a> (optional)</li>
+            <li><a href="#loading">Loading snapshots</a></li>
+          </ul>
+
           <hr>
           
-          <h2>TFTP server configuration</h2>
+          <a name="tftpserver"><h2>TFTP server configuration</h2></a>
 
           <p>You will need to install and/or activate a TFTP server on a
           computer in your local network. Fortunately, TFTP server software is
@@ -50,9 +65,8 @@
           SpeccyBoot uses. Most (but not all) TFTP servers are, and some need
           an explicit option to enable this.</p>
           
-          <p>I
-          used the built-in TFTP server of Mac OS X, which can be enabled like
-          this (tested on 10.5 and 10.6):</p>
+          <p>I used the built-in TFTP server of Mac OS X, which can be enabled
+          like this:</p>
           
           <p>
           <code># sudo launchctl load -w /System/Library/LaunchDaemons/tftp.plist</code>
@@ -96,7 +110,43 @@
           
           <hr>
                     
-          <h2>Loading snapshots</h2>
+          <a name="syslog"><h2>Syslog daemon configuration</h2></a>
+          
+          <p>This step is entirely <b>optional</b>. Actually, the syslog output
+          from SpeccyBoot is only useful to the developer, and then only
+          marginally so. It will not affect your retro-gaming experience in any
+          way.</p>
+          
+          <p>The SpeccyBoot software uses (a liberal interpretation of) the
+          <a href="http://www.ietf.org/rfc/rfc3164.txt">BSD syslog
+          protocol</a> for debug messages. Those messages can be viewed using
+          a suitably configured machine in your local network.</p>
+          
+          <p>Just like TFTP, the syslog protocol is supported by virtually all
+          UNIX and UNIX-like operating systems. Most UNIX syslog daemons are
+          capable of receiving syslog output from other machines in the
+          network. However, most syslog daemons also disable this behavior by
+          default, so you will likely have to explicitly enable it to see
+          SpeccyBoot's messages (mostly debug messages). On Mac OS X, you will
+          need to edit 
+          <code>/System/Library/LaunchDaemons/com.apple.syslogd.plist</code>,
+          and then restart <code>syslogd</code>.
+          (<a href="http://www.makemacwork.com/enable-remote-system-logging.htm">More
+          details can be found here</a>.)</p>
+          
+          <p>Here's how it appears in Console.app (SpeccyBoot is 192.168.0.196
+          here):</p>
+          
+          <img src="syslog.png" />
+
+          <p>Another way of viewing the syslog output is <a
+          href="http://www.wireshark.org/">Wireshark</a>. Wireshark interprets
+          syslog messages correctly, and displays it along with the rest of the
+          communication.</p>
+          
+          <hr>
+                    
+          <a name="loading"><h2>Loading snapshots</h2></a>
 
           <p>If the steps above went well, you should now be able to turn on
           your Spectrum, see it figure out its IP address as well as that of

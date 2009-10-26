@@ -25,7 +25,7 @@
         <li><a href="#hardware">Building the hardware</a></li>
         <li><a href="#software">Building the software</a></li>
         <li><a href="#install">Installing the software on the device</a></li>
-        </ul>
+      </ul>
       
       <p><b>NOTE:</b> I assume no responsibility for what happens if you
       connect this to your Spectrum. This design works well for me, but
@@ -38,19 +38,14 @@
         <h2>Building the hardware</h2>
         </a>
 
-      <p>Schematic <a href="schematic.png">available here</a>.</p>
+      <p>The schematic design is <a href="schematic.png">available
+      here</a>.</p>
 
       <p>I built the device on a basic lab board. I'm not much of a soldering
       wizard, but you should probably have some soldering experience to pull
       this off. A few notes on the design:</p>
       
       <ul>
-        
-        <li>The Spectrum +2B and +3 have slightly modified edge connectors;
-          specifically, the ROM CS signal has moved (and been split in two),
-          and there seems to be no +9V supply. I'm not familiar enough with
-          the ROM CS signals on the +2B/+3 to advise on how to connect
-          them.</li>
         
         <li>This design uses the
           <a href="http://www.olimex.com/dev/enc28j60-h.html">ENC28J60-H
@@ -59,14 +54,15 @@
           as an Ethernet connector, obviously). Refer to the ENC28J60
           data sheet for details.</li>
         
-        <li>There are two switches: S1 allows the FRAM to be disabled (useful
-          when it contains garbage), and S2 is a write-protection switch.</li>
-        
-        </ul>
-      
-      <p>Finally, you may use this hardware design as you wish. Feel free to
-      build and sell devices based on this design; if they look good, I'd like
-      to buy one!</p>
+        <li>There are two switches: S1 allows the EEPROM/FRAM to be disabled
+          (useful when it contains garbage), and S2 is a write-protection
+          switch.</li>
+
+        <li>You may use this hardware design as you wish. Feel free to build
+        and sell devices based on this design; if they look good, I'd like to
+        buy one!</li>
+
+      </ul>
       
       <hr>
       
