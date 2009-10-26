@@ -112,30 +112,28 @@
                     
           <a name="syslog"><h2>Syslog daemon configuration</h2></a>
           
-          <p>This step is entirely <b>optional</b>. Actually, the syslog output
-          from SpeccyBoot is only useful to the developer, and then only
-          marginally so. It will not affect your retro-gaming experience in any
-          way.</p>
+          <p>This step is entirely <b>optional</b>. The syslog feature will not
+          affect your retro-gaming experience in any way.</p>
           
-          <p>The SpeccyBoot software uses (a liberal interpretation of) the
+          <p>SpeccyBoot uses (a liberal interpretation of) the
           <a href="http://www.ietf.org/rfc/rfc3164.txt">BSD syslog
-          protocol</a> for debug messages. Those messages can be viewed using
-          a suitably configured machine in your local network.</p>
+          protocol</a> to display status information. Those messages can be
+          viewed using a suitably configured machine in your local network.
+          The syslog output is primarily useful for debugging.</p>
           
           <p>Just like TFTP, the syslog protocol is supported by virtually all
           UNIX and UNIX-like operating systems. Most UNIX syslog daemons are
           capable of receiving syslog output from other machines in the
           network. However, most syslog daemons also disable this behavior by
           default, so you will likely have to explicitly enable it to see
-          SpeccyBoot's messages (mostly debug messages). On Mac OS X, you will
-          need to edit 
+          SpeccyBoot's messages.</p>
+          
+          <p>On Mac OS X, you will need to edit 
           <code>/System/Library/LaunchDaemons/com.apple.syslogd.plist</code>,
           and then restart <code>syslogd</code>.
           (<a href="http://www.makemacwork.com/enable-remote-system-logging.htm">More
-          details can be found here</a>.)</p>
-          
-          <p>Here's how it appears in Console.app (SpeccyBoot is 192.168.0.196
-          here):</p>
+          details can be found here</a>.) Here's how it appears in Console.app
+          (SpeccyBoot is 192.168.0.196 here):</p>
           
           <img src="syslog.png" />
 
