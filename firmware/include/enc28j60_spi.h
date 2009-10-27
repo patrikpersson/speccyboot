@@ -437,11 +437,11 @@ enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
 #define ENC28J60_READ_BIT_TO(REG)         \
   ld    a, #0x40                          \
   out   (0x9f), a                         \
+  inc   a                                 \
+  out   (0x9f), a                         \
   in    a, (0x9f)                         \
   rra                                     \
-  rl    a, REG                            \
-  ld    a, #0x41                          \
-  out   (0x9f), a
+  rl    a, REG
 
 /*
  * End an SPI transaction by pulling SCK low, then CS high.

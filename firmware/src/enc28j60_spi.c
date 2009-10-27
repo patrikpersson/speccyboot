@@ -85,21 +85,8 @@ spi_read_byte(void)
 __naked
 {
   __asm
-  
-  ld  bc, #(0x0800 | SPI_PORT)    ; B=8, C=SPI_PORT
-  ld  de, #0x4140                 ; D sets SCK=1, E sets SCK=0
-
-  out (c), e                      ; SCK := 0
-  
-  ; 58 T-states per bit
-  
-spi_read_byte_lp:
-  in  a, (SPI_PORT)
-  rra
-  out	(c), d
-  rl l
-  out (c), e
-  djnz spi_read_byte_lp
+   
+  ENC28J60_READ_TO(L)
   
   ret
   
@@ -124,19 +111,8 @@ __naked
   ld  hl, #2
   add hl, sp
   ld  e, (hl)       ; x
-  ld  b, #8
-  ld  d, #0x80
   
-  ;; 55 T-states per bit
-  
-spi_write_byte_lp:
-  ld  a, d          ; a is now 0x80
-  rl  e
-  rra               ; a is now (0x40 | x.bit << 7)
-  out (SPI_PORT), a ; CS=0, SCK=0, MOSI=x.bit
-  inc a             ; SCK := 1
-  out (SPI_PORT), a
-  djnz spi_write_byte_lp
+  ENC28J60_WRITE_FROM(E)
   
   ret
   
@@ -152,12 +128,12 @@ spi_write_byte_lp:
  */
 #define READ_BIT_TO_ACC   \
   out   (c), h            \
+  inc   h                 \
+  out   (c), h            \
+  dec   h                 \
   in    l, (c)            \
   rr    a, l              \
   rla                     \
-  inc   h                 \
-  out   (c), h            \
-  dec   h
 
 /*
  * Read one word to (de), increase de, update checksum in hl'.
@@ -651,5 +627,7 @@ __naked
   
   jp    (hl)
 
+  /* No RET */
+  
   __endasm;
 }
