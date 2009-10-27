@@ -301,6 +301,16 @@ eth_handle_incoming_frames(void)
 {
   uint16_t bytes_in_frame;                  /* size of current frame payload */
   
+  /*
+   * Reset stack pointer: saves stack space, but beware:
+   * 
+   * - this prevents this function from returning
+   * - any arguments passed to this function are lost
+   */
+  __asm
+    ld    sp, #_stack_top
+  __endasm;
+  
   ack_received();                          /* initial state: no ACK expected */
   
   for (;;) {

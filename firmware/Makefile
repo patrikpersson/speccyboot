@@ -5,7 +5,7 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION							= 1.1
+VERSION							= 1.2
 
 OBJCOPY							= objcopy
 CC									= sdcc
@@ -19,8 +19,7 @@ LDFLAGS							= -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS						 += --code-loc 0x0043 --data-loc 0x5C00
 
 # SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
-# CHECK_STACK reports stack use before context switch
-CFLAGS						 += -Dbool=BOOL -DVERSION='\"$(VERSION)\"' -DCHECK_STACK
+CFLAGS						 += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
 
 # =============================================================================
 # COMPONENTS

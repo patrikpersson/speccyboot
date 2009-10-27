@@ -115,8 +115,15 @@ evacuate_data(void)
 void
 context_switch(void)
 {
-  check_stack();
-    
+  /*
+   * Send a notification using syslog, along with stack stack results
+   */
+  uint16_t stack_remaining = 0;
+  const uint8_t *stack_low = &stack_bottom;
+  while (stack_low[stack_remaining++] == 0xA8)
+    ;
+  syslog("snapshot loaded, executing (0x% bytes stack left)", stack_remaining);
+  
 #ifndef EMULATOR_TEST
   /*
    * Select the correct register bank for RDPT operations

@@ -149,20 +149,6 @@ typedef char key_t;
 
 /* ------------------------------------------------------------------------- */
 
-#ifdef CHECK_STACK
-#define check_stack()                                                         \
-{                                                                             \
-  uint16_t stack_remaining = 0;                                               \
-  const uint8_t *stack_low = (const uint8_t *) 0x5B00;                        \
-  while (stack_low[stack_remaining++] == 0xA8)          ;                     \
-  syslog("0x%b stack left", stack_remaining);                                 \
-}
-#else
-#define check_stack()
-#endif
-
-/* ------------------------------------------------------------------------- */
-
 /*
  * Default RAM bank (for a 16k/48k snapshot). Has to be even (non-contended)
  */
@@ -171,6 +157,16 @@ typedef char key_t;
 /* ------------------------------------------------------------------------- */
 
 #define TICKS_PER_SECOND          (50)
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Stack addresses (defined here so crt0.asm can find them via linker)
+ */
+uint8_t at(0x5b00) stack_bottom;
+uint8_t at(0x5c00) stack_top;
+
+/* ------------------------------------------------------------------------- */
 
 /*
  * Type of a timer value

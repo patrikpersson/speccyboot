@@ -368,6 +368,7 @@ run_menu(uint8_t nbr_snapshots)
         cls();
         expected_file = EXPECTING_NAMED_SNAPSHOT;
         z80_expect_snapshot();
+        syslog("loading selected snapshot");
         tftp_read_request(snapshot_names[idx]);
         return;
       case KEY_UP:
@@ -413,6 +414,7 @@ notify_dhcp_bound(void)
   static const ipv4_address_t local = ntohl(0xC0A80205);
   display_ip_address(&local, 13);
 #else
+  syslog("IP address configured by DHCP");
   display_ip_address(&ip_config.host_address, 13);
 #endif
   
@@ -443,6 +445,7 @@ void notify_file_loaded(const void *end_addr)
    * The sender of the most recent packet (final TFTP DATA packet) is
    * the TFTP server, so just pick it from the receive buffer.
    */
+  syslog("menu loaded");
   display_ip_address(&rx_frame.ip.src_addr, 20);
 #endif
   
@@ -487,6 +490,7 @@ void notify_tftp_error(void)
   cls();
   expected_file = EXPECTING_DEFAULT_SNAPSHOT;
   z80_expect_snapshot();
+  syslog("no menu found, trying default snapshot");
   tftp_read_request(DEFAULT_SNAPSHOT_FILE);
 }
 

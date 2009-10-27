@@ -1,7 +1,7 @@
 /*
  * Module z80_parser:
  *
- * Accepts a stream of bytes, unpacks it as a Z80 snapshot, loads it into
+ * Accepts a stream of bytes, unpacks it as a .z80 snapshot, loads it into
  * RAM, and executes it.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>

@@ -7,6 +7,8 @@
   
   .globl	_main
   .globl	_timer_tick_count
+  .globl	_stack_bottom
+  .globl	_stack_top
 
   .area	_HEADER (ABS)
 
@@ -44,13 +46,13 @@ reset_delay_loop::        ;; each loop iteration is 6+4+4+12 = 26 T-states
   rra
   jr    nc, go_to_basic
 
-  ld    hl, #0x5B00
-  ld    de, #0x5B01
+  ld    hl, #_stack_bottom
+  ld    de, #_stack_bottom+1
   dec   c                 ;; bc is zero after loop above => BC=0x00ff
   ld    (hl), #0xA8
   ldir                    ;; paint stack
 
-  ld    sp, #0x5C00
+  ld    sp, #_stack_top
   call  gsinit
   ei
   jp _main
@@ -122,7 +124,7 @@ go_to_basic::
   ;; --------------------------------------------------------------------------
 
   ;; --------------------------------------------------------------------------
-  ;; Keyboard mapping (used by _poll_key above)
+  ;; Keyboard mapping (used by _poll_key below)
   ;:
   ;; ZX Spectrum BASIC Programming (Vickers), Chapter 23:
   ;;
@@ -137,8 +139,9 @@ go_to_basic::
   ;;
   ;; http://www.worldofspectrum.org/ZXBasicManual/index.html
   ;;
-  ;; A '0' in the table means that key is to be ignored. The rows are ordered
-  ;; for the high byte in the row address to take values in the following order
+  ;; A '0' in the 'key_rows' table means that key is to be ignored. The rows
+  ;; are ordered for the high byte in the row address to take values in the
+  ;; following order:
   ;;
   ;; 01111111
   ;; 10111111
@@ -302,21 +305,21 @@ _feature_rows::
   ;; --------------------------------------------------------------------------
   
 _bottom_left_arc::
-  .db 0, 0x80   ;; , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+  .db 0, 0x80
 _top_left_arc::
-  .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80  ;; , 0
+  .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80
 _bottom_right_arc::
-  .db 0, 0x01   ;; , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+  .db 0, 0x01
 _top_right_arc::
-  .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01  ;; , 0
+  .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01
 _bottom_half::
-  .db 0, 0      ;; , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+  .db 0, 0
 _top_half::
   .db 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0
 _offset_bottom::
-  .db 0x1F, 0x0E    ;; , 0, 0, 0, 0, 0, 0
+  .db 0x1F, 0x0E
 _offset_top::
-  .db 0, 0, 0, 0, 0, 0, 0x0E    ;; , 0x3F
+  .db 0, 0, 0, 0, 0, 0, 0x0E
 _offset_bar::
   .db 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F
 _left_blob::
