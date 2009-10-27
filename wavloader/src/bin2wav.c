@@ -1,7 +1,7 @@
 /*
  * bin2wav: a crude hack to generate a .WAV file from a binary file. The .WAV
  *          file includes a short BASIC loader that loads the following code
- *          to address 32768, and executes it from that address.
+ *          to address 0x7000, and executes it from that address.
  *
  * The resulting file is suitable for loading into a Sinclair ZX Spectrum
  * using a music player (e.g., iPod) connected to the EAR socket.
@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define SAMPLES_PER_SECOND        (44100)
 #define TSTATES_PER_SECOND        (3500000)
@@ -228,7 +229,7 @@ static void
 write_basic_loader(void)
 {
   /*
-   * A short BASIC snippet to load a code block at 32768 onwards, execute that
+   * A short BASIC snippet to load a code block at 0x7000 onwards, execute that
    * code, and stop.
    *
    * Details about BASIC program representation found chapter 24 of
@@ -238,28 +239,52 @@ write_basic_loader(void)
    *
    *   http://www.worldofspectrum.org/ZXBasicManual/
    */
-  static const uint8_t basic_loader[] = {
+  
+  static uint8_t basic_loader[] = {
     0, 10,                              /* line 10 */
-    36, 0,                              /* length of code below */
-    253, '3', '2', '7', '6', '7',       /* CLEAR 32767 */
-    14, 0, 0, 255, 127, 0,              /* integer 32767 */
-    ':',
-    239, '"', '"', 175,                 /* LOAD "" CODE */
-    ':',
-    251,                                /* CLS */
-    ':',
-    249, 192, '3', '2', '7', '6', '8',  /* RANDOMIZE USR 32768 */
-    14, 0, 0, 0, 128, 0,                /* integer 32768 */
+    16, 0,                              /* length of line */
+    249, 192, '2', '8', '6', '7', '2',  /* RANDOMIZE USR 28672 */
+    14, 0, 0, 0, 112, 0,                /* integer 28672 */
     ':',
     226,                                /* STOP */
     13,                                 /* ENTER */
+    
+    0, 20,                              /* line 20 */
+    13, 0,                              /* length of line */
+    253, '2', '8', '6', '7', '1',       /* CLEAR 28671 */
+    14, 0, 0, 255, 111, 0,              /* integer 28671 */
+    13,                                 /* ENTER */
+    
+    0, 30,                              /* line 30 */
+    36, 0,                              /* length of line */
+    245, '"', 'B', 'u', 'i', 'l', 'd',  /* PRINT "Build:" */
+    ':', ' ', ' ', ' ', ' ', ' ', ' ',
+    ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+    ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+    ' ', ' ', ' ', ' ', ' ', ' ', '"',  /* 27 spaces */
+    13,                                 /* ENTER */
+    
+    0, 40,                              /* line 40 */
+    7, 0,                               /* length of line */
+    239, '"', '"', 175,                 /* LOAD "" CODE */
+    ':',
+    247,                                /* RUN */
+    13,                                 /* ENTER */
     128                                 /* Sentinel: end of variable area */
   };
+
+  /*
+   * Write current date and time into BASIC string
+   */
+  time_t now = time(NULL);
+  ctime_r(&now, (char *) basic_loader + 50);
+  basic_loader[74] = '.';   /* overwritten with NUL by ctime_r() */
+  basic_loader[75] = '"';  /* overwritten with NUL by ctime_r() */
   
   write_header_block(HEADER_PROGRAM,
                      (uint16_t) sizeof(basic_loader),
                      "loader",
-                     10,  /* auto-start */
+                     20,  /* auto-start LINE 20 */
                      (uint16_t) (sizeof(basic_loader) - 1));
   write_data_block(basic_loader, (uint16_t) sizeof(basic_loader));
 }
@@ -278,7 +303,7 @@ write_data_file(void)
     exit(1);
   }
   
-  write_header_block(HEADER_CODE, (uint16_t) bytes_read, "code", 0x8000, 0x8000);
+  write_header_block(HEADER_CODE, (uint16_t) bytes_read, "code", 0x7000, 0x8000);
   write_data_block(infile_buffer, (uint16_t) bytes_read);
 }
 

@@ -63,7 +63,7 @@
 
   .area	_HEADER (ABS)
   
-  .org 	0x8000
+  .org 	0x7000
 
   ;; ensure the FRAM is paged out, so it is safe to set switches to enable it
   ;; (useful when FRAM contains garbage)
@@ -164,9 +164,9 @@ do_beep:
   
 msg_press_enter:
   .db   0x11, 0x00, 0x10, 0x07      ;; PAPER 0; INK 7
-  .db   0x16, 0x02, 0x03            ;; AT 2,3
-  .db   "S", "p", "e", "c", "c", "y", "B", "o", "o", "t", " ", "f", "i"
-  .db   "r", "m", "w", "a", "r", "e", " ", "l", "o", "a", "d", "e", "r"
+  .db   0x16, 0x02, 0x05            ;; AT 2,5
+  .db   " ", "S", "p", "e", "c", "c", "y", "B", "o", "o", "t"
+  .db   " ", "i", "n", "s", "t", "a", "l", "l", "e", "r", " "
   .db   0x11, 0x07, 0x10, 0x00      ;; PAPER 7; INK 0
   .db   0x16, 0x06, 0x05            ;; AT 6,5
   .db   "p", "r", "e", "s", "s", " ", "E", "n", "t", "e", "r"
@@ -175,8 +175,8 @@ msg_press_enter_end:
 
 msg_writing:
   .db   0x16, 0x06, 0x05            ;; AT 6,5
-  .db   " ", "w", "r", "i", "t", "i", "n", "g", " ", "f", "i"
-  .db   "r", "m", "w", "a", "r", "e", " ", ".", ".", ".", " "
+  .db   " ", " ", " ", " ", "i", "n", "s", "t", "a", "l", "l"
+  .db   "i", "n", "g", ".", ".", ".", " ", " ", " ", " ", " "
 msg_writing_end:
 
 msg_ok:
