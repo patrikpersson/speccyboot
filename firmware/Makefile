@@ -26,7 +26,7 @@ CFLAGS						 += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
 # =============================================================================
 
 # Common modules (module = source + header)
-MODULES      = util z80_parser context_switch enc28j60_spi 
+MODULES      = util z80_parser context_switch enc28j60 spi
 
 # -----------------------------------------------------------------------------
 

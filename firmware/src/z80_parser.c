@@ -259,23 +259,6 @@ DEFINE_STATE(s_header)
     {
       kilobytes_expected = 128;
       
-      /*
-       * Write sound register contents (no need to postpone this to the
-       * actual context switch, it's easier from C code)
-       */
-      {
-        static sfr banked at(0xfffd) register_select;
-        static sfr banked at(0xbffd) register_value;
-        
-        uint8_t reg;
-        
-        for (reg = 0; reg < 16; reg++) {
-          register_select = reg;
-          register_value  = header->hw_state_snd[reg];
-        }
-        register_select = header->hw_state_fffd;
-      }
-      
       paging_config = header->hw_state_7ffd;
     }
     else {
@@ -287,7 +270,9 @@ DEFINE_STATE(s_header)
   
   display_progress(0, kilobytes_expected);
 
-  evacuate_z80_header(received_data, paging_config);
+  evacuate_z80_header(received_data,
+                      paging_config,
+                      (kilobytes_expected == 128));
   
   received_data        += header_length;
   received_data_length -= header_length;
@@ -326,7 +311,9 @@ DEFINE_STATE(s_chunk_header3)
   /*
    * Receive ID of the page the chunk belongs to, range is 3..10
    *
-   * See http://www.worldofspectrum.org/faq/reference/z80format.htm
+   * See:
+   * http://www.worldofspectrum.org/faq/reference/z80format.htm
+   * http://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
    */
   uint8_t page_id = *received_data++;
   received_data_length--;
@@ -335,18 +322,28 @@ DEFINE_STATE(s_chunk_header3)
     fatal_error("incompatible snapshot");
   }
 
-  if (kilobytes_expected == 128) {
-    select_bank(page_id - 3);
-  }
-
   switch (page_id) {
-    case 4:
-      curr_write_pos = (uint8_t *) 0x8000;
-      break;
     case 8:
+      /*
+       * Need to handle page 5 separately -- if we don't use the address range
+       * 0x4000..0x7fff, the evacuation stuff in z80_parser won't work.
+       */
       curr_write_pos = (uint8_t *) 0x4000;
       break;
+    case 4:
+      /*
+       * Page 1 in a 48k snapshot points to 0x8000, but 128k snapshots are
+       * different.
+       */
+      if (kilobytes_expected != 128) {
+        curr_write_pos = (uint8_t *) 0x8000;
+        break;
+      }
+      /* fall-through */
     default:
+      if (kilobytes_expected == 128) {
+        select_bank(page_id - 3);
+      }
       curr_write_pos = (uint8_t *) 0xc000;
       break;
   }

@@ -34,7 +34,6 @@
 #include "rxbuffer.h"
 #include "eth.h"
 
-#include "enc28j60_spi.h"
 #include "arp.h"
 #include "udp_ip.h"
 #include "util.h"

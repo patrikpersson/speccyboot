@@ -1,8 +1,8 @@
 /*
- * Module enc28j60_spi:
+ * Module enc28j60:
  *
- * Bit-banged SPI access to the Microchip ENC28J60 Ethernet host. Some
- * functionality emulated for EMULATOR_TEST builds.
+ * Access to the Microchip ENC28J60 Ethernet host. Some functionality emulated
+ * for EMULATOR_TEST builds.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -32,11 +32,13 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SPECCYBOOT_ENC28J60_SPI_INCLUSION_GUARD
-#define SPECCYBOOT_ENC28J60_SPI_INCLUSION_GUARD
+#ifndef SPECCYBOOT_ENC28J60_INCLUSION_GUARD
+#define SPECCYBOOT_ENC28J60_INCLUSION_GUARD
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "spi.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -46,13 +48,6 @@
  */
 #define ENC28J60_EMULATED_SRAM_ADDR     (0xC000)
 #endif  /* EMULATOR_TEST */
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Port for SPI communications
- */
-#define SPI_PORT                        (0x9f)
 
 /* -------------------------------------------------------------------------
  * ENC28J60 ETH/MAC/MII control registers
@@ -210,12 +205,12 @@ typedef uint16_t enc28j60_addr_t;
 /*
  * Opcodes for SPI commands
  */
-#define SPI_OPCODE_RCR(reg_desc)    (0x00 | REG(reg_desc))
-#define SPI_OPCODE_WCR(reg_desc)    (0x40 | REG(reg_desc))
-#define SPI_OPCODE_BFS(reg_desc)    (0x80 | REG(reg_desc))
-#define SPI_OPCODE_BFC(reg_desc)    (0xA0 | REG(reg_desc))
-#define SPI_OPCODE_RBM              (0x3A)
-#define SPI_OPCODE_WBM              (0x7A)
+#define ENC_OPCODE_RCR(reg_desc)    (0x00 | REG(reg_desc))
+#define ENC_OPCODE_WCR(reg_desc)    (0x40 | REG(reg_desc))
+#define ENC_OPCODE_BFS(reg_desc)    (0x80 | REG(reg_desc))
+#define ENC_OPCODE_BFC(reg_desc)    (0xA0 | REG(reg_desc))
+#define ENC_OPCODE_RBM              (0x3A)
+#define ENC_OPCODE_WBM              (0x7A)
 
 /* ========================================================================= */
 
@@ -252,21 +247,21 @@ enc28j60_internal_write8plus8(uint8_t opcode,
  * Write an 8-bit value to an ETH/MAC/MII register
  */
 #define enc28j60_write_register(descr, value)                                 \
-  enc28j60_internal_write8plus8(SPI_OPCODE_WCR(descr), descr, value)
+  enc28j60_internal_write8plus8(ENC_OPCODE_WCR(descr), descr, value)
 
 /*
  * Set indicated bits of an ETH/MAC/MII register
  * (resulting register value = old value OR bits_to_set)
  */
 #define enc28j60_bitfield_set(descr, bits_to_set)                             \
-  enc28j60_internal_write8plus8(SPI_OPCODE_BFS(descr), descr, bits_to_set)
+  enc28j60_internal_write8plus8(ENC_OPCODE_BFS(descr), descr, bits_to_set)
 
 /*
  * Clear indicated bits of an ETH/MAC/MII register
  * (resulting register value = old value AND NOT bits_to_clear)
  */
 #define enc28j60_bitfield_clear(descr, bits_to_clear)                         \
-  enc28j60_internal_write8plus8(SPI_OPCODE_BFC(descr), descr, bits_to_clear)
+  enc28j60_internal_write8plus8(ENC_OPCODE_BFC(descr), descr, bits_to_clear)
 
 /* ------------------------------------------------------------------------- */
 
@@ -381,105 +376,6 @@ void
 enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
                          uint16_t         nbr_bytes);
 
-/* ============================================================================
- * ENC28J60 SPI HELPERS (assembly macros)
- * ========================================================================= */
-
-/*
- * Note the funny notation for 'rl x' as 'rl a, x' below:
- *
- * Apparently as-z80 got the 'rl x' instruction mixed up into the same group
- * as 'add x', 'cp x', and so on, and somehow thinks 'a' is an implicit
- * operand. We need to give the full version of the instruction for as-z80 to
- * figure things out in macros, because these will expand to a single line,
- * which takes some intelligence to parse correctly -- hence the use of
- * 'rl a, x' below.
- *
- * I got the idea of 'rl a, x' from here:
- * http://shop-pdp.kent.edu/ashtml/asz80.htm
- */
-
-#pragma save
-#pragma sdcc_hash + 
-
-/*
- * Write a single 0 (zero) on SPI MOSI
- */
-#define ENC28J60_WRITE_BIT_0              \
-  ld      a, #0x40                        \
-  out     (SPI_PORT), a                   \
-  inc     a                               \
-  out     (SPI_PORT), a
-
-/*
- * Write a single 1 (one) on SPI MOSI
- */
-#define ENC28J60_WRITE_BIT_1              \
-  ld      a, #0xC0                        \
-  out     (SPI_PORT), a                   \
-  inc     a                               \
-  out     (SPI_PORT), a
-
-/*
- * Write bit 7 from register REG to SPI MOSI, and then shift REG left one bit
- */
-#define ENC28J60_WRITE_BIT_FROM(REG)      \
-  ld    a, #0x80                          \
-  rl    a, REG                            \
-  rra                                     \
-  out   (SPI_PORT), a                     \
-  inc   a                                 \
-  out   (SPI_PORT), a
-
-/*
- * Shift register REG left one bit, and shift in a bit from SPI MISO to bit 0
- */
-#define ENC28J60_READ_BIT_TO(REG)         \
-  ld    a, #0x40                          \
-  out   (0x9f), a                         \
-  inc   a                                 \
-  out   (0x9f), a                         \
-  in    a, (0x9f)                         \
-  rra                                     \
-  rl    a, REG
-
-/*
- * End an SPI transaction by pulling SCK low, then CS high.
- */
-#define ENC28J60_END_TRANSACTION          \
-  ld  a, #0x40                            \
-  out (SPI_PORT), a                       \
-  ld  a, #0x48                            \
-  out (SPI_PORT), a
-
-#pragma restore
-
-/*
- * Write a byte from register REG
- */
-#define ENC28J60_WRITE_FROM(REG)          \
-  ENC28J60_WRITE_BIT_FROM(REG)            \
-  ENC28J60_WRITE_BIT_FROM(REG)            \
-  ENC28J60_WRITE_BIT_FROM(REG)            \
-  ENC28J60_WRITE_BIT_FROM(REG)            \
-  ENC28J60_WRITE_BIT_FROM(REG)            \
-  ENC28J60_WRITE_BIT_FROM(REG)            \
-  ENC28J60_WRITE_BIT_FROM(REG)            \
-  ENC28J60_WRITE_BIT_FROM(REG)
-
-/*
- * Read a byte to register REG
- */
-#define ENC28J60_READ_TO(REG)             \
-  ENC28J60_READ_BIT_TO(REG)               \
-  ENC28J60_READ_BIT_TO(REG)               \
-  ENC28J60_READ_BIT_TO(REG)               \
-  ENC28J60_READ_BIT_TO(REG)               \
-  ENC28J60_READ_BIT_TO(REG)               \
-  ENC28J60_READ_BIT_TO(REG)               \
-  ENC28J60_READ_BIT_TO(REG)               \
-  ENC28J60_READ_BIT_TO(REG)
-
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -507,69 +403,69 @@ enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
 
 #else    /* EMULATOR_TEST */
 
-#define ENC28J60_RESTORE_APPDATA            \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_1                        \
-                                            \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-                                            \
-ENC28J60_END_TRANSACTION                    \
-                                            \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-                                            \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-                                            \
-ENC28J60_END_TRANSACTION                    \
-                                            \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_0                        \
-ENC28J60_WRITE_BIT_1                        \
-ENC28J60_WRITE_BIT_0                        \
-                                            \
-ld    bc, #0x0800                           \
-ld    de, #0x5800                           \
-restore_appdata_loop::                      \
-ENC28J60_READ_TO(l)                         \
-ld    a, l                                  \
-ld    (de), a                               \
-dec   bc                                    \
-inc   de                                    \
-ld    a, b                                  \
-or    a, c                                  \
-jr    nz, restore_appdata_loop              \
-                                            \
-ENC28J60_END_TRANSACTION
+#define ENC28J60_RESTORE_APPDATA              \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_1                             \
+                                              \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+                                              \
+  SPI_END_TRANSACTION                         \
+                                              \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+                                              \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+                                              \
+  SPI_END_TRANSACTION                         \
+                                              \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_0                             \
+  SPI_WRITE_BIT_1                             \
+  SPI_WRITE_BIT_0                             \
+                                              \
+  ld    bc, #0x0800                           \
+  ld    de, #0x5800                           \
+restore_appdata_loop::                        \
+  SPI_READ_TO(l)                              \
+  ld    a, l                                  \
+  ld    (de), a                               \
+  dec   bc                                    \
+  inc   de                                    \
+  ld    a, b                                  \
+  or    a, c                                  \
+  jr    nz, restore_appdata_loop              \
+                                              \
+  SPI_END_TRANSACTION
 
 #endif /* EMULATOR_TEST */
 
@@ -629,60 +525,60 @@ enc28j60_load_byte_at_address(void)     __naked;
  */
 
 #define ENC28J60_LOAD_HL    \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
                             \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_1      \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_1           \
                             \
-  ENC28J60_END_TRANSACTION  \
+  SPI_END_TRANSACTION       \
                             \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
                             \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
                             \
-  ENC28J60_END_TRANSACTION  \
+  SPI_END_TRANSACTION       \
                             \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_0      \
-  ENC28J60_WRITE_BIT_1      \
-  ENC28J60_WRITE_BIT_0      \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_0           \
+  SPI_WRITE_BIT_1           \
+  SPI_WRITE_BIT_0           \
                             \
-  ENC28J60_READ_TO(L)       \
-  ENC28J60_READ_TO(H)       \
+  SPI_READ_TO(L)            \
+  SPI_READ_TO(H)            \
                             \
-  ENC28J60_END_TRANSACTION
+  SPI_END_TRANSACTION
 
 #endif /* EMULATOR_TEST */
 
-#endif /* SPECCYBOOT_ENC28J60_SPI_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_ENC28J60_INCLUSION_GUARD */

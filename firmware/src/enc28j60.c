@@ -1,8 +1,8 @@
 /*
- * Module enc28j60_spi:
+ * Module enc28j60:
  *
- * Bit-banged SPI access to the Microchip ENC28J60 Ethernet host. Some
- * functionality emulated for EMULATOR_TEST builds.
+ * Access to the Microchip ENC28J60 Ethernet host. Some functionality emulated
+ * for EMULATOR_TEST builds.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -36,7 +36,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "enc28j60_spi.h"
+#include "enc28j60.h"
 
 #include "util.h"
 #include "syslog.h"
@@ -47,20 +47,6 @@
  * Registers >= 0x1A are present in all banks, so no switching necessary
  */
 #define REGISTER_REQUIRES_BANK_SWITCH(tuple) (REG(tuple) < 0x1A)
-
-/*
- * Macros for beginning and ending an SPI transaction. The braces are there
- * for checking that two matching calls are used.
- */
-#define spi_start_transaction(opcode)   spi_write_byte(opcode); {
-
-/*
- * End an SPI transaction by pulling SCK low, then CS high.
- */
-#define spi_end_transaction()     }   \
-  __asm                               \
-  ENC28J60_END_TRANSACTION            \
-  __endasm
 
 /* ------------------------------------------------------------------------- */
 
@@ -73,68 +59,6 @@
 
 /* ------------------------------------------------------------------------- */
 
-/* ============================================================================
- * ENC28J60 SPI HELPERS (C functions)
- * ========================================================================= */
-
-/*
- * Read 8 bits from SPI.
- */
-static uint8_t
-spi_read_byte(void)
-__naked
-{
-  __asm
-   
-  ENC28J60_READ_TO(L)
-  
-  ret
-  
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Write 8 bits to SPI.
- */
-static void
-spi_write_byte(uint8_t x)
-__naked
-{
-  (void) x;       /* silence warning about argument 'x' not used */
-
-  __asm
-  
-  ;; assumes x to be passed in (sp + 2)
-  
-  ld  hl, #2
-  add hl, sp
-  ld  e, (hl)       ; x
-  
-  ENC28J60_WRITE_FROM(E)
-  
-  ret
-  
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Read one bit to accumulator, requires C=0x9f, H=0x40. Destroys F, L.
- * Takes 12 + 12 + 8 + 4 + 4 + 12 + 4
- *   = 56 T-states
- */
-#define READ_BIT_TO_ACC   \
-  out   (c), h            \
-  inc   h                 \
-  out   (c), h            \
-  dec   h                 \
-  in    l, (c)            \
-  rr    a, l              \
-  rla                     \
-
 /*
  * Read one word to (de), increase de, update checksum in hl'.
  *
@@ -144,27 +68,27 @@ __naked
  *   = 969 T-states
  */
 #define READ_WORD_TO_DE_INC         \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
   ld    (de), a                     \
   inc   de                          \
   exx                               \
   ld    c, a                        \
   exx                               \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
-  READ_BIT_TO_ACC                   \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
+  SPI_READ_BIT_TO_ACC               \
   ld    (de), a                     \
   inc   de                          \
   exx                               \
@@ -308,14 +232,14 @@ no_words::
     ret
 
 odd_byte::
-    READ_BIT_TO_ACC
-    READ_BIT_TO_ACC
-    READ_BIT_TO_ACC
-    READ_BIT_TO_ACC
-    READ_BIT_TO_ACC
-    READ_BIT_TO_ACC
-    READ_BIT_TO_ACC
-    READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
+    SPI_READ_BIT_TO_ACC
     ld    (de), a
     exx
     ld    b, #0
@@ -337,28 +261,7 @@ enc28j60_init(void)
 {
   __asm
 
-  ;; Reset controller the hardware way (by pulling RST low)
-  ;;
-  ;; Data sheet, Table 16.3: Trstlow = 400ns
-  ;; (minimal RST low time, shorter pulses are filtered out)
-  ;;
-  ;; 400ns < 2 T-states == 571ns    (no problem at all)
-  
-  xor a
-  out (SPI_PORT), a   ;; Assert RST
-  ld  a, #0x40        ;;
-  out (SPI_PORT), a   ;; Release RST
-  
-  ;; Data sheet, #11.2:
-  ;;
-  ;; Wait at least 50us after a System Reset before accessing PHY registers.
-  ;; Perform an explicit delay here to be absolutely sure.
-  ;;
-  ;; 14 iterations, each is 13 T-states, 14x13 = 182 T-states > 51us @3.55MHz
-  
-  ld b, #14
-enc28j60_init_loop:
-  djnz  enc28j60_init_loop
+  SPI_RESET
   
   __endasm;
 }
@@ -413,7 +316,7 @@ enc28j60_read_register(uint16_t register_descr)
   
   enc28j60_select_bank(register_descr);
   
-  spi_start_transaction(SPI_OPCODE_RCR(register_descr));
+  spi_start_transaction(ENC_OPCODE_RCR(register_descr));
   if (IS_MAC_OR_MII(register_descr)) {
     (void) spi_read_byte();             /* dummy byte for MAC/MII registers */
   }
@@ -449,7 +352,7 @@ enc28j60_read_memory_cont(uint8_t  *dst_addr,
 {
   uint16_t checksum_out;
 
-  spi_start_transaction(SPI_OPCODE_RBM);
+  spi_start_transaction(ENC_OPCODE_RBM);
 
   checksum_out = spi_read_bytes(dst_addr, nbr_bytes, checksum_in);
   
@@ -491,7 +394,7 @@ enc28j60_write_memory_cont(const uint8_t   *src_addr,
 {
   uint16_t i;
   
-  spi_start_transaction(SPI_OPCODE_WBM);
+  spi_start_transaction(ENC_OPCODE_WBM);
   for (i = 0; i < nbr_bytes; i++) {
     spi_write_byte(*src_addr++);
   }
@@ -521,7 +424,7 @@ enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
   enc28j60_write_register(EWRPTH, HIBYTE(dst_addr));
   enc28j60_write_register(EWRPTL, LOBYTE(dst_addr));
   
-  spi_start_transaction(SPI_OPCODE_WBM);
+  spi_start_transaction(ENC_OPCODE_WBM);
   for (i = 0; i < nbr_bytes; i++) {
     spi_write_byte(0);
   }
@@ -569,59 +472,59 @@ __naked
   ;; write constants 0x41 0x17 (ERDPTH := 0x17)
   ;;
   
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_1
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_1
   
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_1
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_1
   
-  ENC28J60_END_TRANSACTION
+  SPI_END_TRANSACTION
   
   ;;
   ;; write constant 0x40 followed by C register (ERDPTL := C)
   ;;
 
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
 
-  ENC28J60_WRITE_FROM(c)
+  SPI_WRITE_FROM(c)
 
-  ENC28J60_END_TRANSACTION
+  SPI_END_TRANSACTION
 
   ;;
   ;; write constant 0x3A, then read one byte into C register (C := *ERDPTL)
   ;;
 
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_0
-  ENC28J60_WRITE_BIT_1
-  ENC28J60_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_0
+  SPI_WRITE_BIT_1
+  SPI_WRITE_BIT_0
 
-  ENC28J60_READ_TO(c)
+  SPI_READ_TO(c)
   
-  ENC28J60_END_TRANSACTION
+  SPI_END_TRANSACTION
   
 #endif /* EMULATOR_TEST */
   

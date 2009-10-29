@@ -210,6 +210,9 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
 #define Z80_OFFSET_PC_V2_LO    32
 #define Z80_OFFSET_PC_V2_HI    33
 
+#define Z80_OFFSET_CURR_SNDREG 38
+#define Z80_OFFSET_SNDREGS     39
+
 #define OFFSET_PAGING_CONFIG   0xEF
 
 /* ------------------------------------------------------------------------ */
@@ -218,9 +221,13 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
  * Evacuate a .z80 header to ENC28J60 SRAM.
  * Copies sizeof(struct z80_snapshot_header_extended_t) bytes, and stored
  * 'paging_cfg' as the final value to write to 128k paging register during
- * context switch.
+ * context switch. The 'valid_sound_regs' flag indicates whether the sound
+ * registers should be written (essentially, true for a 128k machine, false
+ * otherwise).
  */
-void evacuate_z80_header(const uint8_t *header_data, uint8_t paging_cfg);
+void evacuate_z80_header(const uint8_t *header_data,
+                         uint8_t paging_cfg,
+                         bool valid_sound_regs);
 
 /*
  * Evacuate data from the temporary buffer to ENC28J60 SRAM.

@@ -32,8 +32,10 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <string.h>
+
 #include "context_switch.h"
-#include "enc28j60_spi.h"
+#include "enc28j60.h"
 
 /* ------------------------------------------------------------------------ */
 
@@ -86,9 +88,29 @@
 
 /* ------------------------------------------------------------------------ */
 
+/*
+ * Sound register index indicating no 128k sound
+ */
+#define NO_AY_SOUND             (16)
+
+/*
+ * Keep AY8912 sound register values in Spectrum RAM
+ */
+static uint8_t sound_regs[16];
+static uint8_t curr_sound_reg = NO_AY_SOUND;   /* Means sound_regs not used */
+
+/* ------------------------------------------------------------------------ */
+
 void
-evacuate_z80_header(const uint8_t *header_data, uint8_t paging_cfg)
+evacuate_z80_header(const uint8_t *header_data,
+                    uint8_t paging_cfg,
+                    bool valid_sound_regs)
 {
+  if (valid_sound_regs)  {
+    curr_sound_reg = header_data[Z80_OFFSET_CURR_SNDREG];
+    memcpy(&sound_regs, &header_data[Z80_OFFSET_SNDREGS], sizeof(sound_regs));
+  }
+  
   enc28j60_write_memory_at(EVACUATED_HEADER,
                            header_data,
                            Z80_HEADER_SIZE);
@@ -123,6 +145,22 @@ context_switch(void)
   while (stack_low[stack_remaining++] == 0xA8)
     ;
   syslog("snapshot loaded, executing (0x% bytes stack left)", stack_remaining);
+  
+  /*
+   * Write sound register contents, if valid values exist
+   */
+  if (curr_sound_reg != NO_AY_SOUND) {
+    static sfr banked at(0xfffd) register_select;
+    static sfr banked at(0xbffd) register_value;
+    
+    uint8_t reg;
+    
+    for (reg = 0; reg < 16; reg++) {
+      register_select = reg;
+      register_value  = sound_regs[reg];
+    }
+    register_select = curr_sound_reg;
+  }
   
 #ifndef EMULATOR_TEST
   /*
@@ -419,6 +457,37 @@ iff1_done::
     ld    a, c
     ld    (VRAM_TRAMPOLINE_LD_A), a
   
+    ;;
+    ;; Restore R
+    ;;
+    ;; Adjusted by a carefully tuned value to match remaining trampoline.
+    ;;
+    ;; Computed as follows:
+    ;;
+    ;; - Set the value REG_R_OFFSET to 0 (initially)
+    ;; - Run one of the test applications (checker?.z80 on target,
+    ;;   testimg?.z80 for EMULATOR_TEST builds)
+    ;; - N = R value displayed (in binary) in test application
+    ;; - E = expected value of R, according to tests/register-values.h
+    ;; - Set final REG_R_OFFSET := (E - N)
+    ;;
+    ;; Separate values for EMULATOR_TEST and regular builds are required.
+    ;;
+  
+#ifdef EMULATOR_TEST
+#define REG_R_OFFSET      (0xD3)
+#else
+#define REG_R_OFFSET      (0x31)
+#endif
+  
+    ld    hl, #r_done
+    ld    c, #Z80_OFFSET_R
+    jp    _enc28j60_load_byte_at_address
+    r_done::
+    ld    a, c
+    add   a, #REG_R_OFFSET
+    ld    r, a
+  
 #ifndef EMULATOR_TEST
     ;;
     ;; Restore BC
@@ -435,13 +504,13 @@ b_done::
     jp    _enc28j60_load_byte_at_address
 c_done::
 #endif
-  
+    
     ;;
     ;; Restore HL
     ;;
     
     ENC28J60_LOAD_HL
-      
+  
     ;;
     ;; Select different final part depending on whether interrupts
     ;; are to be enabled or disabled

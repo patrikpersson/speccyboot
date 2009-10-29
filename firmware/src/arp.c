@@ -92,6 +92,8 @@ arp_frame_received(uint16_t nbr_bytes_in_payload)
       eth_add_payload_to_frame(&rx_frame.arp.spa, sizeof(ipv4_address_t));
       
       eth_send_frame(sizeof(struct arp_ip_ethernet_t));
+      
+      syslog("responded to ARP request");
     }
   }
 }

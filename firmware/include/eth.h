@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "enc28j60_spi.h"
+#include "enc28j60.h"
 #include "util.h"
 
 /* -------------------------------------------------------------------------
