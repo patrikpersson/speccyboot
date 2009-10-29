@@ -24,7 +24,7 @@
  * Check all RAM except
  *
  * - video RAM (verified by ocular inspection)
- * - test application itself
+ * - test application itself (duh)
  */
 
 #define RAM_START           (0x5B00)
@@ -82,12 +82,9 @@
 #define ADDR_OF_LP          (0x73E8)
 
 #define CHECK_REGISTER(name)                                            \
-  if (*((uint8_t *) ADDR_OF_ ## name ) != ( REG_ ## name )) {           \
-    memcpy(attr_ptr, fail_attrs, sizeof(fail_attrs));                   \
-  }                                                                     \
-  else {                                                                \
-    memcpy(attr_ptr, pass_attrs, sizeof(pass_attrs));                   \
-  }                                                                     \
+  check_value(attr_ptr,                                                 \
+              (*((uint8_t *) ADDR_OF_ ## name)),                        \
+              ( REG_ ## name ));                                        \
   attr_ptr += 32
 
 /* ------------------------------------------------------------------------- */
@@ -99,12 +96,32 @@ static const uint8_t pass_attrs[] = { 56, 56, 56, 56, 56, 56, 32, 32, 32, 32,
 
 /* ------------------------------------------------------------------------- */
 
+static void check_value(uint8_t *ptr, uint8_t actual, uint8_t expected)
+{
+  int i;
+
+  if (actual != expected) {
+    memcpy(ptr, fail_attrs, sizeof(fail_attrs));
+  }
+  else {
+    memcpy(ptr, pass_attrs, sizeof(pass_attrs));
+  }
+  
+  for (i = 0; i < 8; i++) {
+    *(ptr + 31 - i) = (actual & 0x01) ? 8 : 56;
+    actual >>= 1;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
 void main(void)
 {
-  uint8_t *attr_ptr = (uint8_t *) 0x5800;
   uint8_t  checksum = 0;    
   uint16_t addr;
   static sfr at 0xFE border;     /* I/O address of ULA */
+  
+  uint8_t *attr_ptr = (uint8_t *) 0x5800;
   
   CHECK_REGISTER(A);
   CHECK_REGISTER(F);
@@ -112,12 +129,7 @@ void main(void)
   /*
    * Special consideration for R: the pushed value is 3 more than initial R
    */
-  if (*((uint8_t *) ADDR_OF_R ) != ( REG_R ) + 3) {
-    memcpy(attr_ptr, fail_attrs, sizeof(fail_attrs));
-  }
-  else {
-    memcpy(attr_ptr, pass_attrs, sizeof(pass_attrs));
-  }
+  check_value(attr_ptr, (*((uint8_t *) ADDR_OF_R)) - 3, REG_R);
   attr_ptr += 32;
 
   CHECK_REGISTER(I);
