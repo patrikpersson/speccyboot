@@ -1,4 +1,19 @@
-v1.1 (2009-10-17):
+v1.2 (November 1, 2009):
+
+* Better support for 128k snapshots. (Resolved an issue where memory was mapped
+  incorrectly for 128k snapshots. Postponed sound register updates to the
+  final context switch, instead of during header parsing.)
+
+* Register R now has the correct value after the context switch. (Probably
+  matters to very few, if any, applications.)
+
+* Distorted pixels in top-left corner (necessary for trampoline code) are now
+  camouflaged by setting ink colour to the same as paper colour in those
+  attribute cells.
+
+-------------------------------------------------------------------------------
+
+v1.1 (October 17, 2009):
 
 * Resolved a timing issue on the Spectrum 128 (a contended page was mistakenly
   paged into the 0xc000..0xffff region for 48k snapshots). This issue lead to,
