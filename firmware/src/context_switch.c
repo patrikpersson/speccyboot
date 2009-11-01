@@ -49,11 +49,16 @@
 /* ------------------------------------------------------------------------ */
 
 /*
- * VRAM trampoline layout
+ * VRAM trampoline layout. Split onto two pixel lines, to reduce the number
+ * of distorted character cells.
  *
+ * 0x4000:
  *    out (c), a    (emulator test only)
- *    ld  bc, NN    (emulator test only)
- *    ld  a, N
+ *    ld  bc, #NN   (emulator test only)
+ *    ld  a, #N
+ *    jp  0x4100
+ *
+ * 0x4100:
  *    ei / di       (depending on whether interrupts are to be enabled)
  *    jp  NN
  *
@@ -63,35 +68,36 @@
 
 #ifdef EMULATOR_TEST
 
-#define VRAM_TRAMPOLINE_START    0x4000
+#define VRAM_TRAMPOLINE_START           0x4000
 
-#define VRAM_TRAMPOLINE_OUT      0x4000
-#define VRAM_TRAMPOLINE_LD_BC    0x4002
-#define VRAM_TRAMPOLINE_LD_A     0x4005
-#define VRAM_TRAMPOLINE_EIDI     0x4007
-#define VRAM_TRAMPOLINE_JP       0x4008
+#define VRAM_TRAMPOLINE_OUT             0x4000
+#define VRAM_TRAMPOLINE_LD_BC           0x4002
+#define VRAM_TRAMPOLINE_LD_A            0x4005
+#define VRAM_TRAMPOLINE_JP_CONT         0x4007
 
 #else
 
-#define VRAM_TRAMPOLINE_START    0x3ffe
+#define VRAM_TRAMPOLINE_START           0x3ffe
 
-#define VRAM_TRAMPOLINE_LD_A     0x4000
-#define VRAM_TRAMPOLINE_EIDI     0x4002
-#define VRAM_TRAMPOLINE_JP       0x4003
+#define VRAM_TRAMPOLINE_LD_A            0x4000
+#define VRAM_TRAMPOLINE_JP_CONT         0x4002
 
 #endif
+
+#define VRAM_TRAMPOLINE_EIDI            0x4100
+#define VRAM_TRAMPOLINE_JP_FINAL        0x4101
 
 /*
  * A suitable place to temporarily store a 16-bit value
  */
-#define VRAM_TRAMPOLINE_WORD_STORAGE    VRAM_TRAMPOLINE_EIDI
+#define VRAM_TRAMPOLINE_WORD_STORAGE    0x4200
 
 /* ------------------------------------------------------------------------ */
 
 /*
  * Sound register index indicating no 128k sound
  */
-#define NO_AY_SOUND             (16)
+#define NO_AY_SOUND                     (0xff)
 
 /*
  * Keep AY8912 sound register values in Spectrum RAM
@@ -123,6 +129,56 @@ evacuate_z80_header(const uint8_t *header_data,
 void
 evacuate_data(void)
 {
+  /*
+   * Clear out the top-left five character cells, by setting ink colour
+   * to the same as the paper colour. Which colour is chosen depends on how
+   * many pixels are set in that particular character cell.
+   *
+   * (These character cells are used as temporary storage for the trampoline
+   * below.)
+   */
+
+  uint8_t        *attr_ptr  = (uint8_t *) EVACUATION_TEMP_BUFFER;
+  /*const*/ uint8_t *bitmap_ptr = (uint8_t *) BITMAP_BASE;
+  uint8_t i;
+  for (i = 0; i < 5; i++) {
+    uint8_t attr_value = *attr_ptr;
+    
+    /*
+     * Compute bit-weight of this character cell (number of set pixels)
+     */
+    uint8_t weight = 0;
+    uint8_t j;
+    for (j = 0; j < 8; j++) {
+      uint8_t bitmap = *bitmap_ptr;
+      uint8_t k;
+      for (k = 0; k < 8; k++) {
+        weight += (bitmap & 0x01);
+        bitmap >>= 1;
+      }
+      bitmap_ptr += 0x0100;
+    }
+    bitmap_ptr -= 0x07ff; /* decrease for loop above + increase to next cell */
+
+    if (weight <= 32) {
+      /*
+       * Few pixels set: make them background colour
+       */
+      uint8_t paper_colour = (attr_value & 0x38) >> 3;
+      *attr_ptr++ = (attr_value & 0xf8) | paper_colour;
+    }
+    else {
+      /*
+       * Many pixels set: make background colour same as foreground
+       */
+      uint8_t ink_colour = (attr_value & 0x07);
+      *attr_ptr++ = (attr_value & 0xc7) | (ink_colour << 3);
+    }
+  }
+
+  /*
+   * Write data to ENC28J60
+   */
   enc28j60_write_memory_at(EVACUATED_DATA,
                            (uint8_t *) EVACUATION_TEMP_BUFFER,
                            RUNTIME_DATA_LENGTH);
@@ -170,7 +226,7 @@ context_switch(void)
 #endif
   
   __asm
-    
+
     di
   
 #ifdef EMULATOR_TEST 
@@ -196,23 +252,22 @@ hw_7ffd_done::
     ld    d, c
     ld    a, c
   
-    ;; First write the ROM selection bit to 0x1FFD bit 2 for +3/+2A:
+    ;; First write the ROM selection bit to 0x1FFD bit 2 for +3/+2A/+2B:
     ;; this should give us either ROM0 (128k editor) or ROM3 (48k ROM).
     ;; On a regular 128k Spectrum, this write will end up in the 0x7FFD
-    ;; register due to incomplete address decoding. However, the correct value
-    ;; will be stored immediately after below.
+    ;; register due to incomplete address decoding -- see the "Memory" section
+    ;; in http://www.worldofspectrum.org/faq/reference/128kreference.htm.
+    ;; However, the correct value will be stored immediately after below.
+    ;;
+    ;; NOTE: this has NOT been tested on the +3/+2A/+2B
+                                                    
     rra
     rra
     and   #0x04         ;; stay away from the disk motor, use normal paging
-    ld    bc, #0x1FFD   ;; 128k +2A/+3 page register
-#if 0
-    TODO ->> enable this when 128k verified to work
+    ld    bc, #0x1FFD   ;; 128k +2A/+2B/+3 page register
     out   (c), a
-#endif
-
     ld    b, #0x7F      ;; 128k page register
     out   (c), d
-
 #endif
 
     ENC28J60_RESTORE_APPDATA
@@ -223,7 +278,48 @@ hw_7ffd_done::
 a_done::
     ld    a, c
     ld    (VRAM_TRAMPOLINE_LD_A + 1), a
-
+  
+    ;; 
+    ;; Store constant bytes of trampoline (instruction opcodes)
+    ;;
+    
+    ld    a, #0x3E
+    ld    (VRAM_TRAMPOLINE_LD_A), a
+    ld    a, #0xC3
+    ld    (VRAM_TRAMPOLINE_JP_FINAL), a
+  
+    ld    hl, #VRAM_TRAMPOLINE_JP_CONT
+    ld    (hl), a
+    inc   hl
+    ld    (hl), #0          ;; LOBYTE(0x4100)
+    inc   hl
+    ld    (hl), #0x41       ;; HIBYTE(0x4100)
+  
+#ifdef EMULATOR_TEST
+    ld    a, #0xED
+    ld    (VRAM_TRAMPOLINE_OUT), a
+    ld    a, #0x79
+    ld    (VRAM_TRAMPOLINE_OUT + 1), a
+    ld    a, #0x01
+    ld    (VRAM_TRAMPOLINE_LD_BC), a
+#endif
+  
+    ;;
+    ;; Check IFF1, load EI or DI into address VRAM_TRAMPOLINE_EIDI
+    ;;
+    
+    ld    hl, #iff1_done
+    ld    c, #Z80_OFFSET_IFF1
+    jp    _enc28j60_load_byte_at_address
+    iff1_done::
+    ld    a, c
+    or    a
+    ld    a, #0xF3        ;; DI
+    jr    z, store_eidi
+    ld    a, #0xFB        ;; EI
+store_eidi::
+    ld    (VRAM_TRAMPOLINE_EIDI), a
+  
     ;;
     ;; pick correct PC value, depending on snapshot format version
     ;;
@@ -256,9 +352,9 @@ pc_hi_done2::
       
 header_version_1::
     ld    a, e
-    ld    (VRAM_TRAMPOLINE_JP + 1), a
+    ld    (VRAM_TRAMPOLINE_JP_FINAL + 1), a
     ld    a, c
-    ld    (VRAM_TRAMPOLINE_JP + 2), a
+    ld    (VRAM_TRAMPOLINE_JP_FINAL + 2), a
 
     ;;
     ;; Set up registers IX & IY using VRAM_TRAMPOLINE_WORD_STORAGE for
@@ -374,7 +470,7 @@ sp_hi_done::
     ld    d, c
     
     ld    (VRAM_TRAMPOLINE_WORD_STORAGE), de
-      
+
     ;;
     ;; Set up interrupt mode and I register
     ;;
@@ -403,20 +499,56 @@ im_set::
 i_done::
     ld    a, c
     ld    i, a
-
-    ;;
-    ;; Set up border
-    ;;
   
+    ;;
+    ;; Set up border, pick out bit 7 of R
+    ;;
+    
     ld    hl, #flags_done
     ld    c, #Z80_OFFSET_FLAGS
     jp    _enc28j60_load_byte_at_address
-flags_done::
+    flags_done::
     ld    a, c
+    ld    e, #0
     rra
+    rr    e         ;; E.bit7 now holds R.bit7
     and   #7
     out   (254), a
-            
+    
+    ;;
+    ;; Restore R
+    ;;
+    ;; Adjusted by a carefully calibrated value to match remaining trampoline,
+    ;; resulting in the proper value of R after completed context switch.
+    ;;
+    ;; REG_R_OFFSET is computed as follows:
+    ;;
+    ;; - Set the value REG_R_OFFSET to 0 (initially)
+    ;; - Run one of the test applications (checker?.z80 on target,
+    ;;   testimg?.z80 for EMULATOR_TEST builds)
+    ;; - N = R value displayed (in binary) in test application
+    ;; - E = expected value of R, according to tests/register-values.h (0x2E)
+    ;; - Set final REG_R_OFFSET := (E - N)
+    ;;
+    ;; Separate values for EMULATOR_TEST and regular builds are required.
+    ;;
+  
+#ifdef EMULATOR_TEST
+#define REG_R_OFFSET      (0x11)
+#else
+#define REG_R_OFFSET      (0x1c)
+#endif
+  
+    ld    hl, #r_done
+    ld    c, #Z80_OFFSET_R
+    jp    _enc28j60_load_byte_at_address
+r_done::
+    ld    a, c
+    add   a, #REG_R_OFFSET
+    and   #0x7f
+    or    e
+    ld    r, a
+  
     ;;
     ;; Prepare temporary SP for restoring F
     ;;
@@ -445,48 +577,6 @@ d_done::
     jp    _enc28j60_load_byte_at_address
 e_done::
     ld    e, c
-
-    ;;
-    ;; Load IFF1 into address VRAM_TRAMPOLINE_LD_A (temporarily)
-    ;;
-          
-    ld    hl, #iff1_done
-    ld    c, #Z80_OFFSET_IFF1
-    jp    _enc28j60_load_byte_at_address
-iff1_done::
-    ld    a, c
-    ld    (VRAM_TRAMPOLINE_LD_A), a
-  
-    ;;
-    ;; Restore R
-    ;;
-    ;; Adjusted by a carefully tuned value to match remaining trampoline.
-    ;;
-    ;; Computed as follows:
-    ;;
-    ;; - Set the value REG_R_OFFSET to 0 (initially)
-    ;; - Run one of the test applications (checker?.z80 on target,
-    ;;   testimg?.z80 for EMULATOR_TEST builds)
-    ;; - N = R value displayed (in binary) in test application
-    ;; - E = expected value of R, according to tests/register-values.h
-    ;; - Set final REG_R_OFFSET := (E - N)
-    ;;
-    ;; Separate values for EMULATOR_TEST and regular builds are required.
-    ;;
-  
-#ifdef EMULATOR_TEST
-#define REG_R_OFFSET      (0xD3)
-#else
-#define REG_R_OFFSET      (0x31)
-#endif
-  
-    ld    hl, #r_done
-    ld    c, #Z80_OFFSET_R
-    jp    _enc28j60_load_byte_at_address
-    r_done::
-    ld    a, c
-    add   a, #REG_R_OFFSET
-    ld    r, a
   
 #ifndef EMULATOR_TEST
     ;;
@@ -510,19 +600,6 @@ c_done::
     ;;
     
     ENC28J60_LOAD_HL
-  
-    ;;
-    ;; Select different final part depending on whether interrupts
-    ;; are to be enabled or disabled
-    ;;
-    
-    ld    a, (VRAM_TRAMPOLINE_LD_A)
-    or    a
-    jr    z, final_switch_without_interrupts
-      
-    ;; ------------------------------------------------------------------------
-    ;; Final step for enabled interrupts
-    ;; ------------------------------------------------------------------------
           
     ;;
     ;; Restore F and SP
@@ -530,73 +607,12 @@ c_done::
           
     pop   af
     ld    sp, (VRAM_TRAMPOLINE_WORD_STORAGE)
-
-    ;; 
-    ;; Store constant bytes of trampoline (instruction opcodes)
-    ;;
-              
-    ld    a, #0x3E
-    ld    (VRAM_TRAMPOLINE_LD_A), a
-    ld    a, #0xC3
-    ld    (VRAM_TRAMPOLINE_JP), a
-    ld    a, #0xFB                    ;; EI
-    ld    (VRAM_TRAMPOLINE_EIDI), a
                   
-#ifdef EMULATOR_TEST
-    ld    a, #0xED
-    ld    (VRAM_TRAMPOLINE_OUT), a
-    ld    a, #0x79
-    ld    (VRAM_TRAMPOLINE_OUT + 1), a
-    ld    a, #0x01
-    ld    (VRAM_TRAMPOLINE_LD_BC), a
-      
     ;; 
     ;; Set up final register state for trampoline
     ;;
           
-    ld    bc, #0x7FFD   ;; page register, used by trampoline
-    ld    a, #0x30 + DEFAULT_BANK
-#else
-    ld    a, #0x20      ;; page out FRAM, pull reset on ENC28J60 low
-#endif
-
-    jp    VRAM_TRAMPOLINE_START
-                        
-    ;; ------------------------------------------------------------------------
-    ;; Final step for disabled interrupts
-    ;; ------------------------------------------------------------------------
-final_switch_without_interrupts::
-      
-    ;;
-    ;; Restore F and SP
-    ;;
-  
-    pop   af
-    ld    sp, (VRAM_TRAMPOLINE_WORD_STORAGE)
-
-    ;; 
-    ;; Store constant bytes of trampoline (instruction opcodes)
-    ;;
-    
-    ld    a, #0x3E
-    ld    (VRAM_TRAMPOLINE_LD_A), a
-    ld    a, #0xC3
-    ld    (VRAM_TRAMPOLINE_JP), a
-    ld    a, #0                       ;; NOP, less screen garbage than DI
-    ld    (VRAM_TRAMPOLINE_EIDI), a
-
 #ifdef EMULATOR_TEST
-    ld    a, #0xED
-    ld    (VRAM_TRAMPOLINE_OUT), a
-    ld    a, #0x79
-    ld    (VRAM_TRAMPOLINE_OUT + 1), a
-    ld    a, #0x01
-    ld    (VRAM_TRAMPOLINE_LD_BC), a
-        
-    ;; 
-    ;; Set up final register state for trampoline
-    ;;
-          
     ld    bc, #0x7FFD   ;; page register, used by trampoline
     ld    a, #0x30 + DEFAULT_BANK
 #else
@@ -605,7 +621,7 @@ final_switch_without_interrupts::
   
     /*
      * Enable the snippet below to hard-code SP and PC values to the
-     * values used by the test image (useful when debuggning SPI reads)
+     * values used by the test image (useful when debugging SPI reads)
      */
 #if 0
     ld    hl, #0x7400
