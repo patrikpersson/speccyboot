@@ -121,7 +121,7 @@ void main(void)
   uint16_t addr;
   static sfr at 0xFE border;     /* I/O address of ULA */
   
-  uint8_t *attr_ptr = (uint8_t *) 0x5800;
+  uint8_t *attr_ptr = (uint8_t *) 0x5840;   /* third line */
   
   CHECK_REGISTER(A);
   CHECK_REGISTER(F);
