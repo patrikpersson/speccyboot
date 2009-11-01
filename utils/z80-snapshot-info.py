@@ -121,8 +121,8 @@ def usage():
 
 if len(sys.argv) < 2: usage()
 
-verbose = False
-in_file = None
+verbose    = False
+in_file    = None
 
 for arg in sys.argv[1:]:
   if arg == '-h':
@@ -157,15 +157,31 @@ if word_regs['pc'] == 0:     # version 2 or 3 sub-header follows
   if hw_flags & 0x80:
     if hw_desc == '48k':
       hw_desc   = '16k'
-      # nbr_banks = 1    # seems FUSE saves 3 pages anyway
     elif hw_desc == '128k':
       hw_desc = '128k +2'
 else:
   version = 1
   hw_desc = '48k'
 
-print "z80 snapshot header version %s" % version
-print "hardware: %s" % hw_desc
+print "snapshot format version %s" % version
+print " hardware: %s" % hw_desc
+
+if nbr_banks == 8:    # 128k/+2/+3
+  print " 128k paging state:",
+  print "0x%02x (page %d at 0xc000, display page %d, ROM%d, %s)" % (
+    hw_state,
+    (hw_state & 0x07),
+    (7 if (hw_state & 0x08) else 5),
+    (1 if (hw_state & 0x10) else 0),
+    ("locked" if (hw_state & 0x20) else "unlocked")
+  )
+
+# check compatibility
+if hw_desc == '128k':
+  if hw_state & 0x08:
+    print "incompatible snapshot: screen at page 7"
+elif hw_desc != '48k':
+  print "incompatible snapshot: unsupported configuration: %s" % hw_desc
 
 print "registers:"
 for reg_name in ('a', 'f', 'i', 'r', "a'", "f'"):
