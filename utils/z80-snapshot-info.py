@@ -180,7 +180,7 @@ if nbr_banks == 8:    # 128k/+2/+3
 if hw_desc == '128k':
   if hw_state & 0x08:
     print "incompatible snapshot: screen at page 7"
-elif hw_desc != '48k':
+elif hw_desc != '48k' and hw_desc != '16k':
   print "incompatible snapshot: unsupported configuration: %s" % hw_desc
 
 print "registers:"
