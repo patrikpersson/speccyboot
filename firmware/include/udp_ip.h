@@ -62,8 +62,6 @@
  */
 #define IP_MAX_PAYLOAD            (644)
 
-#define UDP_MAX_PAYLOAD           (576)
-
 /*
  * Static UDP ports
  */
@@ -77,11 +75,6 @@
  * An IPv4 address: 32 bits, network order
  */
 typedef uint32_t ipv4_address_t;
-
-/*
- * Defined in eth.h
- */
-struct mac_address_t;
 
 /* ------------------------------------------------------------------------- */
 

@@ -40,25 +40,25 @@
 /*
  * This prefix is prepended to all file names requested.
  */
-#define TFTP_FILE_PREFIX      "speccyboot/"
+#define TFTP_FILE_PREFIX          "speccyboot/"
 
 /*
  * Notification callback:
  *
  * called when data has been received over TFTP.
  */
-#define NOTIFY_TFTP_DATA       z80_receive_data
+#define NOTIFY_TFTP_DATA          z80_receive_data
 
 /*
  * Notification callback:
  *
  * called when the server responds with an error to a read request.
  */
-#define NOTIFY_TFTP_ERROR      notify_tftp_error
+#define NOTIFY_TFTP_ERROR         notify_tftp_error
 
 /*
  * TFTP DATA packets have a maximal size of 512 bytes, unless options are set
- * by the client (this client won't)
+ * by the client (and this client won't)
  */
 #define TFTP_DATA_MAXSIZE         (512)
 
@@ -82,10 +82,9 @@ void NOTIFY_TFTP_ERROR(void);
  * TFTP packets
  * ========================================================================= */
 
-PACKED_STRUCT(tftp_data_packet_t) {
+PACKED_STRUCT(tftp_header_t) {
   uint16_t        opcode;
   uint16_t        block_no;
-  uint8_t         data[TFTP_DATA_MAXSIZE];
 };
 
 /* -------------------------------------------------------------------------

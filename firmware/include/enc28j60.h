@@ -42,10 +42,12 @@
 
 /* ------------------------------------------------------------------------- */
 
-#ifdef EMULATOR_TEST
 /*
- * SRAM emulation in bank 1, size 8K
+ * Parameters for (very limited) emulation of ENC28J60 SRAM using bank 1
+ * of the 128k Spectrum's RAM
  */
+#ifdef EMULATOR_TEST
+#define ENC28J60_EMULATED_BANK          (1)
 #define ENC28J60_EMULATED_SRAM_ADDR     (0xC000)
 #endif  /* EMULATOR_TEST */
 
@@ -393,7 +395,7 @@ enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
 #ifdef EMULATOR_TEST
 
 #define ENC28J60_RESTORE_APPDATA                          \
-  ld    a, #1                                             \
+  ld    a, #ENC28J60_EMULATED_BANK                        \
   ld    bc, #0x7ffd                                       \
   out   (c), a                                            \
   ld    hl, #ENC28J60_EMULATED_SRAM_ADDR + EVACUATED_DATA \
@@ -465,118 +467,6 @@ restore_appdata_loop::                        \
   or    a, c                                  \
   jr    nz, restore_appdata_loop              \
                                               \
-  SPI_END_TRANSACTION
-
-#endif /* EMULATOR_TEST */
-
-/* ========================================================================= */
-
-/*
- * Set read pointer to address of a .z80 header element, read one byte, and
- * jump to the address held in IY.
- *
- * NOTE: to be invoked from assembly code.
- *
- * On entry:
- *
- * C holds lower byte of header element address
- * HL holds return address
- *
- * On exit:
- *
- * C holds the read byte
- * AF is destroyed
- */
-void
-enc28j60_load_byte_at_address(void)     __naked;
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Loads HL from the correct location.
- *
- * AF is destroyed by this macro.
- */
-#ifdef EMULATOR_TEST
-
-#define ENC28J60_LOAD_HL                                    \
-  ld    (0x401e), bc                                        \
-  ld    a, #1                                               \
-  ld    bc, #0x7ffd                                         \
-  out   (c), a                                              \
-  ld    bc, #0xc000 + EVACUATED_HEADER + Z80_OFFSET_L       \
-  ld    a, (bc)                                             \
-  ld    l, a                                                \
-  inc   bc                                                  \
-  ld    a, (bc)                                             \
-  ld    h, a                                                \
-  ld    bc, #0x7ffd                                         \
-  xor   a, a                                                \
-  out   (c), a                                              \
-  ld    bc, (0x401e)
-
-#else    /* EMULATOR_TEST */
-
-/*
- * SPI transactions:
- * write 0x41 0x17                ERDPTH := 0x17
- * write 0x40 0x04                ERDPTL := 0x04
- * write 0x3A, read 2 bytes       read memory
- */
-
-#define ENC28J60_LOAD_HL    \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-                            \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_1           \
-                            \
-  SPI_END_TRANSACTION       \
-                            \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-                            \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-                            \
-  SPI_END_TRANSACTION       \
-                            \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_0           \
-  SPI_WRITE_BIT_1           \
-  SPI_WRITE_BIT_0           \
-                            \
-  SPI_READ_TO(L)            \
-  SPI_READ_TO(H)            \
-                            \
   SPI_END_TRANSACTION
 
 #endif /* EMULATOR_TEST */

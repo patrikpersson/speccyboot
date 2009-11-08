@@ -36,13 +36,14 @@
 #include "arp.h"
 #include "dhcp.h"
 #include "tftp.h"
+#include "context_switch.h"
 
 /* ------------------------------------------------------------------------- */
 
 /*
  * Administrative Ethernet information, including Ethernet header
  */
-extern struct eth_adm_t           rx_eth_adm;
+extern struct eth_adm_t                 rx_eth_adm;
 
 /* ------------------------------------------------------------------------- */
 
@@ -51,23 +52,30 @@ extern struct eth_adm_t           rx_eth_adm;
  * this is not practical since, for example, the IP header has variable size.
  *
  * Instead, the purpose of this union is to preserve static memory by allowing
- * buffers to overlap whenever possible (unions).
+ * buffers to overlap whenever possible (unions). It also facilitates absolute
+ * addressing of received data (making for efficient generated code).
  */
 extern union rx_frame_t {
   /* --------------------------------------------------------- Raw IP header */
-  struct ipv4_header_t            ip;
+  struct ipv4_header_t                  ip;
   
   /* ------------------------------------------------------------------- UDP */
   PACKED_STRUCT() {
-    struct ipv4_header_t          ip_header;
-    struct udp_header_t           header;
+    struct ipv4_header_t                ip_header;
+    struct udp_header_t                 header;
     
     union {
-      struct dhcp_packet_t        dhcp;
-      struct tftp_data_packet_t   tftp;
+      struct dhcp_packet_t              dhcp;
+      PACKED_STRUCT() {
+        struct tftp_header_t            header;
+        union {
+          uint8_t                       raw_bytes[TFTP_DATA_MAXSIZE];
+          struct z80_snapshot_header_t  z80;
+        } data;
+      } tftp;
     } app;
   } udp;
   
   /* ------------------------------------------------------------------- ARP */
-  struct arp_ip_ethernet_t        arp;
+  struct arp_ip_ethernet_t              arp;
 } rx_frame;

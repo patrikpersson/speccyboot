@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "util.h"
 
@@ -73,7 +74,6 @@
  * during snapshot loading. When bytes destined for these addresses are
  * received, they are instead stored in the ENC28J60's on-chip SRAM:
  *
- * 0x1700 .. 0x17FF   256B  .z80 snapshot header + other config data
  * 0x1800 .. 0x1FFF   2kB   data destined for addresses 0x5A00 .. 0x5FFF in
  *                          the Spectrum RAM (temporary storage during loading)
  * ------------------------------------------------------------------------- */
@@ -93,12 +93,6 @@
 #define EVACUATION_TEMP_BUFFER        (0x6000)
 
 /*
- * Size of a .z80 header (the parts of it we care about, at least)
- */
-#define Z80_HEADER_SIZE                                                       \
-  sizeof(struct z80_snapshot_header_extended_t)
-
-/*
  * When curr_write_pos passes beyond this address, we know evacuation is done
  */
 #define EVACUATION_DONE_ADDR          ((RUNTIME_DATA) + (RUNTIME_DATA_LENGTH))
@@ -106,10 +100,16 @@
 /*
  * Addresses to evacuated data in the ENC28J60 SRAM
  */
-#define EVACUATED_HEADER              0x1700
-#define SAVED_PAGING_CFG              0x17EF
-#define SAVED_IP_CONFIG               0x17F0
 #define EVACUATED_DATA                0x1800
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Masks for meaning of snapshot_flags
+ */
+#define SNAPSHOT_FLAGS_COMPRESSED_MASK  (0x20)
+
+#define HW_TYPE_SPECTRUM_128K           (3)
 
 /* ------------------------------------------------------------------------ */
 
@@ -121,7 +121,8 @@
 PACKED_STRUCT(z80_snapshot_header_t) {
   uint8_t   a;
   uint8_t   f;
-  uint16_t  bc;
+  uint8_t   c;
+  uint8_t   b;
   uint16_t  hl;
   uint16_t  pc;
   uint16_t  sp;
@@ -129,7 +130,8 @@ PACKED_STRUCT(z80_snapshot_header_t) {
   uint8_t   r;
   uint8_t   snapshot_flags;
   uint16_t  de;
-  uint16_t  bc_p;
+  uint8_t   c_p;
+  uint8_t   b_p;
   uint16_t  de_p;
   uint16_t  hl_p;
   uint8_t   a_p;
@@ -139,19 +141,16 @@ PACKED_STRUCT(z80_snapshot_header_t) {
   uint8_t   iff1;
   uint8_t   iff2;
   uint8_t   int_mode;       /* only bits 0-1, other are bits ignored */
-};
 
-/*
- * Extended header (versions 2 and later)
- */
-PACKED_STRUCT(z80_snapshot_header_extended_t) {
-  struct z80_snapshot_header_t default_header;
-  uint16_t                     extended_header_bytes;
-  uint16_t                     pc;
+  /*
+   * Extended header (versions 2 and later)
+   */
+  uint16_t                     extended_length;
+  uint16_t                     extended_pc;
   uint8_t                      hw_type;
   uint8_t                      hw_state_7ffd;
   uint8_t                      dummy_if1_timex;   /* not used */
-  uint8_t                      hw_mod;      /* bit 7 indicates 'modified hw' */
+  uint8_t                      dummy_hw_mod;      /* not used */
   uint8_t                      hw_state_fffd;
   uint8_t                      hw_state_snd[16];
   
@@ -160,77 +159,45 @@ PACKED_STRUCT(z80_snapshot_header_extended_t) {
    */
 };
 
-#define Z80_OFFSET_A           0
-#define Z80_OFFSET_F           1
+/* ------------------------------------------------------------------------ */
 
-#define Z80_OFFSET_C           2
-#define Z80_OFFSET_B           3
-
-#define Z80_OFFSET_L           4
-#define Z80_OFFSET_H           5
-
-#define Z80_OFFSET_PC_LO       6
-#define Z80_OFFSET_PC_HI       7
-
-#define Z80_OFFSET_SP_LO       8
-#define Z80_OFFSET_SP_HI       9
-
-#define Z80_OFFSET_I           10
-#define Z80_OFFSET_R           11
-
-#define Z80_OFFSET_FLAGS       12
-
-#define Z80_OFFSET_DE          13
-
-#define Z80_OFFSET_E           13
-#define Z80_OFFSET_D           14
-
-#define Z80_OFFSET_CP          15
-#define Z80_OFFSET_BP          16
-
-#define Z80_OFFSET_EP          17
-#define Z80_OFFSET_DP          18
-
-#define Z80_OFFSET_LP          19
-#define Z80_OFFSET_HP          20
-
-#define Z80_OFFSET_AP          21
-#define Z80_OFFSET_FP          22
-
-#define Z80_OFFSET_IY_LO       23
-#define Z80_OFFSET_IY_HI       24
-
-#define Z80_OFFSET_IX_LO       25
-#define Z80_OFFSET_IX_HI       26
-
-#define Z80_OFFSET_IFF1        27
-
-#define Z80_OFFSET_IM          29
-
-#define Z80_OFFSET_PC_V2_LO    32
-#define Z80_OFFSET_PC_V2_HI    33
-
-#define Z80_OFFSET_CURR_SNDREG 38
-#define Z80_OFFSET_SNDREGS     39
-
-#define OFFSET_PAGING_CONFIG   0xEF
+/*
+ * True if 'p' points to an extended snapshot header, false otherwise
+ */
+#define IS_EXTENDED_SNAPSHOT_HEADER(p)                                        \
+  (((const struct z80_snapshot_header_t *)(p))->pc == 0)
 
 /* ------------------------------------------------------------------------ */
 
 /*
- * Evacuate a .z80 header to ENC28J60 SRAM.
- * Copies sizeof(struct z80_snapshot_header_extended_t) bytes, and stored
- * 'paging_cfg' as the final value to write to 128k paging register during
- * context switch. The 'valid_sound_regs' flag indicates whether the sound
- * registers should be written (essentially, true for a 128k machine, false
- * otherwise).
+ * True if HW ID 'id' refers to a 128k machine
+ *
+ * (rather simplistic check, but it will only fail for rather esoteric
+ * hardware configurations that I have no way of testing anyway)
  */
-void evacuate_z80_header(const uint8_t *header_data,
-                         uint8_t paging_cfg,
-                         bool valid_sound_regs);
+#define IS_128K_MACHINE(p)            ((p) >= HW_TYPE_SPECTRUM_128K)
+
+/* ------------------------------------------------------------------------ */
 
 /*
- * Evacuate data from the temporary buffer to ENC28J60 SRAM.
+ * Storage for evacuate_z80_header()
+ */
+extern struct z80_snapshot_header_t snapshot_header;
+
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Copy a .z80 header from the RX buffer to a separate memory area. The copied
+ * header is used by evacuate_data() below at a later time.
+ */
+#define evacuate_z80_header()       memcpy(&snapshot_header,                  \
+                                           &rx_frame.udp.app.tftp.data.z80,   \
+                                           sizeof(snapshot_header))
+
+/*
+ * Evacuate data from the temporary buffer to ENC28J60 SRAM. Examine the stored
+ * .z80 header, and prepare the context switch to use information
+ * (register state etc.) in it.
  */
 void evacuate_data(void);
 

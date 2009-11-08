@@ -130,9 +130,9 @@ static const uint8_t  rrq_option[] = "octet";
 void
 tftp_packet_received(uint16_t nbr_bytes_in_packet)
 {
-  switch (rx_frame.udp.app.tftp.opcode) {
+  switch (rx_frame.udp.app.tftp.header.opcode) {
     case ntohs(TFTP_OPCODE_DATA):
-      if ((ntohs(rx_frame.udp.app.tftp.block_no) > expected_tftp_block_no)
+      if ((ntohs(rx_frame.udp.app.tftp.header.block_no) > expected_tftp_block_no)
           || (current_server_src_port != TFTP_SRC_PORT_NONE
               && (current_server_src_port != rx_frame.udp.header.src_port)))
       {
@@ -178,14 +178,14 @@ tftp_packet_received(uint16_t nbr_bytes_in_packet)
        */
       udp_create_reply(TFTP_SIZE_OF_ACK);
       udp_add_payload_to_packet(ack_opcode);
-      udp_add_payload_to_packet(rx_frame.udp.app.tftp.block_no);
+      udp_add_payload_to_packet(rx_frame.udp.app.tftp.header.block_no);
       udp_send_packet();
       
       {
         uint16_t nbr_bytes_data = nbr_bytes_in_packet
-                                  - offsetof(struct tftp_data_packet_t, data);
+                                  - sizeof(struct tftp_header_t);
         
-        if (ntohs(rx_frame.udp.app.tftp.block_no) == expected_tftp_block_no) {
+        if (ntohs(rx_frame.udp.app.tftp.header.block_no) == expected_tftp_block_no) {
           /*
            * At this point, the callback may invoke tftp_read_request(),
            * initiating a new TFTP transfer. Therefore, we must increase
@@ -194,7 +194,7 @@ tftp_packet_received(uint16_t nbr_bytes_in_packet)
            */
           expected_tftp_block_no ++;
 
-          NOTIFY_TFTP_DATA(rx_frame.udp.app.tftp.data,
+          NOTIFY_TFTP_DATA(rx_frame.udp.app.tftp.data.raw_bytes,
                            nbr_bytes_data,
                            (nbr_bytes_data == TFTP_DATA_MAXSIZE));
         }

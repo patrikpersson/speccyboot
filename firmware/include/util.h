@@ -175,11 +175,9 @@ typedef uint16_t timer_t;
 
 /* -------------------------------------------------------------------------
  * Clear screen and set all attributes to INK 0, PAPER 0.
- *
- * Defined in crt0.asm.
  * ------------------------------------------------------------------------- */
 void
-cls(void);
+cls(void) __naked;
 
 /* -------------------------------------------------------------------------
  * Page in the indicated bank at 0xc000
@@ -240,7 +238,7 @@ print_char_at(uint8_t row, uint8_t column, char c);
  * Display 8x8 pattern at given location
  * ------------------------------------------------------------------------- */
 void
-print_pattern_at(uint8_t row, uint8_t col, const uint8_t *pattern);
+print_pattern_at(uint8_t row, uint8_t col, const uint8_t *pattern) __naked;
 
 /* -------------------------------------------------------------------------
  * Display 8x8 pattern at given location
@@ -252,14 +250,6 @@ print_pattern_with_attrs_at(uint8_t attrs,
                             const uint8_t *pattern);
 
 /* -------------------------------------------------------------------------
- * Poll keyboard: return currently pressed key, or KEY_NONE
- *
- * Defined in crt0.asm
- * ------------------------------------------------------------------------- */
-key_t
-poll_key(void);
-
-/* -------------------------------------------------------------------------
  * Wait for keypress. Handles repeat events.
  * ------------------------------------------------------------------------- */
 key_t
@@ -267,12 +257,10 @@ wait_key(void);
 
 /* -------------------------------------------------------------------------
  * Make a short sound, for a key click. This function will paint the border
- * black, regardless of its previous state.
- *
- * Defined in crt0.asm
+ * black, regardless of its previous state. Interrupts will be enabled.
  * ------------------------------------------------------------------------- */
 void
-key_click(void);
+key_click(void) __naked;
 
 /* -------------------------------------------------------------------------
  * Reset/initialize a timer (set it to zero)

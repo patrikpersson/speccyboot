@@ -50,11 +50,6 @@
 #define ENC28J60_TX_ADM         (1 + 7)
 
 /*
- * Administrative overhead in received frames
- */
-#define ENC28J60_RX_ADM         (4)
-
-/*
  * Worst-case frame size
  */
 #define MAX_FRAME_SIZE          (sizeof(struct eth_header_t) + IP_MAX_PAYLOAD)
@@ -66,36 +61,31 @@
 #define ENC28J60_TXBUF_SIZE     (MAX_FRAME_SIZE + ENC28J60_TX_ADM)
 
 /*
- * Receive buffer: no header (stored separately), receive status vector
- */
-#define ENC28J60_RXBUF_SIZE     (IP_MAX_PAYLOAD + ENC28J60_RX_ADM)
-
-/*
  * MEMORY MAP
  * ==========
  *
  * Errata for silicon rev. B5, item #3: receive buffer must start at 0x0000
  *
- * 0x0000 ... 0x0FFF    4K receive buffer (FIFO): automatically filled with
+ * 0x0000 ... 0x11FF    4.5K receive buffer (FIFO): automatically filled with
  *                      received packets by the ENC28J60. The host updates
  *                      ERXRDPT to inform the ENC28J60 when data is consumed.
  *
- * 0x1000 ... 0xXXXX    TX buffer 1. This is the important one -- used for
+ * 0x1200 ... 0xXXXX    TX buffer 1. This is the important one -- used for
  *                      frame class CRITICAL. On time-outs, this frame will be
  *                      re-transmitted (if valid).
  *
  * 0xXXXX+1...0xYYYY    TX buffer 2. This buffer is used for frames where no
  *                      reply is expected -- frame class OPTIONAL.
  *
- * 0x1600 ... 0x1FFF    Reserved for temporary storage during snapshot
+ * 0x1800 ... 0x1FFF    Reserved for temporary storage during snapshot
  *                      loading (see context_switch.c)
  *
  * Also see the comment for eth_frame_class_t (eth.h).
  */
 
 #define ENC28J60_RXBUF_START    (0x0000)
-#define ENC28J60_RXBUF_END      (0x0FFF)
-#define ENC28J60_TXBUF1_START   (0x1000)
+#define ENC28J60_RXBUF_END      (0x11FF)
+#define ENC28J60_TXBUF1_START   (0x1200)
 #define ENC28J60_TXBUF1_END     (ENC28J60_TXBUF1_START + ENC28J60_TXBUF_SIZE-1)
 #define ENC28J60_TXBUF2_START   (ENC28J60_TXBUF1_START + ENC28J60_TXBUF_SIZE)
 

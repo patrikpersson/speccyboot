@@ -33,6 +33,7 @@
  */
 
 #include "tftp.h"
+#include "rxbuffer.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -45,12 +46,19 @@
 
 /* ------------------------------------------------------------------------- */
 
-static uint8_t fake_tftp_block_buf[BLOCK_SIZE];
+/*
+ * This struct/union member cannot be addressed explicitly from within the
+ * assembly code. For this reason, we define a pointer to it, and read that
+ * pointer below.
+ */
+static const uint8_t *buffer_ptr = &rx_frame.udp.app.tftp.data.raw_bytes[0];
 
 /* ------------------------------------------------------------------------- */
 
 /*
  * Picks a 512-byte block from a given address, with a given page at 0xc000.
+ *
+ * The read data must be located in the rx_frame: z80_parser depends on it.
  */
 static void transfer_block(uint8_t page, uint16_t addr)
 __naked
@@ -80,7 +88,7 @@ __naked
     ld  bc, #PAGE_REG
     out (c), a
     
-    ld  de, #_fake_tftp_block_buf
+    ld  de, (_buffer_ptr)
     ld  bc, #BLOCK_SIZE
     ldir
     
@@ -118,7 +126,7 @@ tftp_read_request(const char *filename)
       uint8_t j;
       for (j = 0; j < BLOCKS_PER_PAGE; j++) {
         transfer_block(page, ADDR_OF_BLOCK(j));
-        NOTIFY_TFTP_DATA(fake_tftp_block_buf, BLOCK_SIZE, true);
+        NOTIFY_TFTP_DATA(buffer_ptr, BLOCK_SIZE, true);
       }
     }
     

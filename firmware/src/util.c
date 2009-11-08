@@ -75,10 +75,19 @@
 /*
  * Features for each digit, where bit 0..7 correspond to the features in the
  * drawing above.
- *
- * Defined in crt0.asm.
  */
-extern const uint8_t digit_features[];
+static const uint8_t digit_features[] = {
+  0x77,          /* 0 */
+  0xa4,          /* 1 */
+  0x5e,          /* 2 */
+  0x6e,          /* 3 */
+  0x2d,          /* 4 */
+  0x6b,          /* 5 */
+  0x7b,          /* 6 */
+  0x26,          /* 7 */
+  0x7f,          /* 8 */
+  0x6f           /* 9 */
+};
 
 /*
  * For each of the 5 rows, this structure holds the mask each feature
@@ -86,10 +95,56 @@ extern const uint8_t digit_features[];
  *
  * Each row has a length, indicating how many pairs of <feature, mask>
  * that follow.
- *
- * Defined in crt0.asm.
  */
-extern const uint8_t feature_rows[];
+static const uint8_t feature_rows[] = {
+  4,      0, 0x01,    1, 0xff,    2, 0x80,    7, 0x40,
+  2,      0, 0x01,                2, 0x80,
+  5,      0, 0x01,    3, 0xff,    2, 0x80,
+          4, 0x01,                5, 0x80,
+  2,      4, 0x01,                5, 0x80,
+  3,      4, 0x01,    6, 0xff,    5, 0x80
+};
+
+/* ----------------------------------------------------------------------------
+ * Keyboard mapping (used by _poll_key below)
+ *
+ * ZX Spectrum BASIC Programming (Vickers), Chapter 23:
+ *
+ * IN 65278 reads the half row CAPS SHIFT to V
+ * IN 65022 reads the half row A to G
+ * IN 64510 reads the half row Q to T
+ * IN 63486 reads the half row 1 to 5
+ * IN 61438 reads the half row O to 6
+ * IN 57342 reads the half row P to 7
+ * IN 49150 reads the half row ENTER to H
+ * IN 32766 reads the half row SPACE to B
+ *
+ * http://www.worldofspectrum.org/ZXBasicManual/index.html
+ *
+ * A '0' in the 'key_rows' table means that key is to be ignored. The rows
+ * are ordered for the high byte in the row address to take values in the
+ * following order:
+ *
+ * 01111111
+ * 10111111
+ * 11011111
+ * 11101111
+ * 11110111
+ * 11111011
+ * 11111101
+ * 11111110
+ *-------------------------------------------------------------------------- */
+
+static const uint8_t key_rows[] = {
+  0x20, 0, 0x4d, 0x4e, 0x42,      /* 7FFE: space, shift, 'M', 'N', 'B' */
+  13, 0x4c, 0x4b, 0x4a, 0x48,     /* BFFE: enter, 'L', 'K', 'J', 'H' */
+  0x50, 0x4f, 0x49, 0x55, 0x59,   /* DFFE: 'P', 'O', 'I', 'U', 'Y' */
+  0x30, 0x39, 0x38, 0x37, 0x36,   /* EFFE: '0', '9', '8', '7', '6' */
+  0x31, 0x32, 0x33, 0x34, 0x35,   /* F7FE: '1', '2', '3', '4', '5' */
+  0x51, 0x57, 0x45, 0x52, 0x54,   /* FBDE: 'Q', 'W', 'E', 'R', 'T' */
+  0x41, 0x53, 0x44, 0x46, 0x47,   /* FDFE: 'A', 'S', 'D', 'F', 'G' */
+  0, 0x5a, 0x58, 0x43, 0x56,      /* FEFE: shift, 'Z', 'X', 'C', 'V' */
+};
 
 /* ------------------------------------------------------------------------- */
 
@@ -231,9 +286,70 @@ end_of_font_data_loader::
   __endasm;
 }
 
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Poll keyboard: return currently pressed key, or KEY_NONE
+ */
+static char
+poll_key(void)
+__naked
+{
+  __asm
+  
+    ld    hl, #_key_rows
+    ld    bc, #0x7ffe
+poll_outer::
+    in    d, (c)
+    
+    ld    e, #5       ;; number of keys in each row
+    
+poll_inner::
+    ld    a, (hl)
+    inc   hl
+    rr    d
+    jr    c, not_pressed
+    or    a
+    jr    nz, poll_done
+    
+not_pressed::
+    dec   e
+    jr    nz, poll_inner
+    
+    rrc   b
+    jr    c, poll_outer
+    
+    xor   a         ;; KEY_NONE == 0
+    
+poll_done::
+    ld    l, a
+    
+    ret
+  
+  __endasm;
+}
+
 /* -------------------------------------------------------------------------
  * Public API
  * ------------------------------------------------------------------------- */
+
+void
+cls(void)
+__naked
+{
+  __asm
+  
+  ld  hl, #BITMAP_BASE
+  ld  de, #BITMAP_BASE+1
+  ld  bc, #BITMAP_SIZE+ATTRS_SIZE-1
+  ld  (hl), #0
+  ldir
+  ret
+  
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
 
 void
 display_progress(uint8_t kilobytes_loaded, uint8_t kilobytes_expected)
@@ -323,6 +439,66 @@ print_char_at(uint8_t row, uint8_t column, char c)
 /* ------------------------------------------------------------------------- */
 
 void
+print_pattern_at(uint8_t row, uint8_t col, const uint8_t *pattern)
+__naked
+{
+  (void) row, col, pattern;         /* avoid warnings about unused arguments */
+  
+  __asm
+  
+    ;; assume row             at (sp + 2)
+    ;;        col             at (sp + 3)
+    ;;        LOBYTE(pattern) at (sp + 4)
+    ;;        HIBYTE(pattern) at (sp + 5)
+    ;;
+    ;; use:
+    ;;
+    ;; de = destination in VRAM
+    ;; hl = pattern
+    
+    ld    hl, #2
+    add   hl, sp
+    
+    ;; compute d as 0x40 + (row & 0x18)
+    
+    ld    a, (hl)    ;; row
+    and   a, #0x18
+    add   a, #0x40
+    ld    d, a
+    
+    ;; compute e as ((row & 7) << 5) + col
+    
+    ld    a, (hl)   ;; row
+    inc   hl        ;; now points to col
+    and   a, #7
+    rrca            ;; rotate right by 3 == rotate left by 5, for values <= 7
+    rrca
+    rrca
+    add   a, (hl)   ;; col
+    inc   hl        ;; now points to LOBYTE(pattern)
+    ld    e, a
+    
+    ld    c, (hl)
+    inc   hl
+    ld    h, (hl)
+    ld    l, c
+    
+    ld    b, #8
+print_pattern_at_loop::
+    ld    a, (hl)
+    ld    (de), a
+    inc   d
+    inc   hl
+    djnz  print_pattern_at_loop
+    
+    ret
+  
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
 print_pattern_with_attrs_at(uint8_t attrs,
                             uint8_t row,
                             uint8_t col,
@@ -371,6 +547,28 @@ wait_key(void)
 
 /* ------------------------------------------------------------------------- */
 
+void
+key_click(void)
+__naked
+{
+  __asm
+  
+  ld    bc, #0x14FE
+  ld    d, #0x10
+  ld    a, d
+  di
+keyclick_loop::
+  out   (c), a
+  xor   a, d
+  djnz  keyclick_loop
+  ei
+  ret
+  
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
 timer_t
 timer_value(timer_t timer)
 {
@@ -413,7 +611,7 @@ fatal_error(const char *message)
   
   print_at(16, (32 - strlen(message)) >> 1, message);
   set_attrs(INK(WHITE) | PAPER(BLACK) | BRIGHT, 16, 0, 32);
-
+  
 #ifndef EMULATOR_TEST
   eth_init();
   syslog(message);

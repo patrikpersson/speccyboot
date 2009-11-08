@@ -270,7 +270,7 @@ dhcp_packet_received(void)
       case DHCPACK:
         if (dhcp_state != STATE_REQUESTING)  break;
         
-        /* fall-through */
+        /* else fall-through */
 
       case DHCP_NO_MSGTYPE:
         /*
@@ -289,7 +289,7 @@ dhcp_packet_received(void)
         dhcp_server_address = rx_frame.ip.src_addr;
         dhcp_state          = STATE_REQUESTING;
         
-        udp_create_reply(SIZEOF_DHCP_REQUEST/*, ETH_FRAME_PRIORITY*/);
+        udp_create_reply(SIZEOF_DHCP_REQUEST);
         dhcp_send_header();
         udp_add_payload_to_packet(dhcp_request_options_ipaddr);
         udp_add_payload_to_packet(rx_frame.udp.app.dhcp.header.sub.yiaddr);

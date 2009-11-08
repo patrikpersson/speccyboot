@@ -49,31 +49,15 @@
  */
 #define BANK_LENGTH_UNCOMPRESSED        (0xffff)
 
-/* ------------------------------------------------------------------------- */
-
 /*
- * Masks for meaning of snapshot_flags
+ * Escape byte in compressed chunks
  */
-#define SNAPSHOT_FLAGS_R7_MASK          (0x01)
-#define SNAPSHOT_FLAGS_SAMROM_MASK      (0x10)
-#define SNAPSHOT_FLAGS_COMPRESSED_MASK  (0x20)
-
-#define SNAPSHOT_FLAGS_BORDER(f)        (((f) >> 1) & 0x07)
-
-/*
- * Hardware types supported. Versions 2 and 3 of the .z80 header format use
- * different constants to indicate a Spectrum 128k.
- */
-#define HW_TYPE_SPECTRUM_48K            (0)
-#define HW_TYPE_SPECTRUM_128K_V2        (3)
-#define HW_TYPE_SPECTRUM_128K_V3        (4)
-
 #define Z80_ESCAPE                      (0xED)
 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Current position to write to (starts in video RAM)
+ * Current position to write to
  */
 static uint8_t *curr_write_pos;
 
@@ -93,7 +77,7 @@ static union {
  * State for a repetition sequence
  */
 static union {
-  uint8_t plain_byte;   /* set: s_chunk_single_escape read: s_chunk_single_escape*/
+  uint8_t plain_byte;   /* set: s_chunk_single_escape read: s_chunk_single_escape */
   uint8_t count;        /* set: chunk_compressed_repcount read: chunk_compressed_repetition */
 } rep_state;
 
@@ -113,10 +97,12 @@ static const uint8_t *received_data;
 static uint16_t received_data_length;
 
 /*
- * For progress display
+ * For progress display.
+ *
+ * For 128k snapshots, 'kilobytes_expected' is updated in s_header below.
  */
-static uint8_t kilobytes_loaded = 0;
-static uint8_t kilobytes_expected;
+static uint8_t kilobytes_loaded   = 0;
+static uint8_t kilobytes_expected = 48;
 
 /* ========================================================================= */
 
@@ -129,11 +115,6 @@ static uint8_t kilobytes_expected;
  * - the write pointer has reached an integral number of kilobytes
  *   (the outer loop then manages evacuation)
  */
-
-/*
- * Define next state
- */
-#define SET_NEXT_STATE(s)               current_state = &s
 
 /*
  * True if p is an integral number of kilobytes
@@ -188,9 +169,7 @@ update_progress(void)
 {
   display_progress((++kilobytes_loaded), kilobytes_expected);
   
-  if (   (kilobytes_loaded != 0)
-      && (kilobytes_loaded == kilobytes_expected))
-  {
+  if (kilobytes_loaded == kilobytes_expected) {
     context_switch();
   } 
 }
@@ -203,76 +182,34 @@ update_progress(void)
  * Evacuates the header from the TFTP data block. Returns the length of the
  * header (i.e., the offset of snapshot data within the TFTP data block)
  *
- * This function does some header parsing; it initializes compression_method,
- * sets the border colour, and verifies compatibility.
+ * This function does some header parsing; it initializes compression_method
+ * and verifies compatibility.
  */
 DEFINE_STATE(s_header)
 {
-  const struct z80_snapshot_header_extended_t *header
-    = (const struct z80_snapshot_header_extended_t *) received_data;
-  uint16_t header_length = sizeof(header->default_header);
-  uint8_t          flags = header->default_header.snapshot_flags;
-  uint8_t  paging_config = 0x30 + DEFAULT_BANK;    /* ROM1, lock */
+  uint16_t header_length = offsetof(struct z80_snapshot_header_t,
+                                    extended_length);
 
   select_bank(DEFAULT_BANK);
 
-  if (header->default_header.pc != 0) {
-    /*
-     * Version 1 header found
-     */
-    if (flags & SNAPSHOT_FLAGS_SAMROM_MASK) {
-      fatal_error("incompatible snapshot");
-    }
-    
-    /*
-     * Set expected number of bytes to 48k. A compressed chunk will terminate
-     * earlier, but that is handled in the outer loop.
-     */
-    chunk_state.bytes = 0xc000;
-    kilobytes_expected = 48;
-    
-    if (flags & SNAPSHOT_FLAGS_COMPRESSED_MASK) {
-      SET_NEXT_STATE(s_chunk_compressed);
-    }
-    else {
-      SET_NEXT_STATE(s_chunk_uncompressed);
-    }
-    
-  }
-  else {
-    /*
-     * Version 2 or version 3 header found
-     */
-    bool is_version_2 = (header->extended_header_bytes == 23);
-    header_length += header->extended_header_bytes + 2;
-
-    if (header->hw_type == HW_TYPE_SPECTRUM_48K) {
-      /*
-       * Ignore the HW modified bit. It can be used to identify a 16k Spectrum;
-       * however, it seems at least FUSE stores 48k of RAM in the snapshot even
-       * for these machines.
-       */
-      kilobytes_expected = 48;
-    }
-    else if ((is_version_2 && (header->hw_type == HW_TYPE_SPECTRUM_128K_V2))
-             || ((!is_version_2) && (header->hw_type == HW_TYPE_SPECTRUM_128K_V3)))
-    {
+  if (IS_EXTENDED_SNAPSHOT_HEADER(&rx_frame.udp.app.tftp.data.z80)) {
+    if (IS_128K_MACHINE(rx_frame.udp.app.tftp.data.z80.hw_type)) {
       kilobytes_expected = 128;
-      
-      paging_config = header->hw_state_7ffd;
     }
-    else {
-      fatal_error("incompatible snapshot");
-    }
+    header_length += rx_frame.udp.app.tftp.data.z80.extended_length + 2;
+    
+    current_state = &s_chunk_header;
+  } else {
+    chunk_state.bytes = 0xc000;
 
-    SET_NEXT_STATE(s_chunk_header);
+    current_state = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
+                     & SNAPSHOT_FLAGS_COMPRESSED_MASK)
+                  ? &s_chunk_compressed : &s_chunk_uncompressed;
   }
   
   display_progress(0, kilobytes_expected);
 
-  evacuate_z80_header(received_data,
-                      paging_config,
-                      (kilobytes_expected == 128));
+  evacuate_z80_header();
   
   received_data        += header_length;
   received_data_length -= header_length;
@@ -288,7 +225,7 @@ DEFINE_STATE(s_chunk_header)
   chunk_state.bytes_lo = *received_data++;
   received_data_length--;
   
-  SET_NEXT_STATE(s_chunk_header2);
+  current_state = &s_chunk_header2;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -301,7 +238,7 @@ DEFINE_STATE(s_chunk_header2)
   chunk_state.bytes_hi = *received_data++;
   received_data_length--;
   
-  SET_NEXT_STATE(s_chunk_header3);
+  current_state = &s_chunk_header3;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -339,7 +276,7 @@ DEFINE_STATE(s_chunk_header3)
         curr_write_pos = (uint8_t *) 0x8000;
         break;
       }
-      /* fall-through */
+      /* else fall-through */
     default:
       if (kilobytes_expected == 128) {
         select_bank(page_id - 3);
@@ -350,10 +287,10 @@ DEFINE_STATE(s_chunk_header3)
   
   if (chunk_state.bytes == BANK_LENGTH_UNCOMPRESSED) {
     chunk_state.bytes = PAGE_SIZE;
-    SET_NEXT_STATE(s_chunk_uncompressed);
+    current_state = &s_chunk_uncompressed;
   }
   else {
-    SET_NEXT_STATE(s_chunk_compressed);
+    current_state = &s_chunk_compressed;
   }
 }
 
@@ -641,7 +578,7 @@ DEFINE_STATE(s_chunk_compressed_escape)
   chunk_state.bytes --;
   
   if (b == Z80_ESCAPE) {
-    SET_NEXT_STATE(s_chunk_repcount);
+    current_state = &s_chunk_repcount;
   } else {
     /*
      * False alarm: the escape byte was followed by a non-escape byte,
@@ -654,7 +591,7 @@ DEFINE_STATE(s_chunk_compressed_escape)
       update_progress();
     }
     
-    SET_NEXT_STATE(s_chunk_single_escape);
+    current_state = &s_chunk_single_escape;
   }
 }
 
@@ -668,7 +605,7 @@ DEFINE_STATE(s_chunk_single_escape)
     update_progress();
   }
   
-  SET_NEXT_STATE(s_chunk_compressed);
+  current_state = &s_chunk_compressed;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -679,7 +616,7 @@ DEFINE_STATE(s_chunk_repcount)
   received_data_length--;
   chunk_state.bytes --;
   
-  SET_NEXT_STATE(s_chunk_repvalue);
+  current_state = &s_chunk_repvalue;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -690,7 +627,7 @@ DEFINE_STATE(s_chunk_repvalue)
   received_data_length--;
   chunk_state.bytes --;
   
-  SET_NEXT_STATE(s_chunk_repetition);
+  current_state = &s_chunk_repetition;
 }
 
 /* ------------------------------------------------------------------------- */

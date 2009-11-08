@@ -40,7 +40,7 @@ import sys
 # Maximal addresses for end of code and read/write data segments, respectively
 
 limits = {
-  'end_of_code':    0x3E00,
+  'end_of_code':    0x3FFE,
   'end_of_data':    0x6000
 }
 

@@ -26,7 +26,7 @@ CFLAGS						 += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
 # =============================================================================
 
 # Common modules (module = source + header)
-MODULES      = util z80_parser context_switch enc28j60 spi
+MODULES      = util z80_parser context_switch enc28j60 spi rxbuffer
 
 # -----------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ MODULES      = util z80_parser context_switch enc28j60 spi
 ifdef EMULATOR_TEST
 CFLAGS			+= -DEMULATOR_TEST
 else
-MODULES     += rxbuffer eth arp udp_ip dhcp tftp syslog
+MODULES     += eth arp udp_ip dhcp tftp syslog
 endif
 
 # -----------------------------------------------------------------------------

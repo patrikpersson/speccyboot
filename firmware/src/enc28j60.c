@@ -51,15 +51,6 @@
 /* ------------------------------------------------------------------------- */
 
 /*
- * Bank used for emulating the ENC28J60's SRAM during test
- */
-#ifdef EMULATOR_TEST
-#define EMULATED_ENC28J60_BANK        (1)
-#endif
-
-/* ------------------------------------------------------------------------- */
-
-/*
  * Read one word to (de), increase de, update checksum in hl'.
  *
  * Requires c=0x9f, h=0x40. Destroys af and l.
@@ -370,7 +361,7 @@ enc28j60_write_memory_at(enc28j60_addr_t  dst_addr,
 {
 #ifdef EMULATOR_TEST
   
-  select_bank(EMULATED_ENC28J60_BANK);
+  select_bank(ENC28J60_EMULATED_BANK);
   
   memcpy(ENC28J60_EMULATED_SRAM_ADDR + dst_addr, src_addr, nbr_bytes);
   
@@ -429,108 +420,4 @@ enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
     spi_write_byte(0);
   }
   spi_end_transaction();
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_load_byte_at_address(void)
-__naked
-{
-  __asm
-
-#ifdef EMULATOR_TEST
-  
-  ;; store BC somewhere good (will distort picture in top right)
-  
-  ld    (0x401e), bc
-  
-  ;; switch to ENC28J60 emulated SRAM, read byte, switch back to default bank
-  
-  ld    a, #EMULATED_ENC28J60_BANK
-  ld    bc, #0x7ffd
-  out   (c), a
-  
-  ld    b, #0xD7          ;; HIBYTE(saved_app_data)
-  ld    a, (0x401e)
-  ld    c, a
-  ld    a, (bc)
-  ld    (0x401d), a
-  
-  ld    bc, #0x7ffd
-  ld    a, #DEFAULT_BANK
-  out   (c), a
-  
-  ld    bc, (0x401e)
-  ld    a, (0x401d)
-  ld    c, a
-  ld    a, r      ;; ensure we do not somehow depend on value of A
-
-#else /* EMULATOR_TEST */
-  
-  ;;
-  ;; write constants 0x41 0x17 (ERDPTH := 0x17)
-  ;;
-  
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_1
-  
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_1
-  
-  SPI_END_TRANSACTION
-  
-  ;;
-  ;; write constant 0x40 followed by C register (ERDPTL := C)
-  ;;
-
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-
-  SPI_WRITE_FROM(c)
-
-  SPI_END_TRANSACTION
-
-  ;;
-  ;; write constant 0x3A, then read one byte into C register (C := *ERDPTL)
-  ;;
-
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_0
-  SPI_WRITE_BIT_1
-  SPI_WRITE_BIT_0
-
-  SPI_READ_TO(c)
-  
-  SPI_END_TRANSACTION
-  
-#endif /* EMULATOR_TEST */
-  
-  jp    (hl)
-
-  /* No RET */
-  
-  __endasm;
 }

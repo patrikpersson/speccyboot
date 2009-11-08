@@ -1,3 +1,14 @@
+v1.3
+
+* Simplified context switch.
+
+* Added BASIC example for SPI bit-banging.
+
+* Added support for booting into alternate EEPROM bank (by pressing Symbol
+  Shift during boot).
+
+-------------------------------------------------------------------------------
+
 v1.2 (November 1, 2009):
 
 * Better support for 128k snapshots. (Resolved an issue where memory was mapped
@@ -16,7 +27,7 @@ v1.2 (November 1, 2009):
 v1.1 (October 17, 2009):
 
 * Resolved a timing issue on the Spectrum 128 (a contended page was mistakenly
-  paged into the 0xc000..0xffff region for 48k snapshots). This issue lead to,
+  paged into the 0xc000..0xffff region for 48k snapshots). This issue led to,
   among other things, distorted sound in some games.
 
 * Preliminary support for 16k and 128k snapshots.

@@ -55,35 +55,64 @@
 /* ------------------------------------------------------------------------- */
 
 /*
- * Various 8x8 bitmaps for menu display (defined in crt0.asm)
+ * Various 8x8 bitmaps for menu display
  */
 
 /*
  * Arcs for rounded boxes
  */
-extern const uint8_t top_left_arc[];
-extern const uint8_t top_right_arc[];
-extern const uint8_t bottom_left_arc[];
-extern const uint8_t bottom_right_arc[];
+static const uint8_t top_left_arc[] = {
+  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0
+};
+
+static const uint8_t top_right_arc[] = {
+  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01, 0
+};
+
+static const uint8_t bottom_left_arc[] = {
+  0, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
+static const uint8_t bottom_right_arc[] = {
+  0, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
 
 /*
  * Offset bar (right side)
  */
-extern const uint8_t offset_top[];
-extern const uint8_t offset_bottom[];
-extern const uint8_t offset_bar[];
+static const uint8_t offset_top[] = {
+  0, 0, 0, 0, 0, 0, 0x0E, 0x1F
+};
+
+static const uint8_t offset_bottom[] = {
+  0x1F, 0x0E, 0, 0, 0, 0, 0, 0
+};
+
+static const uint8_t offset_bar[] = {
+  0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F
+};
 
 /*
  * Top and bottom of rounded box for snapshot list
  */
-extern const uint8_t top_half[];
-extern const uint8_t bottom_half[];
+static const uint8_t top_half[] = {
+  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0
+};
+
+static const uint8_t bottom_half[] = {
+  0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
 
 /*
  * Left/right part of selected line in snapshot list
  */
-extern const uint8_t left_blob[];
-extern const uint8_t right_blob[];
+static const uint8_t left_blob[] = {
+  0x1F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x3F, 0x1F
+};
+
+static const uint8_t right_blob[] = {
+  0xF8, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xF8
+};
 
 /* ------------------------------------------------------------------------- */
 
