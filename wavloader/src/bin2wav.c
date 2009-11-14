@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #define SAMPLES_PER_SECOND        (44100)
@@ -189,17 +190,16 @@ write_header_block(uint8_t        file_type,
                    uint16_t       param2)
 {
   static uint8_t speccy_header_prototype[SIZEOF_SPECTRUM_HEADER] = {
-    0,                                        /* file type */
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,             /* file name */
-    0, 0,                                     /* file length */
-    0, 0,                                     /* parameter 1 */
-    0, 0                                      /* parameter 2 */
+    0,                                                 /* file type */
+    ' ', ' ' ,' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',  /* file name */
+    0, 0,                                              /* file length */
+    0, 0,                                              /* parameter 1 */
+    0, 0                                               /* parameter 2 */
   };
   
-  snprintf((char *) &speccy_header_prototype[HEADER_OFFSET_FILENAME],
-           11,    /* truncated to 10 chars + NUL */
-           "%-10s",
-           file_name);
+  memcpy(&speccy_header_prototype[HEADER_OFFSET_FILENAME],
+	 file_name,
+	 strlen(file_name) > 10 ? 10 : strlen(file_name));
   
   speccy_header_prototype[HEADER_OFFSET_FILETYPE]     = file_type;
   speccy_header_prototype[HEADER_OFFSET_FILELENGTH]   = BITS0TO7(file_length);
@@ -277,9 +277,8 @@ write_basic_loader(void)
    * Write current date and time into BASIC string
    */
   time_t now = time(NULL);
-  ctime_r(&now, (char *) basic_loader + 50);
-  basic_loader[74] = '.';   /* overwritten with NUL by ctime_r() */
-  basic_loader[75] = '"';  /* overwritten with NUL by ctime_r() */
+  const char *time_str = ctime(&now);
+  memcpy(basic_loader + 50, time_str, strlen(time_str) > 26 ? 26 : strlen(time_str));
   
   write_header_block(HEADER_PROGRAM,
                      (uint16_t) sizeof(basic_loader),
