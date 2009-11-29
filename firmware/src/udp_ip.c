@@ -154,7 +154,7 @@ ip_frame_received(uint16_t eth_frame_length)
                                      0);
   
   uint8_t  version_and_size  = rx_frame.ip.version_and_header_length;
-  uint16_t fraginfo          = ntohs(rx_frame.ip.fragment_info & 0x1fffu);
+  uint16_t fraginfo          = ntohs(rx_frame.ip.fragment_info) & 0x1fffu;
   uint16_t ip_packet_length  = ntohs(rx_frame.ip.total_length);
   uint8_t  ip_header_size    = (version_and_size & 0x0f) << 2;
   uint16_t udp_packet_length = ip_packet_length - ip_header_size;

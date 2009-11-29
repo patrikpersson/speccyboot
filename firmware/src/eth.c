@@ -243,7 +243,7 @@ eth_create_frame(const struct mac_address_t *destination,
 {
   current_txbuf = frame_class;                  /* Maps directly to a buffer */
   
-  enc28j60_write_register16(EWRPTL, current_txbuf);
+  enc28j60_write_register16(EWRPTL, current_txbuf); /* FIXME: not needed? */
   
   enc28j60_write_memory_at(current_txbuf,
                            &per_packet_control_byte,
