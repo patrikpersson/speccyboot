@@ -13,22 +13,18 @@ CFLAGS      = -mz80 --std-sdcc99 --Werror -Iinclude
 LDFLAGS     = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS    += --code-loc 0x7020 --code-size 0x03E0
 
-HOSTCC			= gcc
-HOSTCFLAGS	= -DDEBUG
+HOSTCC      = gcc
+HOSTCFLAGS  = -DDEBUG
 
 # =============================================================================
 
-GENZ80			= obj/gen-z80-image
+GENZ80      = obj/gen-z80-image
 
-Z80_1				= obj/checker1.z80
-Z80_2				= obj/checker2.z80
-Z80_3				= obj/checker3.z80
+Z80_1       = obj/checker1.z80
+Z80_2       = obj/checker2.z80
+Z80_3       = obj/checker3.z80
 
-IMG128_1		= obj/testimg1.z80
-IMG128_2		= obj/testimg2.z80
-IMG128_3		= obj/testimg3.z80
-
-all: $(IMG128_1) $(IMG128_2) $(IMG128_3)
+all: $(Z80_1) $(Z80_2) $(Z80_3)
 
 clean:
 	rm -rf obj
@@ -50,15 +46,6 @@ $(Z80_2): $(GENZ80) obj/test_app
 $(Z80_3): $(GENZ80) obj/test_app
 	cat test1.data obj/test_app test2.data > $@.raw
 	$(GENZ80) 3 < $@.raw > $@
-
-$(IMG128_1): $(Z80_1)
-	$(GENZ80) 5 < $< > $@
-
-$(IMG128_2): $(Z80_2)
-	$(GENZ80) 5 < $< > $@
-
-$(IMG128_3): $(Z80_3)
-	$(GENZ80) 5 < $< > $@
 
 obj/test_app.o: test_app.c obj
 	$(CC) $(CFLAGS) -c -o $@ $<
