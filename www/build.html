@@ -80,20 +80,23 @@
         <li><a href="http://www.gnu.org/software/binutils/">GNU binutils</a>
           (actually, you just need objcopy to convert Intel hex files to binary)</li>
         </ul>
+
+      <p>In <b>Mac OS X</b>, the standard GCC, Make and Subversion versions
+      included in Mac OS X 10.6 work fine, as does version 2.9.0 of SDCC. I had
+      to compile objcopy (from binutils 2.19) separately though. In
+      <b>Ubuntu 9.10</b>, just do this:</p>
       
-      <p>I used the standard GCC, Make and Subversion versions included in Mac
-      OS X 10.6, version 2.9.0 of SDCC, and compiled binutils 2.19 for Mac OS
-      X. Any reasonably modern UNIX or Linux system should work for
-      compilation. (Windows is probably fine too; I don't have detailed
-      instructions, but I suspect building under
-      <a href="http://www.cygwin.com/">Cygwin</a> is the simplest
-      alternative.)</p>
+      <p>
+        <code># sudo apt-get install binutils gcc make sdcc subversion</code>
+      </p>
+
+      <p>Then check out the release you want (for example, 1.2) and build it:</p>
       
-      <p>Check out the release you want (for example, 1.2) and build it:</p>
-      
-      <code># svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.2<br>
+      <p>
+        <code># svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.2<br>
         # cd speccyboot-1.2<br>
         # make</code>
+      </p>
       
       <p>When the build completes, you should have a file named
         <tt>speccyboot.wav</tt> in your working directory. This WAV file
