@@ -1,4 +1,6 @@
-v1.3
+v1.3 (under development):
+
+* Added patch for SpeccyBoot emulation in FUSE.
 
 * Simplified context switch.
 
@@ -6,6 +8,14 @@ v1.3
 
 * Added support for booting into alternate EEPROM bank (by pressing Symbol
   Shift during boot).
+
+* Trampoline camouflage enhanced: select paper or ink colour depending
+  on the pixel intensity in the cell.
+
+* Fixed a bug where IPv4 packets with the DF flag set would be dropped.
+
+* Removed EMULATOR_TEST build (unnecessary now that we can emulate
+  SpeccyBoot in FUSE).
 
 -------------------------------------------------------------------------------
 
