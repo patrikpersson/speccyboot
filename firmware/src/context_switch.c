@@ -281,7 +281,6 @@ context_switch(void)
       register_value  = snapshot_header.hw_state_snd[reg];
     }
     register_select = snapshot_header.hw_state_fffd;
-#ifndef EMULATOR_TEST
     select_bank(snapshot_header.hw_state_7ffd);
   }
   else {
@@ -292,7 +291,6 @@ context_switch(void)
      * (page in bank 0 at 0xc000, screen 0, 48k ROM (ROM1), lock)
      */
     select_bank(0x30 + DEFAULT_BANK);
-#endif
   }
   
   /*
@@ -315,9 +313,7 @@ context_switch(void)
       break;
   }
   
-#ifndef EMULATOR_TEST
   enc28j60_select_bank(BANK(ERDPTH));
-#endif
 
   __asm
   
@@ -366,13 +362,8 @@ context_switch(void)
     ;; Set up final register state for trampoline
     ;;
           
-#ifdef EMULATOR_TEST
-    ld    bc, #0x7FFD   ;; page register, used by trampoline
-    ld    a, #0x30 + DEFAULT_BANK
-#else
     ld    bc, #0x9F     ;; SPI control register
     ld    a, #0x20      ;; page out FRAM, pull reset on ENC28J60 low
-#endif
   
     /*
      * Enable the snippet below to hard-code SP and PC values to the

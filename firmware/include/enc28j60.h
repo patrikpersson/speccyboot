@@ -1,8 +1,7 @@
 /*
  * Module enc28j60:
  *
- * Access to the Microchip ENC28J60 Ethernet host. Some functionality emulated
- * for EMULATOR_TEST builds.
+ * Access to the Microchip ENC28J60 Ethernet host.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -39,17 +38,6 @@
 #include <stdbool.h>
 
 #include "spi.h"
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Parameters for (very limited) emulation of ENC28J60 SRAM using bank 1
- * of the 128k Spectrum's RAM
- */
-#ifdef EMULATOR_TEST
-#define ENC28J60_EMULATED_BANK          (1)
-#define ENC28J60_EMULATED_SRAM_ADDR     (0xC000)
-#endif  /* EMULATOR_TEST */
 
 /* -------------------------------------------------------------------------
  * ENC28J60 ETH/MAC/MII control registers
@@ -392,19 +380,6 @@ enc28j60_clear_memory_at(enc28j60_addr_t  dst_addr,
  * write 0x40 0x00                ERDPTL := 0x00
  * write 0x3A, read 0x0800 bytes  read memory
  */
-#ifdef EMULATOR_TEST
-
-#define ENC28J60_RESTORE_APPDATA                          \
-  ld    a, #ENC28J60_EMULATED_BANK                        \
-  ld    bc, #0x7ffd                                       \
-  out   (c), a                                            \
-  ld    hl, #ENC28J60_EMULATED_SRAM_ADDR + EVACUATED_DATA \
-  ld    de, #RUNTIME_DATA                                 \
-  ld    bc, #RUNTIME_DATA_LENGTH                          \
-  ldir
-
-#else    /* EMULATOR_TEST */
-
 #define ENC28J60_RESTORE_APPDATA              \
   SPI_WRITE_BIT_0                             \
   SPI_WRITE_BIT_1                             \
@@ -468,7 +443,5 @@ restore_appdata_loop::                        \
   jr    nz, restore_appdata_loop              \
                                               \
   SPI_END_TRANSACTION
-
-#endif /* EMULATOR_TEST */
 
 #endif /* SPECCYBOOT_ENC28J60_INCLUSION_GUARD */

@@ -5,48 +5,35 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION							= 1.3
+VERSION      = 1.3
 
-OBJCOPY							= objcopy
-CC									= sdcc
-AS									= as-z80
-ECHO								= @/bin/echo
+OBJCOPY      = objcopy
+CC           = sdcc
+AS           = as-z80
+ECHO         = @/bin/echo
 
-CFLAGS							= -mz80 --std-sdcc99 --Werror
-CFLAGS						 += -I$(INCLUDEDIR) --opt-code-speed
+CFLAGS       = -mz80 --std-sdcc99 --Werror
+CFLAGS      += -I$(INCLUDEDIR) --opt-code-speed
 
-LDFLAGS							= -mz80 --out-fmt-ihx --no-std-crt0
-LDFLAGS						 += --code-loc 0x0043 --data-loc 0x5C00
+LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
+LDFLAGS     += --code-loc 0x0043 --data-loc 0x5C00
 
 # SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
-CFLAGS						 += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
+CFLAGS      += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
 
 # =============================================================================
 # COMPONENTS
 # =============================================================================
 
-# Common modules (module = source + header)
+# module = source + header
 MODULES      = util z80_parser context_switch enc28j60 spi rxbuffer
-
-# -----------------------------------------------------------------------------
-
-# EMULATOR BUILD (uses a 128k .z80 image with 48k image embedded for testing)
-
-ifdef EMULATOR_TEST
-CFLAGS			+= -DEMULATOR_TEST
-else
 MODULES     += eth arp udp_ip dhcp tftp syslog
-endif
 
 # -----------------------------------------------------------------------------
 
 CFILES       = $(MODULES:%=%.c)
 HFILES       = $(MODULES:%=%.h)
 OFILES       = crt0.o main.o $(CFILES:.c=.o)
-
-ifdef EMULATOR_TEST
-CFILES			+= tftp_fake.c
-endif
 
 # -----------------------------------------------------------------------------
 

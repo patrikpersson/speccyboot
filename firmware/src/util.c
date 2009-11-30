@@ -252,10 +252,8 @@ __naked
   
   di
 
-#ifndef EMULATOR_TEST
   ld    a, #0x28
   out   (0x9f), a   ;; page out SpeccyBoot, keep ETH in reset
-#endif
   
   ld    a, #0x10    ;; page in ROM1, page 0, no lock
   ld    bc, #0x7ffd
@@ -266,14 +264,8 @@ __naked
   ld    bc, #0x0300
   ldir
 
-#ifdef EMULATOR_TEST
-  xor   a           ;; page in ROM0, page 0, no lock
-  ld    bc, #0x7ffd
-  out   (c), a      ;; page in ROM1 (48k BASIC)
-#else
   ld    a, #0x08
   out   (0x9f), a   ;; page in SpeccyBoot
-#endif
 
   ei
   ret
@@ -612,10 +604,8 @@ fatal_error(const char *message)
   print_at(16, (32 - strlen(message)) >> 1, message);
   set_attrs(INK(WHITE) | PAPER(BLACK) | BRIGHT, 16, 0, 32);
   
-#ifndef EMULATOR_TEST
   eth_init();
   syslog(message);
-#endif
 
   __asm
     di

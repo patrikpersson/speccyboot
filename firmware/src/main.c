@@ -439,13 +439,8 @@ run_menu(uint8_t nbr_snapshots)
 void
 notify_dhcp_bound(void)
 {
-#ifdef EMULATOR_TEST
-  static const ipv4_address_t local = ntohl(0xC0A80205);
-  display_ip_address(&local, 13);
-#else
   syslog("IP address configured by DHCP");
   display_ip_address(&ip_config.host_address, 13);
-#endif
   
   z80_expect_raw_data(menu_buffer, sizeof(menu_buffer));
   tftp_read_request(IMAGE_LIST_FILE);
@@ -462,21 +457,12 @@ void notify_file_loaded(const void *end_addr)
   char *src = menu_buffer;
   uint16_t max_idx = 0;
   
-#ifdef EMULATOR_TEST
-  /*
-   * Just make up some IP addresses when testing in emulator
-   */
-  static const ipv4_address_t server = ntohl(0xC0A80202);
-    
-  display_ip_address(&server, 20);
-#else  
   /*
    * The sender of the most recent packet (final TFTP DATA packet) is
    * the TFTP server, so just pick it from the receive buffer.
    */
   syslog("menu loaded");
   display_ip_address(&rx_frame.ip.src_addr, 20);
-#endif
   
   while ((src < end_addr) && (max_idx < MAX_SNAPSHOTS)) {
     snapshot_names[max_idx ++] = src;
@@ -535,11 +521,7 @@ void main(void)
 
   display_screen();
   
-#ifdef EMULATOR_TEST
-  notify_dhcp_bound();                    /* fake DHCP event */
-#else
   eth_init();
   dhcp_init();
   eth_handle_incoming_frames();
-#endif
 }

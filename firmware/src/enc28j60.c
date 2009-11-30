@@ -1,8 +1,7 @@
 /*
  * Module enc28j60:
  *
- * Access to the Microchip ENC28J60 Ethernet host. Some functionality emulated
- * for EMULATOR_TEST builds.
+ * Access to the Microchip ENC28J60 Ethernet host.
  *
  * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
  *
@@ -359,22 +358,10 @@ enc28j60_write_memory_at(enc28j60_addr_t  dst_addr,
                          const uint8_t    *src_addr,
                          uint16_t         nbr_bytes)
 {
-#ifdef EMULATOR_TEST
-  
-  select_bank(ENC28J60_EMULATED_BANK);
-  
-  memcpy(ENC28J60_EMULATED_SRAM_ADDR + dst_addr, src_addr, nbr_bytes);
-  
-  select_bank(DEFAULT_BANK);
-  
-#else /* EMULATOR_TEST */  
-
   enc28j60_write_register(EWRPTH, HIBYTE(dst_addr));
   enc28j60_write_register(EWRPTL, LOBYTE(dst_addr));
   
   enc28j60_write_memory_cont(src_addr, nbr_bytes);
-  
-#endif
 }
 
 /* ------------------------------------------------------------------------- */

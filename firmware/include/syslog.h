@@ -40,12 +40,7 @@
  * %        native endian, 16 bits, always formatted as exactly 4 hex digits
  * ------------------------------------------------------------------------- */
 
-#ifdef EMULATOR_TEST
-#define syslog(...)
-#else
-
 void
 syslog(const char *fmt, ...);
 
-#endif /* EMULATOR_TEST */
 #endif /* SPECCYBOOT_SYSLOG_INCLUSION_GUARD */
