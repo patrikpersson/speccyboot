@@ -1,4 +1,4 @@
-v1.3 (under development):
+v1.3 (December 1, 2009):
 
 * Added patch for SpeccyBoot emulation in FUSE.
 
@@ -6,13 +6,17 @@ v1.3 (under development):
 
 * Added BASIC example for SPI bit-banging.
 
-* Added support for booting into alternate EEPROM bank (by pressing Symbol
-  Shift during boot).
+* Added support for booting into alternate EEPROM/flash bank (by
+  pressing Symbol Shift during boot).
 
 * Trampoline camouflage enhanced: select paper or ink colour depending
   on the pixel intensity in the cell.
 
-* Fixed a bug where IPv4 packets with the DF flag set would be dropped.
+* Fixed a bug where some IPv4 packets would be dropped in error.
+
+* Stability fixes in Ethernet stack.
+
+* Cosmetic adjustments in menu screen.
 
 * Removed EMULATOR_TEST build (unnecessary now that we can emulate
   SpeccyBoot in FUSE).
