@@ -50,7 +50,7 @@ const struct mac_address_t eth_local_address = {
 /*
  * Position of next frame to read from the ENC28J60
  */
-static enc28j60_addr_t next_frame = ENC28J60_RXBUF_START;
+static enc28j60_addr_t next_frame;
 
 /*
  * Per-packet control byte: datasheet, section 7.1
@@ -174,6 +174,8 @@ eth_init(void)
    */
   enc28j60_write_register16(ERXSTL, ENC28J60_RXBUF_START);
   enc28j60_write_register16(ERXNDL, ENC28J60_RXBUF_END);
+
+  next_frame = ENC28J60_RXBUF_START;
   
   /* B5 errata, item 11: only odd values are allowed when writing ERXRDPT */
   enc28j60_write_register16(ERXRDPTL, ENC28J60_RXBUF_END);
@@ -355,8 +357,14 @@ eth_handle_incoming_frames(void)
     enc28j60_read_memory_at((uint8_t *) rx_eth_adm,
                             next_frame,
                             sizeof(rx_eth_adm));
-    
-    next_frame     = rx_eth_adm.next_ptr;
+
+    next_frame = rx_eth_adm.next_ptr;
+    if (next_frame > ENC28J60_RXBUF_END) {  /* sanity check */
+      eth_init();
+      syslog("RX pointer out of range, controller reset");
+      continue;
+    }
+
     bytes_in_frame = rx_eth_adm.nbr_bytes
                      - sizeof(struct eth_header_t)
                      - 4 /* Ethernet CRC */;
@@ -385,16 +393,9 @@ eth_handle_incoming_frames(void)
     
     /*
      * Advance ERXRDPT
-     * 
-     * Datasheet, #6.1: EXRDPT is written in order ERXRDPTL, ERXRDPTH
-     * Errata B5, #11:  EXRDPT must always be written with an odd value
      *
-     * (next_frame itself is always even -- padded by ENC28J60 if necessary)
-     */    
-    
-    if (next_frame > ENC28J60_RXBUF_END) {
-      fatal_error("RX ptr out of range");
-    }
-    enc28j60_write_register16(ERXRDPTL, next_frame - 1);
+     * Errata B5, #11:  EXRDPT must always be written with an odd value
+     */
+    enc28j60_write_register16(ERXRDPTL, (next_frame - 1) | 1);
   }
 }
