@@ -46,12 +46,18 @@
             supported &mdash; the MAC address is fixed.</li>
           </ul>
           
-          <p>Here's how to set up SpeccyBoot:</p>
+          <p>Here's how to use SpeccyBoot:</p>
           
           <ul>
             <li><a href="#tftpserver">TFTP server configuration</a></li>
-            <li><a href="#syslog">Syslog daemon configuration</a> (optional)</li>
             <li><a href="#loading">Loading snapshots</a></li>
+          </ul>
+          
+          <p>There are also a couple of optional features:</p>
+          
+          <ul>
+            <li><a href="#fuse">Emulating SpeccyBoot using Fuse</a></li>
+            <li><a href="#syslog">Syslog daemon configuration</a></li>
           </ul>
 
           <hr>
@@ -60,34 +66,44 @@
 
           <p>You will need to install and/or activate a TFTP server on a
           computer in your local network. Fortunately, TFTP server software is
-          freely available for most platforms. Your TFTP server <b>must be
-          capable of responding to broadcast requests</b>, since that is what
+          freely available for most platforms. Your TFTP server <b>must</b> be
+          capable of responding to broadcast requests, since that is what
           SpeccyBoot uses. Most (but not all) TFTP servers are, and some need
-          an explicit option to enable this.</p>
+          an option explicitly set to enable this.</p>
           
-          <p>I used the built-in TFTP server of Mac OS X, which can be enabled
-          like this:</p>
+          <p>In <b>Ubuntu 9.10</b>, you can use <tt>atftpd</tt>:</p>
           
-          <p>
-          <code># sudo launchctl load -w /System/Library/LaunchDaemons/tftp.plist</code>
+          <p class="code">
+          <code>sudo apt-get install atftpd</code>
           </p>
           
-          <p>Most Linux distributions either include a TFTP server by default,
+          <p>In <b>Mac OS X</b>, the built-in TFTP server can be enabled like
+          this:</p>
+          
+          <p class="code">
+          <code>sudo launchctl load -w /System/Library/LaunchDaemons/tftp.plist</code>
+          </p>
+          
+          <p>Most UNIX variants either include a TFTP server by default,
           or allow you to install one quite easily. There are third-party TFTP
           servers for Microsoft Windows too.</p>
           
           <h3>Preparing a directory of snapshots</h3>
           
           <p>Create a directory named <tt>speccyboot</tt> in your TFTP
-          servers's main directory (in the case of Mac OS X 10.6, this is
-          <tt>/private/tftpboot</tt>; many UNIX clones use <tt>/tftpboot</tt>).
-          Copy your Z80 snapshots to this <tt>speccyboot</tt> directory:</p>
+          servers's main directory (<tt>atftpd</tt> in Ubuntu 9.10 uses
+          <tt>/var/lib/tftpboot</tt>, Mac OS X 10.6 uses 
+          <tt>/private/tftpboot</tt>, and some UNIX clones use
+          <tt>/tftpboot</tt>). Copy your Z80 snapshots to this
+          <tt>speccyboot</tt> directory:</p>
           
-          <p>
-          <code># sudo mkdir /private/tftpboot/speccyboot<br>
-          # sudo chown <em>&lt;your-username&gt;</em> /private/tftpboot/speccyboot<br>
-          # cd /private/tftpboot/speccyboot<br>
-          # cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 .
+          <p class="code">
+          <code>TFTPBOOT=/var/lib/tftpboot
+          &nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt to your distribution<br>
+          sudo mkdir $TFTPBOOT/speccyboot<br>
+          sudo chown <em>&lt;your-username&gt;</em> $TFTPBOOT/speccyboot<br>
+          cd $TFTPBOOT/speccyboot<br>
+          cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 .
           </code>
           </p>
           
@@ -104,16 +120,146 @@
           
           <p>To update the snapshot index this way, just type:</p>
           
-          <p>
-          <code># speccyboot-update</code>
+          <p class="code">
+          <code>speccyboot-update</code>
           </p>
           
           <hr>
                     
+          <a name="loading"><h2>Loading snapshots</h2></a>
+
+          <p>If the TFTP server configuration above went well, you should now
+          be able to turn on your Spectrum, see it figure out its IP address
+          as well as that of the TFTP server, and present your list of
+          snapshots. Use the arrow keys to navigate the list, the alphabetic
+          keys to jump directly to snapshots whose name begin with that letter,
+          and Enter to load the selected snapshot.</p>
+
+          <p>To boot into BASIC rather than the SpeccyBoot menu, press Caps
+          Shift and keep it pressed while power-cycling/resetting the
+          Spectrum.</p>
+          
+          <h3>Troubleshooting</h3>
+
+          <ul>
+            <li>If neither the local address nor the server address are shown,
+            SpeccyBoot failed to obtain an IP address using DHCP. (Check your
+            router/DHCP server in this case.)</li>
+            <li>If the local address is displayed, but the server address
+            isn't, SpeccyBoot failed to contact your TFTP server. (Check that
+            it is configured as described
+            <a href="#tftpserver">above</a>.)</li>
+          </ul>
+
+          <h3>Demo video</h3>
+          
+          <object width="445" height="364"><param name="movie" value="http://www.youtube.com/v/jGKAelCRKVk&hl=sv&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999&border=1"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed src="http://www.youtube.com/v/jGKAelCRKVk&hl=sv&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999&border=1" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="445" height="364"></embed></object>                
+
+          <hr>
+
+          <a name="fuse"><h2>Emulating SpeccyBoot using Fuse</h2></a>
+          
+          <p>The SpeccyBoot software includes a patch for Fuse (the
+          <a href="http://fuse-emulator.sourceforge.net/">Free Unix Spectrum
+          Emulator</a>). This allows you to try the SpeccyBoot out in an
+          emulated environment &mdash; without any Spectrum or SpeccyBoot
+          hardware.</p>
+          
+          <p>The emulation is based on
+          <a href="http://en.wikipedia.org/wiki/TUN/TAP">Ethernet TAP
+          networking</a>. Please note that this emulation currently only works
+          with Linux (I have used Ubuntu 9.10 for this myself). Other UNIX
+          variants should be possible to support in the future.</p>
+          
+          <h3>Configuring your network for TAP</h3>
+
+          <p>You need to create a TAP interface and configure your network so
+          this TAP interface can connect to your DHCP and TFTP servers. First,
+          ensure you have the <tt>tapctl</tt> and <tt>brctl</tt> utilities
+          installed:</p>
+          
+          <p class="code">
+          <code>sudo apt-get install uml-utilities bridge-utils</code>
+          </p>
+
+          <p>For network configuration in Ubuntu 9.10, I set up a bridge
+          <tt>br0</tt> to connect <tt>eth0</tt> (the physical Ethernet
+          interface) with <tt>fuse_tap</tt> (the TAP interface for Fuse). I
+          modified the file <code>/etc/network/interfaces</code> to read as
+          follows:</p>
+          
+          <pre class="code"># This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+# auto eth0
+# iface eth0 inet dhcp
+
+auto eth0
+iface eth0 inet manual
+
+auto fuse_tap
+iface fuse_tap inet manual
+  pre-up tunctl -g admin -t fuse_tap
+  pre-up brctl addif br0 fuse_tap
+  post-down brctl delif br0 fuse_tap
+  post-down tunctl -d fuse_tap
+
+auto br0
+iface br0 inet dhcp
+  pre-up ifconfig eth0 down
+  pre-up ifconfig fuse_tap down
+  pre-up brctl addbr br0
+  pre-up brctl addif br0 eth0
+  pre-up brctl addif br0 fuse_tap
+  pre-up ifconfig eth0 up
+  pre-up ifconfig fuse_tap up
+  post-down ifconfig eth0 down
+  post-down ifconfig fuse_tap down
+  post-down brctl delif br0 eth0
+  post-down brctl delif br0 fuse_tap</pre>
+                    
+          <h3>Patching Fuse</h3>
+          
+          <p>Check out the code from the Fuse and SpeccyBoot Subversion
+          repositories, copy the SpeccyBoot ROM to the Fuse ROM directory, and
+          apply the patch to Fuse:</p>
+          
+          <p class="code">
+          <code>sudo apt-get install binutils gcc make sdcc subversion</code><br />
+          <code>svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/trunk speccyboot</code><br />
+          <code>svn co https://fuse-emulator.svn.sourceforge.net/svnroot/fuse-emulator/trunk fuse-emulator</code><br />
+          <code>make -C speccyboot</code><br />
+          <code>cp speccyboot/firmware/speccyboot.rom fuse-emulator/fuse/roms</code><br />
+          <code>cd fuse-emulator</code><br />
+          <code>patch -p0 &lt; ../speccyboot/fuse-patch/speccyboot-for-fuse.patch</code>
+          </p>
+         
+          <p>Now configure and build Fuse. The resulting binary has a few new
+          menu options and command-line parameters to enable the SpeccyBoot
+          emulation (briefly described in the patched Fuse <tt>man</tt> page).
+          In short, the following command line launches SpeccyBoot in Fuse,
+          using the Ethernet TAP interface <tt>fuse_tap</tt> for
+          networking:</p>
+          
+          <p class="code">
+          <code>fuse --speccyboot --speccyboot-tap=fuse_tap</code>
+          </p>
+          
+          <p>Here's what it looks like:</p>
+          
+          <img src="fuse.png" />
+
+          <hr>
+
           <a name="syslog"><h2>Syslog daemon configuration</h2></a>
           
-          <p>This step is entirely <b>optional</b>. The syslog feature will not
-          affect your retro-gaming experience in any way.</p>
+          <p>This step is optional. The syslog feature will not affect your
+          retro-gaming experience in any way.</p>
           
           <p>SpeccyBoot uses (a liberal interpretation of) the
           <a href="http://www.ietf.org/rfc/rfc3164.txt">BSD syslog
@@ -141,25 +287,6 @@
           href="http://www.wireshark.org/">Wireshark</a>. Wireshark interprets
           syslog messages correctly, and displays it along with the rest of the
           communication.</p>
-          
-          <hr>
-                    
-          <a name="loading"><h2>Loading snapshots</h2></a>
-
-          <p>If the steps above went well, you should now be able to turn on
-          your Spectrum, see it figure out its IP address as well as that of
-          the TFTP server, and present your list of snapshots. Use the arrow
-          keys to navigate the list, the alphabetic keys to jump directly to
-          snapshots whose name begin with that letter, and Enter to load the
-          selected snapshot.</p>
-
-          <p>To boot into BASIC rather than the SpeccyBoot menu, press Caps
-          Shift and keep it pressed while power-cycling/resetting the
-          Spectrum.</p>
-
-          <h3>Demo video</h3>
-          
-          <object width="445" height="364"><param name="movie" value="http://www.youtube.com/v/jGKAelCRKVk&hl=sv&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999&border=1"></param><param name="allowFullScreen" value="true"></param><param name="allowscriptaccess" value="always"></param><embed src="http://www.youtube.com/v/jGKAelCRKVk&hl=sv&fs=1&rel=0&color1=0x3a3a3a&color2=0x999999&border=1" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="445" height="364"></embed></object>                
       </body>
       <hr>
       &copy; 2009

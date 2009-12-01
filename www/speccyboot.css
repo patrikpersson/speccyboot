@@ -90,3 +90,12 @@ hr {
   background-color: #000000;
   height: 3px;
 }
+
+.code {
+  width: 100%;
+  padding: 8px 5px;
+  background-color: #f0f0f0;
+  border-style: solid;
+  border-color: #c0c0c0;
+  border-width: 1px;
+}
