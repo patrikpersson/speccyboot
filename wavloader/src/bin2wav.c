@@ -160,7 +160,7 @@ write_byte(uint8_t byte)
 static void
 write_pause(uint32_t milliseconds)
 {
-  write_samples(HIGH, milliseconds * (TSTATES_PER_SECOND / 1000));
+  write_samples(HIGH, (milliseconds * TSTATES_PER_SECOND) / 1000);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -197,6 +197,7 @@ write_header_block(uint8_t        file_type,
     0, 0                                               /* parameter 2 */
   };
   
+  memset(&speccy_header_prototype[HEADER_OFFSET_FILENAME], ' ', 10);
   memcpy(&speccy_header_prototype[HEADER_OFFSET_FILENAME],
 	 file_name,
 	 strlen(file_name) > 10 ? 10 : strlen(file_name));
@@ -278,7 +279,7 @@ write_basic_loader(void)
    */
   time_t now = time(NULL);
   const char *time_str = ctime(&now);
-  memcpy(basic_loader + 50, time_str, strlen(time_str) > 26 ? 26 : strlen(time_str));
+  memcpy(basic_loader + 50, time_str, (strlen(time_str) > 24) ? 24 : strlen(time_str));
   
   write_header_block(HEADER_PROGRAM,
                      (uint16_t) sizeof(basic_loader),
