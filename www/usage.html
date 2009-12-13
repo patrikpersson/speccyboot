@@ -98,13 +98,11 @@
           <tt>speccyboot</tt> directory:</p>
           
           <p class="code">
-          <code>TFTPBOOT=/var/lib/tftpboot
-          &nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt to your distribution<br>
-          sudo mkdir $TFTPBOOT/speccyboot<br>
-          sudo chown <em>&lt;your-username&gt;</em> $TFTPBOOT/speccyboot<br>
-          cd $TFTPBOOT/speccyboot<br>
-          cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 .
-          </code>
+          <code>SNAPDIR=/var/lib/tftpboot/speccyboot
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt this path to match your distribution<br>
+          sudo mkdir -p $SNAPDIR<br>
+          sudo chown <em>&lt;your-username&gt;</em> $SNAPDIR<br>
+          cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 $SNAPDIR</code>
           </p>
           
           <h3>Updating the snapshot index</h3>
