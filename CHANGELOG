@@ -1,3 +1,10 @@
+v1.4 (in development):
+
+* Improved software support for +2A/+3 machines. (Only tested in
+  Fuse.)
+
+-------------------------------------------------------------------------------
+
 v1.3 (December 1, 2009):
 
 * Added patch for SpeccyBoot emulation in FUSE.

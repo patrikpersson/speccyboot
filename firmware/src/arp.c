@@ -34,6 +34,7 @@
 #include "eth.h"
 #include "arp.h"
 #include "rxbuffer.h"
+#include "syslog.h"
 
 /* ========================================================================= */
 

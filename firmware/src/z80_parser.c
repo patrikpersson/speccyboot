@@ -190,7 +190,7 @@ DEFINE_STATE(s_header)
   uint16_t header_length = offsetof(struct z80_snapshot_header_t,
                                     extended_length);
 
-  select_bank(DEFAULT_BANK);
+  memcfg(DEFAULT_BANK);
 
   if (IS_EXTENDED_SNAPSHOT_HEADER(&rx_frame.udp.app.tftp.data.z80)) {
     if (IS_128K_MACHINE(rx_frame.udp.app.tftp.data.z80.hw_type)) {
@@ -279,7 +279,7 @@ DEFINE_STATE(s_chunk_header3)
       /* else fall-through */
     default:
       if (kilobytes_expected == 128) {
-        select_bank(page_id - 3);
+        memcfg(page_id - 3);
       }
       curr_write_pos = (uint8_t *) 0xc000;
       break;

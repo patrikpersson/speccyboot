@@ -254,9 +254,21 @@ __naked
 
   ld    a, #0x28
   out   (0x9f), a   ;; page out SpeccyBoot, keep ETH in reset
+
+  ;; before the 128k memory configuration is set (0x7ffd), set the
+  ;; +2A/+3 memory configuration (0x1ffd). On a plain 128k machine,
+  ;; the access to 0x1ffd would be mapped to 0x7ffd, overwriting the
+  ;; 128k configuration. On a 48k machine neither access has any effect.
+
+  ;; Set the ROM selection bit in both registers to page in the 48k
+  ;; BASIC ROM (ROM1 on the 128k, ROM3 on +2A/+3).
   
-  ld    a, #0x10    ;; page in ROM1, page 0, no lock
-  ld    bc, #0x7ffd
+  ld    a, #MEMCFG_PLUS_ROM_HI
+  ld    bc, #MEMCFG_PLUS_ADDR
+  out   (c), a      ;; page in ROM1 (48k BASIC)
+
+  ld    a, #MEMCFG_ROM_LO
+  ld    bc, #MEMCFG_ADDR
   out   (c), a      ;; page in ROM1 (48k BASIC)
   
   ld    hl, #0x3d00 ;; address of font data in ROM1
@@ -265,7 +277,7 @@ __naked
   ldir
 
   ld    a, #0x08
-  out   (0x9f), a   ;; page in SpeccyBoot
+  out   (0x9f), a   ;; page in SpeccyBoot, keep ETH in reset
 
   ei
   ret

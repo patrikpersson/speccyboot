@@ -35,6 +35,7 @@
 #include "context_switch.h"
 #include "enc28j60.h"
 #include "rxbuffer.h"
+#include "syslog.h"
 
 /* ========================================================================= */
 
@@ -281,16 +282,22 @@ context_switch(void)
       register_value  = snapshot_header.hw_state_snd[reg];
     }
     register_select = snapshot_header.hw_state_fffd;
-    select_bank(snapshot_header.hw_state_7ffd);
-  }
-  else {
+
     /*
-     * For 48k machines, we still need to write something to the
-     * paging register
-     *
-     * (page in bank 0 at 0xc000, screen 0, 48k ROM (ROM1), lock)
+     * For a plain 128k snapshot on a +2A/+3 machine, copy the ROM
+     * selection bit to the +2A/+3 memory configuration
      */
-    select_bank(0x30 + DEFAULT_BANK);
+    memcfg_plus((snapshot_header.hw_state_7ffd & MEMCFG_PLUS_ROM_HI) >> 2);
+    memcfg(snapshot_header.hw_state_7ffd);
+  } else {
+    /*
+     * For 48k snapshots, we still need to write something to the
+     * paging registers
+     *
+     * (page in bank 0 at 0xc000, screen 0, 48k ROM, lock)
+     */
+    memcfg_plus(MEMCFG_PLUS_ROM_HI);
+    memcfg(MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK);
   }
   
   /*

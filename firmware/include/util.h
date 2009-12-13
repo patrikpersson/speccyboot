@@ -38,8 +38,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "syslog.h"
-
 /* -------------------------------------------------------------------------
  * MAC address
  * ------------------------------------------------------------------------- */
@@ -180,11 +178,27 @@ void
 cls(void) __naked;
 
 /* -------------------------------------------------------------------------
- * Page in the indicated bank at 0xc000
+ * Configure memory (128k and +2A/+3 registers)
  * ------------------------------------------------------------------------- */
-#define select_bank(_bank_id)   _bank_selection = (_bank_id)
+#define memcfg(_c)              _memcfg_reg = (_c)
+#define memcfg_plus(_c)         _memcfg_plus_reg = (_c)
 
-sfr banked at(0x7FFD) _bank_selection;
+/*
+ * Spectrum 128k/+2 memory configuration register
+ */
+#define MEMCFG_ADDR             0x7ffd
+#define MEMCFG_SCREEN           0x08
+#define MEMCFG_ROM_LO           0x10
+#define MEMCFG_LOCK             0x20
+
+/*
+ * Spectrum 128 +2A/+3 memory configuration register
+ */
+#define MEMCFG_PLUS_ADDR        0x1ffd
+#define MEMCFG_PLUS_ROM_HI      0x04
+
+sfr banked at(MEMCFG_ADDR)      _memcfg_reg;
+sfr banked at(MEMCFG_PLUS_ADDR) _memcfg_plus_reg;
 
 /* ------------------------------------------------------------------------- *
  * Set attributes for n elements, starting at (row, col). If (col+n) extends
