@@ -17,35 +17,6 @@
 
         <hr>
         
-          <p>When you switch on a SpeccyBoot-equipped Spectrum, it will do the
-          following:</p>
-          
-          <ol>
-            <li>If Caps Shift is being pressed during start, the machine will
-            boot into BASIC, and not continue with the steps below.</li>
-            <li>An IP address is obtained using DHCP.</li>
-            <li>An attempt to load the file <code>snapshots.lst</code>
-            is made (using a TFTP read request, broadcast on your local
-            network). If the server has no such file, an attempt is made to
-            load and execute a snapshot named <code>menu.z80</code> instead.
-            If this also fails, an error message is displayed.</li>
-            <li>The contents of <code>snapshots.lst</code> are displayed as a
-            menu. When a snapshot is selected, it will be loaded and
-            executed.</li>
-          </ol>
-          
-          <p>Configuration is kept to an absolute minimum:</p>
-          
-          <ul>
-            <li>Manual (static) assignment of IP address is not supported
-            &mdash; only dynamic (DHCP).</li>
-            <li>The TFTP server is found by broadcasting an initial read
-            request. Hence, you should not have more than one TFTP server on
-            your network.</li>
-            <li>More than one SpeccyBoot on the same local network is not
-            supported &mdash; the MAC address is fixed.</li>
-          </ul>
-          
           <p>Here's how to use SpeccyBoot:</p>
           
           <ul>
@@ -137,6 +108,37 @@
           Shift and keep it pressed while power-cycling/resetting the
           Spectrum.</p>
           
+          <h3>Detailed description</h3>
+          
+          <p>When you switch on a SpeccyBoot-equipped Spectrum, it will do the
+          following:</p>
+          
+          <ol>
+            <li>If Caps Shift is being pressed during start, the machine will
+            boot into BASIC, and not continue with the steps below.</li>
+            <li>An IP address is obtained using DHCP.</li>
+            <li>An attempt to load the file <code>snapshots.lst</code>
+            is made (using a TFTP read request, broadcast on your local
+            network). If the server has no such file, an attempt is made to
+            load and execute a snapshot named <code>menu.z80</code> instead.
+            If this also fails, an error message is displayed.</li>
+            <li>The contents of <code>snapshots.lst</code> are displayed as a
+            menu. When a snapshot is selected, it will be loaded and
+            executed.</li>
+          </ol>
+          
+          <p>Configuration is kept to an absolute minimum:</p>
+          
+          <ul>
+            <li>Manual (static) assignment of IP address is not supported
+            &mdash; only dynamic (DHCP).</li>
+            <li>The TFTP server is found by broadcasting an initial read
+            request. Hence, you should not have more than one TFTP server on
+            your network.</li>
+            <li>More than one SpeccyBoot on the same local network is not
+            supported &mdash; the MAC address is fixed.</li>
+          </ul>
+          
           <h3>Troubleshooting</h3>
 
           <ul>
@@ -194,17 +196,13 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-# auto eth0
-# iface eth0 inet dhcp
-
 auto eth0
+# iface eth0 inet dhcp
 iface eth0 inet manual
 
 auto fuse_tap
 iface fuse_tap inet manual
   pre-up tunctl -g admin -t fuse_tap
-  pre-up brctl addif br0 fuse_tap
-  post-down brctl delif br0 fuse_tap
   post-down tunctl -d fuse_tap
 
 auto br0
@@ -229,7 +227,7 @@ iface br0 inet dhcp
           
           <p class="code">
           <code>sudo apt-get install binutils gcc make sdcc subversion</code><br />
-          <code>svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/trunk speccyboot</code><br />
+          <code>svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.3 speccyboot</code><br />
           <code>svn co https://fuse-emulator.svn.sourceforge.net/svnroot/fuse-emulator/trunk fuse-emulator</code><br />
           <code>make -C speccyboot</code><br />
           <code>cp speccyboot/firmware/speccyboot.rom fuse-emulator/fuse/roms</code><br />
