@@ -59,6 +59,8 @@ run_menu(void)
   
   syslog("menu ready");
 
+  cls();
+
   /* --------------------------------------------------------------------------
    * Scan through the loaded snapshot list, and build an array of pointers
    * to NUL-terminated file names in rx_frame.snapshot_names.
