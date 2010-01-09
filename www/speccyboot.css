@@ -1,0 +1,101 @@
+body, html {
+  font-family: Verdana, sans-serif;
+  margin: 1%;
+  font-size: 10pt;
+  background-color: #e0e0d0;
+}
+
+.row, .rowheading, .rowimage_element, .rowimage {
+  border-style: none;
+  border-width: 0px;
+  padding: 1px;
+}
+
+.row {
+  width: 100%;
+  clear: both;
+  height: 400px;
+}
+
+.rowheading {
+  font-size: 12pt;
+  text-align: center;
+  font-weight: bold;
+}
+
+.rowimage_element {
+  float: left;
+  width: 33%;
+}
+
+.rowimage {
+  width: 100%;
+}
+
+.rowtext {
+  float: left;
+  width: 68%;
+  height: 100%;
+  margin-left: 1%;
+  color: #000000;
+}
+
+.biglink {
+  font-size: 12pt;
+  text-align: center;
+  padding: 5%;
+}
+
+#leftheading {
+  text-align: left;
+  float: left;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+#rightheading {
+  text-align: right;
+  float: right;
+  font-size: 24px;
+  font-weight: lighter;
+}
+
+#heading {
+  height: 40px;       /* make size absolute to keep other stuff out */
+  clear: both;
+  margin-bottom: 12px;
+}
+
+a:link, a:visited, a:active {
+  color: #000080;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  
+}
+
+td, th {
+  border-style: solid;
+  border-color: #a0a0a0;
+  border-width: 1px;
+  padding: 3px;
+  vertical-align: text-top;
+  text-align: left;
+}
+
+hr {
+  color: #000000;
+  background-color: #000000;
+  height: 3px;
+}
+
+.code {
+  width: 100%;
+  padding: 8px 5px;
+  background-color: #f0f0f0;
+  border-style: solid;
+  border-color: #c0c0c0;
+  border-width: 1px;
+}

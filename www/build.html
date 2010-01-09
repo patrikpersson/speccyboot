@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>SpeccyBoot: How to build one yourself</title>
+    </head>
+  
+  <link rel="stylesheet" type="text/css" href="speccyboot.css">
+    
+    <body>
+      
+      <div id="heading">
+        <div id="leftheading"><a href="index.html">SpeccyBoot</a></div>
+        <div id="rightheading">How to build one yourself</div>
+        </div>
+      
+      <hr>
+      
+      <p>There are three parts of building a SpeccyBoot: building the
+      hardware, building the software stack, and getting the software onto
+      the hardware.</p>
+      
+      <ul>
+        <li><a href="#hardware">Building the hardware</a></li>
+        <li><a href="#software">Building the software</a></li>
+        <li><a href="#install">Installing the software on the device</a></li>
+      </ul>
+      
+      <p><b>NOTE:</b> I assume no responsibility for what happens if you
+      connect this to your Spectrum. This design works well for me, but
+      please be aware that a mistake (yours or mine) may destroy your
+      dear Spectrum. You have been warned!</p>
+      
+      <hr>
+      
+      <a name="hardware">
+        <h2>Building the hardware</h2>
+        </a>
+
+      <p>The schematic design is <a href="schematic.png">available
+      here</a>.</p>
+
+      <p>I built the device on a basic lab board. I'm not much of a soldering
+      wizard, but you should probably have some rudimentary soldering
+      experience to pull this off. A few notes on the design:</p>
+      
+      <ul>
+        
+        <li>I chose to use the
+          <a href="http://www.olimex.com/dev/enc28j60-h.html">Olimex
+          ENC28J60-H development board</a> for the Ethernet subsystem. This is
+          not only easier, it also helps to avoid disturbances from my limited
+          soldering skills. (The ENC28J60 data sheet actually recommends surface
+          mounting at least some components.)</li>
+        
+        <li>The jumper JP1, when closed, disables the EEPROM (useful when it
+          contains garbage).</li>
+
+        <li>You may use this hardware design as you wish. Feel free to build
+        and sell devices based on this design; if they look good, I'd like to
+        buy one!</li>
+
+      </ul>
+
+      <p>Approximate component cost (excluding board, connectors etc):</p>
+
+      <table>
+      <tr><th>Component</th><th>Cost (EUR)</th></tr>
+      <tr><td>ENC28J60-H development board</td><td>25</td></tr>
+      <tr><td>28C64 EEPROM</td><td>2</td></tr>
+      <tr><td>Other (74HCT32N decoder, 74HCT139N decoder, 74HCT244N buffer, 74HCT273N
+        flip-flop, 5V + 3.3V regulators)</td><td>2</td></tr>
+      <tr><td><b>Total</b></td><td><b>&asymp; 30</b></td></tr>
+      </table>
+
+      <p>If you want to use the ENC28J60 chip as-is (rather than the Olimex
+      board), you will have to add a few more external components (such as an
+      Ethernet connector, obviously). This will also reduce the total component
+      cost to about <b>EUR 15</b>. Refer to the ENC28J60 data sheet for
+      details.</p>
+      
+      <hr>
+      
+      <a name="software">
+        <h2>Building the software</h2>
+        </a>
+      
+      <p>To obtain and build the software, you will need the following
+        tools:</p>
+      <ul>
+        <li><a href="http://gcc.gnu.org/">GCC (GNU Compiler Collection)</a></li>
+        <li><a href="http://www.gnu.org/software/make/">GNU Make</a></li>
+        <li><a href="http://subversion.tigris.org/">Subversion</a></li>
+        <li><a href="http://sdcc.sourceforge.net/">SDCC (Small Device C Compiler)</a></li>
+        <li><a href="http://www.gnu.org/software/binutils/">GNU binutils</a>
+          (actually, you just need objcopy to convert Intel hex files to binary)</li>
+        </ul>
+
+      <p>In <b>Mac OS X</b>, install the developer tools (from the OS X DVD)
+      and SDCC (I used version 2.9.0). I had to compile objcopy
+      (from binutils 2.19) separately though.</p>
+      
+      <p>In <b>Ubuntu 9.10</b>, just do this:</p>
+      
+      <p class="code">
+        <code>sudo apt-get install binutils gcc make sdcc subversion</code>
+      </p>
+
+      <p>Then check out the release you want (for example, 1.4) and build it:</p>
+      
+      <p class="code">
+        <code>svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.4<br>
+        cd speccyboot-1.4<br>
+        make</code>
+      </p>
+      
+      <p>When the build completes, you should have a file named
+      <tt>speccyboot.wav</tt> in your working directory. This WAV file includes
+      the SpeccyBoot software and a loader application, both in the format
+      expected by the Spectrum. (I load the WAV file to my phone, and play it
+      to the Spectrum from there.)</p>
+      
+      <hr>
+      
+      <a name="install">
+        <h2>Installing the software on the device</h2>
+        </a>
+      
+      <ol>
+        <li>Boot to BASIC.</li>
+        <ul>
+          <li>If you have a previous version of the SpeccyBoot software on
+            the device, hold CAPS SHIFT pressed while resetting or powering
+            on your Spectrum.</li>
+          <li>Otherwise, close JP1 to disable EEPROM, and power on your
+            Spectrum.</li>
+        </ul>
+        <li>Load the file <tt>speccyboot.wav</tt>, produced by building the
+          software above, to the Spectrum. After about a minute of loading,
+          you should see the following screen:<br>
+          <img src="fw-loader-1.png" /></li>
+        <li>Remove the JP1 jumper to enable EEPROM (if you hadn't already).</li>
+        <li>Press 1, 2 or 3 (depending on the EEPROM model you use). The new
+        software is written to EEPROM. If you chose to use software-controlled
+        write protection, this stage will take about six seconds, otherwise it
+        will take about one.</li>
+        <li>A message indicating success (or failure) is displayed:<br>
+          <img src="fw-loader-2.png" />
+          <br>If this step fails, repeat from step 1, and ensure
+          JP1 is set correctly.</li>
+        <li>Reboot your Spectrum. It should now be running the recently loaded
+        SpeccyBoot software.</li>
+      </ol>
+      
+      <hr>
+      &copy; 2009-2010
+      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT>
+    </body>
+    </html>
