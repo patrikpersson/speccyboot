@@ -85,8 +85,6 @@ tftp_receive(void)
   udp_add(rx_frame.udp.app.tftp.header.block_no);
   udp_send();
   
-  display_status(STATUS_OK);
-    
   if (ntohs(rx_frame.udp.app.tftp.header.block_no) == expected_tftp_block_no) {
     expected_tftp_block_no ++;
     receive_file_data();
@@ -120,6 +118,4 @@ tftp_read_request(const char *filename)
   udp_add_w_len(filename, len);
   udp_add(rrq_option);
   udp_send();
-
-  display_status(STATUS_WAITING_FOR_TFTP);
 }

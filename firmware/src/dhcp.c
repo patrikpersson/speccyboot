@@ -181,7 +181,7 @@ dhcp_finalize_and_send(void)
 void
 dhcp_init(void)
 {
-  display_status(STATUS_WAITING_FOR_DHCP);
+  display_status_configuring_dhcp();
 
   udp_create(&eth_broadcast_address,
 	     &ip_config.broadcast_address,
@@ -241,6 +241,7 @@ dhcp_receive(void)
     ip_config.host_address      = rx_frame.udp.app.dhcp.header.sub.yiaddr;
     ip_config.broadcast_address = broadcast_address;
     
+    display_status_configuring_tftp();
     tftp_read_request(SNAPSHOT_LIST_FILE);
     
     break;

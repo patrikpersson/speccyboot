@@ -82,15 +82,11 @@ typedef char key_t;
 #define KEY_DOWN                '6'
 
 /* -------------------------------------------------------------------------
- * Codes for fatal_error() and display_status(), displayed as border colours
+ * Codes for fatal_error() displayed as border colours
  * ------------------------------------------------------------------------- */
 
-#define STATUS_OK                 (BLACK)
-#define STATUS_WAITING_FOR_DHCP   (BLUE)
-#define STATUS_WAITING_FOR_TFTP   (GREEN)
-
 #define FATAL_NO_RESPONSE         (RED)
-#define FATAL_FILE_NOT_FOUND      (MAGENTA)
+#define FATAL_FILE_NOT_FOUND      (YELLOW)
 #define FATAL_INCOMPATIBLE        (CYAN)
 
 /* -------------------------------------------------------------------------
@@ -163,16 +159,22 @@ display_progress(uint8_t kilobytes_loaded,
 		 uint8_t kilobytes_expected);
 
 /* ------------------------------------------------------------------------- *
- * Display status by border colour.
+ * Display status in more detail during boot.
  * ------------------------------------------------------------------------- */
-#define display_status   set_border
+#define display_status_configuring_dhcp()    do {                             \
+    set_attrs_const(PAPER(BLUE) | INK(WHITE) | BRIGHT, 23, 5, 21);	      \
+    print_at(23, 6, 31, 0, "configuring DHCP...");                            \
+  } while(0)
+
+#define display_status_configuring_tftp()                                     \
+  print_at(23, 18, 21, 0, "TFT")
 
 /* ------------------------------------------------------------------------- *
  * Signal a fatal error message. Terminate all network activity, set the
  * border to the indicated colour, and wait for the user to reset the machine.
  * ------------------------------------------------------------------------- */
 #define fatal_error(_status)           {                                      \
-  display_status(_status);                                                    \
+  set_border(_status);                                                        \
   __asm                                                                       \
   di                                                                          \
   halt                                                                        \

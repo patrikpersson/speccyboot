@@ -117,11 +117,8 @@
 
           <table>
           <tr><th colspan=2>Colour</th><th>System state</th></tr>
-          <tr><td>black</td><td width=50 bgcolor="#000"></td><td>All is fine: both DHCP and TFTP servers responding</td></tr>
-          <tr><td>blue</td><td bgcolor="#00F"></td><td>Contacting DHCP server (should flash briefly once during boot)</td></tr>
-          <tr><td>green</td><td bgcolor="#0F0"></td><td>Contacting TFTP server (should flash briefly once during boot, and once when loading a snapshot)</td></tr>
           <tr><td>red</td><td bgcolor="#F00"></td><td><b>Failure:</b> no response from server (despite several attempts to contact it)</td></tr>
-          <tr><td>magenta</td><td bgcolor="#F0F"></td><td><b>Failure:</b> file not found on server</td></tr>
+          <tr><td>yellow</td><td bgcolor="#FF0"></td><td><b>Failure:</b> file not found on server</td></tr>
           <tr><td>cyan</td><td bgcolor="#0FF"></td><td><b>Failure:</b> the selected snapshot is not compatible with this hardware</td></tr>
           </table>
 

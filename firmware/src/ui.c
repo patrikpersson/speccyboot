@@ -211,10 +211,12 @@ __naked
 {
   __asm
 
+    xor a
+    out (0xfe), a
     ld  hl, #0x4000
     ld  de, #0x4001
     ld  bc, #0x1AFF
-    ld  (hl), #0
+    ld  (hl), a
     ldir
     ret
 
