@@ -55,8 +55,8 @@
 #define UDP_PORT_DHCP_SERVER      (67)
 #define UDP_PORT_DHCP_CLIENT      (68)
 #define UDP_PORT_TFTP_SERVER      (69)
+#define UDP_PORT_TFTP_CLIENT      (69)
 #define UDP_PORT_SYSLOG           (514)
-#define UDP_PORT_TFTP_CLIENT      (0xc000)
 
 /* ========================================================================= */
 
