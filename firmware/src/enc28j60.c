@@ -272,30 +272,31 @@ __naked
     ld    b, (hl)   ;;  BC=nbr_words
 
     push  de
-    pop   iy         ;;  IY=start_addr
+    pop   iy        ;;  IY=start_addr
 
     ld    hl, (_enc28j60_ip_checksum)
 
-    xor   a
-    ex    af, af'   ;; ' store addition carry (initially clear)
+    xor   a         ;; clear addition carry
 
 checksum_loop::
+    ex    af, af'   ;; ' store addition carry
 
-    ex    af, af'   ;; ' load addition carry
+    ld    a, b
+    or    c
+    jr    z, checksum_words_done
+    dec   bc
 
     ld    e, (iy)
     inc   iy
     ld    d, (iy)
     inc   iy
-
+  
+    ex    af, af'   ;; ' load addition carry
     adc   hl, de
 
-    ex    af, af'   ;; ' store addition carry
+    jr    checksum_loop
 
-    dec   bc
-    ld    a, b
-    or    c
-    jr    nz, checksum_loop
+checksum_words_done::
 
     ex    af, af'   ;; ' load addition carry
     adc   hl, bc    ;;  final carry (BC is zero here)

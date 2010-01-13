@@ -132,6 +132,8 @@ struct z80_snapshot_header_t snapshot_header;
 void
 evacuate_data(void)
 {
+  uint16_t checksum;
+
   /*
    * Clear out the top-left five character cells, by setting ink colour
    * to the same as the paper colour. Which colour is chosen depends on how
@@ -262,10 +264,35 @@ write_trampoline_loop::
     snapshot_header.hw_state_7ffd = 0x30 + DEFAULT_BANK; /* lock, ROM 1 */
   }
   
-  /* Write data to ENC28J60 */
-  enc28j60_write_memory_at(ENC28J60_EVACUATED_DATA,
-                           (uint8_t *) EVACUATION_TEMP_BUFFER,
-                           RUNTIME_DATA_LENGTH);
+  /*
+   * Write data to ENC28J60.
+   *
+   * My prototype hardware implementation (possibly others) seem to
+   * get occasional bit errors when this data is read back. Add some
+   * paranoia.
+   */
+  enc28j60_set_checksum(0);
+  enc28j60_add_checksum((uint8_t *) EVACUATION_TEMP_BUFFER,
+			RUNTIME_DATA_LENGTH >> 1);
+  checksum = enc28j60_get_checksum();
+
+  for (;;) {
+    enc28j60_write_memory_at(ENC28J60_EVACUATED_DATA,
+			     (uint8_t *) EVACUATION_TEMP_BUFFER,
+			     RUNTIME_DATA_LENGTH);
+
+    enc28j60_set_checksum(0);
+    enc28j60_read_memory_at((uint8_t *) (EVACUATION_TEMP_BUFFER
+					 + RUNTIME_DATA_LENGTH),
+			    ENC28J60_EVACUATED_DATA,
+			    RUNTIME_DATA_LENGTH);
+
+    if (enc28j60_get_checksum() == checksum) {
+      break;
+    }
+
+    syslog("re-evacuating");
+  }
 }
 
 /* ------------------------------------------------------------------------ */
