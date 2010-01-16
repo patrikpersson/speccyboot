@@ -46,9 +46,12 @@ struct ip_config_t ip_config = {
   IP_DEFAULT_BCAST_ADDRESS
 };
 
+/* Length of currently constructed TX UDP packet */
 static uint16_t current_packet_length;
 
+/* Definitions for state exposed in header */
 PACKED_STRUCT(header_template_t) header_template;
+uint16_t tftp_client_port = htons(0xc000);
 
 /* ------------------------------------------------------------------------- */
 
@@ -102,7 +105,7 @@ ip_receive(void)
     }
   }
     
-  if (rx_frame.udp.header.dst_port == htons(UDP_PORT_TFTP_CLIENT)) {
+  if (ip_valid_address() && rx_frame.udp.header.dst_port == tftp_client_port) {
     tftp_receive();
   }
   else if (rx_frame.udp.header.dst_port == htons(UDP_PORT_DHCP_CLIENT)) {

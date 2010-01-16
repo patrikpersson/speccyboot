@@ -105,6 +105,14 @@ extern PACKED_STRUCT(header_template_t) {
 } header_template;
 
 /* -------------------------------------------------------------------------
+ * Managing UDP port for TFTP client
+ * ------------------------------------------------------------------------- */
+
+extern uint16_t tftp_client_port;
+
+#define new_tftp_client_port()           (tftp_client_port += 0x0100)
+
+/* -------------------------------------------------------------------------
  * IP-style checksum computation
  * ------------------------------------------------------------------------- */
 
