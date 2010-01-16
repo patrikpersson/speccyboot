@@ -1,7 +1,7 @@
-Index: fuse-emulator/fuse/AUTHORS
+Index: fuse/AUTHORS
 ===================================================================
---- fuse-emulator/fuse/AUTHORS	(revision 4108)
-+++ fuse-emulator/fuse/AUTHORS	(working copy)
+--- fuse/AUTHORS	(revision 4114)
++++ fuse/AUTHORS	(working copy)
 @@ -48,6 +48,8 @@
  
  * Michael D Wynne: the Opus Discovery emulation (for EightyOne).
@@ -11,11 +11,11 @@ Index: fuse-emulator/fuse/AUTHORS
  * Philip Kendall: everything else.
  
  $Id$
-Index: fuse-emulator/fuse/man/fuse.1
+Index: fuse/man/fuse.1
 ===================================================================
---- fuse-emulator/fuse/man/fuse.1	(revision 4108)
-+++ fuse-emulator/fuse/man/fuse.1	(working copy)
-@@ -618,6 +618,8 @@
+--- fuse/man/fuse.1	(revision 4114)
++++ fuse/man/fuse.1	(working copy)
+@@ -632,6 +632,8 @@
  .I "\-\-rom\-plusd file"
  .br
  .I "\-\-rom\-beta128 file"
@@ -24,7 +24,7 @@ Index: fuse-emulator/fuse/man/fuse.1
  .RS
  Specify the file to be used for ROM(s) used for each machine. The
  options respectively refer to the 16K Spectrum
-@@ -650,8 +652,10 @@
+@@ -664,8 +666,10 @@
  .RI ( opus.rom ),
  the +D ROM
  .RI ( plusd.rom ),
@@ -37,7 +37,7 @@ Index: fuse-emulator/fuse/man/fuse.1
  The names in brackets denote the defaults.
  .RE
  .PP
-@@ -759,6 +763,18 @@
+@@ -773,6 +777,18 @@
  option.
  .RE
  .PP
@@ -56,10 +56,10 @@ Index: fuse-emulator/fuse/man/fuse.1
  .I "\-\-volume\-ay volume"
  .RS
  Sets the relative volume of the AY-3-8912 chip from a range of
-Index: fuse-emulator/fuse/fuse.c
+Index: fuse/fuse.c
 ===================================================================
---- fuse-emulator/fuse/fuse.c	(revision 4108)
-+++ fuse-emulator/fuse/fuse.c	(working copy)
+--- fuse/fuse.c	(revision 4114)
++++ fuse/fuse.c	(working copy)
 @@ -78,6 +78,7 @@
  #include "slt.h"
  #include "snapshot.h"
@@ -68,7 +68,7 @@ Index: fuse-emulator/fuse/fuse.c
  #include "spectrum.h"
  #include "tape.h"
  #include "timer/timer.h"
-@@ -304,6 +305,7 @@
+@@ -296,6 +297,7 @@
    if( kempmouse_init() ) return 1;
    if( fuller_init() ) return 1;
    if( melodik_init() ) return 1;
@@ -76,11 +76,11 @@ Index: fuse-emulator/fuse/fuse.c
  
    error = pokefinder_clear(); if( error ) return error;
  
-Index: fuse-emulator/fuse/menu.c
+Index: fuse/menu.c
 ===================================================================
---- fuse-emulator/fuse/menu.c	(revision 4108)
-+++ fuse-emulator/fuse/menu.c	(working copy)
-@@ -221,6 +221,7 @@
+--- fuse/menu.c	(revision 4114)
++++ fuse/menu.c	(working copy)
+@@ -214,6 +214,7 @@
    case 16: menu_select_roms_with_title( "Interface I",     40, 1 ); return;
    case 17: menu_select_roms_with_title( "Beta 128",        41, 1 ); return;
    case 18: menu_select_roms_with_title( "+D",              42, 1 ); return;
@@ -88,11 +88,11 @@ Index: fuse-emulator/fuse/menu.c
  
    }
  
-Index: fuse-emulator/fuse/configure.in
+Index: fuse/configure.in
 ===================================================================
---- fuse-emulator/fuse/configure.in	(revision 4108)
-+++ fuse-emulator/fuse/configure.in	(working copy)
-@@ -573,6 +573,24 @@
+--- fuse/configure.in	(revision 4114)
++++ fuse/configure.in	(working copy)
+@@ -572,6 +572,24 @@
  fi
  AC_SUBST(TIMER_LIBADD)
  
@@ -117,10 +117,10 @@ Index: fuse-emulator/fuse/configure.in
  dnl Work out which standard routines we're missing
  AC_MSG_CHECKING(which standard routines we're missing)
  missing_routines=''
-Index: fuse-emulator/fuse/menu_data.dat
+Index: fuse/menu_data.dat
 ===================================================================
---- fuse-emulator/fuse/menu_data.dat	(revision 4108)
-+++ fuse-emulator/fuse/menu_data.dat	(working copy)
+--- fuse/menu_data.dat	(revision 4114)
++++ fuse/menu_data.dat	(working copy)
 @@ -94,6 +94,7 @@
  Options/Select ROMs/Interface _I..., Item,, menu_options_selectroms_select,, 16
  Options/Select ROMs/_Beta 128..., Item,, menu_options_selectroms_select,, 17
@@ -129,10 +129,10 @@ Index: fuse-emulator/fuse/menu_data.dat
  
  Options/_Filter..., Item,,, menu_filter_detail
  
-Index: fuse-emulator/fuse/settings.dat
+Index: fuse/settings.dat
 ===================================================================
---- fuse-emulator/fuse/settings.dat	(revision 4108)
-+++ fuse-emulator/fuse/settings.dat	(working copy)
+--- fuse/settings.dat	(revision 4114)
++++ fuse/settings.dat	(working copy)
 @@ -71,6 +71,7 @@
  unittests, boolean, 0
  fuller, boolean, 0
@@ -158,10 +158,10 @@ Index: fuse-emulator/fuse/settings.dat
  rom_interface_i, string, "if1-2.rom",
  rom_opus, string, "opus.rom",
  rom_plusd, string, "plusd.rom",
-Index: fuse-emulator/fuse/periph.c
+Index: fuse/periph.c
 ===================================================================
---- fuse-emulator/fuse/periph.c	(revision 4108)
-+++ fuse-emulator/fuse/periph.c	(working copy)
+--- fuse/periph.c	(revision 4114)
++++ fuse/periph.c	(working copy)
 @@ -40,6 +40,7 @@
  #include "joystick.h"
  #include "kempmouse.h"
@@ -226,10 +226,10 @@ Index: fuse-emulator/fuse/periph.c
    update_cartridge_menu();
    update_ide_menu();
    if1_update_menu();
-Index: fuse-emulator/fuse/periph.h
+Index: fuse/periph.h
 ===================================================================
---- fuse-emulator/fuse/periph.h	(revision 4108)
-+++ fuse-emulator/fuse/periph.h	(working copy)
+--- fuse/periph.h	(revision 4114)
++++ fuse/periph.h	(working copy)
 @@ -107,6 +107,9 @@
  /* Is the Melodik active */
  extern int periph_melodik_active;
@@ -248,15 +248,15 @@ Index: fuse-emulator/fuse/periph.h
  void periph_update( void );
  
  void periph_register_beta128( void );
-Index: fuse-emulator/fuse/Makefile.am
+Index: fuse/Makefile.am
 ===================================================================
---- fuse-emulator/fuse/Makefile.am	(revision 4108)
-+++ fuse-emulator/fuse/Makefile.am	(working copy)
+--- fuse/Makefile.am	(revision 4114)
++++ fuse/Makefile.am	(working copy)
 @@ -89,6 +89,7 @@
  	slt.c \
  	snapshot.c \
- 	sound.cpp \
-+	speccyboot.cpp \
+ 	sound.c \
++	speccyboot.c \
  	spectrum.c \
  	tape.c \
  	ui.c \
@@ -268,10 +268,10 @@ Index: fuse-emulator/fuse/Makefile.am
  	spectrum.h \
  	tape.h \
  	utils.h \
-Index: fuse-emulator/fuse/settings.pl
+Index: fuse/settings.pl
 ===================================================================
---- fuse-emulator/fuse/settings.pl	(revision 4108)
-+++ fuse-emulator/fuse/settings.pl	(working copy)
+--- fuse/settings.pl	(revision 4114)
++++ fuse/settings.pl	(working copy)
 @@ -760,6 +760,7 @@
    case 40: return &( settings->rom_interface_i );
    case 41: return &( settings->rom_beta128 );
@@ -280,10 +280,10 @@ Index: fuse-emulator/fuse/settings.pl
    default: return NULL;
    }
  }
-Index: fuse-emulator/fuse/ui/options.dat
+Index: fuse/ui/options.dat
 ===================================================================
---- fuse-emulator/fuse/ui/options.dat	(revision 4108)
-+++ fuse-emulator/fuse/ui/options.dat	(working copy)
+--- fuse/ui/options.dat	(revision 4114)
++++ fuse/ui/options.dat	(working copy)
 @@ -48,6 +48,7 @@
  Checkbox, +D i(n)terface, plusd, INPUT_KEY_n
  Checkbox, (B)eta 128 interface, beta128, INPUT_KEY_b
