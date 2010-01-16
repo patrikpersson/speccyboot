@@ -1,4 +1,4 @@
-v1.4 (in development):
+v1.4 (January 16, 2010):
 
 * Major refactoring to squeeze SpeccyBoot into an 8K (E(E)P)ROM/FRAM.
 
