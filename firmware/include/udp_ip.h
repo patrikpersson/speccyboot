@@ -96,6 +96,14 @@ extern struct ip_config_t {
   ipv4_address_t broadcast_address;
 } ip_config;
 
+/* ========================================================================= */
+
+/* Header template, used by udp_create() & co below */
+extern PACKED_STRUCT(header_template_t) {
+  struct ipv4_header_t ip;
+  struct udp_header_t  udp;
+} header_template;
+
 /* -------------------------------------------------------------------------
  * IP-style checksum computation
  * ------------------------------------------------------------------------- */
@@ -141,13 +149,18 @@ ip_receive(void);
  *  - Source and destination ports are passed in network endian order.
  *  - The 'udp_length' argument must include sizeof(struct udp_header_t).
  * ------------------------------------------------------------------------- */
+#define udp_create(_dst_hwaddr, _dst_ipaddr, _src_p, _dst_p, _len, _cls)      \
+  do {                                                                        \
+    header_template.udp.src_port = _src_p;                                    \
+    header_template.udp.dst_port = _dst_p;                                    \
+    udp_create_impl(_dst_hwaddr, _dst_ipaddr, _len, _cls);                    \
+  } while(0)
+
 void
-udp_create(const struct mac_address_t  *dst_hwaddr,
-	   const ipv4_address_t        *dst_ipaddr,
-	   uint16_t                     src_port_nw_endian,
-	   uint16_t                     dst_port_nw_endian,
-	   uint16_t                     udp_length,
-	   eth_frame_class_t            frame_class);
+udp_create_impl(const struct mac_address_t  *dst_hwaddr,
+		const ipv4_address_t        *dst_ipaddr,
+		uint16_t                     udp_length,
+		enc28j60_addr_t              frame_class);
 
 /* -------------------------------------------------------------------------
  * Create UDP reply to the sender of the received packet currently processed.

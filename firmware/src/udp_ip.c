@@ -48,11 +48,7 @@ struct ip_config_t ip_config = {
 
 static uint16_t current_packet_length;
 
-/* IPv4 + UDP header prototype */
-static PACKED_STRUCT() {
-  struct ipv4_header_t ip;
-  struct udp_header_t  udp;
-} header_template;
+PACKED_STRUCT(header_template_t) header_template;
 
 /* ------------------------------------------------------------------------- */
 
@@ -117,12 +113,10 @@ ip_receive(void)
 /* ------------------------------------------------------------------------- */
 
 void
-udp_create(const struct mac_address_t  *dst_hwaddr,
-	   const ipv4_address_t        *dst_ipaddr,
-	   uint16_t                     src_port_nw_endian,
-	   uint16_t                     dst_port_nw_endian,
-	   uint16_t                     udp_length,
-	   eth_frame_class_t            frame_class)
+udp_create_impl(const struct mac_address_t  *dst_hwaddr,
+		const ipv4_address_t        *dst_ipaddr,
+		uint16_t                     udp_length,
+		enc28j60_addr_t              frame_class)
 {
   current_packet_length = udp_length + sizeof(struct ipv4_header_t);
 
@@ -140,8 +134,6 @@ udp_create(const struct mac_address_t  *dst_hwaddr,
   ip_checksum_add(header_template.ip);
   header_template.ip.checksum        = ip_checksum_value();
 
-  header_template.udp.src_port       = src_port_nw_endian;
-  header_template.udp.dst_port       = dst_port_nw_endian;
   header_template.udp.length         = htons(udp_length);
   header_template.udp.checksum       = 0;
 
