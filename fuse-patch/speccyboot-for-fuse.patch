@@ -11,6 +11,566 @@ Index: fuse/AUTHORS
  * Philip Kendall: everything else.
  
  $Id$
+Index: fuse/speccyboot.c
+===================================================================
+--- fuse/speccyboot.c	(revision 0)
++++ fuse/speccyboot.c	(revision 0)
+@@ -0,0 +1,502 @@
++/* speccyboot.c: SpeccyBoot Ethernet emulation
++   
++   Emulates SPI communication and (a minimal subset of) the
++   functionality of the Microchip ENC28J60 Ethernet controller. Refer
++   to the ENC28J60 data sheet and SpeccyBoot documentation for
++   details.
++
++   ENC28J60 data sheet:
++     http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en022889
++
++   SpeccyBoot:
++     http://speccyboot.sourceforge.net/
++ 
++   Copyright (c) 2009 Patrik Persson
++   
++   $Id$
++   
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 2 of the License, or
++   (at your option) any later version.
++   
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++   
++   You should have received a copy of the GNU General Public License along
++   with this program; if not, write to the Free Software Foundation, Inc.,
++   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++   
++   Author contact information:
++   
++   Patrik Persson: speccyboot@gmail.com
++ 
++*/
++
++#include "config.h"
++
++#include <fcntl.h>
++#include <stdio.h>
++#include <string.h>
++#include <unistd.h>
++
++#ifdef LINUX_TAP
++#include <linux/if_tun.h>
++#include <net/if.h>
++#include <sys/ioctl.h>
++#endif /* #ifdef LINUX_TAP */
++
++#include "speccyboot.h"
++
++#include "compat.h"
++#include "machine.h"
++#include "memory.h"
++#include "module.h"
++#include "settings.h"
++#include "ui/ui.h"
++
++/* Determine whether a bit has gone from high to low (or low to high) */
++#define GONE_LO(prev, curr, mask)     (((prev) & (mask)) && !((curr) & (mask)))
++#define GONE_HI(prev, curr, mask)     (((curr) & (mask)) && !((prev) & (mask)))
++
++#define LOBYTE(x)                       ((x) & 0x00ff)
++#define HIBYTE(x)                       (((x) >> 8) & 0x00ff)
++
++/* ---------------------------------------------------------------------------
++ * ENC28J60 emulation
++ * ------------------------------------------------------------------------ */
++
++static libspectrum_byte sram[0x2000];
++static libspectrum_byte registers[4][32];
++
++#define ERDPTL                registers[0][0x00]
++#define ERDPTH                registers[0][0x01]
++#define EWRPTL                registers[0][0x02]
++#define EWRPTH                registers[0][0x03]
++#define ETXSTL                registers[0][0x04]
++#define ETXSTH                registers[0][0x05]
++#define ETXNDL                registers[0][0x06]
++#define ETXNDH                registers[0][0x07]
++#define ERXSTL                registers[0][0x08]
++#define ERXSTH                registers[0][0x09]
++#define ERXNDL                registers[0][0x0a]
++#define ERXNDH                registers[0][0x0b]
++#define ERXRDPTL              registers[0][0x0c]
++#define ERXRDPTH              registers[0][0x0d]
++#define ERXWRPTL              registers[0][0x0e]
++#define ERXWRPTH              registers[0][0x0f]
++
++/* Common registers (0x1b and up) are stored in bank 0 in this structure */
++#define ESTAT                 registers[0][0x1d]
++#define ECON2                 registers[0][0x1e]
++#define ECON1                 registers[0][0x1f]
++
++#define EPKTCNT               registers[1][0x19]
++#define MIRDH                 registers[2][0x19]
++
++#define ECON1_RXEN            (0x04)
++#define ECON1_TXRTS           (0x08)
++#define ECON2_PKTDEC          (0x40)
++#define ESTAT_CLKRDY          (0x01)
++
++#define PHSTAT2_HI_LSTAT      (0x04)
++
++/* Helpers for reading/writing 13-bit SRAM pointer registers */
++#define GET_PTR_REG(_nm)      ((((_nm ## H) & 0x1f) * 0x0100) + (_nm ## L))
++#define SET_PTR_REG(_nm, _v)  ((_nm ## H = HIBYTE(_v)),(_nm ## L = LOBYTE(_v)))
++
++/* Current register for RCR and WCR commands */
++static libspectrum_byte curr_register;
++static libspectrum_byte curr_register_bank;
++
++/* TAP file descriptor */
++static int tap_fd = -1;
++
++/* ---------------------------------------------------------------------------
++ * Ethernet frame layout
++ * ------------------------------------------------------------------------ */
++
++/* Maximal Ethernet frame we can receive */
++#define ETH_MAX                         (0x600)
++
++/* Status info before the frame (ENC28J60 data sheet, figure 7-3) */
++#define ETH_STATUS_NEXT_LO              (0)
++#define ETH_STATUS_NEXT_HI              (1)
++#define ETH_STATUS_LENGTH               (6)
++
++/* ---------------------------------------------------------------------------
++ * Spectrum I/O register state (IN/OUT from/to 0x9f)
++ * ------------------------------------------------------------------------ */
++
++/* Individual bits when writing the register (OUT instructions) */
++#define OUT_BIT_SPI_SCK                 (0x01)
++#define OUT_BIT_ETH_CS                  (0x08)
++#define OUT_BIT_ROM_CS                  (0x20)
++#define OUT_BIT_ETH_RST                 (0x40)
++#define OUT_BIT_SPI_MOSI                (0x80)
++
++static libspectrum_byte out_register_state;
++static libspectrum_byte in_register_state;
++
++static libspectrum_byte
++speccyboot_register_read( libspectrum_word port GCC_UNUSED, int *attached );
++
++static void
++speccyboot_register_write( libspectrum_word port GCC_UNUSED, libspectrum_byte val );
++
++const periph_t speccyboot_peripherals[] = {
++  { 0x00e0, 0x0080, speccyboot_register_read, speccyboot_register_write }
++};
++
++const size_t speccyboot_peripherals_count =
++  sizeof ( speccyboot_peripherals ) / sizeof( periph_t );
++
++/* ---------------------------------------------------------------------------
++ * SPI state
++ * ------------------------------------------------------------------------ */
++
++/* Number of valid bits currently held in MISO/MOSI shift registers (0..7) */
++static libspectrum_byte miso_valid_bits;
++static libspectrum_byte mosi_valid_bits;
++
++static enum spi_state_t {
++  SPI_IDLE = -2,
++  SPI_CMD  = -1,  /* expect a command byte */
++
++  SPI_RCR  = 0,   /* read command register */
++  SPI_RBM  = 1,   /* read buffer memory */
++  SPI_WCR  = 2,   /* write command register */
++  SPI_WBM  = 3,   /* write buffer memory */
++  SPI_BFS  = 4,   /* bit-field set */
++  SPI_BFC  = 5,   /* bit-field clear */
++  SPI_SRC  = 7    /* system reset command */
++} spi_state = SPI_IDLE;
++
++/* ---------------------------------------------------------------------------
++ * ROM paging state
++ * ------------------------------------------------------------------------ */
++
++static int speccyboot_rom_active = 0;  /* SpeccyBoot ROM paged in? */
++static memory_page speccyboot_memory_map_romcs;
++
++/* ------------------------------------------------------------------------- */
++
++/* Poll for received frames. */
++static void
++poll_rx_eth_frames( void )
++{
++  /* Reserve 6 bytes before the Ethernet frame for next pointer + RSV */
++  static libspectrum_byte eth_rx_buf[ETH_STATUS_LENGTH + ETH_MAX];
++  ssize_t n;
++
++  if ( (ECON1 & ECON1_RXEN)     /* Ethernet RX enabled? */
++       && tap_fd > 0
++       && (n = read( tap_fd,
++                     eth_rx_buf + ETH_STATUS_LENGTH,
++                     ETH_MAX )) > 0) {
++    libspectrum_word erxwrpt = GET_PTR_REG( ERXWRPT );
++    libspectrum_word erxst   = GET_PTR_REG( ERXST );
++    libspectrum_word erxnd   = GET_PTR_REG( ERXND );
++
++    /* Round total_length upwards to an even value */
++    libspectrum_word total_length = (ETH_STATUS_LENGTH + n + 1) & 0x1ffe;
++    libspectrum_word next_addr    = erxwrpt + total_length;
++
++    /* Sanity check */
++    if (erxwrpt > erxnd)
++      return;
++
++    if ( next_addr > erxnd ) {  /* FIFO wrap-around? */  
++      libspectrum_word first_part = (erxnd - erxwrpt) + 1;
++
++      next_addr = (next_addr - erxnd) + erxst;
++          
++      eth_rx_buf[ ETH_STATUS_NEXT_LO ] = LOBYTE( next_addr );
++      eth_rx_buf[ ETH_STATUS_NEXT_HI ] = HIBYTE( next_addr );
++      
++      memcpy( sram + erxwrpt, eth_rx_buf, first_part );
++      memcpy( sram + erxst, eth_rx_buf + first_part, total_length - first_part );
++    } else {         
++      eth_rx_buf[ ETH_STATUS_NEXT_LO ] = LOBYTE( next_addr );
++      eth_rx_buf[ ETH_STATUS_NEXT_HI ] = HIBYTE( next_addr );
++
++      memcpy( sram + erxwrpt, eth_rx_buf, total_length );
++    }
++
++    SET_PTR_REG( ERXWRPT, next_addr );
++
++    ++EPKTCNT;
++  }
++}
++
++/* Writing to some registers produces special side effects. */
++static void
++perform_side_effects_for_write( void )
++{
++  if ( ECON1 & ECON1_TXRTS ) {     /* TXRTS: transmission request */
++    libspectrum_word frame_start = (GET_PTR_REG(ETXST) & 0x1fff) + 1;
++    libspectrum_word frame_end   = GET_PTR_REG(ETXND) & 0x1fff;
++
++    if ( frame_end > frame_start && tap_fd >= 0) {
++      ssize_t length = (frame_end - frame_start) + 1;
++      if ( write( tap_fd, sram + frame_start, length ) != length )
++        tap_fd = -1; /* write failed: disable TAP */
++    }
++
++    ECON1 &= ~ECON1_TXRTS;
++  }
++
++  if ( ECON2 & ECON2_PKTDEC ) {    /* PKTDEC: decrease EPKTCNT */
++    --EPKTCNT;
++    ECON2 &= ~ECON2_PKTDEC;
++  }
++}
++
++static void
++set_spi_state( enum spi_state_t new_state )
++{
++  spi_state = new_state;
++  miso_valid_bits = mosi_valid_bits = 0;
++}
++
++static void
++eth_reset( void )
++{
++  set_spi_state( SPI_IDLE );
++
++  memset( registers, 0, sizeof( registers ) );
++
++  MIRDH = PHSTAT2_HI_LSTAT;  /* Assume PHSTAT2 is mapped to MIRDH */
++  ESTAT = ESTAT_CLKRDY;
++}
++
++/* Produce one bit for MISO for the next IN I/O operation */
++static void
++miso_produce_bit( void )
++{
++  static libspectrum_byte miso_bits;
++
++  libspectrum_word erdpt = GET_PTR_REG(ERDPT);
++
++  if ( miso_valid_bits-- == 0 ) {  /* Load another byte */
++    switch ( spi_state ) {
++
++    case SPI_RCR:
++      miso_bits = registers[ curr_register_bank ][ curr_register ];
++      break;
++
++    case SPI_RBM:
++      miso_bits = sram[ erdpt ];
++      /* Assume ECON2:AUTOINC to be set, wrap at ERXND */
++      erdpt = (erdpt == GET_PTR_REG( ERXND )) ? GET_PTR_REG( ERXST )
++                                              : (erdpt + 1);
++      SET_PTR_REG( ERDPT, erdpt );
++      break;
++
++    default:
++      break;
++    }
++
++    miso_valid_bits = 7;  /* 8 bits in total, one shifted out below */
++  }
++  
++  in_register_state = 0xfe | ((miso_bits & 0x80) ? 1 : 0); /* MSb first */
++  miso_bits <<= 1;
++}
++
++/* Consume one bit from MOSI */
++static void
++mosi_consume_bit( void )
++{
++  static libspectrum_byte mosi_bits;
++
++  mosi_bits = (mosi_bits << 1)
++            | ((out_register_state & OUT_BIT_SPI_MOSI) ? 1 : 0);
++
++  if ( ++mosi_valid_bits == 8 ) {
++    libspectrum_word ewrpt = GET_PTR_REG(EWRPT);
++
++    switch ( spi_state ) {
++
++    case SPI_CMD:
++      set_spi_state( (mosi_bits >> 5) & 0x07 );
++
++      if ( spi_state == SPI_SRC )
++        eth_reset();
++
++      curr_register = (mosi_bits & 0x1f);    
++      curr_register_bank = (curr_register >= 0x1b) ? 0 : (ECON1 & 0x03);
++      break;
++
++    case SPI_WCR:
++      registers[ curr_register_bank ][ curr_register ] = mosi_bits;
++      perform_side_effects_for_write();
++      set_spi_state( SPI_IDLE );
++      break;
++
++    case SPI_WBM:
++      sram[ ewrpt++ ] = mosi_bits;      /* Assume ECON2:AUTOINC to be set */
++      SET_PTR_REG( EWRPT, ewrpt );
++      break;
++
++    case SPI_BFS:
++      registers[ curr_register_bank ][ curr_register ] |= mosi_bits;
++      perform_side_effects_for_write();
++      set_spi_state( SPI_IDLE );
++      break;
++
++    case SPI_BFC:
++      registers[ curr_register_bank ][ curr_register ] &= ~mosi_bits;
++      perform_side_effects_for_write();
++      set_spi_state( SPI_IDLE );
++      break;
++
++    default:
++      break;
++    }
++
++    mosi_valid_bits = 0;
++  }
++}
++
++static void
++speccyboot_memory_map( void )
++{
++  if ( !speccyboot_rom_active ) return;
++
++  memory_map_read[0] = memory_map_write[0] = speccyboot_memory_map_romcs;
++}
++
++static void
++speccyboot_reset( int hard_reset GCC_UNUSED )
++{
++  static int tap_opened = 0;
++
++  if ( machine_load_rom_bank( &speccyboot_memory_map_romcs, 0, 0,
++                              settings_current.rom_speccyboot,
++                              settings_default.rom_speccyboot, 0x2000 ) )
++    return;
++
++  speccyboot_memory_map_romcs.source = MEMORY_SOURCE_PERIPHERAL;
++  speccyboot_memory_map_romcs.writable = 0;
++
++  out_register_state = 0xff;  /* force transitions to low */
++  speccyboot_register_write( 0 /* unused argument */, 0 );
++
++  /*
++   * Open TAP. If this fails, SpeccyBoot emulation won't work.
++   *
++   * This is done here rather than in speccyboot_init() to ensure any
++   * error messages are only displayed if SpeccyBoot emulation is
++   * actually requested.
++   */
++  if ( settings_current.speccyboot && !tap_opened ) {
++
++#ifdef LINUX_TAP
++
++    if ( (tap_fd = open( "/dev/net/tun", O_RDWR | O_NONBLOCK )) < 0 )
++      ui_error( UI_ERROR_ERROR,
++                "couldn't open TUN/TAP device '/dev/net/tun'" );
++    else {
++      struct ifreq ifr;
++      memset( &ifr, 0, sizeof( ifr ) );
++      ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
++      strncpy( ifr.ifr_name, settings_current.speccyboot_tap, IFNAMSIZ );
++      
++      if ( ioctl( tap_fd, TUNSETIFF, (void *) &ifr ) < 0 ) {
++        ui_error( UI_ERROR_ERROR,
++                  "couldn't select TAP interface '%s'",
++                  ifr.ifr_name );
++        tap_fd = -2;
++      }
++    }
++
++#else
++
++    ui_error( UI_ERROR_ERROR,
++              "SpeccyBoot emulation not yet supported "
++              "for this operating system" );
++
++#endif /* #ifdef LINUX_TAP */
++
++    tap_opened = 1;
++  }
++}
++
++static libspectrum_byte
++speccyboot_register_read( libspectrum_word port GCC_UNUSED, int *attached )
++{
++  if( !settings_current.speccyboot ) return 0xff;
++
++  *attached = 1;
++  return in_register_state;
++}
++
++static void
++speccyboot_register_write( libspectrum_word port GCC_UNUSED, libspectrum_byte val )
++{
++  if ( !settings_current.speccyboot ) return;
++
++  poll_rx_eth_frames();
++
++  if ( GONE_LO( out_register_state, val, OUT_BIT_ETH_RST ) )
++    eth_reset();
++
++  if ( !(val & OUT_BIT_ETH_CS) ) {
++
++    if ( GONE_LO( out_register_state, val, OUT_BIT_ETH_CS ) )
++      set_spi_state( SPI_CMD );
++
++    /*
++     * NOTE: the ENC28J60 data sheet (figure 4-2) specifies that MISO
++     * is updated when SCK goes low, but we instead set it on the
++     * subsequent transition to high. This is to simplify the internal
++     * state logic for SPI RBM commands.
++     *
++     * In this design, we ignore the final SCK transition to low at
++     * the end of a transaction. That SCK transition, if occurring at
++     * the end of a RBM transaction, would otherwise trigger another
++     * read operation, and ERDPT would be increased one time too many.
++     *
++     * The SpeccyBoot stack reads MISO just after setting SCK high, so
++     * it works fine with this simplification.
++     */
++    if ( GONE_HI( out_register_state, val, OUT_BIT_SPI_SCK ) ) {
++      miso_produce_bit();
++      mosi_consume_bit();
++    }
++  }
++   
++  /* Update ROM paging status when the ROM_CS bit is cleared or set */
++  if ( GONE_LO( out_register_state, val, OUT_BIT_ROM_CS ) ) {
++    speccyboot_rom_active = 1;
++    machine_current->ram.romcs = 1;
++    machine_current->memory_map();
++  } else if ( GONE_HI( out_register_state, val, OUT_BIT_ROM_CS ) ) {
++    speccyboot_rom_active = 0;
++    machine_current->ram.romcs = 0;
++    machine_current->memory_map();
++  }
++
++  out_register_state = val;
++}
++
++int
++speccyboot_init( void )
++{
++  static module_info_t speccyboot_module_info = {
++    speccyboot_reset,
++    speccyboot_memory_map,
++    NULL,
++    NULL,
++    NULL
++  };
++
++  module_register( &speccyboot_module_info );
++
++  speccyboot_memory_map_romcs.bank = MEMORY_BANK_ROMCS;
++
++  return 0;
++}
+Index: fuse/speccyboot.h
+===================================================================
+--- fuse/speccyboot.h	(revision 0)
++++ fuse/speccyboot.h	(revision 0)
+@@ -0,0 +1,48 @@
++/* speccyboot.h: SpeccyBoot Ethernet emulation
++
++   Emulates SPI communication and (a minimal subset of) the
++   functionality of the Microchip ENC28J60 Ethernet controller. Refer
++   to the ENC28J60 data sheet and SpeccyBoot documentation for
++   details.
++
++   ENC28J60 data sheet:
++     http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en022889
++
++   SpeccyBoot:
++     http://speccyboot.sourceforge.net/
++  
++   Copyright (c) 2009 Patrik Persson
++
++   $Id$
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 2 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License along
++   with this program; if not, write to the Free Software Foundation, Inc.,
++   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++
++   Author contact information:
++
++   Patrik Persson: speccyboot@gmail.com
++
++*/
++
++#ifndef FUSE_SPECCYBOOT_H
++#define FUSE_SPECCYBOOT_H
++
++#include "periph.h"
++
++extern const periph_t speccyboot_peripherals[];
++extern const size_t speccyboot_peripherals_count;
++
++int speccyboot_init( void );
++
++#endif /* #ifndef FUSE_SPECCYBOOT_H */
 Index: fuse/man/fuse.1
 ===================================================================
 --- fuse/man/fuse.1	(revision 4114)
