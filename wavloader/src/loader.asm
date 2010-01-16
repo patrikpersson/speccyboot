@@ -126,9 +126,9 @@ set_config:
   ld    bc, #msg_writing_end-msg_writing
   call  PR_STRING
 
-  ;; --------------------------------------------------------------------------  
+  ;; --------------------------------------------------------------------------
   ;; Following section is executed with EEPROM paged in, disabled interrupts
-  ;; --------------------------------------------------------------------------  
+  ;; -------------------------------------------------------------------------- 
 
   di
 
@@ -201,6 +201,17 @@ wp_done:
   dec   a
   jr    nz, write_block_loop   ;; A goes from 0 to 0 => 256 iterations
 
+  ;; verify write protection (where applicable), by modifying the last byte
+  ;; if protection fails, verification below will fail
+
+  ld    a, (config)
+  cp    #CONFIG_PLAIN
+  jr    z, mod_done
+  ld    hl, #FW_DEST+FW_SIZE-1
+  ld    a, (hl)
+  xor   #0xFF
+  ld    (hl), a
+mod_done::
   ;; verify write operation
   
   ld    hl, #firmware_image
