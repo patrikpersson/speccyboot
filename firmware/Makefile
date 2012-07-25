@@ -1,11 +1,11 @@
 # =============================================================================
 # Makefile for SpeccyBoot
-# Patrik Persson, 2009-2010
+# Patrik Persson, 2009-2012
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION      = 1.4
+VERSION      = 1.5
 
 OBJCOPY      = objcopy
 CC           = sdcc
@@ -20,6 +20,21 @@ LDFLAGS     += --code-loc 0x0043 --data-loc 0x5C00
 
 # SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
 CFLAGS      += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+# Run 'make DGBOOT=1' to build for Imrich Kolkol's DGBoot hardware design
+# instead of the default SpeccyBoot
+
+ifdef DGBOOT
+TARGETFLAGS  = -DHWTARGET_DGBOOT
+else
+TARGETFLAGS  = -DHWTARGET_SPECCYBOOT
+endif
+
+CFLAGS      += $(TARGETFLAGS)
 
 # =============================================================================
 # COMPONENTS
@@ -90,8 +105,10 @@ check_sizes: bin
 %.o: %.c $(OBJDIR) $(HFILES)
 	$(CC) $(CFLAGS) -c -o $(OBJDIR)/$@ $<
 
-%.o: %.asm $(OBJDIR)
-	$(AS) -o $(OBJDIR)/$@ $<
+# run GCC preprocessor on crt0, exclude all hashed lines
+crt0.o: crt0.asm $(OBJDIR)
+	gcc -E -xc-header -I$(INCLUDEDIR) $(TARGETFLAGS) $< | grep -v '^#'  > $(OBJDIR)/crt0_preprocessed.asm
+	$(AS) -o $(OBJDIR)/$@ $(OBJDIR)/crt0_preprocessed.asm
 
 $(OBJDIR):
 	mkdir -p $@

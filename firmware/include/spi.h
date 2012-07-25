@@ -35,28 +35,7 @@
 #define SPECCYBOOT_SPI_INCLUSION_GUARD
 
 #include <stdint.h>
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Port for SPI communication
- */
-#define SPI_PORT                        (0x9f)
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Masks for the individual bits
- */
-#define SPI_SCK                         (0x01)
-#define SPI_CS                          (0x08)
-#define SPI_RST                         (0x40)
-#define SPI_MOSI                        (0x80)
-
-/*
- * SPI idle, MOSI=0, RST high, CS low, SCK low
- */
-#define SPI_IDLE                        SPI_RST
+#include "spi_asm.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -97,10 +76,10 @@
  */
 #define SPI_RESET                         \
   xor a, a                                \
-  out (SPI_PORT), a                       \
+  out (SPI_OUT), a                        \
   ld  a, #SPI_IDLE                        \
-  out (SPI_PORT), a                       \
-                                          \
+  out (SPI_OUT), a                        \
+  \
 spi_reset_loop:                           \
   dec   a                                 \
   jr    nz,  spi_reset_loop
@@ -112,27 +91,29 @@ spi_reset_loop:                           \
   ld    a, #SPI_IDLE+SPI_IDLE             \
   rl    a, REG                            \
   rra                                     \
-  out   (SPI_PORT), a                     \
+  out   (SPI_OUT), a                      \
   inc   a                                 \
-  out   (SPI_PORT), a
+  out   (SPI_OUT), a
 
 /*
  * Shift register REG left one bit, and shift in a bit from SPI MISO to bit 0
  */
 #define SPI_READ_BIT_TO(REG)              \
   ld    a, #SPI_IDLE                      \
-  out   (SPI_PORT), a                     \
+  out   (SPI_OUT), a                      \
   inc   a                                 \
-  out   (SPI_PORT), a                     \
-  in    a, (SPI_PORT)                     \
+  out   (SPI_OUT), a                      \
+  in    a, (SPI_IN)                       \
   rra                                     \
   rl    a, REG
 
 /*
- * Read one bit to accumulator, requires C=0x9f, H=0x40. Destroys F, L.
- * Takes 12 + 12 + 8 + 4 + 4 + 12 + 4
- *   = 56 T-states
+ * Read one bit to accumulator, requires C=0x9f (on SpeccyBoot), H=0x40.
+ * Destroys F, L.
  */
+#ifdef HWTARGET_SPECCYBOOT
+
+/* Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states */
 #define SPI_READ_BIT_TO_ACC               \
   out   (c), h                            \
   inc   h                                 \
@@ -142,18 +123,42 @@ spi_reset_loop:                           \
   rr    a, l                              \
   rla
 
+#else
+#ifdef HWTARGET_DGBOOT
+
+/*
+ * Imrich Kolkol's DGBoot maps SPI IN and OUT to different registers;
+ * for this reason, C is loaded explicitly each time, resulting in
+ * some slight CPU overhead per bit.
+ */
+#define SPI_READ_BIT_TO_ACC               \
+  ld    c, #SPI_OUT                       \
+  out   (c), h                            \
+  inc   h                                 \
+  out   (c), h                            \
+  dec   h                                 \
+  ld    c, #SPI_IN                        \
+  in    l, (c)                            \
+  rr    a, l                              \
+  rla
+
+#else
+#error Invalid HWTARGET_XXX
+#endif
+#endif
+
 /*
  * End an SPI transaction by pulling SCK low, then CS high.
  */
 #define SPI_END_TRANSACTION               \
   ld  a, #SPI_IDLE                        \
-  out (SPI_PORT), a                       \
+  out (SPI_OUT), a                        \
   ld  a, #SPI_IDLE+SPI_CS                 \
-  out (SPI_PORT), a
+  out (SPI_OUT), a
 
 #pragma restore
 
-/* ========================================================================= */
+/* ------------------------------------------------------------------------- */
 
 /*
  * Macros for beginning and ending an SPI transaction. The braces are there
@@ -169,7 +174,7 @@ spi_reset_loop:                           \
   SPI_END_TRANSACTION                 \
   __endasm
 
-/* ------------------------------------------------------------------------- */
+/* ========================================================================= */
 
 /*
  * Read 8 bits from SPI.

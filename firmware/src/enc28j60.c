@@ -150,7 +150,7 @@ __naked
     and   a           ;; reset initial C flag
     ex    af, af'     ;; here's an apostrophe for syntax coloring...
 
-    ld    c, #SPI_PORT
+    ld    c, #SPI_OUT
     ld    h, #0x40
   
     ld    d, 3(ix)

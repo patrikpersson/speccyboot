@@ -224,7 +224,7 @@ write_trampoline_loop::
     ld   (hl), #0xC3             ;;  *0x4201 = JP NN
     dec  h
     dec  h
-    ld   (hl), #SPI_PORT         ;;  *0x4001 = address for OUT above
+    ld   (hl), #SPI_OUT          ;;  *0x4001 = address for OUT above
 
   __endasm;
 

@@ -27,16 +27,14 @@
   ;; OTHER DEALINGS IN THE SOFTWARE.
   ;; --------------------------------------------------------------------------
 
+#include "spi_asm.h"
+
   .module crt0
   
   .globl	_font_data
   .globl	_main
   .globl	_stack_top
   .globl	_timer_tick_count
-	
-  ;; --------------------------------------------------------------------------
-
-  SPI_PORT       = 0x9f
 	
   ;; --------------------------------------------------------------------------
 
@@ -51,6 +49,16 @@
   ld    sp, hl
   ex    de, hl
   push de                    ;; trick: use as destination for RET below
+
+#ifdef HWTARGET_DGBOOT
+  ;; Initialize the Didaktik 8255
+  CWR   = 0x7f
+
+  ld    a, #0x20
+  out   (SPI_OUT),a          ;; Question: why this needed? Pages out DGBoot???
+  ld    a, #0x90             ;; PB out, PC out, PA in, mode 0
+  out   (CWR), a
+#endif
 
   ;; Copy trampoline to RAM. Far more than the trampoline is copied, since
   ;; this routine has an important side-effect: it provides a delay > 200ms
@@ -81,11 +89,12 @@
   ;; -------------------------------------------------------------------------- 
 
 ram_trampoline::
-  ld    a, #0x20    ;; page out SpeccyBoot, keep ETH in reset
-  out   (SPI_PORT), a
+  ld    a, #PAGE_OUT ;; page out SpeccyBoot, keep ETH in reset
+  out   (SPI_OUT), a
 
   jp    nc, 0       ;; if Caps Shift was pressed, go to BASIC
 
+#ifndef HWTARGET_DGBOOT
   ;; before the 128k memory configuration is set (0x7ffd), set the
   ;; +2A/+3 memory configuration (0x1ffd). On a plain 128k machine,
   ;; the access to 0x1ffd would be mapped to 0x7ffd, overwriting the
@@ -94,20 +103,24 @@ ram_trampoline::
   ;; Set the ROM selection bit in both registers to page in the 48k
   ;; BASIC ROM (ROM1 on the 128k, ROM3 on +2A/+3).
 
+  ;; The Didaktik doesn't use '128-style banking, so we save a few bytes
+  ;; here. They are needed to keep the interrupt handler below in place.
+
   ld    de, #0x0410
   ld    bc, #0x1ffd ;; MEMCFG_PLUS_ADDR
   out   (c), d      ;; page in ROM1 (48k BASIC)
 
   ld    b, #0x7f    ;; 0x7ffd = MEMCFG_ADDR
   out   (c), e      ;; page in ROM1 (48k BASIC)
-  
+#endif
+
   ld    hl, #0x3d00 ;; address of font data in ROM1
   ld    de, #_font_data
   ld    b, d        ;; BC is now 0x4fd (overkill, but fine)
   ldir        
 
   xor   a           ;; page in SpeccyBoot, keep ETH in reset
-  out   (SPI_PORT), a
+  out   (SPI_OUT), a
 
   jp    gsinit
 	
