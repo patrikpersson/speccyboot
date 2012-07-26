@@ -8,7 +8,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2012, Patrik Persson
+ * Copyright (c) 2012, Patrik Persson & Imrich Kolkol
  * 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -38,6 +38,17 @@
 /* ------------------------------------------------------------------------- */
 
 /*
+ * Check that at least one valid HWTARGET_XXX flag is set
+ */
+#ifndef HWTARGET_SPECCYBOOT
+#ifndef HWTARGET_DGBOOT
+#error Invalid HWTARGET!
+#endif
+#endif
+
+/* ------------------------------------------------------------------------- */
+
+/*
  * Port for SPI communication
  */
 
@@ -45,13 +56,14 @@
 
 /* Default SpeccyBoot configuration */
 
-#define SPI_OUT                         0x9f
-#define SPI_IN                          SPI_OUT
+#  define SPI_OUT                         0x9f
+#  define SPI_IN                          SPI_OUT
 
-#define SPI_CS                          0x08
+#  define SPI_CS                          0x08
 
-#else
-#  ifdef HWTARGET_DGBOOT
+#endif
+
+#ifdef HWTARGET_DGBOOT
 
 /* Imrich Kolkol's DGBoot maps SPI IN and OUT to different registers */
 
@@ -60,9 +72,6 @@
 
 #  define SPI_CS                          0x02
 
-#  else
-#  error Invalid HWTARGET_XXX
-#  endif
 #endif
 
 /* ------------------------------------------------------------------------- */

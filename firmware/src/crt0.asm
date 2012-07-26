@@ -3,8 +3,8 @@
   ;; Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
   ;; --------------------------------------------------------------------------
   ;;
-  ;; Copyright (c) 2009, Patrik Persson
-  ;; 
+  ;; Copyright (c) 2009-2012, Patrik Persson & Imrich Kolkol
+  ;;
   ;; Permission is hereby granted, free of charge, to any person
   ;; obtaining a copy of this software and associated documentation
   ;; files (the "Software"), to deal in the Software without

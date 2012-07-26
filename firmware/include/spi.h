@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-2012, Patrik Persson & Imrich Kolkol
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -111,9 +111,12 @@ spi_reset_loop:                           \
  * Read one bit to accumulator, requires C=0x9f (on SpeccyBoot), H=0x40.
  * Destroys F, L.
  */
-#ifdef HWTARGET_SPECCYBOOT
 
-/* Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states */
+#ifdef HWTARGET_SPECCYBOOT
+/* 
+ * Optimized version for SpeccyBoot; assumes C=0x9f.
+ * Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states
+ */
 #define SPI_READ_BIT_TO_ACC               \
   out   (c), h                            \
   inc   h                                 \
@@ -122,10 +125,9 @@ spi_reset_loop:                           \
   in    l, (c)                            \
   rr    a, l                              \
   rla
+#endif
 
-#else
 #ifdef HWTARGET_DGBOOT
-
 /*
  * Imrich Kolkol's DGBoot maps SPI IN and OUT to different registers;
  * for this reason, C is loaded explicitly each time, resulting in
@@ -141,10 +143,6 @@ spi_reset_loop:                           \
   in    l, (c)                            \
   rr    a, l                              \
   rla
-
-#else
-#error Invalid HWTARGET_XXX
-#endif
 #endif
 
 /*
