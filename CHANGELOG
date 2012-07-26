@@ -1,3 +1,9 @@
+v1.5 (July ??, 2012):
+
+* Support for Imrich Konkol's alternate DGBoot hardware design.
+
+-------------------------------------------------------------------------------
+
 v1.4 (January 16, 2010):
 
 * Major refactoring to squeeze SpeccyBoot into an 8K (E(E)P)ROM/FRAM.
@@ -5,15 +11,15 @@ v1.4 (January 16, 2010):
 * Simplified menu screen.
 
 * Improved software support for 16K/+2A/+3 machines. (Only tested in
-  Fuse.)
+Fuse.)
 
 * Syslog output slightly enhanced (PRI and TAG fields).
 
 * A TFTP RRQ message is now always broadcast, but the subsequent ACKs
-  are unicast (reverted to version 1.0 behaviour to save some space).
+are unicast (reverted to version 1.0 behaviour to save some space).
 
 * Revised WAV loader application to support EEPROMs with and without
-  software-controlled write protection.
+software-controlled write protection.
 
 -------------------------------------------------------------------------------
 
