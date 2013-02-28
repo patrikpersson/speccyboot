@@ -1,3 +1,11 @@
+.imagelink {
+-webkit-transition: all 0.5s ease;
+     -moz-transition: all 0.5s ease;
+       -o-transition: all 0.5s ease;
+      -ms-transition: all 0.5s ease;
+          transition: all 0.5s ease;
+}
+
 body, html {
   font-family: Verdana, sans-serif;
   margin: 1%;
@@ -8,48 +16,66 @@ body, html {
 .row, .rowheading, .rowimage_element, .rowimage {
   border-style: none;
   border-width: 0px;
-  padding: 1px;
-}
-
-.row {
-  width: 100%;
-  clear: both;
-  height: 400px;
-}
-
-.rowheading {
-  font-size: 12pt;
-  text-align: center;
-  font-weight: bold;
 }
 
 .rowimage_element {
-  width: 33%;
+  width: 50%;
+  padding: 20px 10px;
 }
 
 .rowimage {
   width: 100%;
+  z-index: 1;
 }
 
-.rowtext {
-  float: left;
-  width: 68%;
-  height: 100%;
-  margin-left: 1%;
-  color: #000000;
+.rowheading {
+  font-weight: bolder;
+  width: 100%;
+  top: 8pt;
 }
 
 .biglink {
-  font-size: 12pt;
+  font-size: 18pt;
   text-align: center;
-  padding: 5%;
+  padding: 4pt;
+  z-index: 2;
+  background-color: #400;
+}
+
+a:link, a:visited {
+  color: #008;
+}
+
+a:hover, a:active {
+  color: #33f;
+}
+
+.imagelink:link, .imagelink:visited { 
+  text-decoration: none;
+  color: #fff;
+  -webkit-filter: sepia(0.6) saturate(0.7) contrast(0.9);
+  -moz-filter: sepia(0.6) saturate(0.7) contrast(0.9);
+  -o-filter: sepia(0.6) saturate(0.7) contrast(0.9);
+  -ms-filter: sepia(0.6) saturate(0.7) contrast(0.9);
+  filter: sepia(0.6) saturate(0.7) contrast(0.9);
+}
+
+.imagelink:hover, .imagelink:active {
+  text-decoration: none;
+  color: #fff;
+  font-weight: bolder;
+  -webkit-filter: sepia(0) saturate(1.1) contrast(1.1);
+  -moz-filter: sepia(0) saturate(1.1) contrast(1.1);
+  -o-filter: sepia(0) saturate(1.1) contrast(1.1);
+  -ms-filter: sepia(0) saturate(1.1) contrast(1.1);
+  filter: sepia(0) saturate(1.1) contrast(1.1);
 }
 
 #leftheading {
   text-align: left;
   float: left;
   font-size: 28px;
-  font-weight: bold;
+  font-weight: bolder;
 }
 
 #rightheading {
@@ -65,21 +91,16 @@ body, html {
   margin-bottom: 12px;
 }
 
-a:link, a:visited, a:active {
-  color: #000080;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
-  
 }
 
 td, th {
   border-style: solid;
   border-color: #a0a0a0;
   border-width: 1px;
-  padding: 3px;
+  padding: 5px;
   vertical-align: text-top;
   text-align: left;
 }

@@ -67,20 +67,20 @@
 
       <table>
       <tr><th>Component</th><th>Cost (EUR)</th></tr>
-      <tr><td>ENC28J60-H development board</td><td>25</td></tr>
+      <tr><td>ENC28J60-H development board</td><td>15</td></tr>
       <tr><td>28C64 EEPROM</td><td>2</td></tr>
       <tr><td>Other (74HCT32N decoder, 74HCT139N decoder, 74HCT244N buffer, 74HCT273N
         flip-flop, 5V + 3.3V regulators)</td><td>2</td></tr>
-      <tr><td><b>Total</b></td><td><b>&asymp; 30</b></td></tr>
+      <tr><td><b>Total</b></td><td><b>&asymp; 20</b></td></tr>
       </table>
 
       <p>If you want to use the ENC28J60 chip as-is (rather than the Olimex
       board), you will have to add a few more external components (such as an
       Ethernet connector, obviously). This will also reduce the total component
-      cost to about <b>EUR 15</b>. Refer to the ENC28J60 data sheet for
+      cost to about <b>EUR 10</b>. Refer to the ENC28J60 data sheet for
       details.</p>
       
-      <h3>DGBoot: an alternate design for the Didaktik Gamma</h3>
+      <h3>DGBoot: an alternate design for the Didaktik Gama</h3>
     
       <p>If you have a <a href="http://en.wikipedia.org/wiki/Didaktik#Didaktik_Gama">Didaktik Gama</a>, there is an even easier way
       to connect the ENC28J60 board. This Czechoslovakian ZX Spectrum clone has
@@ -89,10 +89,10 @@
       components (except the 3.3V supply). The bus expansion port remains free
       for other peripherals.</p>
     
-      <p>The modified SpeccyBoot software (see below for software build
-      instructions) is combined with the original Didaktik Gama BASIC in a
-      double-capacity EPROM (27C256, 32768x8), which replaces the original chip in
-      the internal socket.</p>
+      <p>The modified SpeccyBoot software (see below for software
+      build instructions) is combined with the original Didaktik Gama
+      BASIC in a double-capacity EPROM (27C256, 32Kx8), which replaces
+      the original chip in the internal socket.</p>
         
       <p>The DGBoot design was kindly contributed by Imrich Konkol. More
       information, including schematics, is available in <a
@@ -120,7 +120,7 @@
       and SDCC (I used version 2.9.0). I had to compile objcopy
       (from binutils 2.19) separately though.</p>
       
-      <p>In <b>Ubuntu 9.10</b>, just do this:</p>
+      <p>In <b>Ubuntu 12.04</b>, just do this:</p>
       
       <p class="code">
         <code>sudo apt-get install binutils gcc make sdcc subversion</code>
