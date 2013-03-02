@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
-    <title>SpeccyBoot: How to run it in Fuse</title>
+    <title>SpeccyBoot: How to emulate it in Fuse</title>
     </head>
   
   <link rel="stylesheet" type="text/css" href="speccyboot.css">
@@ -45,12 +45,10 @@
 
           <p>First, you need to create a TAP interface and configure
           your network so this TAP interface can connect to your DHCP
-          and TFTP servers. First, ensure you have the <tt>tapctl</tt>
+          and TFTP servers. First, ensure you have the <code>tapctl</code>
           utility installed:</p>
           
-          <p class="code">
-          <code>sudo apt-get install uml-utilities</code>
-          </p>
+          <pre class="code">sudo apt-get install uml-utilities</pre>
 
 	  <p>Then, set up a new (TAP) network interface by adding the
 	  following section to the
@@ -63,8 +61,8 @@ iface fuse_tap inet static
   pre-up tunctl -g adm -t fuse_tap
   post-down tunctl -d fuse_tap</pre>
 
-	  <p>Note that this configuraton assumes your new
-	  <tt>fuse_tap</tt> interface to use the 192.168.100.*
+	  <p>Note that this configuration assumes your new
+	  <code>fuse_tap</code> interface to use the 192.168.100.*
 	  subnet. If this is not possible for you (e.g., if you are
 	  already using this subnet for other purposes), you will need
 	  to modify both this configuration and the DHCP configuration
@@ -83,10 +81,10 @@ iface fuse_tap inet static
 
 	  <p>Modify the DHCP server configuration to serve DHCP to
 	  your TAP interface only (unless you want to serve DHCP
-	  addresses to other machines on your local network -- which
-	  you likely <b>don't</b> want to). Do this by modifying the
-	  INTERFACES setting in <tt>/etc/default/isc-dhcp-server</tt>
-	  to say</p>
+	  addresses to other machines on your local network &mdash;
+	  which you likely <b>don't</b> want to). Do this by modifying
+	  the INTERFACES setting
+	  in <tt>/etc/default/isc-dhcp-server</tt> to say</p>
           
           <pre class="code">INTERFACES="fuse_tap"</pre>
 
@@ -139,9 +137,7 @@ subnet 192.168.100.0 netmask 255.255.255.0 {
           Fuse, using the Ethernet TAP interface <tt>fuse_tap</tt> for
           networking:</p>
           
-          <p class="code">
-          <code>fuse --speccyboot --speccyboot-tap=fuse_tap</code>
-          </p>
+          <pre class="code">fuse --speccyboot --speccyboot-tap=fuse_tap</pre>
           
           <p>Here's what it looks like:</p>
           

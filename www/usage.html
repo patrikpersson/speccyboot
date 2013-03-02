@@ -49,9 +49,7 @@
 
           <p>For Ubuntu 12.04, I recommend running NetKit tftpd:</p>
           
-          <p class="code">
-          <code>sudo apt-get install xinetd tftpd</code>
-          </p>
+          <pre class="code">sudo apt-get install xinetd tftpd</pre>
 
 	  <p>Then, to automatically launch tftpd from xinetd, create
 	  the file <tt>/etc/xinetd.d/tftp</tt> with the following
@@ -81,9 +79,7 @@
           <p>In Mac OS X, the built-in TFTP server can be
           enabled as follows:</p>
           
-          <p class="code">
-          <code>sudo launchctl load -w /System/Library/LaunchDaemons/tftp.plist</code>
-          </p>
+          <pre class="code">sudo launchctl load -w /System/Library/LaunchDaemons/tftp.plist</pre>
           
           <h3>Preparing a directory of snapshots</h3>
           
@@ -97,13 +93,10 @@
           <tt>/tftpboot</tt>). Copy your Z80 snapshots to
           this <tt>speccyboot</tt> directory:</p>
           
-          <p class="code">
-          <code>SNAPDIR=/var/lib/tftpboot/speccyboot
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt this path to match your distribution<br>
-          sudo mkdir -p $SNAPDIR<br>
-          sudo chown <em>&lt;your-username&gt;</em> $SNAPDIR<br>
-          cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 $SNAPDIR</code>
-          </p>
+          <pre class="code">SNAPDIR=/var/lib/tftpboot/speccyboot&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt this path to match your distribution
+sudo mkdir -p $SNAPDIR
+sudo chown <em>&lt;your-username&gt;</em> $SNAPDIR<
+cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 $SNAPDIR</pre>
           
           <h3>Updating the snapshot index</h3>
           
@@ -125,9 +118,7 @@
           update the snapshot index at any time (i.e., when you have
           added a new snapshot) by typing</p>
           
-          <p class="code">
-          <code>speccyboot-update</code>
-          </p>
+          <pre class="code">speccyboot-update</pre>
           
           <hr>
                     
@@ -183,13 +174,11 @@
           default, so you will likely have to explicitly enable it to see
           SpeccyBoot's messages.</p>
 
-          <p>In <b>Ubuntu 12.10</b>, edit <tt>/etc/rsyslog.conf</tt> and make
+          <p>In <b>Ubuntu 12.04</b>, edit <tt>/etc/rsyslog.conf</tt> and make
           sure the following two lines are uncommented:</p>
 
-          <p class="code">
-          <code>$ModLoad imtcp<br>
-          $InputTCPServerRun 514</code>
-          </p>
+          <pre class="code">$ModLoad imtcp
+$InputTCPServerRun 514</pre>
           
           <p>In <b>Mac OS X</b>, edit 
           <code>/System/Library/LaunchDaemons/com.apple.syslogd.plist</code>.
