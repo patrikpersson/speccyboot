@@ -18,14 +18,17 @@ h1, h2, h3, #leftheading {
 }
 
 table {
-  width: 100%;
+  margin-left:auto; 
+  margin-right:auto;
   border-collapse: collapse;
 }
 
 .imagetable {
   max-width: 1000px;
-  margin-left:auto; 
-  margin-right:auto;
+}
+
+table:not(.imagetable) {
+  width: 94%;
 }
 
 td, th {
