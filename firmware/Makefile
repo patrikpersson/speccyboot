@@ -1,11 +1,11 @@
 # =============================================================================
 # Makefile for SpeccyBoot
-# Patrik Persson, 2009-2012
+# Patrik Persson, 2009-2013
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION      = 1.5
+VERSION      = 1.6
 
 OBJCOPY      = objcopy
 CC           = sdcc
@@ -61,6 +61,9 @@ ROM          = speccyboot.rom
 # DIRECTORIES
 # =============================================================================
 
+PREFIX      ?= /usr/local
+FUSEROMDIR   = $(PREFIX)/share/fuse
+
 SRCDIR       = src
 INCLUDEDIR   = include
 TOOLSDIR     = ../utils
@@ -83,6 +86,9 @@ bin: $(ROM)
 
 clean:
 	rm -rf $(OBJDIR) $(ROM)
+
+install: $(ROM)
+	install --mode=a+r $(ROM) $(FUSEROMDIR)
 
 .SUFFIXES:
 

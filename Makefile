@@ -1,6 +1,6 @@
 # =============================================================================
 # Top-level Makefile for SpeccyBoot
-# Patrik Persson, 2009
+# Patrik Persson, 2009-2013
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # -----------------------------------------------------------------------------
@@ -24,6 +24,7 @@ all: $(WAV) tests_all
 
 install:
 	$(MAKE) -C utils install
+	$(MAKE) -C firmware install
 
 $(WAV): $(FIRMWARE) $(BIN2WAV) $(LOADER)
 
