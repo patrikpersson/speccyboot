@@ -34,7 +34,7 @@ table:not(.imagetable) {
 
 td, th {
   border-style: solid;
-  border-color: #a0a0a0;
+  border-color: #bbb;
   border-width: 1px;
   padding: 5px;
   vertical-align: text-top;
@@ -42,7 +42,7 @@ td, th {
 }
 
 th {
-  background-color: #a0a0a0;
+  background-color: #bbb;
 }
 
 .imagelink {
@@ -96,11 +96,11 @@ a:hover img {
 }
 
 a:hover .biglink {
-  -webkit-transform: scale(1.25, 1.35);
-  -moz-transform: scale(1.25, 1.35);
-  -o-transform: scale(1.25, 1.35);
-  -ms-transform: scale(1.25, 1.35);
-  transform: scale(1.25, 1.35);
+  -webkit-transform: scale(1.25, 1.25);
+  -moz-transform: scale(1.25, 1.25);
+  -o-transform: scale(1.25, 1.25);
+  -ms-transform: scale(1.25, 1.25);
+  transform: scale(1.25, 1.25);
   background-color: #000;
   box-shadow: 10px 10px 5px rgba(0,0,0, 0.5);
 }
@@ -157,9 +157,10 @@ a:hover h1, a:hover h2, a:hover h3, a:hover h4 {
 }
 
 hr {
-  color: #000000;
-  background-color: #000000;
+  color: #aaa;
+  background-color: #aaa;
   height: 3px;
+  border: none;
 }
 
 .code {
