@@ -1,11 +1,11 @@
 # =============================================================================
 # Makefile for SpeccyBoot
-# Patrik Persson, 2009-2013
+# Patrik Persson, 2009-
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION      = 1.6
+VERSION      = 1.7
 
 OBJCOPY      = objcopy
 CC           = sdcc
