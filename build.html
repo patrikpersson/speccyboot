@@ -122,12 +122,12 @@
       
       <p>In <b>Ubuntu 12.04</b>, just do this:</p>
       
-      <pre class="code">sudo apt-get install binutils gcc make sdcc subversion</pre>
+      <pre class="code">sudo apt-get install binutils gcc make sdcc git</pre>
 
-      <p>Then check out the release you want (for example, 1.5) and build it:</p>
-      
-      <pre class="code">svn co https://speccyboot.svn.sourceforge.net/svnroot/speccyboot/tags/speccyboot-1.5
-cd speccyboot-1.5
+      <p>Then clone the repository and (possibly) select a release, such as v1.6:</p>
+
+      <pre class="code">git clone https://github.com/patrikpersson/speccyboot.git
+git checkout tags/v1.6
 make</pre>
         
       <p>Later releases of SDCC have problems compiling some of the macros
