@@ -37,6 +37,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "util.h"
 #include "spi.h"
 
 /* -------------------------------------------------------------------------
@@ -217,7 +218,12 @@ typedef uint16_t enc28j60_addr_t;
 /*
  * Pull controller into reset, and keep it there
  */
-#define enc28j60_disable()  __asm     xor a, a  out (SPI_OUT), a    __endasm
+static inline enc28j60_disable() __naked {
+  __asm
+    xor a, a
+    out (SPI_OUT), a
+  __endasm;
+}
 
 /* ------------------------------------------------------------------------- */
 

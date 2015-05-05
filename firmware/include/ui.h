@@ -184,7 +184,7 @@ display_progress(uint8_t kilobytes_loaded,
  * Display a digit (for progress display)
  * ------------------------------------------------------------------------- */
 #define display_digit_at(_digit, _row, _col)                                  \
-  display_digit_impl(_digit, ATTR_ADDRESS(_row, _col))
+  display_digit_impl(_digit, (uint8_t *) ATTR_ADDRESS(_row, _col))
 
 void
 display_digit_impl(uint8_t digit, uint8_t *start_address)
@@ -200,7 +200,7 @@ cls(void)
 /* ------------------------------------------------------------------------- *
  * Set border attributes
  * ------------------------------------------------------------------------- */
-sfr at(0xfe) _ula_port;
+__sfr __at(0xfe) _ula_port;
 
 #define set_border(_clr)      _ula_port = (_clr) & 0x07
 

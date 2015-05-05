@@ -35,6 +35,10 @@
   .globl	_main
   .globl	_stack_top
   .globl	_timer_tick_count
+
+  .globl	l__INITIALIZER
+  .globl	s__INITIALIZED
+  .globl	s__INITIALIZER
 	
   ;; --------------------------------------------------------------------------
 
@@ -145,10 +149,12 @@ ram_trampoline::
 
   .area	_HOME
   .area	_CODE
+  .area _INITIALIZER
   .area _GSINIT
   .area _GSFINAL
 
   .area	_DATA
+  .area _INITIALIZED
   .area _BSS
 
 end_of_data::
@@ -159,7 +165,12 @@ end_of_data::
   .area _GSINIT
   
 gsinit::
-  .area   _GSFINAL
+  ld bc, #l__INITIALIZER
+  ld de, #s__INITIALIZED
+  ld hl, #s__INITIALIZER
+  ldir
+
+  .area _GSFINAL
   ei
   jp _main
   

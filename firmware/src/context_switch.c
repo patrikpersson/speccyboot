@@ -290,8 +290,8 @@ context_switch(void)
   if (IS_EXTENDED_SNAPSHOT_HEADER(&snapshot_header)
       && IS_128K_MACHINE(snapshot_header.hw_type))
   {
-    static sfr banked at(0xfffd) register_select;
-    static sfr banked at(0xbffd) register_value;
+    static __sfr __banked __at(0xfffd) register_select;
+    static __sfr __banked __at(0xbffd) register_value;
     
     uint8_t reg;
 

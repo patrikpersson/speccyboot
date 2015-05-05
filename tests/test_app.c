@@ -119,7 +119,7 @@ void main(void)
 {
   uint8_t  checksum = 0;    
   uint16_t addr;
-  static sfr at 0xFE border;     /* I/O address of ULA */
+  static __sfr __at(0xFE) border;     /* I/O address of ULA */
   
   uint8_t *attr_ptr = (uint8_t *) 0x5840;   /* third line */
   

@@ -7,9 +7,9 @@
 
 VERSION      = 1.7
 
-OBJCOPY      = objcopy
 CC           = sdcc
-AS           = as-z80
+AS           = sdasz80
+MAKEBIN      = makebin
 ECHO         = @/bin/echo
 
 CFLAGS       = -mz80 --std-sdcc99 --Werror
@@ -18,8 +18,8 @@ CFLAGS      += -I$(INCLUDEDIR) --opt-code-size
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS     += --code-loc 0x0043 --data-loc 0x5C00
 
-# SDCC/Z80 doesn't define bool due to incomplete support. Works for me, though.
-CFLAGS      += -Dbool=BOOL -DVERSION='\"$(VERSION)\"'
+# disable warnings about z80instructionSize(), don't matter
+CFLAGS      += -DVERSION='$(VERSION)' --disable-warning 218
 
 # =============================================================================
 # CONFIGURATION
@@ -48,7 +48,7 @@ MODULES     += eth arp udp_ip dhcp tftp syslog
 
 CFILES       = $(MODULES:%=%.c)
 HFILES       = $(MODULES:%=%.h)
-OFILES       = crt0.o $(CFILES:.c=.o)
+OFILES       = crt0.rel $(CFILES:.c=.rel)
 
 # -----------------------------------------------------------------------------
 
@@ -108,11 +108,11 @@ check_sizes: bin
 # CROSS-COMPILATION TARGETS
 # =============================================================================
 
-%.o: %.c $(OBJDIR) $(HFILES)
+%.rel: %.c $(OBJDIR) $(HFILES)
 	$(CC) $(CFLAGS) -c -o $(OBJDIR)/$@ $<
 
 # run GCC preprocessor on crt0, exclude all hashed lines
-crt0.o: crt0.asm $(OBJDIR)
+crt0.rel: crt0.asm $(OBJDIR)
 	gcc -E -xc-header -I$(INCLUDEDIR) $(TARGETFLAGS) $< | grep -v '^#'  > $(OBJDIR)/crt0_preprocessed.asm
 	$(AS) -o $(OBJDIR)/$@ $(OBJDIR)/crt0_preprocessed.asm
 
@@ -121,4 +121,4 @@ $(OBJDIR):
 
 $(ROM): $(OFILES)
 	$(CC) $(LDFLAGS) -o $(OBJDIR)/$(ROM) $(OFILES:%=$(OBJDIR)/%)
-	$(OBJCOPY) --pad-to 8192 -I ihex -O binary $(OBJDIR)/$(ROM:.rom=.ihx) $@
+	$(MAKEBIN) -s 8192 $(OBJDIR)/$(ROM) $@

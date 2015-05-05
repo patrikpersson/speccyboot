@@ -89,6 +89,12 @@
 
 /* ------------------------------------------------------------------------- */
 
+/* Stringification */
+
+#define str(s) #s
+
+/* ------------------------------------------------------------------------- */
+
 /* Packed structs */
 
 #ifdef SDCC
@@ -111,8 +117,8 @@
  * Interrupt control
  * ------------------------------------------------------------------------- */
 
-#define DISABLE_INTERRUPTS      __asm  di  _endasm
-#define ENABLE_INTERRUPTS       __asm  ei  _endasm
+#define DISABLE_INTERRUPTS      __asm  di  __endasm
+#define ENABLE_INTERRUPTS       __asm  ei  __endasm
 
 /* ------------------------------------------------------------------------- */
 
@@ -146,8 +152,8 @@ typedef uint16_t timer_t;
 #define MEMCFG_PLUS_ADDR        0x1ffd
 #define MEMCFG_PLUS_ROM_HI      0x04
 
-sfr banked at(MEMCFG_ADDR)      _memcfg_reg;
-sfr banked at(MEMCFG_PLUS_ADDR) _memcfg_plus_reg;
+__sfr __banked __at(MEMCFG_ADDR)      _memcfg_reg;
+__sfr __banked __at(MEMCFG_PLUS_ADDR) _memcfg_plus_reg;
 
 /* -------------------------------------------------------------------------
  * Reset/initialize a timer (set it to zero)

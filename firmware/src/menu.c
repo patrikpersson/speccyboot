@@ -91,7 +91,7 @@ run_menu(void)
    * Display menu
    * ----------------------------------------------------------------------- */
 
-  print_at(0, 0, 20, 0, "SpeccyBoot " VERSION);
+  print_at(0, 0, 20, 0, "SpeccyBoot " str(VERSION));
 
   set_attrs_const(INK(WHITE)  | PAPER(BLACK) | BRIGHT, 0, 0, 32);
   set_attrs_const(INK(BLUE)  | PAPER(WHITE), 2, 0, 32 * DISPLAY_LINES);
