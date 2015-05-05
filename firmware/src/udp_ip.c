@@ -4,7 +4,7 @@
  * User Datagram Protocol (UDP, RFC 768)
  * Internet Protocol (IP, RFC 791)
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

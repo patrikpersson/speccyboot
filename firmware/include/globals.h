@@ -3,7 +3,7 @@
  *
  * Shared state (buffer for received frame, system mode)
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

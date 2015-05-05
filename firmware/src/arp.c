@@ -3,7 +3,7 @@
  *
  * Address Resolution Protocol (ARP, RFC 826)
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

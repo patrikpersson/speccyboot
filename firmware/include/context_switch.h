@@ -4,7 +4,7 @@
  * Protecting SpeccyBoot runtime data during snapshot loading, and switching to
  * the final Spectrum system state from header data.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

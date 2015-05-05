@@ -3,7 +3,7 @@
  *
  * Trivial File Transfer Protocol (TFTP, RFC 1350)
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

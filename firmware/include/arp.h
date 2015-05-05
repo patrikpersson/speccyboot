@@ -3,7 +3,7 @@
  *
  * Address Resolution Protocol
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  * Copyright (c) 2009, Patrik Persson

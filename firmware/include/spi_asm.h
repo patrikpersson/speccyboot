@@ -4,7 +4,7 @@
  * Definitions for bit-banged SPI access, common to C and assembly files.
  * Must only contain basic preprocessor instructions, no C declarations.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

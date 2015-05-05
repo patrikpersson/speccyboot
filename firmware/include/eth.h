@@ -3,7 +3,7 @@
  *
  * Ethernet implementation using the Microchip ENC28J60 Ethernet host.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *
@@ -121,7 +121,6 @@ PACKED_STRUCT(eth_adm_t) {
   
   /*
    * Ethernet header
-   * http://en.wikipedia.org/wiki/Ethernet
    */
   PACKED_STRUCT(eth_header_t) {
     struct mac_address_t  dst_addr;

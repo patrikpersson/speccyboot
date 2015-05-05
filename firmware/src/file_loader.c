@@ -6,7 +6,7 @@
  * - unpacks it as a .z80 snapshot, loads it into RAM, and executes it.
  * - loads it as a raw file into a specified location.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

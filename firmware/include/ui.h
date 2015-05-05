@@ -3,7 +3,7 @@
  *
  * Access to ZX Spectrum display, keyboard, and sound.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

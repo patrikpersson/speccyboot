@@ -6,7 +6,7 @@
  * The resulting file is suitable for loading into a Sinclair ZX Spectrum
  * using a music player (e.g., iPod) connected to the EAR socket.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *

@@ -3,7 +3,7 @@
  *
  * Display a menu from the loaded snapshot file, and load selected snapshot.
  *
- * Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+ * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *
