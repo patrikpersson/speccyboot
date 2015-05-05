@@ -171,3 +171,18 @@ hr {
   background-color: #e8e8e8;
   border-style: none;
 }
+
+#warning {
+  position: relative;
+  left: 3%;
+  width: 94%;
+  background-color: #ffffff;
+  padding: 8px 5px;
+  border-style: dashed;
+  border-color: #e00;
+  border-width: 5px;
+  font-size: larger;
+  box-shadow: 10px 10px 5px rgba(0,0,0, 0.5);
+  margin-top: 30px;
+  margin-bottom: 50px;
+}

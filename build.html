@@ -17,7 +17,12 @@
       
       <hr>
       
-      <p>There are three parts of building a SpeccyBoot: building the
+      <p id="warning"><b>NOTE:</b> I assume no responsibility for what happens if you
+      connect this to your Spectrum. This design works well for me, but
+      be aware that a mistake (yours or mine) may destroy your
+      dear Spectrum. <b>You have been warned!</b></p>
+      
+      <p>There are three steps to building a SpeccyBoot: building the
       hardware, building the software stack, and getting the software onto
       the hardware.</p>
       
@@ -26,11 +31,6 @@
         <li><a href="#software">Building the software</a></li>
         <li><a href="#install">Installing the software on the device</a></li>
       </ul>
-      
-      <p><b>NOTE:</b> I assume no responsibility for what happens if you
-      connect this to your Spectrum. This design works well for me, but
-      please be aware that a mistake (yours or mine) may destroy your
-      dear Spectrum. You have been warned!</p>
       
       <hr>
       
@@ -105,34 +105,13 @@
         <h2>Building the software</h2>
         </a>
       
-      <p>To obtain and build the software, you will need the following
-        tools:</p>
-      <ul>
-        <li>GCC</li>
-        <li>GNU Make</li>
-        <li>Git</li>
-        <li><a href="http://sdcc.sourceforge.net/">SDCC (Small Device C Compiler)</a> 2.9.0</li>
-        <li>GNU binutils
-          (actually, you just need objcopy to convert Intel hex files to binary)</li>
-        </ul>
-
-      <p>In <b>Mac OS X</b>, install the developer tools (from the OS X DVD)
-      and SDCC (I used version 2.9.0). I had to compile objcopy
-      (from binutils 2.19) separately though.</p>
-      
-      <p>In <b>Ubuntu 12.04</b>, just do this:</p>
-      
-      <pre class="code">sudo apt-get install binutils gcc make sdcc git</pre>
-
-      <p>Then clone the repository and (possibly) select a release, such as v1.6:</p>
-
-      <pre class="code">git clone https://github.com/patrikpersson/speccyboot.git
-git checkout tags/v1.6
+      <pre class="code">sudo apt-get install git make gcc sdcc
+git clone https://github.com/patrikpersson/speccyboot.git
+cd speccyboot
 make</pre>
         
-      <p>Later releases of SDCC have problems compiling some of the macros
-      in the SpeccyBoot source code. To keep things simple, I suggest
-      sticking with SDCC 2.9.0.</p>
+      <p>This works in any recent Debian or Ubuntu Linux distribution. Some releases of sdcc have problems compiling some of the macros
+      in the SpeccyBoot source code. I use sdcc 3.4.0.</p>
         
       <p>When the build completes, you should have a file named
       <tt>speccyboot.wav</tt> in your working directory. This WAV file includes
@@ -189,6 +168,6 @@ make</pre>
       </ol>
       
       <hr>
-      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;2012
+      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
     </body>
     </html>
