@@ -3,20 +3,21 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inconsolata&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="speccyboot.css">
     <title>SpeccyBoot: How it works</title>
-    </head>
-  
-  <link rel="stylesheet" type="text/css" href="speccyboot.css">
-    
+  </head>
+
     <body>
-      
+
       <div id="heading">
           <div id="leftheading"><a href="index.html">SpeccyBoot</a></div>
           <div id="rightheading">How it works</div>
         </div>
-      
+
       <hr>
-      
+
       <p>SpeccyBoot is about booting a ZX Spectrum over an Ethernet
       network. Network booting was used for diskless workstation a few
       years back, but is still used for booting embedded development
@@ -24,31 +25,31 @@
       Spectrum.</p>
 
       <h3>Contents</h3>
-      
+
       <ul>
       <li><a href="#network_booting">How network booting works</a></li>
       <li><a href="#internals">SpeccyBoot internals</a></li>
       <li><a href="#compatibility">Compatibility</a></li>
       </ul>
-      
-      <hr>     
-      
+
+      <hr>
+
       <a name="network_booting"><h2>How network booting works</h2></a>
-      
+
       <p>In general, network booting works as follows:</p>
-      
+
       <ul>
         <li>The machine boots and uses DHCP or BOOTP to get an IP
           address.</li>
         <li>The machine then loads an executable file over TFTP from a
           server.</li>
         </ul>
-      
+
       <p>SpeccyBoot is a device to do this with a Spectrum. The device
       connects to the Spectrum's expansion port, and to your local network
       using standard Ethernet. SpeccyBoot uses standard IP-based protocols,
       so it works with standard software.</p>
-      
+
       <p>This allows us to load virtually any program onto the Spectrum in
       a matter of seconds, instead of the tedious and error-prone cassette
       loading. Programs are packaged as .z80 snapshots, which can be
@@ -57,22 +58,22 @@
       archives.</p>
 
       <h3>Network booting with SpeccyBoot</h3>
-          
+
           <p>When you switch on a SpeccyBoot-equipped Spectrum, it will do the
           following:</p>
-          
+
           <ol>
             <li>If Caps Shift is being pressed during start, the machine will
             boot into BASIC, and not continue with the steps below.</li>
             <li>An IP address is obtained using DHCP.</li>
-            <li>Tthe file <code>snapshots.lst</code> is loaded using TFTP.</li>
+            <li>The file <code>snapshots.lst</code> is loaded using TFTP.</li>
             <li>The contents of <code>snapshots.lst</code> are displayed as a
             menu. When a snapshot is selected, it is loaded using TFTP, and then
             executed.</li>
           </ol>
-          
+
           <p>Configuration is neither necessary nor supported:</p>
-          
+
           <ul>
             <li>Manual (static) assignment of IP address is not supported
             &mdash; only dynamic (DHCP).</li>
@@ -81,12 +82,12 @@
             your network.</li>
             <li>More than one SpeccyBoot on the same local network is not
             supported &mdash; the MAC address is fixed.</li>
-          </ul>            
-          
-      <hr>     
+          </ul>
+
+      <hr>
 
       <a name="internals"><h2>SpeccyBoot internals</h2></a>
-      
+
       <p>The picture below gives a logical view of SpeccyBoot's internals.
       The device connects to the Spectrum's expansion bus connector, and
       uses the
@@ -97,18 +98,18 @@
       protocol using a very simple SPI host. Finally, the device also
       contains an 8kB EEPROM with a dedicated stack for the protocols
       involved.</p>
-      
+
       <p align=center>
         <img src="concept-hw.png" />
       </p>
-      
+
       <h3>Hardware/software interface</h3>
 
       <p>The SpeccyBoot hardware is controlled by writing to and reading from a
       single 8-bit control register, located at address 0x9F in the Z80 I/O
       address space. Data from SpeccyBoot is read back from the same address.
       The individual bits have different have the following meaning:</p>
-      
+
       <table>
         <tr><th>Bit</th><th width="45%">Meaning when written</th><th width="45%">Meaning when read</th></tr>
         <tr><td>0</td><td><b>SPI SCK:</b> SPI clock signal (strobe).</td><td><b>SPI MISO:</b> SPI data from ENC28J60.</td></tr>
@@ -123,12 +124,12 @@
             (active low).</td></tr>
         <tr><td>7</td><td><b>SPI MOSI:</b> SPI data to ENC28J60.</td></tr>
       </table>
-      
+
       <h3>SpeccyBoot software stack</h3>
-      
+
       <p>The software stack implements (needed parts of) the following
       standard IETF network protocols:</p>
-      
+
       <table>
         <tr><td><a href="http://www.ietf.org/rfc/rfc0768.txt">RFC 768</a></td><td>UDP (User Datagram Protocol)</td><td>August 1980</td></tr>
         <tr><td><a href="http://www.ietf.org/rfc/rfc791.txt">RFC 791</a></td><td>IP (Internet Protocol)</td><td>September 1981</td></tr>
@@ -138,29 +139,29 @@
         <tr><td><a href="http://www.ietf.org/rfc/rfc2131.txt">RFC 2131</a></td><td>DHCP (Dynamic Host Configuration Protocol)</td><td>March 1997</td></tr>
         <tr><td><a href="http://www.ietf.org/rfc/rfc3164.txt">RFC 3164</a></td><td>BSD Syslog Protocol</td><td>August 2001</td></tr>
         </table>
-      
+
       <p>Although these protocols are as old as (in some cases, even older
       than) the Spectrum, these IP-family protocols are
       supported by all personal computers since the mid 1990s.</p>
-      
+
       <p>SpeccyBoot also includes a bit-banged
       <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
       stack (capable of a transfer bandwidth of about 45kbit/s), a menu
       selection facility, and support for loading and executing
       <a href="http://www.worldofspectrum.org/faq/reference/z80format.htm">Z80
         snapshots</a>.</p>
-      
+
       <p>The code is available at
-      <a href="http://sourceforge.net/projects/speccyboot/">SourceForge</a>.</p>
-                  
-      <hr>     
+      <a href="https://github.com/patrikpersson/speccyboot">GitHub</a>.</p>
+
+      <hr>
 
       <a name="compatibility"><h2>Compatibility</h2></a>
 
       <p>I'm using SpeccyBoot with a Spectrum 128. It should work equally well
       with a 48k machine, and probably with a 16k machine too. Tests with
       <a href="emulation.html">Fuse emulation</a> seem to confirm this.</p>
-      
+
       <p>The later Amstrad Spectrum machines (+2A/+2B/+3) have a different
       expansion connector, and will not work directly with the SpeccyBoot as
       described here. It's certainly possible to design a slightly modified

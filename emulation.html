@@ -3,11 +3,12 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inconsolata&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="speccyboot.css">
     <title>SpeccyBoot: How to emulate it in Fuse</title>
-    </head>
-  
-  <link rel="stylesheet" type="text/css" href="speccyboot.css">
-    
+  </head>
+
     <body>
 
         <div id="heading">
@@ -23,9 +24,6 @@
           SpeccyBoot.  This allows you to try the SpeccyBoot out in an
           emulated environment &mdash; without any Spectrum or
           SpeccyBoot hardware.</p>
-          
-	  <p>Currently, you may need to build Fuse from source to be
-	  sure SpeccyBoot emulation is included.</p>
 
           <p>The emulation is based on
           <a href="http://en.wikipedia.org/wiki/TUN/TAP">Ethernet TAP
@@ -33,7 +31,7 @@
           only works with Linux (I have verified this using Ubuntu
           12.04). Other UNIX variants should be possible to support in
           the future.</p>
-          
+
           <h2>Configuring your network for TAP</h2>
 
 	  <p>The following example involves creating a separate
@@ -47,13 +45,13 @@
           your network so this TAP interface can connect to your DHCP
           and TFTP servers. First, ensure you have the <code>tapctl</code>
           utility installed:</p>
-          
+
           <pre class="code">sudo apt-get install uml-utilities</pre>
 
 	  <p>Then, set up a new (TAP) network interface by adding the
 	  following section to the
 	  file <code>/etc/network/interfaces</code>:</p>
-          
+
           <pre class="code">auto fuse_tap
 iface fuse_tap inet static
   address 192.168.100.1
@@ -67,7 +65,7 @@ iface fuse_tap inet static
 	  already using this subnet for other purposes), you will need
 	  to modify both this configuration and the DHCP configuration
 	  below.</p>
-          
+
           <h2>Configuring DHCP and TFTPD for your local TAP network</h2>
 
 	  <p>Your Linux machine needs to provide DHCP and TFTP to the
@@ -76,7 +74,7 @@ iface fuse_tap inet static
 	  above, other choices may or may not work.</p>
 
 	  <p>First, install the necessary packages:</p>
-          
+
           <pre class="code">sudo apt-get install tftpd xinetd isc-dhcp-server</pre>
 
 	  <p>Modify the DHCP server configuration to serve DHCP to
@@ -84,12 +82,12 @@ iface fuse_tap inet static
 	  addresses to other machines on your local network &mdash;
 	  which you likely <b>don't</b> want to). Do this by modifying
 	  the INTERFACES setting
-	  in <tt>/etc/default/isc-dhcp-server</tt> to say</p>
-          
+	  in <code>/etc/default/isc-dhcp-server</code> to say</p>
+
           <pre class="code">INTERFACES="fuse_tap"</pre>
 
-	  <p>Also modify <tt>etc/dhcp/dhcpd.conf</tt> to serve IP
-	  addresses in the same subnet as <tt>fuse_tap</tt>:</p>
+	  <p>Also modify <code>etc/dhcp/dhcpd.conf</code> to serve IP
+	  addresses in the same subnet as <code>fuse_tap</code>:</p>
 
           <pre class="code">ddns-update-style none;
 default-lease-time 600;
@@ -103,8 +101,8 @@ subnet 192.168.100.0 netmask 255.255.255.0 {
   range 192.168.100.100 192.168.100.200;
 }</pre>
 
-	  <p>Next, add TFTP to the <tt>xinetd</tt> services by
-	  creating the file <tt>/etc/xinetd.d/tftp</tt> with the
+	  <p>Next, add TFTP to the <code>xinetd</code> services by
+	  creating the file <code>/etc/xinetd.d/tftp</code> with the
 	  following contents:</p>
 
           <pre class="code">service tftp
@@ -120,7 +118,7 @@ subnet 192.168.100.0 netmask 255.255.255.0 {
 }</pre>
 
 	  <p>Finally, you will need to prepare a directory of
-	  snapshots in <tt>/var/lib/tftpboot/speccyboot</tt> as
+	  snapshots in <code>/var/lib/tftpboot/speccyboot</code> as
 	  outlined under <a href="usage.html#tftpserver">TFTP server
 	  configuration</a>.</p>
 
@@ -129,22 +127,22 @@ subnet 192.168.100.0 netmask 255.255.255.0 {
 	  to <b>reboot your Linux machine</b> at this point.</p>
 
           <h2>Running FUSE with SpeccyBoot emulation</h2>
-         
+
           <p>Recent versions of Fuse have a few menu options and
           command-line parameters to enable the SpeccyBoot emulation
-          (briefly described in the Fuse <tt>man</tt> page).  In
+          (briefly described in the Fuse <code>man</code> page).  In
           short, the following command line launches SpeccyBoot in
-          Fuse, using the Ethernet TAP interface <tt>fuse_tap</tt> for
+          Fuse, using the Ethernet TAP interface <code>fuse_tap</code> for
           networking:</p>
-          
+
           <pre class="code">fuse --speccyboot --speccyboot-tap=fuse_tap</pre>
-          
+
           <p>Here's what it looks like:</p>
-          
+
           <img src="fuse.png" />
 
           <hr>
 
       </body>
-      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;2013
+      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
     </html>

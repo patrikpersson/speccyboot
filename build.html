@@ -3,37 +3,38 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inconsolata&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="speccyboot.css">
     <title>SpeccyBoot: How to build one yourself</title>
-    </head>
-  
-  <link rel="stylesheet" type="text/css" href="speccyboot.css">
-    
+  </head>
+
     <body>
-      
+
       <div id="heading">
         <div id="leftheading"><a href="index.html">SpeccyBoot</a></div>
         <div id="rightheading">How to build one yourself</div>
         </div>
-      
+
       <hr>
-      
+
       <p id="warning"><b>NOTE:</b> I assume no responsibility for what happens if you
       connect this to your Spectrum. This design works well for me, but
       be aware that a mistake (yours or mine) may destroy your
       dear Spectrum. <b>You have been warned!</b></p>
-      
+
       <p>There are three steps to building a SpeccyBoot: building the
       hardware, building the software stack, and getting the software onto
       the hardware.</p>
-      
+
       <ul>
         <li><a href="#hardware">Building the hardware</a></li>
         <li><a href="#software">Building the software</a></li>
         <li><a href="#install">Installing the software on the device</a></li>
       </ul>
-      
+
       <hr>
-      
+
       <a name="hardware">
         <h2>Building the hardware</h2>
         </a>
@@ -44,16 +45,16 @@
       <p>I built the device on a basic lab board. I'm not much of a soldering
       wizard, but you should probably have some rudimentary soldering
       experience to pull this off. A few notes on the design:</p>
-      
+
       <ul>
-        
+
         <li>I chose to use the
           <a href="http://www.olimex.com/dev/enc28j60-h.html">Olimex
           ENC28J60-H development board</a> for the Ethernet subsystem. This is
           not only easier, it also helps to avoid disturbances from my limited
           soldering skills. (The ENC28J60 data sheet actually recommends surface
           mounting at least some components.)</li>
-        
+
         <li>The jumper JP1, when closed, disables the EEPROM (useful when it
           contains garbage).</li>
 
@@ -79,68 +80,68 @@
       Ethernet connector, obviously). This will also reduce the total component
       cost to about <b>EUR 10</b>. Refer to the ENC28J60 data sheet for
       details.</p>
-      
+
       <h3>DGBoot: an alternate design for the Didaktik Gama</h3>
-    
+
       <p>If you have a <a href="http://en.wikipedia.org/wiki/Didaktik#Didaktik_Gama">Didaktik Gama</a>, there is an even easier way
       to connect the ENC28J60 board. This Czechoslovakian ZX Spectrum clone has
       a few special features, including an '8255 parallel port. The ENC28J60-H
       board can be connected directly to this port without any additional active
       components (except the 3.3V supply). The bus expansion port remains free
       for other peripherals.</p>
-    
+
       <p>The modified SpeccyBoot software (see below for software
       build instructions) is combined with the original Didaktik Gama
       BASIC in a double-capacity EPROM (27C256, 32Kx8), which replaces
       the original chip in the internal socket.</p>
-        
+
       <p>The DGBoot design was kindly contributed by Imrich Konkol. More
       information, including schematics, is available in <a
       href="http://sindik.at/?p=929448">his blog</a>. It's all in Slovak, but
       Google Translate is always an option.</p>
 
       <hr>
-      
+
       <a name="software">
         <h2>Building the software</h2>
         </a>
-      
+
       <pre class="code">sudo apt-get install git make gcc sdcc
 git clone https://github.com/patrikpersson/speccyboot.git
 cd speccyboot
 make</pre>
-        
+
       <p>This works in any recent Debian or Ubuntu Linux distribution. Some releases of sdcc have problems compiling some of the macros
       in the SpeccyBoot source code. I use sdcc 3.4.0.</p>
-        
+
       <p>When the build completes, you should have a file named
-      <tt>speccyboot.wav</tt> in your working directory. This WAV file includes
+      <span class="code">speccyboot.wav</span> in your working directory. This WAV file includes
       the SpeccyBoot software and a loader application, both in the format
       expected by the Spectrum. (I load the WAV file to my phone, and play it
       to the Spectrum from there.)</p>
-    
-        
+
+
       <h3>Building for DGBoot</h3>
-        
-      <p>If you want to build the software for the DGBoot design instead, use this <tt>make</tt> command instead:</p>
-        
+
+      <p>If you want to build the software for the DGBoot design instead, use this <span class="code">make</span> command instead:</p>
+
       <pre class="code">make clean &amp;&amp; make DGBOOT=1</pre>
-        
+
       <p>This image then needs to be included in the new 32K (EP)ROM as follows:</p>
-        
+
       <table>
         <tr><th>Address range</th><th>Contents</th></tr>
-        <tr><td>0&ndash;8191</td><td>SpeccyBoot software, built with <tt>make DGBOOT=1</tt></td></tr>
+        <tr><td>0&ndash;8191</td><td>SpeccyBoot software, built with <span class="code">make DGBOOT=1</span></td></tr>
             <tr><td>8192&ndash;16383</td><td>0xFF</td></tr>
             <tr><td>16384&ndash;32767</td><td>Didaktik Gama '89 ROM</td></tr>
       </table>
-      
+
       <hr>
-      
+
       <a name="install">
         <h2>Installing the software on the device</h2>
         </a>
-      
+
       <ol>
         <li>Boot to BASIC.</li>
         <ul>
@@ -150,7 +151,7 @@ make</pre>
           <li>Otherwise, close JP1 to disable EEPROM, and power on your
             Spectrum.</li>
         </ul>
-        <li>Load the file <tt>speccyboot.wav</tt>, produced by building the
+        <li>Load the file <span class="code">speccyboot.wav</span>, produced by building the
           software above, to the Spectrum. After about a minute of loading,
           you should see the following screen:<br>
           <img src="fw-loader-1.png" /></li>
@@ -166,7 +167,7 @@ make</pre>
         <li>Reboot your Spectrum. It should now be running the recently loaded
         SpeccyBoot software.</li>
       </ol>
-      
+
       <hr>
       <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
     </body>
