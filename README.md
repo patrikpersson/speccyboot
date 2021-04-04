@@ -1,1 +1,1 @@
-Documentation [available here](http://patrikpersson.github.io/speccyboot/).
+Documentation [available here](https://patrikpersson.github.io/speccyboot/).
