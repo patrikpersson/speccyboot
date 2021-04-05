@@ -11,23 +11,7 @@ body, html {
   margin: 0 auto;
   padding: 1rem;
 }
-/*
-h1 {
-  font-size: 32pt;
-}
 
-h2 {
-  font-size: 18pt;
-}
-
-h3 {
-  font-size: 14pt;
-}
-
-h4 {
-  font-size: 12pt;
-}
-*/
 table {
   margin-left:auto;
   margin-right:auto;
@@ -37,6 +21,10 @@ table {
 .imagetable {
   display: block;
   max-width: 1000px;
+}
+
+img {
+  max-width: 100%;
 }
 
 table:not(.imagetable) {
@@ -160,7 +148,6 @@ a:hover h1, a:hover h2, a:hover h3, a:hover h4 {
 }
 
 #heading {
-  height: 40pt;       /* make size absolute to keep other stuff out */
   clear: both;
   margin-bottom: 12px;
   position: relative;
@@ -175,9 +162,8 @@ hr {
 }
 
 pre.code {
-  position: relative;
-  left: 3%;
-  width: 94%;
+  display: block;
+  margin-left: 1rem;
   padding: 8px 5px;
   background-color: #e8e8e8;
   font-family: 'Inconsolata', monospace;
@@ -186,14 +172,15 @@ pre.code {
 
 #warning {
   position: relative;
-  left: 3%;
-  width: 94%;
+  display: block;
+  margin: 1rem;
   background-color: #ffffff;
-  padding: 12px;
+  padding: 2rem;
   border-style: dashed;
   border-color: #e00;
   border-width: 5px;
-  font-size: larger;
+  font-size: 125%;
+  line-height: 125%;
   box-shadow: 10px 10px 5px rgba(0,0,0, 0.5);
   margin-top: 30px;
   margin-bottom: 50px;
