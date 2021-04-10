@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -93,20 +93,20 @@ tftp_receive(void)
       || (expected_tftp_block_no != 1
 	  && rx_frame.udp.header.src_port != server_port))
   {
-    udp_create_reply(sizeof(struct udp_header_t) + sizeof(error_packet));
+    udp_create_reply(sizeof(struct udp_header_t) + sizeof(error_packet), false);
     udp_add(error_packet);
     udp_send();
     return;
   }
- 
+
   server_port = rx_frame.udp.header.src_port;
 
   /* ACK */
-  udp_create_reply(sizeof(struct udp_header_t) + TFTP_SIZE_OF_ACK);
+  udp_create_reply(sizeof(struct udp_header_t) + TFTP_SIZE_OF_ACK, false);
   udp_add(ack_opcode);
   udp_add(rx_frame.udp.app.tftp.header.block_no);
   udp_send();
-  
+
   if (received_block_no == expected_tftp_block_no) {
     expected_tftp_block_no ++;
     receive_file_data();
@@ -129,14 +129,14 @@ tftp_read_request(const char *filename)
   new_tftp_client_port();
 
   udp_create(&eth_broadcast_address,
-	     &ip_config.broadcast_address,
-	     tftp_client_port,
-	     htons(UDP_PORT_TFTP_SERVER),
-	     sizeof(struct udp_header_t)
-	       + sizeof(rrq_prefix)
-	       + sizeof(rrq_option)
-	       + len,
-	     ETH_FRAME_PRIORITY);
+             &ip_config.tftp_server_address,
+             tftp_client_port,
+             htons(UDP_PORT_TFTP_SERVER),
+             sizeof(struct udp_header_t)
+               + sizeof(rrq_prefix)
+               + sizeof(rrq_option)
+               + len,
+             ETH_FRAME_PRIORITY);
   udp_add(rrq_prefix);
   udp_add_w_len(filename, len);
   udp_add(rrq_option);

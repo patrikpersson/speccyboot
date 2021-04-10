@@ -1,14 +1,14 @@
 /*
  * Module dhcp:
  *
- * Dynamic Host Configuration Protocol (DHCP, RFC 2131)
+ * Dynamic Host Configuration Protocol (DHCP, RFCs 2131, 2132, 5859)
  *
  * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -66,22 +66,19 @@ PACKED_STRUCT(dhcp_sub_header_t) {
 
 /* ------------------------------------------------------------------------- */
 
-#define DHCP_SIZEOF_CHADDR  (16)
-#define DHCP_SIZEOF_SNAME   (64)
-#define DHCP_SIZEOF_FILE    (128)
+#define DHCP_SIZEOF_HWADDR_PADDING   (16 - sizeof(struct mac_address_t))
+#define DHCP_SIZEOF_SNAME            (64)
+#define DHCP_SIZEOF_FILE             (128)
 
-#define DHCP_SIZEOF_ZEROS   ((DHCP_SIZEOF_CHADDR                              \
-                              - sizeof(struct mac_address_t))                 \
-                             + DHCP_SIZEOF_SNAME                              \
-                             + DHCP_SIZEOF_FILE )
-
-#define DHCP_SIZEOF_TOTAL   (576)
+#define DHCP_SIZEOF_TOTAL            (576)
 
 /* ------------------------------------------------------------------------- */
 
 PACKED_STRUCT(dhcp_header_t) {              /* DHCP packet excluding options */
   struct dhcp_sub_header_t  sub;
-  uint8_t                   zeros[DHCP_SIZEOF_ZEROS];
+  uint8_t                   hwaddr_padding[DHCP_SIZEOF_HWADDR_PADDING];
+  uint8_t                   sname[DHCP_SIZEOF_SNAME];
+  uint8_t                   file[DHCP_SIZEOF_FILE];
   uint32_t                  magic;          /* magic cookie for DHCP options */
 };
 

@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -89,15 +89,19 @@
 
 /* ------------------------------------------------------------------------- */
 
-/* Stringification */
+/*
+ * Stringification, see e.g.,
+ * https://gcc.gnu.org/onlinedocs/gcc-4.8.5/cpp/Stringification.html
+ */
 
-#define str(s) #s
+#define str(s) str2(s)
+#define str2(s) #s
 
 /* ------------------------------------------------------------------------- */
 
 /* Packed structs */
 
-#ifdef SDCC
+#ifdef __SDCC
 /* SDCC packs structs by default */
 #define PACKED_STRUCT(name)  struct name
 #else
@@ -108,7 +112,7 @@
 
 /* Compile-time asserts. No code generated. */
 #define COMPILE_ASSERT(expr)                                                  \
-  typedef COMPILE_ASSERT_NAME(__LINE__) [expr ? 1 : -1]
+  typedef int COMPILE_ASSERT_NAME(__LINE__) [expr ? 1 : -1]
 
 #define COMPILE_ASSERT_NAME(ln)    COMPILE_ASSERT_NAME2(ln)
 #define COMPILE_ASSERT_NAME2(ln)   assertion_at_line_ ## ln
@@ -172,4 +176,3 @@ timer_t
 timer_value(timer_t timer);
 
 #endif /* SPECCYBOOT_UI_INCLUSION_GUARD */
-

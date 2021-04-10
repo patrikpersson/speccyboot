@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -118,7 +118,7 @@ PACKED_STRUCT(eth_adm_t) {
   uint16_t              nbr_bytes;   /* written as little-endian by ENC28J60 */
   uint8_t               rsv16to23;
   uint8_t               rsv24to31;
-  
+
   /*
    * Ethernet header
    */
@@ -158,7 +158,7 @@ typedef enc28j60_addr_t eth_frame_class_t;
 
 #define ETH_FRAME_PRIORITY      (ENC28J60_TXBUF1_START)
 #define ETH_FRAME_OPTIONAL      (ENC28J60_TXBUF2_START)
- 
+
 /* ========================================================================= */
 
 /* -------------------------------------------------------------------------
@@ -211,7 +211,7 @@ eth_send(uint16_t total_nbr_of_bytes_in_payload);
 
 /* -------------------------------------------------------------------------
  * Retrieve received Ethernet payload.  Returns 16-bit checksum of retrieved
- * data, using _checksum_in as the initial value. 
+ * data, using _checksum_in as the initial value.
  *
  * Assumes ERDPT points to the current reading location.
  * ------------------------------------------------------------------------- */

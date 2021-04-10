@@ -9,7 +9,7 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -21,7 +21,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -44,6 +44,7 @@
 struct ip_config_t ip_config = {
   IP_DEFAULT_HOST_ADDRESS,
   IP_DEFAULT_BCAST_ADDRESS
+  /* no value specified for TFTP server -- will be all zero */
 };
 
 /* Length of currently constructed TX UDP packet */
@@ -63,9 +64,9 @@ ip_receive(void)
   /* Read a minimal IPv4 header */
   ip_checksum_set(0);
   eth_retrieve_payload(&rx_frame.ip, sizeof(struct ipv4_header_t));
-  
+
   ip_header_size = (rx_frame.ip.version_and_header_length & 0x0f) << 2;
-  
+
   /* Once an IP address is set, multicasts/broadcasts are ignored */
   if (((ip_valid_address()) && (rx_frame.ip.dst_addr != ip_config.host_address))
       ||  (rx_frame.ip.prot != IP_PROTOCOL_UDP))
@@ -76,18 +77,18 @@ ip_receive(void)
   /* Discard options (if any) */
   if (ip_header_size > sizeof(struct ipv4_header_t)) {
     eth_retrieve_payload(&rx_frame.udp.header,
-			 ip_header_size - sizeof(struct ipv4_header_t));
+   ip_header_size - sizeof(struct ipv4_header_t));
   }
-  
+
   if (! ip_checksum_ok()) {
     syslog("bad checksum");
     return;
   }
-  
+
   /* Process UDP payload */
   ip_checksum_set(htons(IP_PROTOCOL_UDP)); /* for pseudo IP header */
   eth_retrieve_payload(&rx_frame.udp.header,
-		       ntohs(rx_frame.ip.total_length) - ip_header_size);
+                       ntohs(rx_frame.ip.total_length) - ip_header_size);
 
   if (rx_frame.udp.header.checksum != 0) {   /* UDP checksum provided */
     /*
@@ -96,15 +97,15 @@ ip_receive(void)
      * it here.
      */
     ip_checksum_add_raw(rx_frame.ip.src_addr,
-			2 * sizeof(ipv4_address_t));  /* src + dst */
+                        2 * sizeof(ipv4_address_t));  /* src + dst */
     ip_checksum_add(rx_frame.udp.header.length);
-      
+
     if (! ip_checksum_ok()) {
       syslog("bad checksum");
       return;
     }
   }
-    
+
   if (ip_valid_address() && rx_frame.udp.header.dst_port == tftp_client_port) {
     tftp_receive();
   }
@@ -117,9 +118,9 @@ ip_receive(void)
 
 void
 udp_create_impl(const struct mac_address_t  *dst_hwaddr,
-		const ipv4_address_t        *dst_ipaddr,
-		uint16_t                     udp_length,
-		enc28j60_addr_t              frame_class)
+                const ipv4_address_t        *dst_ipaddr,
+                uint16_t                     udp_length,
+                enc28j60_addr_t              frame_class)
 {
   current_packet_length = udp_length + sizeof(struct ipv4_header_t);
 
@@ -132,7 +133,7 @@ udp_create_impl(const struct mac_address_t  *dst_hwaddr,
   header_template.ip.checksum        = 0;  /* temporary value for computation */
   header_template.ip.src_addr        = ip_config.host_address;
   header_template.ip.dst_addr        = *dst_ipaddr;
-  
+
   ip_checksum_set(0);
   ip_checksum_add(header_template.ip);
   header_template.ip.checksum        = ip_checksum_value();
@@ -147,14 +148,14 @@ udp_create_impl(const struct mac_address_t  *dst_hwaddr,
 /* ------------------------------------------------------------------------- */
 
 void
-udp_create_reply(uint16_t udp_payload_length)
+udp_create_reply(uint16_t udp_payload_length, bool broadcast)
 {
-  udp_create(&rx_eth_adm.eth_header.src_addr,
-	     &rx_frame.ip.src_addr,
-	     rx_frame.udp.header.dst_port,
-	     rx_frame.udp.header.src_port,
-	     udp_payload_length,
-	     ETH_FRAME_PRIORITY);
+  udp_create(broadcast ? &eth_broadcast_address       : &rx_eth_adm.eth_header.src_addr,
+             broadcast ? &ip_config.broadcast_address : &rx_frame.ip.src_addr,
+             rx_frame.udp.header.dst_port,
+             rx_frame.udp.header.src_port,
+             udp_payload_length,
+             ETH_FRAME_PRIORITY);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -164,4 +165,3 @@ udp_send(void)
 {
   eth_send(current_packet_length);
 }
-

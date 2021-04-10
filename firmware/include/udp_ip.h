@@ -8,8 +8,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -21,7 +21,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -34,6 +34,7 @@
 #ifndef SPECCYBOOT_UDP_IP_INCLUSION_GUARD
 #define SPECCYBOOT_UDP_IP_INCLUSION_GUARD
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "eth.h"
@@ -94,6 +95,7 @@ PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
 extern struct ip_config_t {
   ipv4_address_t host_address;
   ipv4_address_t broadcast_address;
+  ipv4_address_t tftp_server_address;
 } ip_config;
 
 /* ========================================================================= */
@@ -120,7 +122,7 @@ extern uint16_t tftp_client_port;
   enc28j60_add_checksum((&_data), ((_sz) >> 1))
 
 #define ip_checksum_add(_data)                                                \
-  ip_checksum_add_raw(_data, sizeof(_data)) 
+  ip_checksum_add_raw(_data, sizeof(_data))
 
 #define ip_checksum_set           enc28j60_set_checksum
 
@@ -173,9 +175,11 @@ udp_create_impl(const struct mac_address_t  *dst_hwaddr,
 /* -------------------------------------------------------------------------
  * Create UDP reply to the sender of the received packet currently processed.
  * Source/destination ports are swapped. Frame class is ETH_FRAME_PRIORITY.
+ *
+ * If 'broadcast' is true, the reply is sent to broadcast MAC & IP addresses.
  * ------------------------------------------------------------------------- */
 void
-udp_create_reply(uint16_t udp_payload_length);
+udp_create_reply(uint16_t udp_payload_length, bool broadcast);
 
 /* -------------------------------------------------------------------------
  * Append payload to a UDP packet, previously created with udp_create() or

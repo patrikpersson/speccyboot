@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -218,12 +218,8 @@ typedef uint16_t enc28j60_addr_t;
 /*
  * Pull controller into reset, and keep it there
  */
-static inline enc28j60_disable() __naked {
-  __asm
-    xor a, a
-    out (SPI_OUT), a
-  __endasm;
-}
+void
+enc28j60_disable(void) __naked;
 
 /* ------------------------------------------------------------------------- */
 
@@ -381,7 +377,7 @@ enc28j60_write_memory_cont(const uint8_t *src_addr, uint16_t nbr_bytes);
 /* ------------------------------------------------------------------------- */
 
 #pragma save
-#pragma sdcc_hash + 
+#pragma sdcc_hash +
 
 /*
  * Read a number of bytes from current ERDPT to a given address.

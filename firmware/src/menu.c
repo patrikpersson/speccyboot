@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -56,7 +56,7 @@ run_menu(void)
 {
   unsigned char *src = snapshot_list_buf;
   uint16_t nbr_snapshots = 0;
-  
+
   syslog("menu ready");
 
   eth_disable();
@@ -71,7 +71,7 @@ run_menu(void)
     unsigned char c;
 
     rx_frame.snapshot_names[nbr_snapshots ++] = src;
-    
+
     /* Find end of file name */
     while (c = *src) {
       if ((int) c < ' ') {
@@ -86,7 +86,7 @@ run_menu(void)
       }
     }
   }
-  
+
   /* --------------------------------------------------------------------------
    * Display menu
    * ----------------------------------------------------------------------- */
@@ -95,24 +95,24 @@ run_menu(void)
 
   set_attrs_const(INK(WHITE)  | PAPER(BLACK) | BRIGHT, 0, 0, 32);
   set_attrs_const(INK(BLUE)  | PAPER(WHITE), 2, 0, 32 * DISPLAY_LINES);
- 
+
   /* --------------------------------------------------------------------------
    * Run the menu, act on user input
    * ----------------------------------------------------------------------- */
   {
     uint16_t idx            = 0;
     uint16_t last_idx       = 1;    /* force update */
-    
+
     uint16_t display_offset = 0;
     bool    needs_redraw    = true;
-  
+
     for (;;) {
       key_t key;
-  
+
       if (idx != last_idx) {
 	set_attrs(INK(BLUE) | PAPER(WHITE),
 		  2 + (last_idx - display_offset), 0, 32);
-      
+
 	if (nbr_snapshots > DISPLAY_LINES) {
 	  if ((idx < display_offset)
 	      || (idx >= (display_offset + DISPLAY_LINES)))
@@ -129,13 +129,13 @@ run_menu(void)
 	    needs_redraw = true;
 	  }
 	}
-      
+
 	set_attrs(INK(WHITE) | PAPER(BLUE) | BRIGHT,
-		  2 + (idx - display_offset), 0, 32);      
+		  2 + (idx - display_offset), 0, 32);
 
 	last_idx = idx;
       }
-    
+
       if (needs_redraw) {
 	uint8_t i;
 	for (i = 0;
@@ -144,12 +144,12 @@ run_menu(void)
         {
 	  print_at(i + 2, 1, 31, '.', rx_frame.snapshot_names[i + display_offset]);
 	}
-      
+
 	needs_redraw = false;
       }
-    
+
       key = wait_key();
-    
+
       switch(key) {
       case KEY_ENTER:
         key_click();

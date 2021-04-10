@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -40,7 +40,7 @@
 /*
  * Feature data for digits
  *
- * Features, each one 
+ * Features, each one
  * assigned a value
  * from 0 to 7        Row index
  * -----------------  ---------
@@ -83,7 +83,7 @@ static const uint8_t digit_features[] = {
  * that follow.
  */
 static const uint8_t feature_rows[] = {
-  4,      (1 << 0), 0x01,  (1 << 1), 0xff,  (1 << 2), 0x80,  (1 << 7), 0x40,
+  4,      (1 << 0), 0x01,  (1 << 1), 0xff,  (1 << 2), 0x80,  0x80, 0x40,
   2,      (1 << 0), 0x01,                   (1 << 2), 0x80,
   5,      (1 << 0), 0x01,  (1 << 3), 0xff,  (1 << 2), 0x80,
           (1 << 4), 0x01,                   (1 << 5), 0x80,
@@ -168,14 +168,14 @@ poll_key(void)
 __naked
 {
   __asm
-  
+
     ld    hl, #_key_rows
     ld    bc, #0x7ffe
 poll_outer::
     in    d, (c)
-    
+
     ld    e, #5       ;; number of keys in each row
-    
+
 poll_inner::
     ld    a, (hl)
     inc   hl
@@ -183,21 +183,21 @@ poll_inner::
     jr    c, not_pressed
     or    a
     jr    nz, poll_done
-    
+
 not_pressed::
     dec   e
     jr    nz, poll_inner
-    
+
     rrc   b
     jr    c, poll_outer
-    
+
     xor   a         ;; KEY_NONE == 0
-    
+
 poll_done::
     ld    l, a
-    
+
     ret
-  
+
   __endasm;
 }
 
@@ -209,7 +209,7 @@ void
 cls(void)
 __naked
 {
-  __asm
+    __asm
 
     xor a
     out (0xfe), a
@@ -242,7 +242,7 @@ __naked
     ;;        n               at (sp + 7)
 
     push  ix
-        
+
     ld    ix, #0
     add   ix, sp
 
@@ -267,9 +267,9 @@ set_attrs_loop::
     djnz  set_attrs_loop
 
     pop   ix
-    ret      
+    ret
 
-  __endasm;  
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -299,19 +299,19 @@ __naked
     ;; hl = pattern
 
     push  ix
-        
+
     ld    ix, #0
     add   ix, sp
-    
+
     ;; compute d as 0x40 + (row & 0x18)
-    
+
     ld    a, 4(ix)   ;; row
     and   a, #0x18
     add   a, #0x40
     ld    d, a
-    
+
     ;; compute e as ((row & 7) << 5) + start_col
-    
+
     ld    a, 4(ix)  ;; row
     and   a, #7
     rrca            ;; rotate right by 3 == rotate left by 5, for values <= 7
@@ -319,7 +319,7 @@ __naked
     rrca
     add   a, 5(ix)  ;; start_col
     ld    e, a
-    
+
     ld    c, 8(ix)
     ld    b, 9(ix)
 
@@ -345,7 +345,7 @@ string_loop::
     add   hl, hl
     ld    bc, #_font_data
     add   hl, bc
-  
+
     ld    b, #8
     push  de
 char_loop::
@@ -392,7 +392,7 @@ wait_key(void)
   static timer_t repeat_timer;
   static key_t previous_key = KEY_NONE;
   static bool first_repetition;
-  
+
   key_t key = poll_key();
   if (key != KEY_NONE && key == previous_key) {
     /*
@@ -414,7 +414,7 @@ wait_key(void)
   do {
     key = poll_key();
   } while (key == KEY_NONE);
-  
+
   timer_reset(repeat_timer);
   previous_key = key;
   first_repetition = true;
@@ -428,7 +428,7 @@ key_click(void)
 __naked
 {
   __asm
-  
+
   ld    bc, #0x14FE
   ld    d, #0x10
   ld    a, d
@@ -493,7 +493,7 @@ feature_loop::
     and   e
     jr    z, no_feature
     ex    af, af'   ;; A' holds bitmask to show
-    or    (hl)    
+    or    (hl)
     ex    af, af'   ;; put back A'
 no_feature::
     inc   hl

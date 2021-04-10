@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -85,9 +85,10 @@ typedef char key_t;
  * Codes for fatal_error() displayed as border colours
  * ------------------------------------------------------------------------- */
 
-#define FATAL_NO_RESPONSE         (RED)
-#define FATAL_FILE_NOT_FOUND      (YELLOW)
-#define FATAL_INCOMPATIBLE        (CYAN)
+#define FATAL_NO_RESPONSE           (RED)
+#define FATAL_FILE_NOT_FOUND        (YELLOW)
+#define FATAL_INCOMPATIBLE          (CYAN)
+#define FATAL_INVALID_BOOT_SERVER   (MAGENTA)
 
 /* -------------------------------------------------------------------------
  * Clear screen and set all attributes to INK 0, PAPER 0.
@@ -144,10 +145,10 @@ __naked;
  * ------------------------------------------------------------------------- */
 
 #define set_attrs_const(_attrs, _r, _c, _n)    __asm                          \
-  ld  hl, #ATTR_ADDRESS((_r),(_c))					      \
-  ld  de, #ATTR_ADDRESS((_r),(_c))+1					      \
-  ld  bc, #(_n)-1  							      \
-  ld  (hl), #(_attrs)							      \
+  ld  hl, #ATTR_ADDRESS((_r),(_c))                                            \
+  ld  de, #ATTR_ADDRESS((_r),(_c))+1                                          \
+  ld  bc, #(_n)-1                                                             \
+  ld  (hl), #(_attrs)                                                         \
   ldir                                                                        \
   __endasm
 
@@ -162,7 +163,7 @@ display_progress(uint8_t kilobytes_loaded,
  * Display status in more detail during boot.
  * ------------------------------------------------------------------------- */
 #define display_status_configuring_dhcp()    do {                             \
-    set_attrs_const(PAPER(BLUE) | INK(WHITE) | BRIGHT, 23, 5, 21);	      \
+    set_attrs_const(PAPER(BLUE) | INK(WHITE) | BRIGHT, 23, 5, 21);            \
     print_at(23, 6, 31, 0, "configuring DHCP...");                            \
   } while(0)
 
@@ -207,4 +208,3 @@ __sfr __at(0xfe) _ula_port;
 #pragma restore
 
 #endif /* SPECCYBOOT_UI_INCLUSION_GUARD */
-

@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -40,6 +40,20 @@
 
 /* Current checksum */
 uint16_t enc28j60_ip_checksum;
+
+/* ------------------------------------------------------------------------- */
+
+void
+enc28j60_disable(void)
+__naked
+{
+    __asm
+
+    xor a, a
+    out (SPI_OUT), a
+
+  __endasm;
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -66,14 +80,14 @@ uint8_t
 enc28j60_read_register(uint8_t register_descr)
 {
   uint8_t value;
-  
+
   spi_start_transaction(ENC_OPCODE_RCR(register_descr));
   if (IS_MAC_OR_MII(register_descr)) {
     (void) spi_read_byte();             /* dummy byte for MAC/MII registers */
   }
   value = spi_read_byte();
   spi_end_transaction();
-  
+
   return value;
 }
 
@@ -102,7 +116,7 @@ enc28j60_read_memory_cont(uint8_t *dst_addr, uint16_t nbr_bytes)
 __naked
 {
   (void) dst_addr, nbr_bytes;
-  
+
   __asm
 
     push  ix
@@ -121,7 +135,7 @@ __naked
     ;; assume dst_addr    at (IX + 0)
     ;;        nbr_bytes   at (IX + 2)
     ;;
-  
+
     ;;
     ;; register allocation:
     ;;
@@ -152,7 +166,7 @@ __naked
 
     ld    c, #SPI_OUT
     ld    h, #0x40
-  
+
     ld    d, 3(ix)
     ld    e, 2(ix)
     rr    d           ;; shift DE right (number of 16-bit words)
@@ -201,9 +215,9 @@ word_byte2::
     exx                            ;; 4
 
     jr    word_loop                ;; 12
-    
+
 word_loop_end::
-  
+
     ;; If there is a single odd byte remaining, handle it
 
     ld    a, 2(ix)
@@ -290,7 +304,7 @@ checksum_loop::
     inc   iy
     ld    d, (iy)
     inc   iy
-  
+
     ex    af, af'   ;; ' load addition carry
     adc   hl, de
 

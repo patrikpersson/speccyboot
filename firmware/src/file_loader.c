@@ -10,8 +10,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -23,7 +23,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -164,10 +164,10 @@ update_progress(void)
   display_digit_at(digit_single, 17, 22);
 
   display_progress((++kilobytes_loaded), kilobytes_expected);
-  
+
   if (kilobytes_loaded == kilobytes_expected) {
     context_switch();
-  } 
+  }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -193,7 +193,7 @@ DEFINE_STATE(s_header)
       kilobytes_expected = 128;
     }
     header_length += rx_frame.udp.app.tftp.data.z80.extended_length + 2;
-    
+
     current_state = &s_chunk_header;
   } else {
     chunk_state.bytes = 0xc000;
@@ -202,11 +202,11 @@ DEFINE_STATE(s_header)
                      & SNAPSHOT_FLAGS_COMPRESSED_MASK)
                   ? &s_chunk_compressed : &s_chunk_uncompressed;
   }
-  
+
   display_progress(0, kilobytes_expected);
 
   evacuate_z80_header();
-  
+
   received_data        += header_length;
   received_data_length -= header_length;
 }
@@ -218,7 +218,7 @@ DEFINE_STATE(s_chunk_header)
   /* Receive low byte of chunk length */
   chunk_state.bytes_lo = *received_data++;
   received_data_length--;
-  
+
   current_state = &s_chunk_header2;
 }
 
@@ -229,7 +229,7 @@ DEFINE_STATE(s_chunk_header2)
   /* Receive high byte of chunk length */
   chunk_state.bytes_hi = *received_data++;
   received_data_length--;
-  
+
   current_state = &s_chunk_header3;
 }
 
@@ -246,7 +246,7 @@ DEFINE_STATE(s_chunk_header3)
    */
   uint8_t page_id = *received_data++;
   received_data_length--;
-  
+
   if (page_id < 3 || page_id > 10) {
     fatal_error(FATAL_INCOMPATIBLE);
   }
@@ -276,7 +276,7 @@ DEFINE_STATE(s_chunk_header3)
       curr_write_pos = (uint8_t *) 0xc000;
       break;
   }
-  
+
   if (chunk_state.bytes == BANK_LENGTH_UNCOMPRESSED) {
     chunk_state.bytes = PAGE_SIZE;
     current_state = &s_chunk_uncompressed;
@@ -310,7 +310,7 @@ DEFINE_STATE(s_chunk_uncompressed)
   sbc hl, bc
   ld  b, h
   ld  c, l
-    
+
   ;;
   ;; is received_data_length less than BC?
   ;; if it is, set BC to received_data_length
@@ -323,7 +323,7 @@ DEFINE_STATE(s_chunk_uncompressed)
 
   ld  bc, (_received_data_length)
 
-checked_length::    
+checked_length::
 
   ;;
   ;; is chunk_state.bytes less than BC?
@@ -364,7 +364,7 @@ checked_chunk_length::
 
 no_new_state::
   ld  (_chunk_state), hl
-    
+
   ;;
   ;; if BC is zero, skip copying and status display update
   ;;
@@ -395,7 +395,7 @@ no_new_state::
   jr  nz, no_copy
 
   call  _update_progress
-  
+
 no_copy::
 
   __endasm;
@@ -406,66 +406,66 @@ no_copy::
 DEFINE_STATE(s_chunk_compressed)
 {
   __asm
-  
+
   ld  bc, (_chunk_state)
   ld  de, (_received_data_length)
   ld  hl, (_curr_write_pos)
   ld  iy, (_received_data)
 
 s_chunk_compressed_loop::
-  
+
   ;;
   ;; if chunk_state.bytes is zero, terminate loop and switch state
   ;;
-    
+
   ld  a, b
   or  c
   jr  z, s_chunk_compressed_chunk_end
-  
+
   ;;
   ;; if received_data_length is zero, terminate loop
   ;;
-      
+
   ld  a, d
   or  e
   jp  z, s_chunk_compressed_write_back
-  
+
   ;;
-  ;; read a byte of input, increase read pointer, 
+  ;; read a byte of input, increase read pointer,
   ;; decrease chunk_state.bytes and received_data_length
   ;;
-  
+
   ld  a, (iy)
   inc iy
   dec bc
   dec de
-  
+
   ;;
   ;; act on read data
   ;;
-  
+
   cp  #Z80_ESCAPE
   jr  z, s_chunk_compressed_found_escape
   ld  (hl), a
   inc hl
-    
+
   ;;
   ;; if HL is an integral number of kilobytes,
   ;; update the status display
   ;;
-      
+
   xor a
   or  l
   jr  nz, s_chunk_compressed_loop
   ld  a, h
   and #0x03
   jr  nz, s_chunk_compressed_loop
- 
+
   ld  (_chunk_state), bc
   ld  (_received_data_length), de
   ld  (_curr_write_pos), hl
   ld  (_received_data), iy
-  
+
   call _update_progress
   jr  s_chunk_compressed_done
 
@@ -479,17 +479,17 @@ s_chunk_compressed_chunk_end::
   ld  a, #>_s_chunk_header
   ld  (_current_state+1), a
   jr  s_chunk_compressed_write_back
-    
+
   ;;
   ;; found escape byte: switch state
   ;;
-      
+
 s_chunk_compressed_found_escape::
   ;;
   ;; optimization: if 3 bytes (or more) are available, and this is really
   ;; a repetition sequence, jump directly to s_chunk_repetition
   ;;
-  
+
   ;; if bc < 3, goto s_chunk_compressed_no_opt
   ld  a, b
   or  a
@@ -497,7 +497,7 @@ s_chunk_compressed_found_escape::
   ld  a, c
   cp  #3
   jr  c, s_chunk_compressed_no_opt
-    
+
 s_chunk_compressed_rept1::
   ;; if de < 3, goto s_chunk_compressed_no_opt
   ld  a, d
@@ -511,7 +511,7 @@ s_chunk_compressed_rept2::
   ld  a, (iy)       ;; peek, do not change counts
   cp  #Z80_ESCAPE
   jr  nz, s_chunk_compressed_no_opt
-    
+
   ;;
   ;; the optimization is possible -- read the sequence data and jump
   ;; to the correct state
@@ -523,7 +523,7 @@ s_chunk_compressed_rept2::
   ld  a, (iy)
   inc iy
   ld  (_rep_value), a
-    
+
   dec bc
   dec bc
   dec bc
@@ -539,25 +539,25 @@ s_chunk_compressed_rept2::
   ld  hl, #_s_chunk_repetition
   ld  (_current_state), hl
   jp  (hl)
-    
+
 s_chunk_compressed_no_opt::
   ;;
   ;; no direct jump to s_chunk_repetition was possible
   ;;
-  
+
   ld  a, #<_s_chunk_compressed_escape
   ld  (_current_state), a
   ld  a, #>_s_chunk_compressed_escape
   ld  (_current_state+1), a
-    
+
 s_chunk_compressed_write_back::
   ld  (_chunk_state), bc
   ld  (_received_data_length), de
   ld  (_curr_write_pos), hl
   ld  (_received_data), iy
-    
+
 s_chunk_compressed_done::
-    
+
   __endasm;
 }
 
@@ -568,7 +568,7 @@ DEFINE_STATE(s_chunk_compressed_escape)
   uint8_t b = *received_data++;
   received_data_length--;
   chunk_state.bytes --;
-  
+
   if (b == Z80_ESCAPE) {
     current_state = &s_chunk_repcount;
   } else {
@@ -582,7 +582,7 @@ DEFINE_STATE(s_chunk_compressed_escape)
     if (IS_KILOBYTE(curr_write_pos)) {
       update_progress();
     }
-    
+
     current_state = &s_chunk_single_escape;
   }
 }
@@ -592,11 +592,11 @@ DEFINE_STATE(s_chunk_compressed_escape)
 DEFINE_STATE(s_chunk_single_escape)
 {
   *curr_write_pos++ = rep_state.plain_byte;
-  
+
   if (IS_KILOBYTE(curr_write_pos)) {
     update_progress();
   }
-  
+
   current_state = &s_chunk_compressed;
 }
 
@@ -607,7 +607,7 @@ DEFINE_STATE(s_chunk_repcount)
   rep_state.count = *received_data++;
   received_data_length--;
   chunk_state.bytes --;
-  
+
   current_state = &s_chunk_repvalue;
 }
 
@@ -618,7 +618,7 @@ DEFINE_STATE(s_chunk_repvalue)
   rep_value = *received_data++;
   received_data_length--;
   chunk_state.bytes --;
-  
+
   current_state = &s_chunk_repetition;
 }
 
@@ -627,13 +627,13 @@ DEFINE_STATE(s_chunk_repvalue)
 DEFINE_STATE(s_chunk_repetition)
 {
   __asm
-    
+
   ld  a, (_rep_state)
   ld  b, a                      ;; loop counter rep_state.count
   ld  hl, (_curr_write_pos)
   ld  a, (_rep_value)
   ld  c, a
-    
+
 s_chunk_repetition_loop::
   ld  a, b
   or  a
@@ -647,7 +647,7 @@ s_chunk_repetition_loop::
   ;; if HL is an integral number of kilobytes,
   ;; update the status display
   ;;
-      
+
   ld  a, l
   or  a
   jr  nz, s_chunk_repetition_loop
@@ -704,15 +704,15 @@ receive_file_data(void)
 {
   /* Indicates an evacuation is ongoing (see below) */
   static bool evacuating = false;
-  
+
   received_data        = TFTP_DATA_BUFFER;
   received_data_length = ntohs(rx_frame.udp.header.length)
                          - sizeof(struct udp_header_t)
                          - sizeof(struct tftp_header_t);
-  
+
   while (received_data_length != 0) {
     if ((LOBYTE(curr_write_pos) == 0) && (current_state != &s_raw_data)) {
-      
+
       if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
         curr_write_pos = (uint8_t *) EVACUATION_TEMP_BUFFER;
         evacuating     = true;
@@ -726,7 +726,7 @@ receive_file_data(void)
         evacuating     = false;
       }
     }
-    
+
     (*current_state)();
   }
 

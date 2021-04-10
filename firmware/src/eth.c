@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009-  Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -117,14 +117,14 @@ static const uint8_t eth_register_values[] = {
   ERXRDPTH, HIBYTE(ENC28J60_RXBUF_END),
 
   ERXFCON,  ERXFCON_CRCEN,
-  
+
   /*
    * MAC initialization: half duplex
    */
   MACON1,   MACON1_MARXEN,
 
   /* MACON3: set bits PADCFG0..2 to pad frames to at least 64B, append CRC */
-  MACON3,   0xE0 + MACON3_TXCRCEN,
+  MACON3,   (uint8_t) (0xE0 + MACON3_TXCRCEN),
   MACON4,   MACON4_DEFER,
 
   MAMXFLL,  LOBYTE(ETH_MAX_RX_FRAME_SIZE),
@@ -147,14 +147,14 @@ static const uint8_t eth_register_values[] = {
   MIREGADR, PHCON1,
   MIWRL,    0x00,   /* PHCON1 := 0x0000 -- half duplex */
   MIWRH,    0x00,
-  
+
   /*
    * Set up PHY to automatically scan the PHSTAT2 every 10.24 us
    * (the current value can then be read directly from MIRD)
    */
   MIREGADR, PHSTAT2,
   MICMD,    MICMD_MIISCAN,
-  
+
   /* Enable reception and transmission */
   EIE,      0x00,    /* disable all interrupts */
   EIR,      0x00,    /* no pending interrupts */
@@ -182,7 +182,7 @@ perform_transmission(enc28j60_addr_t start_address,
   enc28j60_select_bank(BANK(ETXSTL));
   enc28j60_write_register16(ETXST, start_address);
   enc28j60_write_register16(ETXND, end_address);
-  
+
   /*
    * Poll for link to come up (if it hasn't already)
    *
@@ -199,7 +199,7 @@ perform_transmission(enc28j60_addr_t start_address,
    */
   enc28j60_bitfield_set(ECON1, ECON1_TXRST);
   enc28j60_bitfield_clear(ECON1, ECON1_TXRST);
-  
+
   enc28j60_bitfield_clear(EIE, EIE_TXIE);
   enc28j60_bitfield_clear(EIR, EIR_TXIF + EIR_TXERIF);
 
@@ -207,7 +207,7 @@ perform_transmission(enc28j60_addr_t start_address,
 
   enc28j60_bitfield_set(ECON1, ECON1_TXRTS);
   enc28j60_poll_until_clear(ECON1, ECON1_TXRTS);
-  
+
   enc28j60_select_bank(ENC28J60_DEFAULT_BANK);
 }
 
@@ -245,7 +245,7 @@ eth_create(const struct mac_address_t *destination,
            eth_frame_class_t           frame_class)
 {
   current_txbuf = frame_class;                  /* Maps directly to a buffer */
-  
+
   enc28j60_select_bank(ENC28J60_DEFAULT_BANK);
   enc28j60_write_memory_at(current_txbuf,
                            &per_packet_control_byte,
@@ -273,15 +273,15 @@ eth_send(uint16_t total_nbr_of_bytes_in_payload)
   uint16_t end_address = current_txbuf
                        + sizeof(struct eth_header_t)
                        + total_nbr_of_bytes_in_payload;
-  
+
   if (current_txbuf == ETH_FRAME_PRIORITY) {
     end_of_critical_frame = end_address;
-    
+
     /* Sending a PRIORITY frame implies the previous one was acknowledged. */
     timer_reset(ack_timer);
     retransmission_timeout = RETRANSMISSION_TIMEOUT_MIN;
   }
-  
+
   perform_transmission(current_txbuf, end_address);
 }
 
@@ -316,11 +316,11 @@ main(void)
       if (enc28j60_read_register(EPKTCNT)) {
         break;
       }
-      
+
       if (ack_timer_expired()) {
 
         timer_reset(ack_timer);
-        
+
         if (end_of_critical_frame != NO_FRAME_NEEDS_RETRANSMISSION) {
           /*
            * Timed out waiting for acknowledgment of a PRIORITY frame. Re-send
@@ -332,7 +332,7 @@ main(void)
           if (retransmission_timeout >= RETRANSMISSION_TIMEOUT_MAX) {
             fatal_error(FATAL_NO_RESPONSE);
           }
-          
+
           __asm
 
             ld    hl, (_retransmission_timeout)
@@ -371,7 +371,7 @@ main(void)
     }
 
     enc28j60_bitfield_set(ECON2, ECON2_PKTDEC);         /* decrease EPKTCNT */
-    
+
     /* Filter out broadcasts from this host. */
     if (   rx_eth_adm.eth_header.src_addr.addr[0] != MAC_ADDR_0
         || rx_eth_adm.eth_header.src_addr.addr[1] != MAC_ADDR_1
@@ -389,7 +389,7 @@ main(void)
           break;
       }
     }
-    
+
     /*
      * Advance ERXRDPT
      *
