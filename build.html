@@ -24,13 +24,13 @@
       dear Spectrum. <b>You have been warned!</b></p>
 
       <p>There are three steps to building a SpeccyBoot: building the
-      hardware, building the software stack, and getting the software onto
+      hardware, building the firmware, and getting the firmware onto
       the hardware.</p>
 
       <ul>
         <li><a href="#hardware">Building the hardware</a></li>
-        <li><a href="#software">Building the software</a></li>
-        <li><a href="#install">Installing the software on the device</a></li>
+        <li><a href="#software">Building the firmware</a></li>
+        <li><a href="#install">Installing the firmware on the device</a></li>
       </ul>
 
       <hr>
@@ -90,7 +90,7 @@
       components (except the 3.3V supply). The bus expansion port remains free
       for other peripherals.</p>
 
-      <p>The modified SpeccyBoot software (see below for software
+      <p>The modified SpeccyBoot firmware (see below for firmware
       build instructions) is combined with the original Didaktik Gama
       BASIC in a double-capacity EPROM (27C256, 32Kx8), which replaces
       the original chip in the internal socket.</p>
@@ -103,27 +103,27 @@
       <hr>
 
       <a name="software">
-        <h2>Building the software</h2>
+        <h2>Building the firmware</h2>
         </a>
 
-      <pre class="code">sudo apt-get install git make gcc sdcc
+      <pre class="code">sudo apt install git build-essential sdcc
 git clone https://github.com/patrikpersson/speccyboot.git
 cd speccyboot
 make</pre>
 
-      <p>This works in any recent Debian or Ubuntu Linux distribution. Some releases of sdcc have problems compiling some of the macros
-      in the SpeccyBoot source code. I use sdcc 3.4.0.</p>
+      <p>This should work in any recent Debian or Ubuntu Linux distribution. Some releases of sdcc have problems compiling some of the macros
+      in the SpeccyBoot source code. I use sdcc 3.8.0 (the standard option in Ubuntu 20.04).</p>
 
       <p>When the build completes, you should have a file named
       <span class="code">speccyboot.wav</span> in your working directory. This WAV file includes
-      the SpeccyBoot software and a loader application, both in the format
+      the SpeccyBoot firmware and a loader application, both in the format
       expected by the Spectrum. (I load the WAV file to my phone, and play it
       to the Spectrum from there.)</p>
 
 
       <h3>Building for DGBoot</h3>
 
-      <p>If you want to build the software for the DGBoot design instead, use this <span class="code">make</span> command instead:</p>
+      <p>If you want to build the firmware for the DGBoot design instead, use this <span class="code">make</span> command instead:</p>
 
       <pre class="code">make clean &amp;&amp; make DGBOOT=1</pre>
 
@@ -131,7 +131,7 @@ make</pre>
 
       <table>
         <tr><th>Address range</th><th>Contents</th></tr>
-        <tr><td>0&ndash;8191</td><td>SpeccyBoot software, built with <span class="code">make DGBOOT=1</span></td></tr>
+        <tr><td>0&ndash;8191</td><td>SpeccyBoot firmware, built with <span class="code">make DGBOOT=1</span></td></tr>
             <tr><td>8192&ndash;16383</td><td>0xFF</td></tr>
             <tr><td>16384&ndash;32767</td><td>Didaktik Gama '89 ROM</td></tr>
       </table>
@@ -139,13 +139,13 @@ make</pre>
       <hr>
 
       <a name="install">
-        <h2>Installing the software on the device</h2>
+        <h2>Installing the firmware on the device</h2>
         </a>
 
       <ol>
         <li>Boot to BASIC.</li>
         <ul>
-          <li>If you have a previous version of the SpeccyBoot software on
+          <li>If you have a previous version of the SpeccyBoot firmware on
             the device, hold CAPS SHIFT pressed while resetting or powering
             on your Spectrum.</li>
           <li>Otherwise, close JP1 to disable EEPROM, and power on your
@@ -157,7 +157,7 @@ make</pre>
           <img src="fw-loader-1.png" /></li>
         <li>Remove the JP1 jumper to enable EEPROM (if you hadn't already).</li>
         <li>Press 1, 2 or 3 (depending on the EEPROM model you use). The new
-        software is written to EEPROM. If you chose to use software-controlled
+        firmware is written to EEPROM. If you chose to use software-controlled
         write protection, this stage will take about six seconds, otherwise it
         will take about one.</li>
         <li>A message indicating success (or failure) is displayed:<br>
@@ -165,7 +165,7 @@ make</pre>
           <br>If this step fails, repeat from step 1, and ensure
           JP1 is set correctly.</li>
         <li>Reboot your Spectrum. It should now be running the recently loaded
-        SpeccyBoot software.</li>
+        SpeccyBoot firmware.</li>
       </ol>
 
       <hr>

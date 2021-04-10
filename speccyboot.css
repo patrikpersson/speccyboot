@@ -6,7 +6,7 @@ body, html {
   font-family: 'Lato', sans-serif;
   font-size: 12pt;
   line-height: 18pt;
-  background-color: #d8d8d8;
+  background-color: #fff;
   max-width: 1000px;
   margin: 0 auto;
   padding: 1rem;
@@ -48,6 +48,15 @@ th {
   position: relative;
 }
 
+li {
+  margin: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+li > p {
+  margin-top: 0;
+}
+
 .row, .rowheading, .rowimage_element, .rowimage {
   border-style: none;
   border-width: 0px;
@@ -77,11 +86,13 @@ th {
 }
 
 a:link, a:visited {
-  color: #006;
+  color: #008;
+  text-decoration: none;
 }
 
 a:hover, a:active {
   color: #33f;
+  text-decoration: underline;
 }
 
 a:hover img {
@@ -106,6 +117,12 @@ a:hover .biglink {
 
 a:hover h1, a:hover h2, a:hover h3, a:hover h4 {
   color: #000;
+}
+
+iframe#video {
+  border: none;
+  width: 320px;
+  height: 240px;
 }
 
 .imagelink:link, .imagelink:visited {
@@ -155,8 +172,8 @@ a:hover h1, a:hover h2, a:hover h3, a:hover h4 {
 }
 
 hr {
-  color: #aaa;
-  background-color: #aaa;
+  color: #ddd;
+  background-color: #ddd;
   height: 3px;
   border: none;
 }
@@ -173,14 +190,14 @@ pre.code {
 #warning {
   position: relative;
   display: block;
-  margin: 1rem;
+  margin: 1rem 5rem;
   background-color: #ffffff;
   padding: 2rem;
   border-style: dashed;
   border-color: #e00;
   border-width: 5px;
   font-size: 125%;
-  line-height: 125%;
+  line-height: 150%;
   box-shadow: 10px 10px 5px rgba(0,0,0, 0.5);
   margin-top: 30px;
   margin-bottom: 50px;
@@ -188,4 +205,5 @@ pre.code {
 
 code, span.code {
   font-family: 'Inconsolata', monospace;
+  margin:-1rem 0; /* don't pad lines */
 }
