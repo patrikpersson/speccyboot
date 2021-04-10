@@ -10,7 +10,7 @@
 # if your TFTP server serves from another directory than the ones listed here,
 # please modify this variable
 
-TFTP_DIRS="/tftpboot /private/tftpboot /srv/tftp /var/lib/tftpboot ${HOME}/tftpboot /var/ftpd"
+TFTP_DIRS="/tftpboot /private/tftpboot /srv/tftp /var/lib/tftpboot ${HOME}/tftpboot /var/ftpd /var/tftp"
 
 # -----------------------------------------------------------------------------
 

@@ -1,3 +1,11 @@
+v1.7 (April 10, 2021):
+
+* Made DHCP server more RFC compliant (added support for options 66, 150)
+* Made TFTP server more RFC compliant (doesn't use broadcast address)
+* Compiler update to SDCC 3.8.0.
+
+-------------------------------------------------------------------------------
+
 v1.6 (May 3, 2015):
 
 * Migrated to Github.
