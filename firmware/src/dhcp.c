@@ -34,6 +34,7 @@
 #include "dhcp.h"
 
 #include "eth.h"
+#include "file_loader.h"
 #include "globals.h"
 #include "udp_ip.h"
 #include "ui.h"
@@ -63,6 +64,7 @@
 #define DHCP_OPTION_REQ_IP_ADDR       (50)
 #define DHCP_OPTION_OVERLOAD          (52)
 #define DHCP_OPTION_MSG_TYPE          (53)
+#define DHCP_OPTION_SERVER_ID         (54)
 #define DHCP_OPTION_PARAM_REQ         (55)
 #define DHCP_OPTION_CLIENTID          (61)
 #define DHCP_OPTION_TFTP_SERVER_NAME  (66)
@@ -108,6 +110,8 @@
                                 + sizeof(struct dhcp_header_t)                \
                                 + sizeof(dhcp_request_options_ipaddr)         \
                                 + sizeof(ipv4_address_t)                      \
+                                + sizeof(dhcp_request_options_server)         \
+                                + sizeof(ipv4_address_t)                      \
                                 + sizeof(dhcp_common_options) )
 
 /*
@@ -136,10 +140,12 @@ static const struct dhcp_sub_header_t dhcp_sub_header = {
 static const uint32_t dhcp_magic = htonl(DHCP_MAGIC);
 
 static const uint8_t dhcp_common_options[] = {
-  DHCP_OPTION_PARAM_REQ, 3,
+  DHCP_OPTION_PARAM_REQ, 5,
   DHCP_OPTION_BCAST_ADDR,
+  DHCP_OPTION_SERVER_ID,
   DHCP_OPTION_TFTP_SERVER_NAME,
   DHCP_OPTION_TFTP_SERVER_ADDR,
+  DHCP_OPTION_BOOTFILE,
   DHCP_OPTION_END
 };
 
@@ -150,6 +156,10 @@ static const uint8_t dhcp_discover_options[] = {
 static const uint8_t dhcp_request_options_ipaddr[] = {
   DHCP_OPTION_MSG_TYPE, 1, DHCPREQUEST,
   DHCP_OPTION_REQ_IP_ADDR, 4      /* requested IP address follows */
+};
+
+static const uint8_t dhcp_request_options_server[] = {
+  DHCP_OPTION_SERVER_ID, 4       /* server address follows */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -218,12 +228,18 @@ dhcp_receive(void)
    * for the BOUND state here.
    */
 
+  uint8_t overload = 0;                          // option 52
+
+  ipv4_address_t dhcp_server_addr
+    = rx_frame.udp.app.dhcp.header.sub.siaddr;   // option 54
+
   uint8_t *tftp_server_name = NULL;              // option 66
   uint8_t tftp_server_name_length = 0;
 
-  const ipv4_address_t *tftp_server_addr = NULL; // option 150
+  uint8_t *tftp_filename = NULL;                 // option 67
+  uint8_t tftp_filename_length = 0;
 
-  uint8_t overload = 0;                          // option 52
+  const ipv4_address_t *tftp_server_addr = NULL; // option 150
 
   if (rx_frame.udp.app.dhcp.header.sub.op != BOOTREPLY
       || rx_frame.udp.app.dhcp.header.sub.xid != htonl(DHCP_XID))
@@ -251,9 +267,16 @@ dhcp_receive(void)
       case DHCP_OPTION_OVERLOAD:
         overload = *options;
         break;
+      case DHCP_OPTION_SERVER_ID:
+        dhcp_server_addr = *((const ipv4_address_t *) options);
+        break;
       case DHCP_OPTION_TFTP_SERVER_NAME:
         tftp_server_name = (uint8_t *) options;
         tftp_server_name_length = option_length;
+        break;
+      case DHCP_OPTION_BOOTFILE:
+        tftp_filename = (uint8_t *) options;
+        tftp_filename_length = option_length;
         break;
       case DHCP_OPTION_TFTP_SERVER_ADDR:
         tftp_server_addr = options;
@@ -275,6 +298,12 @@ dhcp_receive(void)
         && rx_frame.udp.app.dhcp.header.sname[0])
     {
       tftp_server_name = rx_frame.udp.app.dhcp.header.sname;
+    }
+    if (!(overload & 2)
+        && tftp_filename == NULL
+        && rx_frame.udp.app.dhcp.header.file[0])
+    {
+      tftp_filename = rx_frame.udp.app.dhcp.header.sname;
     }
   }
 
@@ -300,6 +329,10 @@ dhcp_receive(void)
     }
   }
 
+  if (tftp_filename != NULL) {
+    tftp_filename[tftp_filename_length] = '\0';
+  }
+
   switch (msg_type) {
   case DHCPACK:
     ip_config.host_address      = rx_frame.udp.app.dhcp.header.sub.yiaddr;
@@ -323,8 +356,13 @@ dhcp_receive(void)
       ip_config.tftp_server_address = rx_frame.udp.app.dhcp.header.sub.siaddr;
     }
 
-    display_status_configuring_tftp();
-    tftp_read_request(SNAPSHOT_LIST_FILE);
+    cls();
+    const char *f = SNAPSHOT_LIST_FILE;
+    if (tftp_filename != NULL) {
+      expect_snapshot();
+      f = tftp_filename;
+    }
+    tftp_read_request(f);
 
     break;
 
@@ -335,6 +373,8 @@ dhcp_receive(void)
     dhcp_add_header();
     udp_add(dhcp_request_options_ipaddr);
     udp_add(rx_frame.udp.app.dhcp.header.sub.yiaddr);
+    udp_add(dhcp_request_options_server);
+    udp_add(dhcp_server_addr);
     dhcp_finalize_and_send();
 
     break;

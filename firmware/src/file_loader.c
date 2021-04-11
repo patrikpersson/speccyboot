@@ -743,9 +743,14 @@ receive_file_data(void)
   {
     *curr_write_pos = 0;
 
-    curr_write_pos = (uint8_t *) 0x4000;
-    current_state  = &s_header;
-
+    expect_snapshot();
     run_menu();
   }
+}
+
+void
+expect_snapshot(void)
+{
+  curr_write_pos = (uint8_t *) 0x4000;
+  current_state  = &s_header;
 }
