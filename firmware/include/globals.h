@@ -7,8 +7,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
- * 
+ * Copyright (c) 2009- Patrik Persson
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -34,6 +34,7 @@
 #include "eth.h"
 #include "udp_ip.h"
 #include "arp.h"
+#include "bootp.h"
 #include "dhcp.h"
 #include "tftp.h"
 #include "context_switch.h"
@@ -74,13 +75,14 @@ extern struct eth_adm_t                 rx_eth_adm;
 extern union rx_frame_t {
   /* --------------------------------------------------------- Raw IP header */
   struct ipv4_header_t                  ip;
-  
+
   /* ------------------------------------------------------------------- UDP */
   PACKED_STRUCT() {
     struct ipv4_header_t                ip_header;
     struct udp_header_t                 header;
-    
+
     union {
+      struct bootp_packet_t             bootp;
       struct dhcp_packet_t              dhcp;
       PACKED_STRUCT() {
         struct tftp_header_t            header;
@@ -91,10 +93,10 @@ extern union rx_frame_t {
       } tftp;
     } app;
   } udp;
-  
+
   /* ------------------------------------------------------------------- ARP */
   struct arp_ip_ethernet_t              arp;
-  
+
   /* --------------------------------------------------- Snapshot name array */
   const char *snapshot_names [MAX_SNAPSHOTS];
 } rx_frame;

@@ -57,9 +57,6 @@
 
 /* ------------------------------------------------------------------------- */
 
-/* Current position to write to */
-static uint8_t *curr_write_pos = (uint8_t *) snapshot_list_buf;
-
 /*
  * Bytes remaining to unpack in current chunk
  * (union to allow for writing of individual bytes)
@@ -137,12 +134,19 @@ DECLARE_STATE(s_chunk_repcount);          /* repetition length */
 DECLARE_STATE(s_chunk_repvalue);          /* repetition value */
 DECLARE_STATE(s_chunk_repetition);        /* write repeated value */
 
+#ifndef SB_MINIMAL
 DECLARE_STATE(s_raw_data);                /* receive raw data file */
+#endif
 
 /* ------------------------------------------------------------------------- */
 
-/* We expect to receive a snapshot list before anything else */
+#ifdef SB_MINIMAL
+static uint8_t *curr_write_pos = 0x4000;
+static const state_func_t *current_state = &s_header;
+#else
+static uint8_t *curr_write_pos = (uint8_t *) snapshot_list_buf;
 static const state_func_t *current_state = &s_raw_data;
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -150,6 +154,8 @@ static const state_func_t *current_state = &s_raw_data;
 static void
 update_progress(void)
 {
+  kilobytes_loaded++;
+#ifndef SB_MINIMAL
   static uint8_t digit_single = 0;
   static uint8_t digit_tens = 0;
 
@@ -163,8 +169,8 @@ update_progress(void)
   }
   display_digit_at(digit_single, 17, 22);
 
-  display_progress((++kilobytes_loaded), kilobytes_expected);
-
+  display_progress(kilobytes_loaded, kilobytes_expected);
+#endif
   if (kilobytes_loaded == kilobytes_expected) {
     context_switch();
   }
@@ -203,7 +209,9 @@ DEFINE_STATE(s_header)
                   ? &s_chunk_compressed : &s_chunk_uncompressed;
   }
 
+#ifndef SB_MINIMAL
   display_progress(0, kilobytes_expected);
+#endif
 
   evacuate_z80_header();
 
@@ -678,6 +686,8 @@ __endasm;
 
 /* ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
+
 /*
  * State RAW_DATA:
  *
@@ -697,6 +707,8 @@ DEFINE_STATE(s_raw_data)
   __endasm;
 }
 
+#endif
+
 /* ========================================================================= */
 
 void
@@ -711,7 +723,11 @@ receive_file_data(void)
                          - sizeof(struct tftp_header_t);
 
   while (received_data_length != 0) {
-    if ((LOBYTE(curr_write_pos) == 0) && (current_state != &s_raw_data)) {
+    if ((LOBYTE(curr_write_pos) == 0)
+#ifndef SB_MINIMAL
+    && (current_state != &s_raw_data)
+#endif
+    ) {
 
       if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
         curr_write_pos = (uint8_t *) EVACUATION_TEMP_BUFFER;
@@ -730,6 +746,7 @@ receive_file_data(void)
     (*current_state)();
   }
 
+#ifndef SB_MINIMAL
   /*
    * If we received a TFTP frame with less than the maximal payload, it must
    * be the last one. If it was a snapshot, we would not come here (but
@@ -746,11 +763,16 @@ receive_file_data(void)
     expect_snapshot();
     run_menu();
   }
+#endif
 }
 
+/* ------------------------------------------------------------------------- */
+
+#ifndef SB_MINIMAL
 void
 expect_snapshot(void)
 {
   curr_write_pos = (uint8_t *) 0x4000;
   current_state  = &s_header;
 }
+#endif /* ifndef SB_MINIMAL */

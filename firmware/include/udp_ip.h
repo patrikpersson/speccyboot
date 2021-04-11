@@ -53,8 +53,10 @@
 #define IP_DEFAULT_BCAST_ADDRESS  (0xffffffffu)
 
 /* Static UDP ports */
-#define UDP_PORT_DHCP_SERVER      (67)
-#define UDP_PORT_DHCP_CLIENT      (68)
+#define UDP_PORT_BOOTP_SERVER     (67)
+#define UDP_PORT_BOOTP_CLIENT     (68)
+#define UDP_PORT_DHCP_SERVER      (UDP_PORT_BOOTP_SERVER)
+#define UDP_PORT_DHCP_CLIENT      (UDP_PORT_BOOTP_CLIENT)
 #define UDP_PORT_TFTP_SERVER      (69)
 #define UDP_PORT_TFTP_CLIENT      (69)
 #define UDP_PORT_SYSLOG           (514)

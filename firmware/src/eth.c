@@ -291,11 +291,30 @@ eth_send(uint16_t total_nbr_of_bytes_in_payload)
 
 void
 main(void)
+__naked
 {
+#ifdef SB_MINIMAL
+
+  __asm
+
+    xor a
+    out (0xfe), a
+    ld  hl, #0x4000
+    ld  de, #0x4001
+    ld  bc, #0x1AFF
+    ld  (hl), a
+    ldir
+
+  __endasm;
+
+  eth_init();
+  bootp_init();
+#else
   cls();
 
   eth_init();
   dhcp_init();
+#endif
 
   /*
    * At this point, eth_send() has already been called once for a PRIORITY
@@ -384,7 +403,7 @@ main(void)
         case htons(ETHERTYPE_IP):
           ip_receive();
           break;
-      case htons(ETHERTYPE_ARP):
+        case htons(ETHERTYPE_ARP):
           arp_receive();
           break;
       }

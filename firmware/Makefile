@@ -28,6 +28,9 @@ CFLAGS      += -DVERSION='$(VERSION)' --disable-warning 218
 # Run 'make DGBOOT=1' to build for Imrich Kolkol's DGBoot hardware design
 # instead of the default SpeccyBoot
 
+# Run 'make MINIMAL=1' for a minimal build (BOOTP instead of DHCP, no menu,
+# minimal UI, direct booting to snapshot indicated in BOOTP BOOTREPLY)
+
 ifdef DGBOOT
 TARGETFLAGS  = -DHWTARGET_DGBOOT
 else
@@ -36,13 +39,23 @@ endif
 
 CFLAGS      += $(TARGETFLAGS)
 
+ifdef MINIMAL
+CFLAGS      += -DSB_MINIMAL
+endif
+
 # =============================================================================
 # COMPONENTS
 # =============================================================================
 
 # module = source + header
-MODULES      = util ui file_loader context_switch enc28j60 spi globals menu
-MODULES     += eth arp udp_ip dhcp tftp syslog
+MODULES      = util file_loader context_switch enc28j60 spi globals
+MODULES     += eth arp udp_ip tftp syslog
+
+ifdef MINIMAL
+MODULES     += bootp
+else
+MODULES     += dhcp ui menu
+endif
 
 # -----------------------------------------------------------------------------
 

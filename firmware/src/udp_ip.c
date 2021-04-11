@@ -8,7 +8,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -109,9 +109,15 @@ ip_receive(void)
   if (ip_valid_address() && rx_frame.udp.header.dst_port == tftp_client_port) {
     tftp_receive();
   }
+#ifdef SB_MINIMAL
+  else if (rx_frame.udp.header.dst_port == htons(UDP_PORT_BOOTP_CLIENT)) {
+    bootp_receive();
+  }
+#else
   else if (rx_frame.udp.header.dst_port == htons(UDP_PORT_DHCP_CLIENT)) {
     dhcp_receive();
   }
+#endif
 }
 
 /* ------------------------------------------------------------------------- */
