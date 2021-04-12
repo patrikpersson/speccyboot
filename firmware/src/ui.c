@@ -132,21 +132,6 @@ static const uint8_t key_rows[] = {
   0, 0x5a, 0x58, 0x43, 0x56,      /* FEFE: shift, 'Z', 'X', 'C', 'V' */
 };
 
-/* ----------------------------------------------------------------------------
- * Multiplication table for multiplication by 2/3, for values 0..48.
- *-------------------------------------------------------------------------- */
-
-static const uint8_t scaled_progress[49] = {
-  /* Table for multiplication by 2/3, for values 0..48. */
-  0x00, 0x00, 0x01, 0x02, 0x02, 0x03, 0x04,
-  0x04, 0x05, 0x06, 0x06, 0x07, 0x08, 0x08,
-  0x09, 0x0a, 0x0a, 0x0b, 0x0c, 0x0c, 0x0d,
-  0x0e, 0x0e, 0x0f, 0x10, 0x10, 0x11, 0x12,
-  0x12, 0x13, 0x14, 0x14, 0x15, 0x16, 0x16,
-  0x17, 0x18, 0x18, 0x19, 0x1a, 0x1a, 0x1b,
-  0x1c, 0x1c, 0x1d, 0x1e, 0x1e, 0x1f, 0x20
-};
-
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -530,12 +515,15 @@ bit_not_set::
 
 /* ------------------------------------------------------------------------- */
 
+// 2n/3 can be calculated as 43n/64 for 0 <= n <= 48
+#define TWO_THIRDS(x) ( ( ((x) << 5) + ((x) << 3) + ((x) << 1) + (x) ) >> 6 )
+
 void
 display_progress(uint8_t kilobytes_loaded,
-		 uint8_t kilobytes_expected)
+                 uint8_t kilobytes_expected)
 {
   uint8_t progress = (kilobytes_expected == 48)
-                     ? scaled_progress[kilobytes_loaded]
+                     ? TWO_THIRDS(kilobytes_loaded)
                      : (kilobytes_loaded >> 2);
 
   if (progress) {
