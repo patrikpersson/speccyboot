@@ -9,7 +9,7 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -21,7 +21,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -62,16 +62,16 @@
  * 0x0000 .. 0x3FFF   16kB  SpeccyBoot ROM
  * 0x4000 .. 0x57FF   6kB   Video RAM (bitmap)
  * 0x5800 .. 0x5AFF   768B  Video RAM (attributes, progress display)     (!)
- * 0x5B00 .. 0x5BFF   256B  CPU stack (initial value 0x5BFF)             (!)
- * 0x5C00 .. 0x5FFF   1K    static variables                             (!)
+ * 0x5B00 .. 0x5B5F   96B   CPU stack                                    (!)
+ * 0x5B60 .. 0x5F30   977B  static variables                             (!)
+ * 0x5F31 .. 0x5FFF   207B  font data ' '..'9'                           (!)
+ * 0x6000 .. 0x6230   561B  remaining font data
  *
- * 0x6000 .. 0x67FF   2K    temporary evacuation buffer
- * 
- * The area 0x5A00 - 0x5FFF, marked with (!) above, needs to be preserved
+ * The area 0x5800 - 0x5FFF, marked with (!) above, needs to be preserved
  * during snapshot loading. When bytes destined for these addresses are
  * received, they are instead stored in the ENC28J60's on-chip SRAM:
  *
- * 0x1800 .. 0x1FFF   2kB   data destined for addresses 0x5A00 .. 0x5FFF in
+ * 0x1800 .. 0x1FFF   2kB   data destined for addresses 0x5800 .. 0x5FFF in
  *                          the Spectrum RAM (temporary storage during loading)
  * ------------------------------------------------------------------------- */
 
@@ -144,7 +144,7 @@ PACKED_STRUCT(z80_snapshot_header_t) {
   uint8_t                      dummy_hw_mod;      /* not used */
   uint8_t                      hw_state_fffd;
   uint8_t                      hw_state_snd[16];
-  
+
   /*
    * Remaining contents of this header are useless for a real Spectrum
    */

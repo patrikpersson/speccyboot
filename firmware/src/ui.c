@@ -35,62 +35,6 @@
 
 #include "globals.h"
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Feature data for digits
- *
- * Features, each one
- * assigned a value
- * from 0 to 7        Row index
- * -----------------  ---------
- *
- *
- *   x11111zy         0   x=0&1, y=1&2, z=1&2&7
- *   0......2         1
- *   x333333y         2   x=0&3&4, y=2&3&5
- *   4......5         3
- *   x666666y         4   x=4&6, y=5&6
- */
-
-/*
- * Number of rows in digit image (see above)
- */
-#define NBR_ROWS      (5)
-
-/*
- * Features for each digit, where bit 0..7 correspond to the features in the
- * drawing above.
- */
-static const uint8_t digit_features[] = {
-  0x77,          /* 0 */
-  0xa4,          /* 1 */
-  0x5e,          /* 2 */
-  0x6e,          /* 3 */
-  0x2d,          /* 4 */
-  0x6b,          /* 5 */
-  0x7b,          /* 6 */
-  0x26,          /* 7 */
-  0x7f,          /* 8 */
-  0x6f           /* 9 */
-};
-
-/*
- * For each of the 5 rows, this structure holds the mask each feature
- * contributes to that row.
- *
- * Each row has a length, indicating how many pairs of <feature, mask>
- * that follow.
- */
-static const uint8_t feature_rows[] = {
-  4,      (1 << 0), 0x01,  (1 << 1), 0xff,  (1 << 2), 0x80,  0x80, 0x40,
-  2,      (1 << 0), 0x01,                   (1 << 2), 0x80,
-  5,      (1 << 0), 0x01,  (1 << 3), 0xff,  (1 << 2), 0x80,
-          (1 << 4), 0x01,                   (1 << 5), 0x80,
-  2,      (1 << 4), 0x01,                   (1 << 5), 0x80,
-  3,      (1 << 4), 0x01,  (1 << 6), 0xff,  (1 << 5), 0x80
-};
-
 /* ----------------------------------------------------------------------------
  * Keyboard mapping (used by _poll_key below)
  *
@@ -261,10 +205,10 @@ set_attrs_loop::
 
 void
 print_at(uint8_t row,
-	 uint8_t start_col,
-	 uint8_t end_col,
-	 char terminator,
-	 const char *s)
+         uint8_t start_col,
+         uint8_t end_col,
+         char terminator,
+         const char *s)
 __naked
 {
   (void) row, start_col, end_col, terminator, s;
@@ -446,64 +390,42 @@ __naked
     ld    ix, #4
     add   ix, sp
 
-    ld    e, 1(ix)
-    ld    d, 2(ix)   ;; DE'=start_address   '
+    ld    l, 1(ix)
+    ld    h, 2(ix)   ;; HL = start_address
 
-    push  de
-    pop   iy
+    ld    de, #_font_data + 8 * 16 + 1   ;; address of '0' bits
+    ld    a, 0(ix)
+    sla   a
+    sla   a
+    sla   a
+    add   a, e
+    ld    e, a
 
-    ld    hl, #_digit_features
-    ld    a, l
-    add   a, 0(ix)
-    ld    l, a
-    jr    nc, no_carry_for_digit_calc   ;; FIXME avoid this
-    inc   h
-no_carry_for_digit_calc::
-    ld    d, (hl)   ;; D now holds digit features
+    ;; no need to worry about carry (to register D) in this addition,
+    ;; since all digit pixels are stored in the range 0x5F31 .. 0x5FFF
+    ;; (that is, D is always 0x5F)
 
-    ;; Iterate over feature_rows, determine bitmask to display
-
-    ld    hl, #_feature_rows
-    ld    c, #NBR_ROWS
+    ld    c, #6
 row_loop::
-    xor   a
-    ex    af, af'   ;; A' holds bitmask to show
-    ld    b, (hl)   ;; B now holds number of features for this row
+    ld    a, (de)
+    sla   a
+    inc   de
+    ld    b, #6
+pixel_loop::
+    sla   a
+    jr    nc, skip_pixel
+    ld    (hl), #PAPER(WHITE) + INK(WHITE)
+    jr    pixel_done
+skip_pixel::
+    ld    (hl), #PAPER(BLACK) + INK(BLACK)
+pixel_done::
     inc   hl
-feature_loop::
-    ld    e, (hl)   ;; E holds a feature in this row
-    inc   hl        ;; (HL) holds the mask for this feature
+    djnz  pixel_loop
 
-    ld    a, d
-    and   e
-    jr    z, no_feature
-    ex    af, af'   ;; A' holds bitmask to show
-    or    (hl)
-    ex    af, af'   ;; put back A'
-no_feature::
-    inc   hl
-    djnz  feature_loop
-
-    ;; Display bitmask in alternate A register
-
-    push  bc
-    ld    b, #8
-    ex    af, af'   ;; A' holds bitmask to show
+    ld    a, c
+    ld    bc, #(ROW_LENGTH-6)
+    add   hl, bc
     ld    c, a
-bitmask_loop::
-    ld    a, #PAPER(BLACK) + INK(BLACK)
-    rr    c
-    jr    nc, bit_not_set
-    ld    a, #PAPER(WHITE) + INK(WHITE)
-bit_not_set::
-    ld    (iy), a
-    inc   iy
-    djnz  bitmask_loop
-
-    ld    bc, #(ROW_LENGTH-8)
-    add   iy, bc
-    pop   bc
-
     dec   c
     jr    nz, row_loop
 

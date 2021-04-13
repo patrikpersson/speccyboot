@@ -7,7 +7,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -97,6 +97,12 @@ void
 cls(void) __naked;
 
 /* -------------------------------------------------------------------------
+ * Copy digit data from system font. Assumes Spectrum ROM to be paged in.
+ * ------------------------------------------------------------------------- */
+void
+copy_digit_data(void) __naked;
+
+/* -------------------------------------------------------------------------
  * Display a string at given coordinates, in 8x8 font. The string is
  * terminated by the character 'terminator.'
  *
@@ -105,10 +111,10 @@ cls(void) __naked;
  * ------------------------------------------------------------------------- */
 void
 print_at(uint8_t row,
-	 uint8_t start_col,
-	 uint8_t end_col,
-	 char terminator,
-	 const char *s)
+         uint8_t start_col,
+         uint8_t end_col,
+         char terminator,
+         const char *s)
 __naked;
 
 /* -------------------------------------------------------------------------

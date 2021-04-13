@@ -46,13 +46,15 @@
 
 /* ========================================================================= */
 
-/* Stack address (defined here so crt0.asm can find it via linker) */
-uint8_t __at(0x5c00) stack_top;
+/*
+ * See context_switch.h about these addresses
+ */
 
-/* ------------------------------------------------------------------------- */
+/* Stack address (defined here so crt0.asm can find it via linker) */
+uint8_t __at(0x5b60) stack_top;
 
 /* Buffer for font data (copied from 48K ROM by crt0.asm) */
-uint8_t __at(0x6000) font_data[0x300];
+uint8_t __at(0x5F31) font_data[0x300];
 
 /* Buffer for snapshot list */
 char __at(0x6300) snapshot_list_buf[0x9d00];

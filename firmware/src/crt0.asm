@@ -3,7 +3,7 @@
   ;; Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
   ;; --------------------------------------------------------------------------
   ;;
-  ;; Copyright (c) 2009-2012, Patrik Persson & Imrich Kolkol
+  ;; Copyright (c) 2009-  Patrik Persson & Imrich Kolkol
   ;;
   ;; Permission is hereby granted, free of charge, to any person
   ;; obtaining a copy of this software and associated documentation
@@ -16,7 +16,7 @@
   ;;
   ;; The above copyright notice and this permission notice shall be
   ;; included in all copies or substantial portions of the Software.
-  ;; 
+  ;;
   ;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
   ;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
   ;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -30,7 +30,7 @@
 #include "spi_asm.h"
 
   .module crt0
-  
+
   .globl	_font_data
   .globl	_main
   .globl	_stack_top
@@ -39,13 +39,13 @@
   .globl	l__INITIALIZER
   .globl	s__INITIALIZED
   .globl	s__INITIALIZER
-	
+
   ;; --------------------------------------------------------------------------
 
   .area	_HEADER (ABS)
 
   ;; --------------------------------------------------------------------------
-  
+
   .org 	0
 
   im    1
@@ -71,26 +71,26 @@
   ;; 200ms = 709380 T-states = 33780 (0x83F4) LDIR iterations. However,
   ;; since DE points to contended memory, each iteration will take longer
   ;; time than that in reality. Stick with a safe overkill.
-	
+
   ld  hl, #ram_trampoline
   ld  bc, #0x83F4
   ldir                       ;; DE points to _stack_top
-  
+
   ;; Is Caps Shift being pressed? Clear C flag if it is
-  
+
   ld    a, #0xFE             ;; 0xFEFE: keyboard scan row CAPS..V
   in    a, (0xFE)
   rra
 
   ret                        ;; jump to 'font_data_loader' copy in RAM
 
-  ;; -------------------------------------------------------------------------- 
+  ;; --------------------------------------------------------------------------
   ;; Trampoline: copied to RAM above. Must be executed from RAM, since
   ;; it pages out the SpeccyBoot ROM.
   ;;
   ;; Copies font data to _font_data (defined in globals.h). If the C flag is
   ;; clear, executes BASIC.
-  ;; -------------------------------------------------------------------------- 
+  ;; --------------------------------------------------------------------------
 
 ram_trampoline::
   ld    a, #PAGE_OUT ;; page out SpeccyBoot, keep ETH in reset
@@ -121,18 +121,18 @@ ram_trampoline::
   ld    hl, #0x3d00 ;; address of font data in ROM1
   ld    de, #_font_data
   ld    b, d        ;; BC is now 0x4fd (overkill, but fine)
-  ldir        
+  ldir
 
   xor   a           ;; page in SpeccyBoot, keep ETH in reset
   out   (SPI_OUT), a
 
   jp    gsinit
-	
-  ;; -------------------------------------------------------------------------- 
+
+  ;; --------------------------------------------------------------------------
   ;; RST 0x38 (50HZ INTERRUPT) ENTRYPOINT
   ;;
   ;; Increase 16-bit value at '_timer_tick_count'
-  ;; -------------------------------------------------------------------------- 
+  ;; --------------------------------------------------------------------------
 
   .org	0x38
   push  hl
@@ -142,10 +142,10 @@ ram_trampoline::
   pop   hl
   ei
   ret
-	
-  ;; -------------------------------------------------------------------------- 
+
+  ;; --------------------------------------------------------------------------
   ;; Ordering of segments for the linker
-  ;; -------------------------------------------------------------------------- 
+  ;; --------------------------------------------------------------------------
 
   .area	_HOME
   .area	_CODE
@@ -163,7 +163,7 @@ end_of_data::
 
   .area _CODE
   .area _GSINIT
-  
+
 gsinit::
   ld bc, #l__INITIALIZER
   ld de, #s__INITIALIZED
@@ -173,5 +173,5 @@ gsinit::
   .area _GSFINAL
   ei
   jp _main
-  
+
 end_of_code::
