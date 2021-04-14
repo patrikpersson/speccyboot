@@ -4,70 +4,70 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
     <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inconsolata&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inconsolata&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="speccyboot.css">
     <title>SpeccyBoot: How to emulate it in Fuse</title>
   </head>
 
   <body>
 
-  <div id="heading">
-    <div id="leftheading"><a href="index.html">SpeccyBoot</a></div>
-    <div id="rightheading">How to emulate it in Fuse</div>
-  </div>
+    <div id="content">
 
-  <hr>
+      <div id="heading">
+        <div id="leftheading"><a href="index.html"><img id="logo" src="speccyboot.png" /></a></div>
+        <div id="rightheading">How to emulate it in Fuse</div>
+      </div>
 
-  <p>Recent versions of Fuse (the
-  <a href="http://fuse-emulator.sourceforge.net/">Free Unix
-  Spectrum Emulator</a>) include support for emulating
-  SpeccyBoot.  This allows you to try the SpeccyBoot out in an
-  emulated environment &mdash; without any Spectrum or
-  SpeccyBoot hardware.</p>
+      <p>Recent versions of Fuse (the
+      <a href="http://fuse-emulator.sourceforge.net/">Free Unix
+      Spectrum Emulator</a>) include support for emulating
+      SpeccyBoot.  This allows you to try the SpeccyBoot out in an
+      emulated environment &mdash; without any Spectrum or
+      SpeccyBoot hardware.</p>
 
-  <p>The emulation is based on
-  <a href="http://en.wikipedia.org/wiki/TUN/TAP">Ethernet TAP
-  networking</a> and requires a Linux host (I have verified this using Ubuntu
-  20.04).</p>
+      <p>The emulation is based on
+      <a href="http://en.wikipedia.org/wiki/TUN/TAP">Ethernet TAP
+      networking</a> and requires a Linux host (I have verified this using Ubuntu
+      20.04).</p>
 
-  <h2>Configuring your network for TAP</h2>
+      <h2>Configuring your network for TAP</h2>
 
-  <p>The following example involves creating a separate
-  network for the emulated Spectrum. Your Linux machine will
-  get another (virtual) network interface, and this interface
-  is connected to the emulated Spectrum. Your Linux machine
-  will then need to take on the role of providing DHCP and
-  TFTP services to this Spectrum machine.</p>
+      <p>The following example involves creating a separate
+      network for the emulated Spectrum. Your Linux machine will
+      get another (virtual) network interface, and this interface
+      is connected to the emulated Spectrum. Your Linux machine
+      will then need to take on the role of providing DHCP and
+      TFTP services to this Spectrum machine.</p>
 
-  <ol>
+      <ol>
 
-    <li>
-      <p>
-        First, you need a script for setting up a TAP virtual network interface
-        (say, <code>tap0</code>)
-        on your Linux host.
-        Create a helper script <code>/usr/local/bin/enable_tap.sh</code>
-        with the following content:
-      </p>
+        <li>
+          <p>
+            First, you need a script for setting up a TAP virtual network interface
+            (say, <code>tap0</code>)
+            on your Linux host.
+            Create a helper script <code>/usr/local/bin/enable_tap.sh</code>
+            with the following content:
+          </p>
 
-      <pre class="code">#!/bin/sh
+          <pre class="code">#!/bin/sh
 
 ip tuntap add tap0 mode tap
 ip addr add 192.168.82.1/8 dev tap0
 ip link set up dev tap0</pre>
 
-      <p>
-        Don't forget to
-      </p>
-      <pre class="code">sudo chmod a+x /usr/local/bin/enable_tap.sh</pre>
-    </li>
-    <li>
-      <p>Then add a system service to run this script during boot.
-        Create <code>/etc/systemd/system/tap.service</code>
-        with the following content:
-      </p>
+          <p>
+            Don't forget to
+          </p>
+          <pre class="code">sudo chmod a+x /usr/local/bin/enable_tap.sh</pre>
+        </li>
+        <li>
+          <p>Then add a system service to run this script during boot.
+            Create <code>/etc/systemd/system/tap.service</code>
+            with the following content:
+          </p>
 
-      <pre class="code">[Unit]
+          <pre class="code">[Unit]
 Description=TAP interface for SpeccyBoot
 After=network.target
 
@@ -78,67 +78,67 @@ ExecStart=/usr/local/bin/enable_tap.sh
 
 [Install]
 WantedBy=multi-user.target</pre>
-    </li>
-  </ol>
+        </li>
+      </ol>
 
-  <p>Note that this configuration assumes your new
-  <code>tap0</code> interface to use the 192.168.82.*
-  subnet. If this is not possible for you (e.g., if you are
-  already using this subnet for other purposes), you will need
-  to modify both this configuration and the DHCP configuration
-  below.</p>
+      <p>Note that this configuration assumes your new
+      <code>tap0</code> interface to use the 192.168.82.*
+      subnet. If this is not possible for you (e.g., if you are
+      already using this subnet for other purposes), you will need
+      to modify both this configuration and the DHCP configuration
+      below.</p>
 
-  <h2>Configuring DHCP &amp; TFTP for your local TAP network</h2>
+      <h2>Configuring DHCP &amp; TFTP for your local TAP network</h2>
 
-  <p>
-    This is done mostly the same way as you would
-    <a href="usage.html">configure DHCP &amp; TFTP
-    for a physical machine</a>. You probably want
-    to ensure that your DHCP server only responds
-    to requests on your TAP interface, though.
-    In <code>dnsmasq.conf</code> this can be done by
-    adding the line
-  </p>
+      <p>
+        This is done mostly the same way as you would
+        <a href="usage.html">configure DHCP &amp; TFTP
+        for a physical machine</a>. You probably want
+        to ensure that your DHCP server only responds
+        to requests on your TAP interface, though.
+        In <code>dnsmasq.conf</code> this can be done by
+        adding the line
+      </p>
 
-  <pre class="code">interface=tap0</pre>
+      <pre class="code">interface=tap0</pre>
 
-  <p>Finally, you will need to prepare a directory of
-  snapshots in <code>/var/lib/tftpboot/speccyboot</code> as
-  outlined under <a href="usage.html#tftpserver">TFTP server
-  configuration</a>.</p>
+      <p>Finally, you will need to prepare a directory of
+      snapshots in <code>/var/lib/tftpboot/speccyboot</code> as
+      outlined under <a href="usage.html#tftpserver">TFTP server
+      configuration</a>.</p>
 
-  <p>The TAP interface configuration, as well as the TFTP and
-  DHCP configurations, take effect upon boot. Hence, you need
-  to <b>reboot your Linux machine</b> at this point.</p>
+      <p>The TAP interface configuration, as well as the TFTP and
+      DHCP configurations, take effect upon boot. Hence, you need
+      to <b>reboot your Linux machine</b> at this point.</p>
 
-  <h2>Running Fuse (the Free Unix Spectrum Emulator) with SpeccyBoot emulation</h2>
+      <h2>Running Fuse (the Free Unix Spectrum Emulator) with SpeccyBoot emulation</h2>
 
-  <p>
-    Recent versions of Fuse support emulation of the SpeccyBoot hardware.
-    Install Fuse:
-  </p>
+      <p>
+        Recent versions of Fuse support emulation of the SpeccyBoot hardware.
+        Install Fuse:
+      </p>
 
-  <pre class="code">sudo apt install fuse-gtk spectrum-roms</pre>
+      <pre class="code">sudo apt install fuse-gtk spectrum-roms</pre>
 
-  <p>
-    The Debian/Ubuntu package doesn't include the SpeccyBoot ROM, so you'll have to build
-    it from source or use <a href="speccyboot-1.7.rom">this binary</a>.
-  </p>
+      <p>
+        The Debian/Ubuntu package doesn't include the SpeccyBoot ROM, so you'll have to build
+        it from source or use <a href="speccyboot-1.7.rom">this binary</a>.
+      </p>
 
-  <p>
-    Then configure Fuse using either the graphical UI or command
-    line arguments:
-  </p>
+      <p>
+        Then configure Fuse using either the graphical UI or command
+        line arguments:
+      </p>
 
-  <pre class="code">fuse --speccyboot --speccyboot-tap=tap0</pre>
+      <pre class="code">fuse --speccyboot --speccyboot-tap=tap0</pre>
 
-    <p>Here's what it looks like:</p>
+        <p>Here's what it looks like:</p>
 
-    <img src="fuse.png" />
+        <img src="fuse.png" />
 
-    <hr>
+        <hr>
 
-  <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
-
-</body>
+      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
+    </div>
+  </body>
 </html>

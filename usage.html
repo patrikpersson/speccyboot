@@ -4,62 +4,62 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
   <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inconsolata&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inconsolata&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" type="text/css" href="speccyboot.css">
   <title>SpeccyBoot: How to use it</title>
 </head>
 
 <body>
 
-  <div id="heading">
-    <div id="leftheading"><a href="index.html">SpeccyBoot</a></div>
-    <div id="rightheading">How to use it</div>
-  </div>
+  <div id="content">
 
-  <hr>
+    <div id="heading">
+      <div id="leftheading"><a href="index.html"><img id="logo" src="speccyboot.png" /></a></div>
+      <div id="rightheading">How to use it</div>
+    </div>
 
-  <p>Here's how to use SpeccyBoot:</p>
+    <p>Here's how to use SpeccyBoot:</p>
 
-  <ul>
-    <li><a href="#tftpserver">DHCP &amp; TFTP server configuration</a></li>
-    <li><a href="#loading">Loading snapshots</a></li>
-  </ul>
+    <ul>
+      <li><a href="#tftpserver">DHCP &amp; TFTP server configuration</a></li>
+      <li><a href="#loading">Loading snapshots</a></li>
+    </ul>
 
-<!--
-  <p>There is also a an optional feature:</p>
+  <!--
+    <p>There is also a an optional feature:</p>
 
-  <ul>
-    <li><a href="#syslog">Syslog daemon configuration</a></li>
-  </ul>
--->
+    <ul>
+      <li><a href="#syslog">Syslog daemon configuration</a></li>
+    </ul>
+  -->
 
-  <hr>
+    <hr>
 
-  <a name="tftpserver"><h2>DHCP &amp; TFTP server configuration</h2></a>
+    <a name="tftpserver"><h2>DHCP &amp; TFTP server configuration</h2></a>
 
-  <p>You will need to install and/or activate servers for DHCP and TFTP on a
-    computer in your local network. DHCP/TFTP server software is
-    freely available for most platforms.</p>
+    <p>You will need to install and/or activate servers for DHCP and TFTP on a
+      computer in your local network. DHCP/TFTP server software is
+      freely available for most platforms.</p>
 
-  <p>Most UNIX variants either include a TFTP server by default,
-    or allow you to install one quite easily. There are third-party TFTP
-    servers for Microsoft Windows too.</p>
+    <p>Most UNIX variants either include a TFTP server by default,
+      or allow you to install one quite easily. There are third-party TFTP
+      servers for Microsoft Windows too.</p>
 
-  <h3>DHCP &amp; TFTP server in Ubuntu 20.04</h3>
+    <h3>DHCP &amp; TFTP server in Ubuntu 20.04</h3>
 
-  <p>For Ubuntu 20.04, I recommend running <code>dnsmasq</code> (which handles both DHCP and TFTP).</p>
+    <p>For Ubuntu 20.04, I recommend running <code>dnsmasq</code> (which handles both DHCP and TFTP).</p>
 
-  <ul>
-    <li>Install <code>dnsmasq</code>: <pre class="code">sudo apt install dnsmasq</pre>
+    <ul>
+      <li>Install <code>dnsmasq</code>: <pre class="code">sudo apt install dnsmasq</pre>
 
-      <p>(You may get an error message about <code>dnsmasq</code> being unable
-        to start, due the DNS port being busy. Don't worry: the configuration below fixes this.)</p>
-    </li>
-    <li>Ensure there is a directory for the TFTP server:
-      <pre class="code">sudo mkdir -p /var/tftp</pre>
-    </li>
-    <li>Edit <code>/etc/dnsmasq.conf</code> to something like the following:
-      <pre class="code">port=0     # disable DNS
+        <p>(You may get an error message about <code>dnsmasq</code> being unable
+          to start, due the DNS port being busy. Don't worry: the configuration below fixes this.)</p>
+      </li>
+      <li>Ensure there is a directory for the TFTP server:
+        <pre class="code">sudo mkdir -p /var/tftp</pre>
+      </li>
+      <li>Edit <code>/etc/dnsmasq.conf</code> to something like the following:
+        <pre class="code">port=0     # disable DNS
 
 dhcp-range=tap0,192.168.82.100,192.168.82.200,255.255.255.0,12h
 dhcp-authoritative
@@ -75,128 +75,129 @@ dhcp-option=150,192.168.82.1
 
 enable-tftp
 tftp-root=/var/tftp</pre>
-    </li>
-  </ul>
+      </li>
+    </ul>
 
-  <h3>Preparing a directory of snapshots</h3>
+    <h3>Preparing a directory of snapshots</h3>
 
-  <p>Your .z80 snapshots need to be stored in a particular
-    directory to be found by SpeccyBoot and the TFTP server.</p>
+    <p>Your .z80 snapshots need to be stored in a particular
+      directory to be found by SpeccyBoot and the TFTP server.</p>
 
-  <p>Create a directory named <span class="code">speccyboot</span> in your TFTP
-    servers's main directory. (Given the <span class="code">dnsmasq</span>
-    configuration above, that would be <span class="code">/var/tftp</span>;
-    other TFTP servers likely use something else.)
-    Copy your Z80 snapshots to
-    this <span class="code">speccyboot</span> directory:</p>
+    <p>Create a directory named <span class="code">speccyboot</span> in your TFTP
+      servers's main directory. (Given the <span class="code">dnsmasq</span>
+      configuration above, that would be <span class="code">/var/tftp</span>;
+      other TFTP servers likely use something else.)
+      Copy your Z80 snapshots to
+      this <span class="code">speccyboot</span> directory:</p>
 
-  <pre class="code">SNAPDIR=/var/tftp/speccyboot&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt this path to match your setup
+    <pre class="code">SNAPDIR=/var/tftp/speccyboot&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt this path to match your setup
 sudo mkdir -p $SNAPDIR
 sudo chown <em>&lt;your-username&gt;</em> $SNAPDIR
 cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 $SNAPDIR</pre>
 
-  <h3>Updating the snapshot index</h3>
+    <h3>Updating the snapshot index</h3>
 
-  <p>After you have created the directory above, and whenever
-  you add or remove a snapshot to/from this directory,
-  you will need to update the SpeccyBoot index. This is a
-  (case-insensitively sorted) list of snapshots
-  named <span class="code">snapshots.lst</span>. (The TFTP protocol doesn't
-  have a &quot;list directory&quot; command, so SpeccyBoot needs this file
-  to present a menu.)</p>
+    <p>After you have created the directory above, and whenever
+    you add or remove a snapshot to/from this directory,
+    you will need to update the SpeccyBoot index. This is a
+    (case-insensitively sorted) list of snapshots
+    named <span class="code">snapshots.lst</span>. (The TFTP protocol doesn't
+    have a &quot;list directory&quot; command, so SpeccyBoot needs this file
+    to present a menu.)</p>
 
-  <p>On a UNIX machine, the script <span class="code">speccyboot-update</span>
-  can be used. It is located in the <code>utils</code>
-  directory of the SpeccyBoot source code, and is installed
-  into <code>/usr/local/bin</code> by running <code>make
-  install</code> from the <span class="code">speccyboot/utils</span> directory
-  in the SpeccyBoot source tree.</p>
+    <p>On a UNIX machine, the script <span class="code">speccyboot-update</span>
+    can be used. It is located in the <code>utils</code>
+    directory of the SpeccyBoot source code, and is installed
+    into <code>/usr/local/bin</code> by running <code>make
+    install</code> from the <span class="code">speccyboot/utils</span> directory
+    in the SpeccyBoot source tree.</p>
 
-  <p>Once <span class="code">speccyboot-update</span> is installed, you can
-  update the snapshot index at any time (i.e., when you have
-  added a new snapshot) by typing</p>
+    <p>Once <span class="code">speccyboot-update</span> is installed, you can
+    update the snapshot index at any time (i.e., when you have
+    added a new snapshot) by typing</p>
 
-  <pre class="code">speccyboot-update</pre>
+    <pre class="code">speccyboot-update</pre>
 
-  <hr>
+    <hr>
 
-  <a name="loading"><h2>Loading snapshots</h2></a>
+    <a name="loading"><h2>Loading snapshots</h2></a>
 
-  <p>If the TFTP server configuration above went well, you should now
-  be able to turn on your Spectrum, see it figure out its IP address
-  as well as that of the TFTP server, and present your list of
-  snapshots. Use the arrow keys to navigate the list, the alphabetic
-  keys to jump directly to snapshots whose name begin with that letter,
-  and Enter to load the selected snapshot.</p>
+    <p>If the TFTP server configuration above went well, you should now
+    be able to turn on your Spectrum, see it figure out its IP address
+    as well as that of the TFTP server, and present your list of
+    snapshots. Use the arrow keys to navigate the list, the alphabetic
+    keys to jump directly to snapshots whose name begin with that letter,
+    and Enter to load the selected snapshot.</p>
 
-  <p>To boot into BASIC rather than the SpeccyBoot menu, press Caps
-  Shift and keep it pressed while power-cycling/resetting the
-  Spectrum.</p>
+    <p>To boot into BASIC rather than the SpeccyBoot menu, press Caps
+    Shift and keep it pressed while power-cycling/resetting the
+    Spectrum.</p>
 
-  <h3>Troubleshooting</h3>
+    <h3>Troubleshooting</h3>
 
-  <p>If the SpeccyBoot seems stuck, the border colour is used to show
-  what went wrong:</p>
+    <p>If the SpeccyBoot seems stuck, the border colour should give a hint as to
+    what went wrong:</p>
 
-  <table>
-    <tr><th colspan=2>Border colour</th><th>Failure</th></tr>
-    <tr><td>red</td><td bgcolor="#F00"></td><td>No response from server (despite several attempts to contact it)</td></tr>
-    <tr><td>yellow</td><td bgcolor="#FF0"></td><td>File not found on server</td></tr>
-    <tr><td>cyan</td><td bgcolor="#0FF"></td><td>The selected snapshot is not compatible with this hardware</td></tr>
-    <tr><td>magenta</td><td bgcolor="#F0F"></td><td>The DHCP server uses a symbolic hostname for the TFTP server (must be an IP address, on form x.x.x.x)</td></tr>
-  </table>
+    <table>
+      <tr><th style="padding-right:1rem">Border&nbsp;colour</th><th>Failure</th></tr>
+      <tr><td style="padding:6px"><div style="background-color:#f00;text-align:center;padding:2px">red</div></td><td>No response from server (despite several attempts to contact it)</td></tr>
+      <tr><td style="padding:6px"><div style="background-color:#ff0;text-align:center;padding:2px">yellow</div></td><td>File not found on server</td></tr>
+      <tr><td style="padding:6px"><div style="background-color:#0ff;text-align:center;padding:2px">cyan</div></td><td>The selected snapshot is not compatible with this hardware</td></tr>
+      <tr><td style="padding:6px"><div style="background-color:#f0f;text-align:center;padding:2px">magenta</div></td><td>The DHCP server uses a symbolic hostname for the TFTP server (must be an IP address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal (quad-dotted) notation</a>, on form w.x.y.z)</td></tr>
+    </table>
 
-  <h3>Demo video</h3>
+    <h3>Demo video</h3>
 
-  <iframe
-    id="video"
-    src="https://www.youtube.com/embed/jGKAelCRKVk"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
-  </iframe>
+    <iframe
+      id="video"
+      src="https://www.youtube.com/embed/jGKAelCRKVk"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
+    </iframe>
 
-<!--
-  <hr>
+  <!--
+    <hr>
 
-  <a name="syslog"><h2>Syslog daemon configuration</h2></a>
+    <a name="syslog"><h2>Syslog daemon configuration</h2></a>
 
-  <p>This step is optional. The syslog feature will not affect
-  your retro-gaming experience in any way. If you don't know
-  what it is, you don't want it. If you do know what it is,
-  you likely <i>still</i> don't want it. It can be rather
-  useful for debugging, though.</p>
+    <p>This step is optional. The syslog feature will not affect
+    your retro-gaming experience in any way. If you don't know
+    what it is, you don't want it. If you do know what it is,
+    you likely <i>still</i> don't want it. It can be rather
+    useful for debugging, though.</p>
 
-  <p>SpeccyBoot uses (a liberal interpretation of) the
-  <a href="http://www.ietf.org/rfc/rfc3164.txt">BSD syslog
-  protocol</a> to display status information. Those messages can be
-  viewed using a suitably configured machine in your local network.
-  The syslog output is primarily useful for debugging.</p>
+    <p>SpeccyBoot uses (a liberal interpretation of) the
+    <a href="http://www.ietf.org/rfc/rfc3164.txt">BSD syslog
+    protocol</a> to display status information. Those messages can be
+    viewed using a suitably configured machine in your local network.
+    The syslog output is primarily useful for debugging.</p>
 
-  <p>Just like TFTP, the syslog protocol is supported by virtually all
-  UNIX and UNIX-like operating systems. Most UNIX syslog daemons are
-  capable of receiving syslog output from other machines in the
-  network. However, most syslog daemons also disable this behavior by
-  default, so you will likely have to explicitly enable it to see
-  SpeccyBoot's messages.</p>
+    <p>Just like TFTP, the syslog protocol is supported by virtually all
+    UNIX and UNIX-like operating systems. Most UNIX syslog daemons are
+    capable of receiving syslog output from other machines in the
+    network. However, most syslog daemons also disable this behavior by
+    default, so you will likely have to explicitly enable it to see
+    SpeccyBoot's messages.</p>
 
-  <p>In <b>Ubuntu 20.04</b>, edit <span class="code">/etc/rsyslog.conf</span> and make
-  sure the following two lines are there:</p>
+    <p>In <b>Ubuntu 20.04</b>, edit <span class="code">/etc/rsyslog.conf</span> and make
+    sure the following two lines are there:</p>
 
-  <pre class="code">module(load="imudp")
-input(type="imudp" port="514")
-</pre>
+    <pre class="code">module(load="imudp")
+  input(type="imudp" port="514")
+  </pre>
 
-  <p>Here's how SpeccyBoot syslog output appears in Ubuntu's log viewer:</p>
+    <p>Here's how SpeccyBoot syslog output appears in Ubuntu's log viewer:</p>
 
-  <img src="syslog.png" />
+    <img src="syslog.png" />
 
-  <p>Another way of viewing the syslog output is <a
-  href="http://www.wireshark.org/">Wireshark</a>. Wireshark interprets
-  syslog messages correctly, and displays it along with the rest of the
-  communication.</p>
+    <p>Another way of viewing the syslog output is <a
+    href="http://www.wireshark.org/">Wireshark</a>. Wireshark interprets
+    syslog messages correctly, and displays it along with the rest of the
+    communication.</p>
 
--->
+  -->
 
-  <hr>
-  <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
-</body>
+    <hr>
+    <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
+  </div>
+  </body>
 </html>
