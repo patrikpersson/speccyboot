@@ -171,13 +171,6 @@ PACKED_STRUCT(z80_snapshot_header_t) {
 /* ------------------------------------------------------------------------ */
 
 /*
- * Storage for evacuate_z80_header()
- */
-extern struct z80_snapshot_header_t snapshot_header;
-
-/* ------------------------------------------------------------------------ */
-
-/*
  * Copy a .z80 header from the RX buffer to a separate memory area. The copied
  * header is used by evacuate_data() below at a later time.
  */

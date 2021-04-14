@@ -56,6 +56,15 @@ uint8_t __at(0x5b60) stack_top;
 /* Buffer for font data (copied from 48K ROM by crt0.asm) */
 uint8_t __at(0x5F31) font_data[0x300];
 
+/*
+ * Storage for Z80 snapshot header. This is used while loading a snapshot,
+ * so we re-use some of the space used for font data (SPACE to &)
+ */
+struct z80_snapshot_header_t  __at(0x5F31) snapshot_header;
+
+/* ------------------------------------------------------------------------ */
+
+
 /* Buffer for snapshot list */
 char __at(0x6300) snapshot_list_buf[0x9d00];
 

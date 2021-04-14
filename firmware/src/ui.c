@@ -450,6 +450,6 @@ display_progress(uint8_t kilobytes_loaded,
 
   if (progress) {
     *((uint8_t *) PROGRESS_BAR_BASE - 1 + progress)
-      = PAPER(WHITE) + INK(WHITE) + BRIGHT;
+      = PAPER(BLUE) + INK(BLUE) + BRIGHT;
   }
 }

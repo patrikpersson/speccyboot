@@ -9,7 +9,7 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -21,7 +21,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -122,13 +122,6 @@
 
 /* ========================================================================= */
 
-/*
- * Snapshot header, temporarily stored here
- */
-struct z80_snapshot_header_t snapshot_header;
-
-/* ------------------------------------------------------------------------ */
-
 void
 evacuate_data(void)
 {
@@ -170,7 +163,7 @@ pixel_not_set::
       xor  a           ;;  clear C flag
       sbc  hl, bc
       pop  bc
-      
+
       ld   a, e
       cp   #33         ;;  more than half of the total pixels in cell
       ld   a, (bc)
@@ -261,7 +254,7 @@ write_trampoline_loop::
     STORE16(VRAM_REGSTATE_PC, snapshot_header.pc);
     snapshot_header.hw_state_7ffd = 0x30 + DEFAULT_BANK; /* lock, ROM 1 */
   }
-  
+
   /* Write data to ENC28J60. */
   enc28j60_write_memory_at(ENC28J60_EVACUATED_DATA,
 			   (uint8_t *) EVACUATION_TEMP_BUFFER,
@@ -283,7 +276,7 @@ context_switch(void)
    * interrupt mode below
    */
   __asm   di  __endasm;
-  
+
   /*
    * Restore paging and sound register contents, if valid values exist
    */
@@ -292,7 +285,7 @@ context_switch(void)
   {
     static __sfr __banked __at(0xfffd) register_select;
     static __sfr __banked __at(0xbffd) register_value;
-    
+
     uint8_t reg;
 
     for (reg = 0; reg < 16; reg++) {
@@ -317,12 +310,12 @@ context_switch(void)
     memcfg_plus(MEMCFG_PLUS_ROM_HI);
     memcfg(MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK);
   }
-  
+
   /*
    * Restore border colour
    */
   set_border((snapshot_header.snapshot_flags & 0x0e) >> 1);
-  
+
   /*
    * Restore interrupt mode
    */
@@ -337,20 +330,20 @@ context_switch(void)
       __asm   im 2  __endasm;
       break;
   }
-  
+
   enc28j60_write_register16(ERDPT, ENC28J60_EVACUATED_DATA);
 
   __asm
-  
+
     ENC28J60_READ_INLINE(0x5800, 0x800)
 
     ;; Restore alternate register bank
-  
+
     ld    hl, #VRAM_REGSTATE_FP
     ld    sp, hl
     pop   af
     ex    af, af'     ;; ' apostrophe for syntax coloring
-    
+
     ld    a,  (VRAM_REGSTATE_BP)
     ld    b, a
     ld    a,  (VRAM_REGSTATE_CP)
@@ -365,34 +358,34 @@ context_switch(void)
     ld    iy, (VRAM_REGSTATE_IY)
 
     ld    de, (VRAM_REGSTATE_DE)
-           
+
     ld    a, (VRAM_REGSTATE_I)
     ld    i, a
-           
+
     ld    a, (VRAM_REGSTATE_R)
     ld    r, a
 
     ;; Restore F
-  
+
     ld    hl, #VRAM_REGSTATE_F
     ld    sp, hl
     pop   af
-  
+
     ;; Restore BC, SP & HL
-  
+
     ld    hl, (VRAM_REGSTATE_BC)
     ld    b, h
     ld    c, l
     ld    sp, (VRAM_REGSTATE_SP)
     ld    hl, (VRAM_REGSTATE_HL)
-                  
-    ;; 
+
+    ;;
     ;; Set up final register state for trampoline
     ;;
-          
+
     ld    a, #0x20      ;; page out SpeccyBoot, pull reset on ENC28J60 low
 
     JP    VRAM_TRAMPOLINE_START
- 
+
     __endasm;
 }
