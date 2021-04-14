@@ -163,11 +163,14 @@ update_progress(void)
     digit_single = 0;
     if (++digit_tens > 9) {
       digit_tens = 0;
-      display_digit_at(1, 16, 12);
+      display_digit_at(1, 16, 0);
     }
-    display_digit_at(digit_tens, 16, 19);
+    display_digit_at(digit_tens, 16, 7);
   }
-  display_digit_at(digit_single, 16, 26);
+  display_digit_at(digit_single, 16, 14);
+  if (kilobytes_loaded == 1) {
+    display_k();
+  }
 
   display_progress(kilobytes_loaded, kilobytes_expected);
 #endif

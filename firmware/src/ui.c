@@ -374,6 +374,20 @@ keyclick_loop::
 
 /* ------------------------------------------------------------------------- */
 
+void
+display_k(void)
+__naked
+{
+  __asm
+
+    push  ix
+    ld    hl, #0x5800 + 16 * 32 + 26
+    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
+    jr    print_char
+
+  __endasm;
+}
+
 /*
  * Display a digit
  */
@@ -405,6 +419,7 @@ __naked
     ;; since all digit pixels are stored in the range 0x5F31 .. 0x5FFF
     ;; (that is, D is always 0x5F)
 
+print_char::
     ld    c, #6
 row_loop::
     ld    a, (de)
