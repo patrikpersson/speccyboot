@@ -67,11 +67,9 @@
         boot into BASIC, and not continue with the steps below.</li>
       <li>Otherwise, an IP address is obtained using DHCP.
         The DHCP server can optionally also provide a snapshot file name
-      (field <code>file</code> or option
-      <a href="https://tools.ietf.org/html/rfc2132">67</a>)
+      (field <code>file</code> or option 67)
       and/or
-        a TFTP server (field <code>sname</code> or options
-        <a href="https://tools.ietf.org/html/rfc2132">66</a>/<a href="https://tools.ietf.org/html/rfc5859">150</a>).
+        a TFTP server (field <code>sname</code> or options 66/150).
       <p style="margin-top:0.5rem;margin-bottom:0">If the DHCP response includes a TFTP
     server address, that address is used for TFTP;
     otherwise, the machine that responded to DHCP will be contacted
@@ -96,8 +94,8 @@
         (The DHCP server can still use a fixed mapping, of course.)</li>
       <li>More than one SpeccyBoot on the same local network is not
           supported &mdash; the MAC address is fixed.
-        (If you are fortunate enough to have multiple, networked SpeccyBoots,
-        you'll have th change the MAC address in the SpeccyBoot firmware.)</li>
+        (If you are fortunate enough to have multiple networked SpeccyBoots,
+        you'll have to change the MAC address in the SpeccyBoot firmware.)</li>
     </ul>
 
     <hr>
@@ -160,13 +158,13 @@
 
     <p>Although these protocols are as old as (in some cases, even older
     than) the Spectrum, these IP-family protocols are
-    supported by all personal computers since the mid 1990s.</p>
+    supported by personal computers since the mid 1990s.</p>
 
-    <p>SpeccyBoot also includes a bit-banged
+    <p>SpeccyBoot also includes a <a href="https://en.wikipedia.org/wiki/Bit_banging">bit-banged</a>
     <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
     stack (capable of a transfer bandwidth of about 45kbit/s), a menu
     selection facility, and support for loading and executing
-    <a href="http://www.worldofspectrum.org/faq/reference/z80format.htm">Z80
+    <a href="http://www.worldofspectrum.org/faq/reference/z80format.htm">.z80
       snapshots</a>.</p>
 
     <p>The code is on

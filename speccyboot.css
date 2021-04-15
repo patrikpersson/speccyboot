@@ -9,11 +9,22 @@ img {
 }
 
 a.imagelink {
+  display: block;
   height: 100%;
   line-height: 100%;
   vertical-align: top;
   position: relative;
   text-decoration: none;
+}
+
+a.imagelink img.faded {
+  filter: grayscale(0.7);
+}
+
+a.imagelink:hover img.faded,
+a.imagelink:active img.faded
+{
+  filter: grayscale(0);
 }
 
 html, body {
@@ -136,7 +147,7 @@ a:hover img#menuimg {
 a:hover .biglink,
 a:active .biglink
 {
-  background-color: #006;
+  background-color: #000;
   color: #fff;
 }
 
@@ -151,8 +162,7 @@ iframe#video {
 }
 
 #leftheading {
-  text-align: left;
-  display: inline-block;
+  max-height: 21px;
 }
 
 #rightheading {
@@ -164,12 +174,12 @@ iframe#video {
 
 #heading {
   display: flex;
+  align-items: flex-end;
   width: 100%;
-  padding: 0;
+  padding: 0 0 3px 0;
   margin-bottom: 36px;
   border-bottom: 3px solid #8ac;
 }
-
 
 h2 {
   margin-top: 24px;
@@ -209,5 +219,7 @@ pre.code {
 
 code, span.code {
   font-family: 'Inconsolata', monospace;
-  margin:-1rem 0; /* don't pad lines */
+  font-size: 120%; /* Inconsolata is a bit smaller than the regular font */
+  margin:-1rem 0; /* don't pad lines vertically */
+  padding: 0 3px; /* but add some horizontal padding for clarity */
 }
