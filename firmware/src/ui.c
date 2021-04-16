@@ -155,55 +155,6 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 void
-set_attrs(uint8_t screen_attrs,
-          uint8_t row,
-          uint8_t col,
-          uint8_t n)
-__naked
-{
-  (void) screen_attrs, row, col, n;
-
-  __asm
-
-    ;; assume attrs           at (sp + 4)
-    ;;        row             at (sp + 5)
-    ;;        col             at (sp + 6)
-    ;;        n               at (sp + 7)
-
-    push  ix
-
-    ld    ix, #0
-    add   ix, sp
-
-    ld    l, 5(ix)  ;; row
-    ld    h, #0
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    ld    a, 6(ix)
-    add   l
-    ld    l, a
-    ld    bc, #0x5800
-    add   hl, bc    ;; HL now points to attribute VRAM
-
-    ld    a, 4(ix)
-    ld    b, 7(ix)
-set_attrs_loop::
-    ld    (hl), a
-    inc   hl
-    djnz  set_attrs_loop
-
-    pop   ix
-    ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
 print_at(uint8_t row,
          uint8_t start_col,
          uint8_t end_col,
@@ -315,6 +266,115 @@ print_done::
 
 /* ------------------------------------------------------------------------- */
 
+// only used while VRAM lines 2..20 are blacked out -> pick a location there
+static uint8_t __at(0x4020) bitcounter = 0;
+static uint8_t __at(0x4021) pixel_buffer[6];
+
+static uint8_t *
+flush_if_needed(uint8_t *p)
+{
+  bitcounter++;
+  if (bitcounter == 8) {
+    p++;
+    bitcounter = 0;
+  }
+  return p;
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Returns updated VRAM position to write to
+ */
+static uint8_t *
+print_condensed_digit(uint8_t digit, uint8_t *p)
+{
+  for (uint8_t k = 0; k < 6; k++) {
+    pixel_buffer[k] = font_data[(16 + digit) * 8 + 1 + k] << 1;
+  }
+
+  for (uint8_t c = 0; c < 5; c++) {
+    for (uint8_t r = 0; r < 6; r++) {
+      uint8_t x = p[r * 256] << 1;
+      if (pixel_buffer[r] & 0x80) {
+        x++;
+      }
+      pixel_buffer[r] <<= 1;
+      if (c == 2) {
+        if (pixel_buffer[r] & 0x80) {
+          x |= 1;
+        }
+        pixel_buffer[r] <<= 1;
+      }
+      p[r * 256] = x;
+    }
+    p = flush_if_needed(p);
+  }
+
+  return p;
+}
+
+/* ------------------------------------------------------------------------- */
+
+#define CONDENSED_SPACE   (1)
+#define CONDENSED_PERIOD  (4)
+
+static uint8_t *
+print_space_or_period(uint8_t *p, uint8_t width)
+{
+  for (uint8_t c = 0; c < width; c++) {
+    for (uint8_t r = 0; r < 6; r++) {
+      p[r * 256] <<= 1;
+      if ((c == 1 || c == 2) && r >= 4) {
+        p[r * 256]++;
+      }
+    }
+    p = flush_if_needed(p);
+  }
+  return p;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+print_ip_addr(const ipv4_address_t *ip, uint8_t *p)
+{
+  bitcounter = 0;
+
+  for (uint8_t i = 0; i < 4; i++) {
+    uint8_t octet = ((const uint8_t *) ip)[i];
+    if (octet >= 10) {
+      if (octet >= 100) {
+        uint8_t n100 = 0;
+        while (octet >= 100) {
+          n100++;
+          octet -= 100;
+        }
+        p = print_condensed_digit(n100, p);
+        p = print_space_or_period(p, CONDENSED_SPACE);
+      }
+      uint8_t n10 = 0;
+      while (octet >= 10) {
+        n10++;
+        octet -= 10;
+      }
+      p = print_condensed_digit(n10, p);
+      p = print_space_or_period(p, CONDENSED_SPACE);
+    }
+    p = print_condensed_digit(octet, p);
+    if (i != 3) {
+      p = print_space_or_period(p, CONDENSED_PERIOD);
+    }
+  }
+  if (bitcounter != 0) {
+    for (uint8_t r = 0; r < 6; r++) {
+      p[r * 256] <<= (8 - bitcounter);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
 key_t
 wait_key(void)
 {
@@ -359,12 +419,11 @@ __naked
   __asm
 
   ld    bc, #0x14FE
-  ld    d, #0x10
-  ld    a, d
+  xor   a, a
   di
 keyclick_loop::
   out   (c), a
-  xor   a, d
+  xor   a, #0x10
   djnz  keyclick_loop
   ei
   ret
@@ -451,6 +510,36 @@ pixel_done::
 }
 
 /* ------------------------------------------------------------------------- */
+void
+set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len)
+__naked
+{
+  (void) attrs, attr_address, len;
+
+  __asm
+
+    push  ix
+    ld    ix, #4
+    add   ix, sp
+
+    ld    l, 1(ix)
+    ld    h, 2(ix)   ;; HL = attr_address
+    ld    c, 3(ix)
+    ld    b, 4(ix)   ;; BC = len
+    ld    e, l
+    ld    d, h
+    inc   de
+    dec   bc
+    ld    a, 0(ix)
+    ld    (hl), a
+    ldir
+    pop   ix
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
 
 // 2n/3 can be calculated as 43n/64 for 0 <= n <= 48
 #define TWO_THIRDS(x) ( ( ((x) << 5) + ((x) << 3) + ((x) << 1) + (x) ) >> 6 )
@@ -465,6 +554,6 @@ display_progress(uint8_t kilobytes_loaded,
 
   if (progress) {
     *((uint8_t *) PROGRESS_BAR_BASE - 1 + progress)
-      = PAPER(BLUE) + INK(BLUE) + BRIGHT;
+      = PAPER(CYAN) + INK(CYAN) + BRIGHT;
   }
 }

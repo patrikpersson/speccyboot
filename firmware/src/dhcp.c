@@ -205,7 +205,12 @@ dhcp_finalize_and_send(void)
 void
 dhcp_init(void)
 {
-  display_status_configuring_dhcp();
+  print_at(0, 0, 20, 0, "SpeccyBoot " str(VERSION));
+  print_at(23, 0, 22, 0, "Local:DHCP       TFTP:");
+
+  set_attrs(INK(WHITE)  | PAPER(BLACK) | BRIGHT, 0, 0, 32);
+  set_attrs(INK(WHITE)  | PAPER(BLACK), 23, 0, 6);
+  set_attrs(INK(WHITE)  | PAPER(BLACK) | FLASH | BRIGHT, 23, 6, 4);
 
   udp_create(&eth_broadcast_address,
              &ip_config.broadcast_address,
@@ -356,7 +361,12 @@ dhcp_receive(void)
       ip_config.tftp_server_address = rx_frame.udp.app.dhcp.header.sub.siaddr;
     }
 
-    cls();
+    print_ip_addr(&ip_config.host_address, (uint8_t *) (LOCAL_IP_POS));
+    print_ip_addr(&ip_config.tftp_server_address, (uint8_t *) (SERVER_IP_POS));
+
+    set_attrs(INK(WHITE)  | PAPER(BLACK), 23, 6, 16);
+    set_attrs(INK(WHITE)  | PAPER(BLACK) | FLASH | BRIGHT, 23, 17, 15);
+
     const char *f = SNAPSHOT_LIST_FILE;
     if (tftp_filename != NULL) {
       expect_snapshot();

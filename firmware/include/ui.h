@@ -36,6 +36,8 @@
 
 #include <stdint.h>
 
+#include "udp_ip.h"
+
 #pragma save
 #pragma sdcc_hash +
 
@@ -72,6 +74,10 @@
 /* Location of progress bar (bottom row) */
 #define PROGRESS_BAR_BASE        ((ATTRS_BASE) + 0x2E0)
 
+/* Location of local and server IP addresses (row 23, columns 6 and 22) */
+#define LOCAL_IP_POS             (BITMAP_BASE + 0x1000 + 15*32 + 6)
+#define SERVER_IP_POS            (BITMAP_BASE + 0x1000 + 15*32 + 22)
+
 /* ------------------------------------------------------------------------- */
 
 typedef char key_t;
@@ -94,13 +100,7 @@ typedef char key_t;
  * Clear screen and set all attributes to INK 0, PAPER 0.
  * ------------------------------------------------------------------------- */
 void
-cls(void) __naked;
-
-/* -------------------------------------------------------------------------
- * Copy digit data from system font. Assumes Spectrum ROM to be paged in.
- * ------------------------------------------------------------------------- */
-void
-copy_digit_data(void) __naked;
+cls(void);
 
 /* -------------------------------------------------------------------------
  * Display a string at given coordinates, in 8x8 font. The string is
@@ -114,8 +114,13 @@ print_at(uint8_t row,
          uint8_t start_col,
          uint8_t end_col,
          char terminator,
-         const char *s)
-__naked;
+         const char *s);
+
+/* -------------------------------------------------------------------------
+ * Print IP address, in a slightly condensed font.
+ * ------------------------------------------------------------------------- */
+void
+print_ip_addr(const ipv4_address_t *ip, uint8_t *vram_pos);
 
 /* -------------------------------------------------------------------------
  * Wait for keypress. Handles repeat events.
@@ -128,35 +133,17 @@ wait_key(void);
  * black, regardless of its previous state. Interrupts will be enabled.
  * ------------------------------------------------------------------------- */
 void
-key_click(void)
-__naked;
+key_click(void);
 
 /* ------------------------------------------------------------------------- *
- * Set attributes for n elements, starting at (row, col). If (col+n) extends
- * beyond the end of the row, changes will continue at the beginning of the
- * following row, for at most 256 cells in sequence.
+ * Set attributes for n elements, starting at (row, col).
  * ------------------------------------------------------------------------- */
+
+#define set_attrs(_attrs, _r, _c, _n)                                         \
+  set_attrs_impl(_attrs, (uint8_t *) ATTR_ADDRESS((_r),(_c)), _n)
+
 void
-set_attrs(uint8_t screen_attrs,
-          uint8_t row,
-          uint8_t col,
-          uint8_t n)
-__naked;
-
-/* ------------------------------------------------------------------------- *
- * Set attributes for n elements, starting at (row, col). If (col+n) extends
- * beyond the end of the row, changes will continue at the beginning of the
- * following row. Only suitable for constant-valued arguments. Not limited to
- * 256 cells.
- * ------------------------------------------------------------------------- */
-
-#define set_attrs_const(_attrs, _r, _c, _n)    __asm                          \
-  ld  hl, #ATTR_ADDRESS((_r),(_c))                                            \
-  ld  de, #ATTR_ADDRESS((_r),(_c))+1                                          \
-  ld  bc, #(_n)-1                                                             \
-  ld  (hl), #(_attrs)                                                         \
-  ldir                                                                        \
-  __endasm
+set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len);
 
 /* ------------------------------------------------------------------------- *
  * Display progress bar
@@ -164,17 +151,6 @@ __naked;
 void
 display_progress(uint8_t kilobytes_loaded,
 		 uint8_t kilobytes_expected);
-
-/* ------------------------------------------------------------------------- *
- * Display status in more detail during boot.
- * ------------------------------------------------------------------------- */
-#define display_status_configuring_dhcp()    do {                             \
-    set_attrs_const(PAPER(BLUE) | INK(WHITE) | BRIGHT, 23, 5, 21);            \
-    print_at(23, 6, 31, 0, "configuring DHCP...");                            \
-  } while(0)
-
-#define display_status_configuring_tftp()                                     \
-  print_at(23, 18, 21, 0, "TFT")
 
 /* ------------------------------------------------------------------------- *
  * Signal a fatal error message. Terminate all network activity, set the
@@ -194,22 +170,19 @@ display_progress(uint8_t kilobytes_loaded,
   display_digit_impl(_digit, (uint8_t *) ATTR_ADDRESS(_row, _col))
 
 void
-display_digit_impl(uint8_t digit, uint8_t *start_address)
-__naked;
+display_digit_impl(uint8_t digit, uint8_t *start_address);
 
 /* ------------------------------------------------------------------------- *
  * Display the letter K (for progress display)
  * ------------------------------------------------------------------------- */
 extern void
-display_k(void)
-__naked;
+display_k(void);
 
 /* ------------------------------------------------------------------------- *
  * Clear screen (black on black)
  * ------------------------------------------------------------------------- */
 void
-cls(void)
-  __naked;
+cls(void);
 
 /* ------------------------------------------------------------------------- *
  * Set border attributes

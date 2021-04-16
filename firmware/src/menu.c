@@ -47,7 +47,7 @@
 /* ------------------------------------------------------------------------- */
 
 /* Number of snapshot names displayed at a time */
-#define DISPLAY_LINES     (22)
+#define DISPLAY_LINES     (20)
 
 /* ------------------------------------------------------------------------- */
 
@@ -60,7 +60,7 @@ run_menu(void)
   syslog("menu ready");
 
   eth_disable();
-  cls();
+  set_attrs(INK(WHITE) | PAPER(BLACK), 23, 17, 15);
 
   /* --------------------------------------------------------------------------
    * Scan through the loaded snapshot list, and build an array of pointers
@@ -75,7 +75,7 @@ run_menu(void)
     /* Find end of file name */
     while (c = *src) {
       if ((int) c < ' ') {
-	*src = '\0';
+	      *src = '\0';
         do {
           src ++;
         } while (*src && (*src < ' '));
@@ -91,10 +91,7 @@ run_menu(void)
    * Display menu
    * ----------------------------------------------------------------------- */
 
-  print_at(0, 0, 20, 0, "SpeccyBoot " str(VERSION));
-
-  set_attrs_const(INK(WHITE)  | PAPER(BLACK) | BRIGHT, 0, 0, 32);
-  set_attrs_const(INK(BLUE)  | PAPER(WHITE), 2, 0, 32 * DISPLAY_LINES);
+  set_attrs(INK(BLUE) | PAPER(WHITE), 2, 0, 32 * DISPLAY_LINES);
 
   /* --------------------------------------------------------------------------
    * Run the menu, act on user input
@@ -110,42 +107,42 @@ run_menu(void)
       key_t key;
 
       if (idx != last_idx) {
-	set_attrs(INK(BLUE) | PAPER(WHITE),
-		  2 + (last_idx - display_offset), 0, 32);
+	      set_attrs(INK(BLUE) | PAPER(WHITE),
+		              2 + (last_idx - display_offset), 0, 32);
 
-	if (nbr_snapshots > DISPLAY_LINES) {
-	  if ((idx < display_offset)
-	      || (idx >= (display_offset + DISPLAY_LINES)))
-          {
-	    if (idx < (DISPLAY_LINES >> 1)) {
-	      display_offset = 0;
-	    }
-	    else if (idx > (nbr_snapshots - (DISPLAY_LINES >> 1))) {
-	      display_offset = nbr_snapshots - DISPLAY_LINES;
-	    }
-	    else {
-	      display_offset = (idx - (DISPLAY_LINES >> 1));
-	    }
-	    needs_redraw = true;
-	  }
-	}
+      	if (nbr_snapshots > DISPLAY_LINES) {
+      	  if ((idx < display_offset)
+      	      || (idx >= (display_offset + DISPLAY_LINES)))
+                {
+      	    if (idx < (DISPLAY_LINES >> 1)) {
+      	      display_offset = 0;
+      	    }
+      	    else if (idx > (nbr_snapshots - (DISPLAY_LINES >> 1))) {
+      	      display_offset = nbr_snapshots - DISPLAY_LINES;
+      	    }
+      	    else {
+      	      display_offset = (idx - (DISPLAY_LINES >> 1));
+      	    }
+      	    needs_redraw = true;
+      	  }
+      	}
 
-	set_attrs(INK(WHITE) | PAPER(BLUE) | BRIGHT,
-		  2 + (idx - display_offset), 0, 32);
+      	set_attrs(INK(WHITE) | PAPER(BLUE) | BRIGHT,
+      		        2 + (idx - display_offset), 0, 32);
 
-	last_idx = idx;
+        last_idx = idx;
       }
 
       if (needs_redraw) {
-	uint8_t i;
-	for (i = 0;
-	     (i < DISPLAY_LINES) && ((i + display_offset) < nbr_snapshots);
-	     i++)
+      	uint8_t i;
+      	for (i = 0;
+      	     (i < DISPLAY_LINES) && ((i + display_offset) < nbr_snapshots);
+      	     i++)
         {
-	  print_at(i + 2, 1, 31, '.', rx_frame.snapshot_names[i + display_offset]);
-	}
+      	  print_at(i + 2, 1, 31, '.', rx_frame.snapshot_names[i + display_offset]);
+      	}
 
-	needs_redraw = false;
+      	needs_redraw = false;
       }
 
       key = wait_key();
@@ -154,7 +151,7 @@ run_menu(void)
       case KEY_ENTER:
         key_click();
         cls();
-	eth_init();
+        eth_init();
         tftp_read_request(rx_frame.snapshot_names[idx]);
         return;
       case KEY_UP:
