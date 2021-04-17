@@ -205,8 +205,8 @@ dhcp_finalize_and_send(void)
 void
 dhcp_init(void)
 {
-  print_at(0, 0, 20, 0, "SpeccyBoot " str(VERSION));
-  print_at(23, 0, 22, 0, "DHCP");
+  print_at(0, 0, 0, "SpeccyBoot " str(VERSION));
+  print_at(23, 0, 0, "DHCP");
 
   set_attrs(INK(WHITE) | PAPER(BLACK) | BRIGHT, 0, 0, 32);
   set_attrs(INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT, 23, 0, 4);
@@ -363,7 +363,7 @@ dhcp_receive(void)
     set_attrs(INK(WHITE) | PAPER(BLACK), 23, 0, 16);
     set_attrs(INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT, 23, 17, 15);
 
-    print_at(23, 0, 22, 0, "Local:           TFTP:");
+    print_at(23, 0, 0, "Local:           TFTP:");
 
     print_ip_addr(&ip_config.host_address, (uint8_t *) (LOCAL_IP_POS));
     print_ip_addr(&ip_config.tftp_server_address, (uint8_t *) (SERVER_IP_POS));

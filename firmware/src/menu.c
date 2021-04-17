@@ -139,7 +139,7 @@ run_menu(void)
       	     (i < DISPLAY_LINES) && ((i + display_offset) < nbr_snapshots);
       	     i++)
         {
-      	  print_at(i + 2, 1, 31, '.', rx_frame.snapshot_names[i + display_offset]);
+      	  print_at(i + 2, 1, '.', rx_frame.snapshot_names[i + display_offset]);
       	}
 
       	needs_redraw = false;

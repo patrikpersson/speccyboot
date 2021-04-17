@@ -107,12 +107,11 @@ cls(void);
  * terminated by the character 'terminator.'
  *
  * The displayed string is truncated or padded with spaces up to and
- * including the 'end_col' column.
+ * including column 31.
  * ------------------------------------------------------------------------- */
 void
 print_at(uint8_t row,
          uint8_t start_col,
-         uint8_t end_col,
          char terminator,
          const char *s);
 

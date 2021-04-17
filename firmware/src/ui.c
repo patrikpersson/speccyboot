@@ -157,21 +157,19 @@ __naked
 void
 print_at(uint8_t row,
          uint8_t start_col,
-         uint8_t end_col,
          char terminator,
          const char *s)
 __naked
 {
-  (void) row, start_col, end_col, terminator, s;
+  (void) row, start_col, terminator, s;
 
   __asm
 
     ;; assume row             at (sp + 4)
     ;;        start_col       at (sp + 5)
-    ;;        end_col         at (sp + 6)
-    ;;        terminator      at (sp + 7)
-    ;;        LOBYTE(s)       at (sp + 8)
-    ;;        HIBYTE(s)       at (sp + 9)
+    ;;        terminator      at (sp + 6)
+    ;;        LOBYTE(s)       at (sp + 7)
+    ;;        HIBYTE(s)       at (sp + 8)
     ;;
     ;; use:
     ;;
@@ -200,8 +198,8 @@ __naked
     add   a, 5(ix)  ;; start_col
     ld    e, a
 
-    ld    c, 8(ix)
-    ld    b, 9(ix)
+    ld    c, 7(ix)
+    ld    b, 8(ix)
 
     push  bc
     pop   iy        ;; now holds s
@@ -209,11 +207,11 @@ __naked
 string_loop::
     ld    a, e
     and   #0x1f     ;; current column
-    cp    6(ix)     ;; end_col
+    cp    #0x1f     ;; right-most column
     jr    nc, print_done
 
     ld    a, (iy)
-    cp    7(ix)     ;; terminator
+    cp    6(ix)     ;; terminator
     jr    z, string_padding
     inc   iy
 
@@ -242,7 +240,7 @@ char_loop::
 string_padding::
     ld    a, e
     and   #0x1f     ;; current column
-    cp    6(ix)     ;; end_col
+    cp    #0x1f
     jr    nc, print_done
 
     ld    b, #8
