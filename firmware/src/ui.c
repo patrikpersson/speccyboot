@@ -268,10 +268,11 @@ print_done::
 static uint8_t __at(0x4020) bitcounter = 0;
 static uint8_t __at(0x4021) pixel_buffer[6];
 
-
 /*
  * Increase shift count. If it is 8 (full byte), increase p.
  * Return p (either same as argument, or increased by one).
+ *
+ * Destroys AF, DE
  */
 static uint8_t *
 flush_if_needed(uint8_t *p)
@@ -281,10 +282,10 @@ __naked
 
   __asm
 
-    pop   bc  ;; return address
+    pop   de  ;; return address
     pop   hl  ;; p
     push  hl
-    push  bc
+    push  de
 
     ld    a, (_bitcounter)
     inc   a
@@ -306,30 +307,80 @@ flush_not_needed::
  */
 static uint8_t *
 print_condensed_digit(uint8_t digit, uint8_t *p)
+__naked
 {
-  for (uint8_t k = 0; k < 6; k++) {
-    pixel_buffer[k] = font_data[(16 + digit) * 8 + 1 + k] << 1;
-  }
+  (void) digit, p;
 
-  for (uint8_t c = 0; c < 5; c++) {
-    for (uint8_t r = 0; r < 6; r++) {
-      uint8_t x = p[r * 256] << 1;
-      if (pixel_buffer[r] & 0x80) {
-        x++;
-      }
-      pixel_buffer[r] <<= 1;
-      if (c == 2) {
-        if (pixel_buffer[r] & 0x80) {
-          x |= 1;
-        }
-        pixel_buffer[r] <<= 1;
-      }
-      p[r * 256] = x;
-    }
-    p = flush_if_needed(p);
-  }
+  __asm
+    push  ix
 
-  return p;
+    ld    ix, #4
+    add   ix, sp
+
+    ;; copy digit pixels to pixel_buffer
+
+    ld    a, 0(ix)    ;; digit
+    ld    b, #6
+    ld    de, #_pixel_buffer
+    ld    hl, #_font_data + 16*8 + 1   ;; first pixel row of character '0'
+    add   a, a
+    add   a, a
+    add   a, a
+    add   a, l
+    ld    l, a
+00100$:
+    ld    a, (hl)
+    add   a, a
+    ld    (de), a
+    inc   hl
+    inc   de
+    djnz  00100$
+
+    ld    l, 1(ix)    ;; LO(p)
+    ld    h, 2(ix)    ;; HI(p)
+
+    ld    c, #5
+00001$:               ;; five columns
+    ld    b, #6
+    ld    de, #_pixel_buffer
+00002$:               ;; six rows
+    ld    a, (de)
+    rl    a
+    ld    (de), a
+    rl    (hl)
+
+    ;; pixel column 3 is OR-ed with column 4
+
+    ld    a, c
+    cp    a, #3
+    ld    a, (de)     ;; needed after JR NZ, keep Z flag intact
+    jr    nz, 00004$  ;; compress pixel row #3?
+    rl    a
+    ld    (de), a
+    jr    nc, 0004$    ;; any additional pixel?
+    ld    a, (hl)
+    or    #1
+    ld    (hl), a
+
+00004$:
+    ;; next row of pixels
+    inc   h
+    inc   de
+    djnz  00002$
+
+    ld    h, 2(ix)    ;; restore HI(p)
+    push  hl
+    call  _flush_if_needed
+    pop   af  ;; do not restore HL, get it from return value
+
+    ;; next column of pixels
+    dec   c
+    jr    nz, 00001$
+
+    pop   ix
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
