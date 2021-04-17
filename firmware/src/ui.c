@@ -268,15 +268,35 @@ print_done::
 static uint8_t __at(0x4020) bitcounter = 0;
 static uint8_t __at(0x4021) pixel_buffer[6];
 
+
+/*
+ * Increase shift count. If it is 8 (full byte), increase p.
+ * Return p (either same as argument, or increased by one).
+ */
 static uint8_t *
 flush_if_needed(uint8_t *p)
+__naked
 {
-  bitcounter++;
-  if (bitcounter == 8) {
-    p++;
-    bitcounter = 0;
-  }
-  return p;
+  (void) p;
+
+  __asm
+
+    pop   bc  ;; return address
+    pop   hl  ;; p
+    push  hl
+    push  bc
+
+    ld    a, (_bitcounter)
+    inc   a
+    cp    a, #8
+    jr    nz, flush_not_needed
+    inc   hl
+    xor   a
+flush_not_needed::
+    ld    (_bitcounter), a
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -319,17 +339,52 @@ print_condensed_digit(uint8_t digit, uint8_t *p)
 
 static uint8_t *
 print_space_or_period(uint8_t *p, uint8_t width)
+__naked
 {
-  for (uint8_t c = 0; c < width; c++) {
-    for (uint8_t r = 0; r < 6; r++) {
-      p[r * 256] <<= 1;
-      if ((c == 1 || c == 2) && r >= 4) {
-        p[r * 256]++;
-      }
-    }
-    p = flush_if_needed(p);
-  }
-  return p;
+  (void) p, width;
+
+  __asm
+
+    pop   bc   ;; return address
+    pop   hl   ;; HL = p
+    dec   sp
+    pop   af   ;; a = width
+    push  af
+    inc   sp
+    push  hl
+    push  bc
+
+    ld    c, a
+00001$:          ;; column loop
+    ld    b, #6
+    push  hl
+00002$:          ;; row loop
+    sla   (hl)
+
+    ;; a period should be drawn if
+    ;; B (row) > 3 AND (C (row) == either 2 or 3)
+    ld    a, b
+    cp    #3
+    jr    nc, 00003$
+    bit   1, c
+    jr    z, 00003$
+    inc   (hl)
+00003$:          ;; done printing period
+    inc   h
+    djnz  00002$
+    pop   hl
+
+    push  bc
+    push  hl
+    call  _flush_if_needed
+    pop   bc  ;; ignore function arg, get HL from return value
+    pop   bc
+
+    dec   c
+    jr    nz,00001$
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
