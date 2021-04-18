@@ -385,44 +385,142 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
-#define CONDENSED_SPACE   (1)
-#define CONDENSED_PERIOD  (4)
-
-static uint8_t *
-print_space_or_period(uint8_t *p, uint8_t width)
+void
+print_ip_addr(const ipv4_address_t *ip, uint8_t *p)
 __naked
 {
-  (void) p, width;
+  (void) ip, p;
 
   __asm
 
-    pop   bc   ;; return address
-    pop   hl   ;; HL = p
-    dec   sp
-    pop   af   ;; a = width
-    push  af
-    inc   sp
-    push  hl
-    push  bc
+    push  ix
 
-    ld    c, a
-00001$:          ;; column loop
+    ld    ix, #4
+    add   ix, sp
+
+    xor   a, a
+    ld    (_bitcounter), a
+
+    ld    l, 2(ix)    ;; HI(p)
+    ld    h, 3(ix)    ;; LO(p)
+
+    ld    c, #0       ;; loop counter AND octet index
+00001$:               ;; four octets
+    ld    a, 0(ix)    ;; LO(ip)
+    ld    d, 1(ix)    ;; HI(ip)
+    add   a, c
+    ld    e, a
+
+    ld    a, (de)
+    cp    a, #100
+    jr    c, 00002$    ;; no hundreds? skip entirely, not even a zero
+    ld    d, #0
+00003$:   ;; loop to count hundreds
+    inc   d
+    sub   a, #100
+    cp    a, #100
+    jr    nc, 00003$
+
+    call  00010$
+    call  00021$
+
+00002$:   ;; hundreds done
+    cp    a, #10
+    jr    c, 00004$
+    ld    d, #0
+00005$:   ;; loop to count tens
+    inc   d
+    sub   a, #10
+    cp    a, #10
+    jr    nc, 00005$
+
+    call  00010$
+    call  00021$
+
+00004$:   ;; tens done
+    ld    d, a
+    call  00010$        ;; print ones
+    call  00021$
+
+    ;; print period?
+    inc   c
+    ld    a, c
+    cp    a, #4            ;; last octet? no period
+    jr    z, 00006$
+    call  00020$           ;; print period
+    jr    00001$           ;; next octet
+
+00006$:    ;; all octets done
+
+    ;; shift in spaces so the last piece of the last
+    ;; digit comes into place
+    ld    a, (_bitcounter)
+    ld    b, a
+    ld    a, #8
+    sub   a, b
+    ld    b, a
+00007$:
+    call  00021$
+    djnz  00007$
+
+    pop   ix
+    ret
+
+    ;; ***********************************************************************
+    ;; subroutine: stack registers and call print_condensed_digit
+    ;; on entry: HL=VRAM position
+    ;;           D=digit
+    ;; on exit:  HL= VRAM position
+    ;; ***********************************************************************
+
+00010$:
+    push  af
+    push  bc
+    push  hl
+    push  de
+    inc   sp
+    call  _print_condensed_digit   ;; (uint8_t digit, uint8_t *p)
+    inc   sp
+    pop   de
+    pop   bc
+    pop   af
+    ret
+
+    ;; ***********************************************************************
+    ;; subroutine: print a period
+    ;; HL=VRAM position (on entry and exit)
+    ;; ***********************************************************************
+00020$:
+    push  bc
+    ld    c, #4
+    jr    00025$
+
+    ;; ***********************************************************************
+    ;; subroutine: print a pixel-wide space
+    ;; HL=VRAM position (on entry and exit)
+    ;; ***********************************************************************
+00021$:
+    push  bc
+    ld    c, #1
+00025$:
+    push  af
+00022$:          ;; column loop
     ld    b, #6
     push  hl
-00002$:          ;; row loop
+00023$:          ;; row loop
     sla   (hl)
 
     ;; a period should be drawn if
     ;; B (row) > 3 AND (C (row) == either 2 or 3)
     ld    a, b
     cp    #3
-    jr    nc, 00003$
+    jr    nc, 00024$
     bit   1, c
-    jr    z, 00003$
+    jr    z, 00024$
     inc   (hl)
-00003$:          ;; done printing period
+00024$:          ;; done printing period
     inc   h
-    djnz  00002$
+    djnz  00023$
     pop   hl
 
     push  bc
@@ -432,49 +530,12 @@ __naked
     pop   bc
 
     dec   c
-    jr    nz,00001$
+    jr    nz,00022$
+    pop   af
+    pop   bc
     ret
 
   __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-print_ip_addr(const ipv4_address_t *ip, uint8_t *p)
-{
-  bitcounter = 0;
-
-  for (uint8_t i = 0; i < 4; i++) {
-    uint8_t octet = ((const uint8_t *) ip)[i];
-    if (octet >= 10) {
-      if (octet >= 100) {
-        uint8_t n100 = 0;
-        while (octet >= 100) {
-          n100++;
-          octet -= 100;
-        }
-        p = print_condensed_digit(n100, p);
-        p = print_space_or_period(p, CONDENSED_SPACE);
-      }
-      uint8_t n10 = 0;
-      while (octet >= 10) {
-        n10++;
-        octet -= 10;
-      }
-      p = print_condensed_digit(n10, p);
-      p = print_space_or_period(p, CONDENSED_SPACE);
-    }
-    p = print_condensed_digit(octet, p);
-    if (i != 3) {
-      p = print_space_or_period(p, CONDENSED_PERIOD);
-    }
-  }
-  if (bitcounter != 0) {
-    for (uint8_t r = 0; r < 6; r++) {
-      p[r * 256] <<= (8 - bitcounter);
-    }
-  }
 }
 
 /* ------------------------------------------------------------------------- */
