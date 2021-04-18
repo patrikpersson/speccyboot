@@ -268,121 +268,6 @@ print_done::
 static uint8_t __at(0x4020) bitcounter = 0;
 static uint8_t __at(0x4021) pixel_buffer[6];
 
-/*
- * Increase shift count. If it is 8 (full byte), increase p.
- * Return p (either same as argument, or increased by one).
- *
- * Destroys AF, DE
- */
-static uint8_t *
-flush_if_needed(uint8_t *p)
-__naked
-{
-  (void) p;
-
-  __asm
-
-    pop   de  ;; return address
-    pop   hl  ;; p
-    push  hl
-    push  de
-
-    ld    a, (_bitcounter)
-    inc   a
-    cp    a, #8
-    jr    nz, flush_not_needed
-    inc   hl
-    xor   a
-flush_not_needed::
-    ld    (_bitcounter), a
-    ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Returns updated VRAM position to write to
- */
-static uint8_t *
-print_condensed_digit(uint8_t digit, uint8_t *p)
-__naked
-{
-  (void) digit, p;
-
-  __asm
-    push  ix
-
-    ld    ix, #4
-    add   ix, sp
-
-    ;; copy digit pixels to pixel_buffer
-
-    ld    a, 0(ix)    ;; digit
-    ld    b, #6
-    ld    de, #_pixel_buffer
-    ld    hl, #_font_data + 16*8 + 1   ;; first pixel row of character '0'
-    add   a, a
-    add   a, a
-    add   a, a
-    add   a, l
-    ld    l, a
-00100$:
-    ld    a, (hl)
-    add   a, a
-    ld    (de), a
-    inc   hl
-    inc   de
-    djnz  00100$
-
-    ld    l, 1(ix)    ;; LO(p)
-    ld    h, 2(ix)    ;; HI(p)
-
-    ld    c, #5
-00001$:               ;; five columns
-    ld    b, #6
-    ld    de, #_pixel_buffer
-00002$:               ;; six rows
-    ld    a, (de)
-    rl    a
-    ld    (de), a
-    rl    (hl)
-
-    ;; pixel column 3 is OR-ed with column 4
-
-    ld    a, c
-    cp    a, #3
-    ld    a, (de)     ;; needed after JR NZ, keep Z flag intact
-    jr    nz, 00004$  ;; compress pixel row #3?
-    rl    a
-    ld    (de), a
-    jr    nc, 0004$    ;; any additional pixel?
-    ld    a, (hl)
-    or    #1
-    ld    (hl), a
-
-00004$:
-    ;; next row of pixels
-    inc   h
-    inc   de
-    djnz  00002$
-
-    ld    h, 2(ix)    ;; restore HI(p)
-    push  hl
-    call  _flush_if_needed
-    pop   af  ;; do not restore HL, get it from return value
-
-    ;; next column of pixels
-    dec   c
-    jr    nz, 00001$
-
-    pop   ix
-    ret
-
-  __endasm;
-}
-
 /* ------------------------------------------------------------------------- */
 
 void
@@ -412,6 +297,8 @@ __naked
     ld    e, a
 
     ld    a, (de)
+    cp    a, #10
+    jr    c, 00004$    ;; < 10? print only single digit
     cp    a, #100
     jr    c, 00002$    ;; no hundreds? skip entirely, not even a zero
     ld    d, #0
@@ -421,8 +308,8 @@ __naked
     cp    a, #100
     jr    nc, 00003$
 
-    call  00010$
-    call  00021$
+    call  print_condensed_digit      ;; X__
+    call  print_space
 
 00002$:   ;; hundreds done
     cp    a, #10
@@ -434,20 +321,19 @@ __naked
     cp    a, #10
     jr    nc, 00005$
 
-    call  00010$
-    call  00021$
+    call  print_condensed_digit      ;; _X_
+    call  print_space
 
 00004$:   ;; tens done
     ld    d, a
-    call  00010$        ;; print ones
-    call  00021$
+    call  print_condensed_digit      ;; __X
 
     ;; print period?
     inc   c
     ld    a, c
     cp    a, #4            ;; last octet? no period
     jr    z, 00006$
-    call  00020$           ;; print period
+    call  print_period
     jr    00001$           ;; next octet
 
 00006$:    ;; all octets done
@@ -460,49 +346,29 @@ __naked
     sub   a, b
     ld    b, a
 00007$:
-    call  00021$
+    call  print_space
     djnz  00007$
 
     pop   ix
     ret
 
-    ;; ***********************************************************************
-    ;; subroutine: stack registers and call print_condensed_digit
-    ;; on entry: HL=VRAM position
-    ;;           D=digit
-    ;; on exit:  HL= VRAM position
-    ;; ***********************************************************************
-
-00010$:
-    push  af
-    push  bc
-    push  hl
-    push  de
-    inc   sp
-    call  _print_condensed_digit   ;; (uint8_t digit, uint8_t *p)
-    inc   sp
-    pop   de
-    pop   bc
-    pop   af
-    ret
-
-    ;; ***********************************************************************
-    ;; subroutine: print a period
-    ;; HL=VRAM position (on entry and exit)
-    ;; ***********************************************************************
-00020$:
+;; ***********************************************************************
+;; subroutine: print a period
+;; HL=VRAM position (on entry and exit)
+;; ***********************************************************************
+print_period::
     push  bc
     ld    c, #4
-    jr    00025$
+    jr    print_period_continued
 
-    ;; ***********************************************************************
-    ;; subroutine: print a pixel-wide space
-    ;; HL=VRAM position (on entry and exit)
-    ;; ***********************************************************************
-00021$:
+;; ***********************************************************************
+;; subroutine: print a pixel-wide space
+;; HL=VRAM position (on entry and exit)
+;; ***********************************************************************
+print_space::
     push  bc
     ld    c, #1
-00025$:
+print_period_continued::
     push  af
 00022$:          ;; column loop
     ld    b, #6
@@ -523,16 +389,102 @@ __naked
     djnz  00023$
     pop   hl
 
-    push  bc
-    push  hl
-    call  _flush_if_needed
-    pop   bc  ;; ignore function arg, get HL from return value
-    pop   bc
+    call flush_if_needed
 
     dec   c
     jr    nz,00022$
     pop   af
     pop   bc
+    ret
+
+;; ***********************************************************************
+;; subroutine: print a condensed digit
+;; HL=VRAM position (on entry and exit)
+;; D=digit
+;; ***********************************************************************
+print_condensed_digit::
+    push  af
+    push  bc
+    push  de
+    ;; copy digit pixels to pixel_buffer
+
+    push  hl
+    ld    a, d
+    ld    b, #6
+    ld    de, #_pixel_buffer
+    ld    hl, #_font_data + 16*8 + 1   ;; first pixel row of character '0'
+    add   a, a
+    add   a, a
+    add   a, a
+    add   a, l
+    ld    l, a
+00031$:
+    ld    a, (hl)
+    add   a, a
+    ld    (de), a
+    inc   hl
+    inc   de
+    djnz  00031$
+    pop   hl
+
+    ld    c, #5
+00032$:               ;; five columns
+    ld    b, #6
+    ld    de, #_pixel_buffer
+00033$:               ;; six rows
+    ld    a, (de)
+    rl    a
+    ld    (de), a
+    rl    (hl)
+
+    ;; pixel column 3 is OR-ed with column 4
+
+    ld    a, c
+    cp    a, #3
+    ld    a, (de)     ;; needed after JR NZ, keep Z flag intact
+    jr    nz, 00034$  ;; compress pixel row #3?
+    rl    a
+    ld    (de), a
+    jr    nc, 00034$    ;; any additional pixel?
+    ld    a, (hl)
+    or    #1
+    ld    (hl), a
+
+00034$:
+    ;; next row of pixels
+    inc   h
+    inc   de
+    djnz  00033$
+
+    ld    a, h
+    sub   a, #6
+    ld    h, a    ;; restore HI(p)
+    call flush_if_needed
+
+    ;; next column of pixels
+    dec   c
+    jr    nz, 00032$
+
+    pop   de
+    pop   bc
+    pop   af
+    ret
+
+;; ***********************************************************************
+;; subroutine: note that VRAM pixels have now shifted one bit,
+;;             possibly increase HL
+;; HL=VRAM position (on entry and exit)
+;; destroys AF
+;; ***********************************************************************
+flush_if_needed::
+    ld    a, (_bitcounter)
+    inc   a
+    cp    a, #8
+    jr    nz, flush_not_needed
+    inc   hl
+    xor   a
+flush_not_needed::
+    ld    (_bitcounter), a
     ret
 
   __endasm;

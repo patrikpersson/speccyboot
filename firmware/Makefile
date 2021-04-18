@@ -5,7 +5,7 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION      = 1.8
+VERSION      = 1.8-dev
 
 CC           = sdcc
 AS           = sdasz80
