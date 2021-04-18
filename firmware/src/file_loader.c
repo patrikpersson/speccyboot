@@ -212,10 +212,6 @@ DEFINE_STATE(s_header)
                   ? &s_chunk_compressed : &s_chunk_uncompressed;
   }
 
-#ifndef SB_MINIMAL
-  display_progress(0, kilobytes_expected);
-#endif
-
   evacuate_z80_header();
 
   received_data        += header_length;

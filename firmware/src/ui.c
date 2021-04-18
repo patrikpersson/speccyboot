@@ -658,19 +658,66 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
-// 2n/3 can be calculated as 43n/64 for 0 <= n <= 48
-#define TWO_THIRDS(x) ( ( ((x) << 5) + ((x) << 3) + ((x) << 1) + (x) ) >> 6 )
-
 void
 display_progress(uint8_t kilobytes_loaded,
                  uint8_t kilobytes_expected)
+__naked
 {
-  uint8_t progress = (kilobytes_expected == 48)
-                     ? TWO_THIRDS(kilobytes_loaded)
-                     : (kilobytes_loaded >> 2);
+  (void) kilobytes_loaded, kilobytes_expected;
 
-  if (progress) {
-    *((uint8_t *) PROGRESS_BAR_BASE - 1 + progress)
-      = PAPER(CYAN) + INK(CYAN) + BRIGHT;
-  }
+  __asm
+
+    pop   de    ;; return address
+    pop   bc    ;; B=kilobytes_expected, C=kilobytes_loaded
+    push  bc
+    push  de
+
+    ld    a, b
+    cp    a, #48     ;; 48k snapshot?
+    jr    z, 00003$
+    ld    a, c
+    sra   a          ;; 128k snapshot => progress = kilobytes / 4
+    sra   a
+    jr    00002$
+
+00003$:   ;; 48k snapshot, multiply C by 43/64 (approx 2/3)
+;; ( ( ((c) << 5) + ((c) << 3) + ((c) << 1) + (c) ) >> 6 )
+
+    ld    b, #0
+    sla   c              ;; BC is now C << 1
+    ld    d, #0
+    ld    e, c
+    sla   e              ;; no carry here: at most 48*4=192
+    sla   e              ;; now we could have a carry too
+    rl    d              ;; DE is now C << 3
+    ld    h, d
+    ld    l, e
+    add   hl, hl
+    add   hl, hl         ;; HL is now C << 5
+    add   hl, de         ;;         + C << 3
+    add   hl, bc         ;;         + C << 1
+    ld    c, a
+    add   hl, bc         ;;         + C
+
+    ld    b, #6
+00004$:
+    sra   h
+    rr    l
+    djnz  00004$
+    ld    a, l
+
+    ;; update progress at attribute position A, bottom row
+00002$:
+    or    a
+    jr    z, 00001$  ;; no progress, no progress bar
+    add   a, #<(PROGRESS_BAR_BASE - 1)
+    ld    e, a
+    ld    d, #>(PROGRESS_BAR_BASE - 1)
+    ld    a, #(PAPER(CYAN) + INK(CYAN) + BRIGHT)
+    ld    (de), a
+
+00001$:
+    ret
+
+  __endasm;
 }
