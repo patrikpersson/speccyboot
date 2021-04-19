@@ -142,15 +142,45 @@ static const state_func_t *current_state = &s_raw_data;
 
 /* ------------------------------------------------------------------------- */
 
-/* Increase kilobyte counter, update status display */
+/*
+ * If the number of bytes loaded reached an even kilobyte,
+ * increase kilobyte counter and update status display
+ */
 static void
 update_progress(void)
+__naked
 {
-  kilobytes_loaded++;
-  update_progress_display();
-  if (kilobytes_loaded == kilobytes_expected) {
-    context_switch();
-  }
+  __asm
+
+    ld  hl, (_curr_write_pos)
+
+    ;; check if HL is an integral number of kilobytes,
+    ;; return early otherwise
+
+    xor a
+    or  l
+    ret  nz
+    ld  a, h
+    and #0x03
+    ret  nz
+
+    ;; update the status display
+
+    ld    hl, #_kilobytes_loaded
+    inc   (hl)
+    push  hl
+    call  _update_progress_display
+    pop   hl
+
+    ;; if all data has been loaded, perform the context switch
+
+    ld    a, (_kilobytes_expected)
+    cp    a, (hl)
+    jp    z, _context_switch
+
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -364,16 +394,8 @@ no_new_state::
   ld  (_curr_write_pos), de
 
   ;;
-  ;; if DE is an integral number of kilobytes,
-  ;; update the status display
+  ;; update the status display, if needed
   ;;
-
-  xor a
-  or  e
-  jr  nz, no_copy
-  ld  a, d
-  and #0x03
-  jr  nz, no_copy
 
   call  _update_progress
 
@@ -560,9 +582,7 @@ DEFINE_STATE(s_chunk_compressed_escape)
     *curr_write_pos++ = Z80_ESCAPE;
     rep_state.plain_byte = b;
 
-    if (IS_KILOBYTE(curr_write_pos)) {
-      update_progress();
-    }
+    update_progress();
 
     current_state = &s_chunk_single_escape;
   }
@@ -574,9 +594,7 @@ DEFINE_STATE(s_chunk_single_escape)
 {
   *curr_write_pos++ = rep_state.plain_byte;
 
-  if (IS_KILOBYTE(curr_write_pos)) {
-    update_progress();
-  }
+  update_progress();
 
   current_state = &s_chunk_compressed;
 }
