@@ -150,7 +150,7 @@ run_menu(void)
       switch(key) {
       case KEY_ENTER:
         key_click();
-        cls();
+        init_progress_display();
         eth_init();
         tftp_read_request(rx_frame.snapshot_names[idx]);
         return;

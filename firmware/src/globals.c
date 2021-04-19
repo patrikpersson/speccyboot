@@ -37,3 +37,6 @@
 
 union rx_frame_t  rx_frame;
 struct eth_adm_t  rx_eth_adm;
+
+uint8_t kilobytes_loaded   = 0;
+uint8_t kilobytes_expected = 48;

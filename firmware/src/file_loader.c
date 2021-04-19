@@ -84,14 +84,6 @@ static const uint8_t *received_data;
 /* Number of valid bytes remaining in received_data */
 static uint16_t received_data_length;
 
-/*
- * For progress display.
- *
- * For 128k snapshots, 'kilobytes_expected' is updated in s_header below.
- */
-static uint8_t kilobytes_loaded   = 0;
-static uint8_t kilobytes_expected = 48;
-
 /* ========================================================================= */
 
 /*
@@ -155,25 +147,7 @@ static void
 update_progress(void)
 {
   kilobytes_loaded++;
-#ifndef SB_MINIMAL
-  static uint8_t digit_single = 0;
-  static uint8_t digit_tens = 0;
-
-  if (++digit_single > 9) {
-    digit_single = 0;
-    if (++digit_tens > 9) {
-      digit_tens = 0;
-      display_digit_at(1, 16, 0);
-    }
-    display_digit_at(digit_tens, 16, 7);
-  }
-  display_digit_at(digit_single, 16, 14);
-  if (kilobytes_loaded == 1) {
-    display_k();
-  }
-
-  display_progress(kilobytes_loaded, kilobytes_expected);
-#endif
+  update_progress_display();
   if (kilobytes_loaded == kilobytes_expected) {
     context_switch();
   }

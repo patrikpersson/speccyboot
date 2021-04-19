@@ -64,6 +64,15 @@ struct z80_snapshot_header_t  __at(0x5F31) snapshot_header;
 
 /* ------------------------------------------------------------------------ */
 
+/*
+ * For progress display while loading a snapshot.
+ *
+ * For 128k snapshots, 'kilobytes_expected' is set in s_header (file_loader.c)
+ */
+extern uint8_t kilobytes_loaded;
+extern uint8_t kilobytes_expected;
+
+/* ------------------------------------------------------------------------ */
 
 /* Buffer for snapshot list */
 char __at(0x6300) snapshot_list_buf[0x9d00];

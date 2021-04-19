@@ -145,11 +145,16 @@ void
 set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len);
 
 /* ------------------------------------------------------------------------- *
- * Display progress bar
+ * Clear screen, display empty progress bar and '0 K'
  * ------------------------------------------------------------------------- */
 void
-display_progress(uint8_t kilobytes_loaded,
-		 uint8_t kilobytes_expected);
+init_progress_display(void);
+
+/* ------------------------------------------------------------------------- *
+ * Update progress bar
+ * ------------------------------------------------------------------------- */
+void
+update_progress_display(void);
 
 /* ------------------------------------------------------------------------- *
  * Signal a fatal error message. Terminate all network activity, set the
@@ -161,27 +166,6 @@ display_progress(uint8_t kilobytes_loaded,
   di                                                                          \
   halt                                                                        \
   __endasm;                            }
-
-/* ------------------------------------------------------------------------- *
- * Display a digit (for progress display)
- * ------------------------------------------------------------------------- */
-#define display_digit_at(_digit, _row, _col)                                  \
-  display_digit_impl(_digit, (uint8_t *) ATTR_ADDRESS(_row, _col))
-
-void
-display_digit_impl(uint8_t digit, uint8_t *start_address);
-
-/* ------------------------------------------------------------------------- *
- * Display the letter K (for progress display)
- * ------------------------------------------------------------------------- */
-extern void
-display_k(void);
-
-/* ------------------------------------------------------------------------- *
- * Clear screen (black on black)
- * ------------------------------------------------------------------------- */
-void
-cls(void);
 
 /* ------------------------------------------------------------------------- *
  * Set border attributes

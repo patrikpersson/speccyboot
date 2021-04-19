@@ -549,84 +549,6 @@ keyclick_loop::
 }
 
 /* ------------------------------------------------------------------------- */
-
-void
-display_k(void)
-__naked
-{
-  __asm
-
-    push  ix
-    ld    hl, #0x5800 + 16 * 32 + 26
-    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
-    jr    print_char
-
-  __endasm;
-}
-
-/*
- * Display a digit
- */
-void
-display_digit_impl(uint8_t digit, uint8_t *start_address)
-__naked
-{
-  (void) digit, start_address;
-
-  __asm
-
-    push  ix
-
-    ld    ix, #4
-    add   ix, sp
-
-    ld    l, 1(ix)
-    ld    h, 2(ix)   ;; HL = start_address
-
-    ld    de, #_font_data + 8 * 16 + 1   ;; address of '0' bits
-    ld    a, 0(ix)
-    sla   a
-    sla   a
-    sla   a
-    add   a, e
-    ld    e, a
-
-    ;; no need to worry about carry (to register D) in this addition,
-    ;; since all digit pixels are stored in the range 0x5F31 .. 0x5FFF
-    ;; (that is, D is always 0x5F)
-
-print_char::
-    ld    c, #6
-row_loop::
-    ld    a, (de)
-    sla   a
-    inc   de
-    ld    b, #6
-pixel_loop::
-    sla   a
-    jr    nc, skip_pixel
-    ld    (hl), #PAPER(WHITE) + INK(WHITE)
-    jr    pixel_done
-skip_pixel::
-    ld    (hl), #PAPER(BLACK) + INK(BLACK)
-pixel_done::
-    inc   hl
-    djnz  pixel_loop
-
-    ld    a, c
-    ld    bc, #(ROW_LENGTH-6)
-    add   hl, bc
-    ld    c, a
-    dec   c
-    jr    nz, row_loop
-
-    pop   ix
-    ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
 void
 set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len)
 __naked
@@ -659,23 +581,165 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 void
-display_progress(uint8_t kilobytes_loaded,
-                 uint8_t kilobytes_expected)
+init_progress_display(void)
 __naked
 {
-  (void) kilobytes_loaded, kilobytes_expected;
-
   __asm
 
-    pop   de    ;; return address
-    pop   bc    ;; B=kilobytes_expected, C=kilobytes_loaded
+    ld    hl, #0x5800
+    ld    de, #0x5801
+    ld    bc, #0x2df
+    xor   a
+    ld    (hl), a
+    ldir
+
+    inc   hl
+    inc   de
+    ld    c, #0x1f
+    ld    a, #(PAPER(BLUE) | INK(BLUE))
+    ld    (hl), a
+    ldir
+
+    push  de
+    push  bc
+    ld    hl, #ATTR_ADDRESS(16, 14)
+    xor   a
+    call  _show_attr_digit
+
+    ld    hl, #ATTR_ADDRESS(16, 26)
+    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
+    jr    show_attr_digit_address_known
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+
+/*
+ * subroutine: show huge digit in attributes
+ * HL: attribute address
+ * A: digit (0..9)
+ *
+ * (encapsulated in a C function so we can place it within range for JR
+ * instruction above)
+ */
+
+static void
+show_attr_digit(void)
+__naked
+{
+  __asm
+
     push  bc
     push  de
+    ld    de, #_font_data + 8 * 16 + 1   ;; address of '0' bits
+    sla   a
+    sla   a
+    sla   a
+    add   a, e
+    ld    e, a
 
-    ld    a, b
-    cp    a, #48     ;; 48k snapshot?
-    jr    z, 00003$
+    ;; no need to worry about carry (to register D) in this addition,
+    ;; since all digit pixels are stored in the range 0x5F31 .. 0x5FFF
+    ;; (that is, D is always 0x5F)
+
+show_attr_digit_address_known::   ;; special jump target for init_progress_display
+    ld    c, #6
+00001$:
+    ld    a, (de)
+    sla   a
+    inc   de
+    ld    b, #6
+00002$:
+    sla   a
+    jr    nc, 00003$
+    ld    (hl), #PAPER(WHITE) + INK(WHITE)
+    jr    00004$
+00003$:
+    ld    (hl), #PAPER(BLACK) + INK(BLACK)
+00004$:
+    inc   hl
+    djnz  00002$
+
     ld    a, c
+    ld    bc, #(ROW_LENGTH-6)
+    add   hl, bc
+    ld    c, a
+    dec   c
+    jr    nz, 00001$
+
+    pop   de
+    pop   bc
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+// digits for progress display while loading a snapshot
+static uint8_t digit_single = 0;
+static uint8_t digit_tens = 0;
+
+void
+update_progress_display(void)
+__naked
+{
+  __asm
+
+    ;; update ones
+
+    ld   a, #10
+    ld   hl, #_digit_single
+    inc  (hl)
+    cp   a, (hl)
+    jr   nz, 00006$
+    ld   (hl), #0
+00006$:
+
+    ld   a, (hl)
+    ld   hl, #ATTR_ADDRESS(16, 14)
+    call _show_attr_digit
+
+    ;; update tens if the ones turned 0 -> 9
+
+    ld   a, (_digit_single)
+    or   a
+    jr   nz, 00007$
+
+    ld   a, #10
+    ld   hl, #_digit_tens
+    inc  (hl)
+    cp   a, (hl)
+    jr   nz, 00008$
+    ld   (hl), #0
+00008$:
+
+    ld   a, (hl)
+    ld   hl, #ATTR_ADDRESS(16, 7)
+    call _show_attr_digit
+
+    ld   a, (_digit_tens)
+    or   a
+    jr   nz, 00007$
+
+    ld   a, #1
+    ld   hl, #ATTR_ADDRESS(16, 0)
+    call _show_attr_digit
+
+00007$: ;; ones and tens updated
+
+00005$:   ;; hundreds and tens updated
+
+    ;; ************************************************************************
+    ;; update progress bar
+    ;; ************************************************************************
+
+    ld    a, (_kilobytes_expected)
+    cp    a, #48     ;; 48k snapshot?
+    ld    a, (_kilobytes_loaded)
+    jr    z, 00003$
     sra   a          ;; 128k snapshot => progress = kilobytes / 4
     sra   a
     jr    00002$
@@ -683,6 +747,7 @@ __naked
 00003$:   ;; 48k snapshot, multiply C by 43/64 (approx 2/3)
 ;; ( ( ((c) << 5) + ((c) << 3) + ((c) << 1) + (c) ) >> 6 )
 
+    ld    c, a
     ld    b, #0
     sla   c              ;; BC is now C << 1
     ld    d, #0
@@ -709,14 +774,12 @@ __naked
     ;; update progress at attribute position A, bottom row
 00002$:
     or    a
-    jr    z, 00001$  ;; no progress, no progress bar
+    ret   z    ;; no progress, no progress bar
     add   a, #<(PROGRESS_BAR_BASE - 1)
     ld    e, a
     ld    d, #>(PROGRESS_BAR_BASE - 1)
     ld    a, #(PAPER(CYAN) + INK(CYAN) + BRIGHT)
     ld    (de), a
-
-00001$:
     ret
 
   __endasm;
