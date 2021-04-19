@@ -528,27 +528,6 @@ wait_key(void)
 }
 
 /* ------------------------------------------------------------------------- */
-
-void
-key_click(void)
-__naked
-{
-  __asm
-
-  ld    bc, #0x14FE
-  xor   a, a
-  di
-keyclick_loop::
-  out   (c), a
-  xor   a, #0x10
-  djnz  keyclick_loop
-  ei
-  ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
 void
 set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len)
 __naked

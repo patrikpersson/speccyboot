@@ -149,20 +149,17 @@ run_menu(void)
 
       switch(key) {
       case KEY_ENTER:
-        key_click();
         init_progress_display();
         eth_init();
         tftp_read_request(rx_frame.snapshot_names[idx]);
         return;
       case KEY_UP:
         if (idx > 0) {
-          key_click();
           idx --;
         }
         break;
       case KEY_DOWN:
         if (idx < (nbr_snapshots - 1)) {
-          key_click();
           idx ++;
         }
         break;
@@ -175,7 +172,6 @@ run_menu(void)
             ch &= 0xDF;     /* upper case */
           }
           if (ch >= (int) key) {
-            key_click();
             idx = i;
             break;
           }
