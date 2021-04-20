@@ -43,6 +43,10 @@ ifdef MINIMAL
 CFLAGS      += -DSB_MINIMAL
 endif
 
+ifdef PAINT_STACK
+CFLAGS      += -DPAINT_STACK
+endif
+
 # =============================================================================
 # COMPONENTS
 # =============================================================================

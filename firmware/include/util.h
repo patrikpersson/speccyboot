@@ -175,4 +175,13 @@ extern volatile timer_t timer_tick_count;
 timer_t
 timer_value(timer_t timer);
 
+/* -------------------------------------------------------------------------
+ * Fill stack with magic value (for debugging/tuning)
+ * ------------------------------------------------------------------------- */
+#ifdef PAINT_STACK
+#define STACK_MAGIC   (0x48)
+void
+paint_stack(void);
+#endif
+
 #endif /* SPECCYBOOT_UI_INCLUSION_GUARD */

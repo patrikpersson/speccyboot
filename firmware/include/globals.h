@@ -51,7 +51,8 @@
  */
 
 /* Stack address (defined here so crt0.asm can find it via linker) */
-uint8_t __at(0x5b60) stack_top;
+#define STACK_SIZE   (0x60)
+uint8_t __at(0x5b00 + STACK_SIZE) stack_top;
 
 /* Buffer for font data (copied from 48K ROM by crt0.asm) */
 uint8_t __at(0x5F31) font_data[0x300];

@@ -167,18 +167,25 @@ __naked
     ;; update the status display
 
     ld    hl, #_kilobytes_loaded
+#ifndef SB_MINIMAL
     inc   (hl)
     push  hl
     call  _update_progress_display
     pop   hl
+#endif
 
     ;; if all data has been loaded, perform the context switch
 
     ld    a, (_kilobytes_expected)
     cp    a, (hl)
-    jp    z, _context_switch
+    ret   nz
 
-    ret
+#ifdef PAINT_STACK
+    di
+    halt
+#else
+    jp    _context_switch
+#endif
 
   __endasm;
 }

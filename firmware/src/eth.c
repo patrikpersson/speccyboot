@@ -293,6 +293,9 @@ void
 main(void)
 __naked
 {
+#ifdef PAINT_STACK
+  paint_stack();
+#endif
 #ifdef SB_MINIMAL
 
   __asm

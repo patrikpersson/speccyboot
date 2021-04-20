@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -19,7 +19,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -31,8 +31,9 @@
  */
 
 #include "util.h"
-#include "eth.h"
 
+#include "eth.h"
+#include "globals.h"
 #include "syslog.h"
 
 /* ------------------------------------------------------------------------- */
@@ -55,3 +56,28 @@ timer_value(timer_t timer)
   ENABLE_INTERRUPTS;
   return current_value - timer;
 }
+
+/* ------------------------------------------------------------------------- */
+
+#ifdef PAINT_STACK
+void
+paint_stack(void)
+{
+  __asm
+
+    di
+    pop   hl
+    exx
+    ld    hl, #0x5b00
+    ld    de, #0x5b01
+    ld    bc, #(STACK_SIZE - 1)
+    ld    (hl), #STACK_MAGIC
+    ldir
+    ld    sp, #_stack_top
+    ei
+    exx
+    jp    (hl)
+
+  __endasm;
+}
+#endif
