@@ -261,11 +261,8 @@ write_trampoline_loop::
 void
 context_switch(void)
 {
-  /*
-   * Disable interrupts early: avoid nasty incidents when we fiddle with the
-   * interrupt mode below
-   */
-  __asm   di  __endasm;
+  // set up ERDPT for reading from the ENC28J60 below (ENC28J60_READ_INLINE)
+  enc28j60_write_register16(ERDPT, ENC28J60_EVACUATED_DATA);
 
   /*
    * Restore paging and sound register contents, if valid values exist
@@ -301,29 +298,28 @@ context_switch(void)
     memcfg(MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK);
   }
 
-  /*
-   * Restore border colour
-   */
-  set_border((snapshot_header.snapshot_flags & 0x0e) >> 1);
-
-  /*
-   * Restore interrupt mode
-   */
-  switch (snapshot_header.int_mode & 0x03) {
-    case 0:
-      __asm   im 0  __endasm;
-      break;
-    case 1:
-      __asm   im 1  __endasm;
-      break;
-    case 2:
-      __asm   im 2  __endasm;
-      break;
-  }
-
-  enc28j60_write_register16(ERDPT, ENC28J60_EVACUATED_DATA);
-
   __asm
+
+    ;; Restore border
+
+    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
+    rra
+    and    a, #0x07
+    out    (__ula_port), a
+
+    ;; Restore interrupt mode
+
+    di
+
+    im     0   ;; start out with this as default, revise if needed
+    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
+    and    a, #0x03
+    jr     z, context_switch_im_done
+    im     1
+    cp     a, #1
+    jr     z, context_switch_im_done
+    im     2
+context_switch_im_done::
 
     ;; Restore the following registers early,
     ;; so we can avoid using VRAM for them:
@@ -358,8 +354,8 @@ context_switch(void)
 
     ;; Restore BC, DE, HL & SP
 
-    ld    de, (VRAM_REGSTATE_DE)
     ld    bc, (VRAM_REGSTATE_BC)
+    ld    de, (VRAM_REGSTATE_DE)
     ld    hl, (VRAM_REGSTATE_HL)
     ld    sp, (VRAM_REGSTATE_SP)
 
@@ -374,7 +370,7 @@ context_switch(void)
 
     ld    a, #0x20      ;; page out SpeccyBoot, pull reset on ENC28J60 low
 
-    JP    VRAM_TRAMPOLINE_START
+    jp    VRAM_TRAMPOLINE_START
 
     __endasm;
 }
