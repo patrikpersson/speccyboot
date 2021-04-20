@@ -8,7 +8,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -55,15 +55,12 @@
  *    ei / di       (depending on whether interrupts are to be enabled)
  *    jp  NN
  *
- * (register state other than A/IFF1 follows in the remaining scan lines of
- * this 5-cell trampoline)
+ * (state for registers BC, DE, HL, SP, F, R follows in the remaining
+ * scan lines of this 5-cell trampoline)
  */
 #define VRAM_TRAMPOLINE_START           0x4000
-
-#define VRAM_TRAMPOLINE_OUT             0x4000
-
+#define VRAM_TRAMPOLINE_OUT             (VRAM_TRAMPOLINE_START)
 #define VRAM_TRAMPOLINE_LD_A            0x4100
-
 #define VRAM_TRAMPOLINE_EIDI            0x4200
 #define VRAM_TRAMPOLINE_JP_FINAL        0x4201
 
@@ -78,24 +75,12 @@
 #define VRAM_REGSTATE_A                 (VRAM_TRAMPOLINE_LD_A + 1)
 
 #define VRAM_REGSTATE_BC                0x4300
+#define VRAM_REGSTATE_SP                0x4302
 #define VRAM_REGSTATE_F                 0x4304
 
 #define VRAM_REGSTATE_DE                0x4400
 #define VRAM_REGSTATE_HL                0x4402
-#define VRAM_REGSTATE_I                 0x4404
-
-#define VRAM_REGSTATE_SP                0x4500
-#define VRAM_REGSTATE_FP                0x4502
-#define VRAM_REGSTATE_AP                0x4503
-#define VRAM_REGSTATE_BP                0x4504
-
-#define VRAM_REGSTATE_CP                0x4600
-#define VRAM_REGSTATE_DEP               0x4601
-#define VRAM_REGSTATE_HLP               0x4603
-
-#define VRAM_REGSTATE_IX                0x4700
-#define VRAM_REGSTATE_IY                0x4702
-#define VRAM_REGSTATE_R                 0x4704
+#define VRAM_REGSTATE_R                 0x4404
 
 /* ------------------------------------------------------------------------ */
 
@@ -106,11 +91,11 @@
  * Calibrate this offset as follows:
  *
  * - Set it temporarily to 0, and run one of the test images
- * - Assume E = expected value of R,
+ * - Assume E = expected value of R        (0x2e in test image),
  *          N = actual value of R (as presented in binary by the test image)
  * - Set REG_R_OFFSET := (E - N)
  */
-#define REG_R_OFFSET                    (0xef)
+#define REG_R_OFFSET                    (0xf8)
 
 /* ------------------------------------------------------------------------ */
 
@@ -229,7 +214,6 @@ write_trampoline_loop::
    */
   STORE8(VRAM_REGSTATE_A, snapshot_header.a);
   STORE8(VRAM_REGSTATE_F, snapshot_header.f);
-  STORE8(VRAM_REGSTATE_I, snapshot_header.i);
   STORE8(VRAM_REGSTATE_R,
          ((snapshot_header.r + REG_R_OFFSET) & 0x7f)
           | ((snapshot_header.snapshot_flags & 0x01) << 7));
@@ -237,15 +221,6 @@ write_trampoline_loop::
   STORE16(VRAM_REGSTATE_DE, snapshot_header.de);
   STORE16(VRAM_REGSTATE_HL, snapshot_header.hl);
   STORE16(VRAM_REGSTATE_SP, snapshot_header.sp);
-
-  STORE8(VRAM_REGSTATE_AP, snapshot_header.a_p);
-  STORE8(VRAM_REGSTATE_FP, snapshot_header.f_p);
-  STORE8(VRAM_REGSTATE_BP, snapshot_header.b_p);
-  STORE8(VRAM_REGSTATE_CP, snapshot_header.c_p);
-  STORE16(VRAM_REGSTATE_DEP, snapshot_header.de_p);
-  STORE16(VRAM_REGSTATE_HLP, snapshot_header.hl_p);
-  STORE16(VRAM_REGSTATE_IX, snapshot_header.ix);
-  STORE16(VRAM_REGSTATE_IY, snapshot_header.iy);
 
   if (IS_EXTENDED_SNAPSHOT_HEADER(&snapshot_header)) {
     STORE16(VRAM_REGSTATE_PC, snapshot_header.extended_pc);
@@ -269,8 +244,6 @@ write_trampoline_loop::
 void
 context_switch(void)
 {
-  syslog("snapshot loaded");
-
   /*
    * Disable interrupts early: avoid nasty incidents when we fiddle with the
    * interrupt mode below
@@ -335,35 +308,30 @@ context_switch(void)
 
   __asm
 
-    ENC28J60_READ_INLINE(0x5800, 0x800)
+    ;; Restore the following registers early,
+    ;; so we can avoid using VRAM for them:
+    ;; - alternate registers (BC, DE, HL, AF)
+    ;; - IX & IY
+    ;; - I (interrupt register)
 
-    ;; Restore alternate register bank
-
-    ld    hl, #VRAM_REGSTATE_FP
-    ld    sp, hl
-    pop   af
-    ex    af, af'     ;; ' apostrophe for syntax coloring
-
-    ld    a,  (VRAM_REGSTATE_BP)
-    ld    b, a
-    ld    a,  (VRAM_REGSTATE_CP)
-    ld    c, a
-    ld    de, (VRAM_REGSTATE_DEP)
-    ld    hl, (VRAM_REGSTATE_HLP)
+    ld     bc, (_snapshot_header + Z80_HEADER_OFFSET_BC_P)
+    ld     de, (_snapshot_header + Z80_HEADER_OFFSET_DE_P)
+    ld     hl, (_snapshot_header + Z80_HEADER_OFFSET_HL_P)
     exx
 
-    ;; Restore index registers, DE, I, R
+    ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_F_P
+    ld     sp, hl
+    pop    af
+    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_A_P)
+    ex     af, af'     ;; ' apostrophe for syntax coloring
 
-    ld    ix, (VRAM_REGSTATE_IX)
-    ld    iy, (VRAM_REGSTATE_IY)
+    ld     ix, (_snapshot_header + Z80_HEADER_OFFSET_IX)
+    ld     iy, (_snapshot_header + Z80_HEADER_OFFSET_IY)
 
-    ld    de, (VRAM_REGSTATE_DE)
+    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_I)
+    ld     i, a
 
-    ld    a, (VRAM_REGSTATE_I)
-    ld    i, a
-
-    ld    a, (VRAM_REGSTATE_R)
-    ld    r, a
+    ENC28J60_READ_INLINE(RUNTIME_DATA, RUNTIME_DATA_LENGTH)
 
     ;; Restore F
 
@@ -371,13 +339,17 @@ context_switch(void)
     ld    sp, hl
     pop   af
 
-    ;; Restore BC, SP & HL
+    ;; Restore BC, DE, HL & SP
 
-    ld    hl, (VRAM_REGSTATE_BC)
-    ld    b, h
-    ld    c, l
-    ld    sp, (VRAM_REGSTATE_SP)
+    ld    de, (VRAM_REGSTATE_DE)
+    ld    bc, (VRAM_REGSTATE_BC)
     ld    hl, (VRAM_REGSTATE_HL)
+    ld    sp, (VRAM_REGSTATE_SP)
+
+    ;; Restore R
+
+    ld    a, (VRAM_REGSTATE_R)
+    ld    r, a
 
     ;;
     ;; Set up final register state for trampoline

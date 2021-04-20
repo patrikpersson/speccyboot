@@ -121,8 +121,7 @@ PACKED_STRUCT(z80_snapshot_header_t) {
   uint8_t   r;
   uint8_t   snapshot_flags;
   uint16_t  de;
-  uint8_t   c_p;
-  uint8_t   b_p;
+  uint16_t  bc_p;
   uint16_t  de_p;
   uint16_t  hl_p;
   uint8_t   a_p;
@@ -149,6 +148,19 @@ PACKED_STRUCT(z80_snapshot_header_t) {
    * Remaining contents of this header are useless for a real Spectrum
    */
 };
+
+/*
+ * Offsets for use by assembly code  (should match header above)
+ */
+#define Z80_HEADER_OFFSET_SP     (8)
+#define Z80_HEADER_OFFSET_I      (10)
+#define Z80_HEADER_OFFSET_BC_P   (15)
+#define Z80_HEADER_OFFSET_DE_P   (17)
+#define Z80_HEADER_OFFSET_HL_P   (19)
+#define Z80_HEADER_OFFSET_A_P    (21)
+#define Z80_HEADER_OFFSET_F_P    (22)
+#define Z80_HEADER_OFFSET_IY     (23)
+#define Z80_HEADER_OFFSET_IX     (25)
 
 /* ------------------------------------------------------------------------ */
 
