@@ -55,8 +55,9 @@
  *    ei / di       (depending on whether interrupts are to be enabled)
  *    jp  NN
  *
- * (state for registers BC, DE, HL, SP, F, R follows in the remaining
- * scan lines of this 5-cell trampoline)
+ * (IP configuration and state for registers BC, DE, HL, SP, F, R follow
+ * in the remaining scan lines of this 5-cell trampoline)
+
  */
 #define VRAM_TRAMPOLINE_START           0x4000
 #define VRAM_TRAMPOLINE_OUT             (VRAM_TRAMPOLINE_START)
@@ -82,6 +83,14 @@
 #define VRAM_REGSTATE_HL                0x4402
 #define VRAM_REGSTATE_R                 0x4404
 
+/*
+ * IP configuration, stored in VRAM along with the trampoline
+ */
+
+#define VRAM_TRAMPOLINE_HOST_IP         0x4500
+#define VRAM_TRAMPOLINE_BCAST_IP        0x4600
+#define VRAM_TRAMPOLINE_TFTP_SERVER_IP  0x4700
+
 /* ------------------------------------------------------------------------ */
 
 /*
@@ -104,6 +113,7 @@
  */
 #define STORE8(addr, value)         (*((uint8_t *)(addr)) = value)
 #define STORE16(addr, value)        (*((uint16_t *)(addr)) = value)
+#define STORE_IP(addr, value)       (*((ipv4_address_t *)(addr)) = value)
 
 /* ========================================================================= */
 
@@ -229,6 +239,13 @@ write_trampoline_loop::
     STORE16(VRAM_REGSTATE_PC, snapshot_header.pc);
     snapshot_header.hw_state_7ffd = 0x30 + DEFAULT_BANK; /* lock, ROM 1 */
   }
+
+  /*
+   * Write IP configuration to VRAM trampoline area
+   */
+  STORE_IP(VRAM_TRAMPOLINE_HOST_IP, ip_config.host_address);
+  STORE_IP(VRAM_TRAMPOLINE_BCAST_IP, ip_config.broadcast_address);
+  STORE_IP(VRAM_TRAMPOLINE_TFTP_SERVER_IP, ip_config.tftp_server_address);
 
   /* Write data to ENC28J60. */
   enc28j60_write_memory_at(ENC28J60_EVACUATED_DATA,
