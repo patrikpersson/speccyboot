@@ -35,6 +35,9 @@
 
 #include "globals.h"
 
+/* Attribute address for large digits (kilobyte counter) */
+#define ATTR_DIGIT_ROW  (0x5a00)
+
 /* ----------------------------------------------------------------------------
  * Keyboard mapping (used by _poll_key below)
  *
@@ -567,26 +570,23 @@ __naked
 
     ld    hl, #0x5800
     ld    de, #0x5801
-    ld    bc, #0x2df
+    ld    bc, #0x2e0
     xor   a
     ld    (hl), a
     ldir
 
-    inc   hl
-    inc   de
     ld    c, #0x1f
     ld    a, #(PAPER(BLUE) | INK(BLUE))
     ld    (hl), a
     ldir
 
-    push  de
-    push  bc
-    ld    hl, #ATTR_ADDRESS(16, 14)
+    ld    l, #14
     xor   a
     call  _show_attr_digit
 
-    ld    hl, #ATTR_ADDRESS(16, 26)
+    ld    l, #26
     ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
+    push  bc   ;; because the routine jumped to will pop that before ret:ing
     jr    show_attr_digit_address_known
 
   __endasm;
@@ -596,9 +596,11 @@ __naked
 
 
 /*
- * subroutine: show huge digit in attributes
- * HL: attribute address
- * A: digit (0..9)
+ * subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
+ * L: column (0..31)
+ * A: digit (0..9), bits 4-7 are ignored
+ *
+ * Destroys DE, saves BC
  *
  * (encapsulated in a C function so we can place it within range for JR
  * instruction above)
@@ -611,19 +613,23 @@ __naked
   __asm
 
     push  bc
-    push  de
     ld    de, #_font_data + 8 * 16 + 1   ;; address of '0' bits
+    and   a, #0xf
     sla   a
     sla   a
     sla   a
     add   a, e
     ld    e, a
 
+    ld    h, #>ATTR_DIGIT_ROW
+
     ;; no need to worry about carry (to register D) in this addition,
     ;; since all digit pixels are stored in the range 0x5F31 .. 0x5FFF
     ;; (that is, D is always 0x5F)
 
 show_attr_digit_address_known::   ;; special jump target for init_progress_display
+    ;; NOTE: must have stacked BC+DE before jumping here
+
     ld    c, #6
 00001$:
     ld    a, (de)
@@ -641,14 +647,13 @@ show_attr_digit_address_known::   ;; special jump target for init_progress_displ
     inc   hl
     djnz  00002$
 
-    ld    a, c
-    ld    bc, #(ROW_LENGTH-6)
-    add   hl, bc
-    ld    c, a
+    ld    a, #(ROW_LENGTH-6)
+    add   a, l
+    ld    l, a
+
     dec   c
     jr    nz, 00001$
 
-    pop   de
     pop   bc
     ret
 
@@ -657,9 +662,8 @@ show_attr_digit_address_known::   ;; special jump target for init_progress_displ
 
 /* ------------------------------------------------------------------------- */
 
-// digits for progress display while loading a snapshot
-static uint8_t digit_single = 0;
-static uint8_t digit_tens = 0;
+// digits (BCD) for progress display while loading a snapshot
+static uint8_t digits = 0;
 
 void
 update_progress_display(void)
@@ -667,49 +671,44 @@ __naked
 {
   __asm
 
-    ;; update ones
+    ld    bc, #_digits
+    ld    a, (bc)
+    inc   a
+    daa
+    push  af             ;; remember flags
+    ld    (bc), a
+    jr    nz, not_100k   ;; turned from 99->100?
 
-    ld   a, #10
-    ld   hl, #_digit_single
-    inc  (hl)
-    cp   a, (hl)
-    jr   nz, 00006$
-    ld   (hl), #0
-00006$:
+    ;; Number of kilobytes became zero in BCD:
+    ;; means it just turned from 99 to 100.
+    ;; Print the digit '1' for hundreds.
 
-    ld   a, (hl)
-    ld   hl, #ATTR_ADDRESS(16, 14)
-    call _show_attr_digit
+    ld    l, a   ;; L is now 0
+    inc   a      ;; A is now 1
+    call  _show_attr_digit
+    ld    a, (bc)
 
-    ;; update tens if the ones turned 0 -> 9
+not_100k::
+    pop   hl             ;; recall flags, old F is now in L
+    bit   #4, l          ;; was H flag set? Then the tens have increased
+    jr    z, not_10k
 
-    ld   a, (_digit_single)
-    or   a
-    jr   nz, 00007$
+    ;; Print tens (_x_)
 
-    ld   a, #10
-    ld   hl, #_digit_tens
-    inc  (hl)
-    cp   a, (hl)
-    jr   nz, 00008$
-    ld   (hl), #0
-00008$:
+    ld    a, (bc)
+    rra
+    rra
+    rra
+    rra
+    ld    l, #7
+    call  _show_attr_digit
 
-    ld   a, (hl)
-    ld   hl, #ATTR_ADDRESS(16, 7)
-    call _show_attr_digit
+not_10k::
+    ;; Print single-number digit (__x)
 
-    ld   a, (_digit_tens)
-    or   a
-    jr   nz, 00007$
-
-    ld   a, #1
-    ld   hl, #ATTR_ADDRESS(16, 0)
-    call _show_attr_digit
-
-00007$: ;; ones and tens updated
-
-00005$:   ;; hundreds and tens updated
+    ld    a, (bc)
+    ld    l, #14
+    call  _show_attr_digit
 
     ;; ************************************************************************
     ;; update progress bar
@@ -723,42 +722,39 @@ __naked
     sra   a
     jr    00002$
 
-00003$:   ;; 48k snapshot, multiply C by 43/64 (approx 2/3)
-;; ( ( ((c) << 5) + ((c) << 3) + ((c) << 1) + (c) ) >> 6 )
+00003$:   ;; 48k snapshot, multiply C by approximately 2/3
+;; approximated here as ( 1 + 5c / 8 + c / 32 )
+
+    ;; This may look funny. (A / 32) should ideally be a comparison
+    ;; with 32 below. However, this results in the skipping progress bar
+    ;; skipping the value 21. To avoid this, the comparison is made
+    ;; to 30 instead. Mathematically bonkers, but visually much better.
+
+    cp    a, #30
+    push  af        ;; remember (a >> 5), means C not set
 
     ld    c, a
-    ld    b, #0
-    sla   c              ;; BC is now C << 1
-    ld    d, #0
-    ld    e, c
-    sla   e              ;; no carry here: at most 48*4=192
-    sla   e              ;; now we could have a carry too
-    rl    d              ;; DE is now C << 3
-    ld    h, d
-    ld    l, e
-    add   hl, hl
-    add   hl, hl         ;; HL is now C << 5
-    add   hl, de         ;;         + C << 3
-    add   hl, bc         ;;         + C << 1
-    ld    c, a
-    add   hl, bc         ;;         + C
+    sla   c
+    sla   c
+    add   a, c
+    srl   a
+    srl   a
+    srl   a
+    ;; inc   a
 
-    ld    b, #6
-00004$:
-    sra   h
-    rr    l
-    djnz  00004$
-    ld    a, l
+    pop   bc        ;; bit 0 in register C is popped flag C
+    rrc   c
+    jr    c, 00002$
+    inc   a          ;; add (a >> 5)
 
     ;; update progress at attribute position A, bottom row
 00002$:
-    or    a
-    ret   z    ;; no progress, no progress bar
-    add   a, #<(PROGRESS_BAR_BASE - 1)
-    ld    e, a
-    ld    d, #>(PROGRESS_BAR_BASE - 1)
-    ld    a, #(PAPER(CYAN) + INK(CYAN) + BRIGHT)
-    ld    (de), a
+    ;; The progress bar starts at PROGRESS_BAR_BASE-1, but the 2/3
+    ;; approximation includes a '1' term (see above). These ones cancel out.
+    add   a, #<(PROGRESS_BAR_BASE-1+1)
+    ld    l, a
+    ld    h, #>(PROGRESS_BAR_BASE)
+    ld    (hl), #(PAPER(CYAN) + INK(CYAN) + BRIGHT)
     ret
 
   __endasm;
