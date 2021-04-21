@@ -539,22 +539,22 @@ __naked
 
   __asm
 
-    push  ix
-    ld    ix, #4
-    add   ix, sp
+    pop   de
+    dec   sp
+    pop   af
+    pop   hl
+    pop   bc
+    push  bc
+    push  hl
+    dec   sp
+    push  de
 
-    ld    l, 1(ix)
-    ld    h, 2(ix)   ;; HL = attr_address
-    ld    c, 3(ix)
-    ld    b, 4(ix)   ;; BC = len
     ld    e, l
     ld    d, h
     inc   de
-    dec   bc
-    ld    a, 0(ix)
     ld    (hl), a
     ldir
-    pop   ix
+
     ret
 
   __endasm;

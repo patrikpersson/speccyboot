@@ -139,7 +139,7 @@ key_click(void);
  * ------------------------------------------------------------------------- */
 
 #define set_attrs(_attrs, _r, _c, _n)                                         \
-  set_attrs_impl(_attrs, (uint8_t *) ATTR_ADDRESS((_r),(_c)), _n)
+  set_attrs_impl(_attrs, (uint8_t *) ATTR_ADDRESS((_r),(_c)), (_n) - 1)
 
 void
 set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len);
