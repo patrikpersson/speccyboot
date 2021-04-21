@@ -69,6 +69,9 @@ static union {
   };
 } chunk_state;
 
+#define CHUNK_STATE_OFFSET_BYTES_LO   (0)
+#define CHUNK_STATE_OFFSET_BYTES_HI   (1)
+
 /* State for a repetition sequence */
 static union {
   uint8_t plain_byte;   /* set: s_chunk_single_escape read: s_chunk_single_escape */
@@ -231,24 +234,66 @@ DEFINE_STATE(s_header)
 
 /* ------------------------------------------------------------------------- */
 
+/* receive low byte of chunk length */
 DEFINE_STATE(s_chunk_header)
+__naked
 {
-  /* Receive low byte of chunk length */
-  chunk_state.bytes_lo = *received_data++;
-  received_data_length--;
+  __asm
 
-  current_state = &s_chunk_header2;
+    ;; chunk_state.bytes_lo = *received_data++;
+    ;; ----------------------------------------
+    ld   hl, (_received_data)
+    ld   a, (hl)
+    inc  hl
+    ld   (_received_data), hl
+    ld   (_chunk_state + CHUNK_STATE_OFFSET_BYTES_LO), a
+
+    ;; received_data_length--;
+    ;; -----------------------
+    ld   hl, (_received_data_length)
+    dec  hl
+    ld   (_received_data_length), hl
+
+    ;; current_state = &s_chunk_header2;
+    ;; ---------------------------------
+    ld   hl, #_s_chunk_header2
+    ld   (_current_state), hl
+
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
 
+/* Receive high byte of chunk length */
 DEFINE_STATE(s_chunk_header2)
+__naked
 {
-  /* Receive high byte of chunk length */
-  chunk_state.bytes_hi = *received_data++;
-  received_data_length--;
+  __asm
 
-  current_state = &s_chunk_header3;
+    ;; chunk_state.bytes_hi = *received_data++;
+    ;; ----------------------------------------
+    ld   hl, (_received_data)
+    ld   a, (hl)
+    inc  hl
+    ld   (_received_data), hl
+    ld   (_chunk_state + CHUNK_STATE_OFFSET_BYTES_HI), a
+
+    ;; received_data_length--;
+    ;; -----------------------
+    ld   hl, (_received_data_length)
+    dec  hl
+    ld   (_received_data_length), hl
+
+    ;; current_state = &s_chunk_header3;
+    ;; ---------------------------------
+    ld   hl, #_s_chunk_header3
+    ld   (_current_state), hl
+
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -259,8 +304,8 @@ DEFINE_STATE(s_chunk_header3)
    * Receive ID of the page the chunk belongs to, range is 3..10
    *
    * See:
-   * http://www.worldofspectrum.org/faq/reference/z80format.htm
-   * http://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
+   * https://www.worldofspectrum.org/faq/reference/z80format.htm
+   * https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
    */
   uint8_t page_id = *received_data++;
   received_data_length--;
