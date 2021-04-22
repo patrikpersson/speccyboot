@@ -695,7 +695,6 @@ not_100k::
 
     ;; Print tens (_x_)
 
-    ld    a, (bc)
     rra
     rra
     rra
