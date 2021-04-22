@@ -615,17 +615,13 @@ __naked
     push  bc
     ld    de, #_font_data + 8 * 16 + 1   ;; address of '0' bits
     and   a, #0xf
-    sla   a
-    sla   a
-    sla   a
+    add   a, a
+    add   a, a
+    add   a, a
     add   a, e
     ld    e, a
 
     ld    h, #>ATTR_DIGIT_ROW
-
-    ;; no need to worry about carry (to register D) in this addition,
-    ;; since all digit pixels are stored in the range 0x5F31 .. 0x5FFF
-    ;; (that is, D is always 0x5F)
 
 show_attr_digit_address_known::   ;; special jump target for init_progress_display
     ;; NOTE: must have stacked BC+DE before jumping here
@@ -633,11 +629,11 @@ show_attr_digit_address_known::   ;; special jump target for init_progress_displ
     ld    c, #6
 00001$:
     ld    a, (de)
-    sla   a
+    add   a, a
     inc   de
     ld    b, #6
 00002$:
-    sla   a
+    add   a, a
     jr    nc, 00003$
     ld    (hl), #PAPER(WHITE) + INK(WHITE)
     jr    00004$
