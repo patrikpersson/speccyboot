@@ -715,20 +715,20 @@ not_10k::
     ;; ************************************************************************
 
     ld    a, (_kilobytes_expected)
-    cp    a, #48     ;; 48k snapshot?
+    sub   a, #48     ;; 48k snapshot?
+    ld    h, a       ;; if it is, store zero in H (useful later)
     ld    a, (_kilobytes_loaded)
     jr    z, 00003$
-    sra   a          ;; 128k snapshot => progress = kilobytes / 4
-    sra   a
+    srl   a          ;; 128k snapshot => progress = kilobytes / 4
+    srl   a
     jr    00002$
 
 00003$:   ;; 48k snapshot, multiply A by approximately 2/3
           ;; approximated here as A*21/32
 
-    ld    h, #0
     ld    l, a
-    ld    c, l
     ld    b, h
+    ld    c, a
     add   hl, hl
     add   hl, hl
     ld    d, h
@@ -745,6 +745,8 @@ not_10k::
     ld    a, h
 
 00002$:
+    cp    a, #32
+    ret   z
     ld    hl, #PROGRESS_BAR_BASE
     add   a, l
     ld    l, a
