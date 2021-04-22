@@ -722,38 +722,32 @@ not_10k::
     sra   a
     jr    00002$
 
-00003$:   ;; 48k snapshot, multiply C by approximately 2/3
-;; approximated here as ( 1 + 5c / 8 + c / 32 )
+00003$:   ;; 48k snapshot, multiply A by approximately 2/3
+          ;; approximated here as A*21/32
 
-    ;; This may look funny. (A / 32) should ideally be a comparison
-    ;; with 32 below. However, this results in the skipping progress bar
-    ;; skipping the value 21. To avoid this, the comparison is made
-    ;; to 30 instead. Mathematically bonkers, but visually much better.
-
-    cp    a, #30
-    push  af        ;; remember (a >> 5), means C not set
-
-    ld    c, a
-    sla   c
-    sla   c
-    add   a, c
-    srl   a
-    srl   a
-    srl   a
-    ;; inc   a
-
-    pop   bc        ;; bit 0 in register C is popped flag C
-    rrc   c
-    jr    c, 00002$
-    inc   a          ;; add (a >> 5)
-
-    ;; update progress at attribute position A, bottom row
-00002$:
-    ;; The progress bar starts at PROGRESS_BAR_BASE-1, but the 2/3
-    ;; approximation includes a '1' term (see above). These ones cancel out.
-    add   a, #<(PROGRESS_BAR_BASE-1+1)
+    ld    h, #0
     ld    l, a
-    ld    h, #>(PROGRESS_BAR_BASE)
+    ld    c, l
+    ld    b, h
+    add   hl, hl
+    add   hl, hl
+    ld    d, h
+    ld    e, l
+    add   hl, hl
+    add   hl, hl
+    add   hl, bc
+    add   hl, de
+
+    ;; instead of shifting HL 5 bits right, shift 3 bits left, use H
+    add   hl, hl
+    add   hl, hl
+    add   hl, hl
+    ld    a, h
+
+00002$:
+    ld    hl, #PROGRESS_BAR_BASE
+    add   a, l
+    ld    l, a
     ld    (hl), #(PAPER(CYAN) + INK(CYAN) + BRIGHT)
     ret
 
