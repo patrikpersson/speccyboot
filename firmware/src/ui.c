@@ -723,30 +723,30 @@ not_10k::
     jr    00002$
 
 00003$:   ;; 48k snapshot, multiply A by approximately 2/3
-          ;; approximated here as A*21/32
+          ;; approximated here as (A-1)*11/16
 
+    dec   a
     ld    l, a
     ld    b, h
     ld    c, a
     add   hl, hl
     add   hl, hl
-    ld    d, h
-    ld    e, l
-    add   hl, hl
     add   hl, hl
     add   hl, bc
-    add   hl, de
+    add   hl, bc
+    add   hl, bc
 
-    ;; instead of shifting HL 5 bits right, shift 3 bits left, use H
+    ;; instead of shifting HL 4 bits right, shift 4 bits left, use H
+    add   hl, hl
     add   hl, hl
     add   hl, hl
     add   hl, hl
     ld    a, h
 
 00002$:
-    cp    a, #32
+    or    a
     ret   z
-    ld    hl, #PROGRESS_BAR_BASE
+    ld    hl, #PROGRESS_BAR_BASE-1
     add   a, l
     ld    l, a
     ld    (hl), #(PAPER(CYAN) + INK(CYAN) + BRIGHT)
