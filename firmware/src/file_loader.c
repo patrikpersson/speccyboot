@@ -196,6 +196,61 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 /*
+ * Returns *received_data++ in A
+ * also decreases received_data_length
+ *
+ * (reads byte from received_data, increases received_data, returns byte in A)
+ * Modifies no other registers (not even F)
+ */
+static void
+get_next_byte(void)
+__naked
+{
+  __asm
+
+    push hl
+
+    ld   hl, (_received_data)
+    ld   a, (hl)
+    inc  hl
+    ld   (_received_data), hl
+
+    ld   hl, (_received_data_length)
+    dec  hl
+    ld   (_received_data_length), hl
+
+    pop  hl
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Sets current_state to the 16-bit address after the CALL to this routine.
+ * Then pops the real return address and returns to that.
+ */
+static void
+set_next_state(void)
+__naked
+{
+  __asm
+
+    pop   hl
+    ld    e, (hl)
+    inc   hl
+    ld    d, (hl)
+    ex    de, hl
+    ld    (_current_state), hl
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
  * State HEADER (initial):
  *
  * Evacuates the header from the TFTP data block. Returns the length of the
@@ -240,26 +295,12 @@ __naked
 {
   __asm
 
-    ;; chunk_state.bytes_lo = *received_data++;
-    ;; ----------------------------------------
-    ld   hl, (_received_data)
-    ld   a, (hl)
-    inc  hl
-    ld   (_received_data), hl
+    call _get_next_byte
     ld   (_chunk_state + CHUNK_STATE_OFFSET_BYTES_LO), a
 
-    ;; received_data_length--;
-    ;; -----------------------
-    ld   hl, (_received_data_length)
-    dec  hl
-    ld   (_received_data_length), hl
-
-    ;; current_state = &s_chunk_header2;
-    ;; ---------------------------------
-    ld   hl, #_s_chunk_header2
-    ld   (_current_state), hl
-
-    ret
+    call _set_next_state
+    .dw  #_s_chunk_header2
+    ;; no RET here: _set_next_state handles this
 
   __endasm;
 }
@@ -272,81 +313,109 @@ __naked
 {
   __asm
 
-    ;; chunk_state.bytes_hi = *received_data++;
-    ;; ----------------------------------------
-    ld   hl, (_received_data)
-    ld   a, (hl)
-    inc  hl
-    ld   (_received_data), hl
+    call _get_next_byte
     ld   (_chunk_state + CHUNK_STATE_OFFSET_BYTES_HI), a
 
-    ;; received_data_length--;
-    ;; -----------------------
-    ld   hl, (_received_data_length)
-    dec  hl
-    ld   (_received_data_length), hl
-
-    ;; current_state = &s_chunk_header3;
-    ;; ---------------------------------
-    ld   hl, #_s_chunk_header3
-    ld   (_current_state), hl
-
-    ret
+    call _set_next_state
+    .dw  #_s_chunk_header3
+    ;; no RET here: _set_next_state handles this
 
   __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
 
+/*
+ * Receive ID of the page the chunk belongs to, range is 3..10
+ *
+ * See:
+ * https://www.worldofspectrum.org/faq/reference/z80format.htm
+ * https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
+ */
 DEFINE_STATE(s_chunk_header3)
+__naked
 {
-  /*
-   * Receive ID of the page the chunk belongs to, range is 3..10
-   *
-   * See:
-   * https://www.worldofspectrum.org/faq/reference/z80format.htm
-   * https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
-   */
-  uint8_t page_id = *received_data++;
-  received_data_length--;
+  __asm
 
-  if (page_id < 3 || page_id > 10) {
-    fatal_error(FATAL_INCOMPATIBLE);
-  }
+    ld   a, (_kilobytes_expected)
+    ld   c, a
 
-  switch (page_id) {
-    case 8:
-      /*
-       * Need to handle page 5 separately -- if we don't use the address range
-       * 0x4000..0x7fff, the evacuation stuff in z80_parser won't work.
-       */
-      curr_write_pos = (uint8_t *) 0x4000;
-      break;
-    case 4:
-      /*
-       * Page 1 in a 48k snapshot points to 0x8000, but 128k snapshots are
-       * different.
-       */
-      if (kilobytes_expected != 128) {
-        curr_write_pos = (uint8_t *) 0x8000;
-        break;
-      }
-      /* else fall-through */
-    default:
-      if (kilobytes_expected == 128) {
-        memcfg(page_id - 3);
-      }
-      curr_write_pos = (uint8_t *) 0xc000;
-      break;
-  }
+    call _get_next_byte
 
-  if (chunk_state.bytes == BANK_LENGTH_UNCOMPRESSED) {
-    chunk_state.bytes = PAGE_SIZE;
-    current_state = &s_chunk_uncompressed;
-  }
-  else {
-    current_state = &s_chunk_compressed;
-  }
+    cp   a, #3
+    jr   c, s_chunk_header3_incompatible
+    cp   a, #11
+    jr   c, s_chunk_header3_compatible
+s_chunk_header3_incompatible::
+    ld   a, #FATAL_INCOMPATIBLE
+    out  (0xfe), a
+    di
+    halt
+s_chunk_header3_compatible::
+
+    ;; Decide on a good value for curr_write_pos; store in HL.
+
+    ld   b, a    ;; useful extra copy of A
+
+    ;;
+    ;; Need to handle page 5 separately -- if we do not use the address range
+    ;; 0x4000..0x7fff, the evacuation stuff in z80_parser will not work.
+    ;;
+
+    ld   h, #0x40
+    cp   a, #8
+    jr   z, s_chunk_header3_set_page
+
+    ;;
+    ;; Page 1 in a 48k snapshot points to 0x8000, but 128k snapshots are
+    ;; different.
+    ;;
+
+    ld   h, #0x80
+    cp   a, #4
+    jr   nz, s_chunk_header3_default_page
+
+    ld   a, #128
+    cp   a, c    ;; 128k snapshot?
+    jr   nz, s_chunk_header3_set_page
+
+s_chunk_header3_default_page::
+
+    ld   h, #0xc0
+    ld   a, #128
+    cp   a, c
+    jr   nz, s_chunk_header3_set_page
+    ld   a, b
+    sub  a, #3
+    ld   bc, #MEMCFG_ADDR
+    out  (c), a
+
+s_chunk_header3_set_page::
+    ld   l, #0
+    ld   (_curr_write_pos), hl
+
+    ;; If chunk_state is 0xffff, length is 0x4000
+
+    ld   hl, (_chunk_state)
+    inc  h
+    jr   nz, s_chunk_header3_compressed
+    inc  l
+    jr   nz, s_chunk_header3_compressed
+
+    ld   h, #0x40    ;; HL is now 0x4000
+    ld   (_chunk_state), hl
+
+    call _set_next_state
+    .dw  #_s_chunk_uncompressed
+    ;; no RET here: _set_next_state handles this
+
+s_chunk_header3_compressed::
+
+    call _set_next_state
+    .dw  #_s_chunk_compressed
+    ;; no RET here: _set_next_state handles this
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */

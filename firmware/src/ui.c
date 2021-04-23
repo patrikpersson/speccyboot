@@ -584,7 +584,7 @@ __naked
     xor   a
     call  _show_attr_digit
 
-    ld    l, #26
+    ld    l, #25
     ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
     push  bc   ;; because the routine jumped to will pop that before ret:ing
     jr    show_attr_digit_address_known
