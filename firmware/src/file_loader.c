@@ -59,24 +59,12 @@
 
 /*
  * Bytes remaining to unpack in current chunk
- * (union to allow for writing of individual bytes)
  */
-static union {
-  uint16_t bytes;
-  PACKED_STRUCT() {
-    uint8_t bytes_lo;
-    uint8_t bytes_hi;
-  };
-} chunk_state;
-
-#define CHUNK_STATE_OFFSET_BYTES_LO   (0)
-#define CHUNK_STATE_OFFSET_BYTES_HI   (1)
+static uint16_t chunk_bytes_remaining;
 
 /* State for a repetition sequence */
-static union {
-  uint8_t plain_byte;   /* set: s_chunk_single_escape read: s_chunk_single_escape */
-  uint8_t count;        /* set: chunk_compressed_repcount read: chunk_compressed_repetition */
-} rep_state;
+/* set: chunk_compressed_repcount read: chunk_compressed_repetition */
+static uint8_t rep_count;
 
 /* Byte value for repetition */
 static uint8_t rep_value;
@@ -200,15 +188,13 @@ __naked
  * also decreases received_data_length
  *
  * (reads byte from received_data, increases received_data, returns byte in A)
- * Modifies no other registers (not even F)
+ * Modifies HL (but not F)
  */
 static void
 get_next_byte(void)
 __naked
 {
   __asm
-
-    push hl
 
     ld   hl, (_received_data)
     ld   a, (hl)
@@ -219,7 +205,6 @@ __naked
     dec  hl
     ld   (_received_data_length), hl
 
-    pop  hl
     ret
 
   __endasm;
@@ -251,6 +236,25 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 /*
+ * Decreases chunk_bytes_remaining (byte counter in compressed chunk)
+ */
+static void
+dec_chunk_bytes(void)
+__naked
+{
+  __asm
+
+    ld   hl, (_chunk_bytes_remaining)
+    dec  hl
+    ld   (_chunk_bytes_remaining), hl
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
  * State HEADER (initial):
  *
  * Evacuates the header from the TFTP data block. Returns the length of the
@@ -274,7 +278,7 @@ DEFINE_STATE(s_header)
 
     current_state = &s_chunk_header;
   } else {
-    chunk_state.bytes = 0xc000;
+    chunk_bytes_remaining = 0xc000;
 
     current_state = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
                      & SNAPSHOT_FLAGS_COMPRESSED_MASK)
@@ -296,11 +300,11 @@ __naked
   __asm
 
     call _get_next_byte
-    ld   (_chunk_state + CHUNK_STATE_OFFSET_BYTES_LO), a
+    ld   (_chunk_bytes_remaining), a
 
     call _set_next_state
     .dw  #_s_chunk_header2
-    ;; no RET here: _set_next_state handles this
+    ;; implicit RET, handled by _set_next_state
 
   __endasm;
 }
@@ -314,11 +318,11 @@ __naked
   __asm
 
     call _get_next_byte
-    ld   (_chunk_state + CHUNK_STATE_OFFSET_BYTES_HI), a
+    ld   (_chunk_bytes_remaining + 1), a
 
     call _set_next_state
     .dw  #_s_chunk_header3
-    ;; no RET here: _set_next_state handles this
+    ;; implicit RET, handled by _set_next_state
 
   __endasm;
 }
@@ -385,6 +389,9 @@ s_chunk_header3_default_page::
     ld   a, #128
     cp   a, c
     jr   nz, s_chunk_header3_set_page
+
+    ;; If this is a 128k snapshot, switch memory bank
+
     ld   a, b
     sub  a, #3
     ld   bc, #MEMCFG_ADDR
@@ -394,26 +401,26 @@ s_chunk_header3_set_page::
     ld   l, #0
     ld   (_curr_write_pos), hl
 
-    ;; If chunk_state is 0xffff, length is 0x4000
+    ;; If chunk_bytes_remaining is 0xffff, length is 0x4000
 
-    ld   hl, (_chunk_state)
+    ld   hl, (_chunk_bytes_remaining)
     inc  h
     jr   nz, s_chunk_header3_compressed
     inc  l
     jr   nz, s_chunk_header3_compressed
 
     ld   h, #0x40    ;; HL is now 0x4000
-    ld   (_chunk_state), hl
+    ld   (_chunk_bytes_remaining), hl
 
     call _set_next_state
     .dw  #_s_chunk_uncompressed
-    ;; no RET here: _set_next_state handles this
+    ;; implicit RET, handled by _set_next_state
 
 s_chunk_header3_compressed::
 
     call _set_next_state
     .dw  #_s_chunk_compressed
-    ;; no RET here: _set_next_state handles this
+    ;; implicit RET, handled by _set_next_state
 
   __endasm;
 }
@@ -421,6 +428,7 @@ s_chunk_header3_compressed::
 /* ------------------------------------------------------------------------- */
 
 DEFINE_STATE(s_chunk_uncompressed)
+__naked
 {
   __asm
 
@@ -428,7 +436,7 @@ DEFINE_STATE(s_chunk_uncompressed)
   ;; compute BC as minimum of
   ;; - distance to next kilobyte for curr_write_pos
   ;; - received_data_length
-  ;; - chunk_state.bytes
+  ;; - chunk_bytes_remaining
   ;;
 
   ld  hl, #_curr_write_pos + 1
@@ -458,21 +466,21 @@ DEFINE_STATE(s_chunk_uncompressed)
 checked_length::
 
   ;;
-  ;; is chunk_state.bytes less than BC?
-  ;; if it is, set BC to chunk_state.bytes
+  ;; is chunk_bytes_remaining less than BC?
+  ;; if it is, set BC to chunk_bytes_remaining
   ;;
 
-  ld  hl, (_chunk_state)
+  ld  hl, (_chunk_bytes_remaining)
   and a     ;; clear C flag for sbc below
   sbc hl, bc
   jr  nc, checked_chunk_length
 
-  ld  bc, (_chunk_state)
+  ld  bc, (_chunk_bytes_remaining)
 
 checked_chunk_length::
 
   ;;
-  ;; subtract BC from received_data_length and chunk_state.bytes
+  ;; subtract BC from received_data_length and chunk_bytes_remaining
   ;;
 
   and a     ;; clear C flag for sbc below
@@ -481,11 +489,11 @@ checked_chunk_length::
   ld  (_received_data_length), hl
 
   ;;
-  ;; subtract BC from chunk_state.bytes: if zero remains, set the next
+  ;; subtract BC from chunk_bytes_remaining: if zero remains, set the next
   ;; state to s_chunk_header
   ;;
 
-  ld  hl, (_chunk_state)
+  ld  hl, (_chunk_bytes_remaining)
   sbc hl, bc
   ld  a, h
   or  l
@@ -495,7 +503,7 @@ checked_chunk_length::
   ld  (_current_state), de
 
 no_new_state::
-  ld  (_chunk_state), hl
+  ld  (_chunk_bytes_remaining), hl
 
   ;;
   ;; if BC is zero, skip copying and status display update
@@ -522,16 +530,19 @@ no_new_state::
 
 no_copy::
 
+  ret
+
   __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
 
 DEFINE_STATE(s_chunk_compressed)
+__naked
 {
   __asm
 
-  ld  bc, (_chunk_state)
+  ld  bc, (_chunk_bytes_remaining)
   ld  de, (_received_data_length)
   ld  hl, (_curr_write_pos)
   ld  iy, (_received_data)
@@ -539,7 +550,7 @@ DEFINE_STATE(s_chunk_compressed)
 s_chunk_compressed_loop::
 
   ;;
-  ;; if chunk_state.bytes is zero, terminate loop and switch state
+  ;; if chunk_bytes_remaining is zero, terminate loop and switch state
   ;;
 
   ld  a, b
@@ -556,7 +567,7 @@ s_chunk_compressed_loop::
 
   ;;
   ;; read a byte of input, increase read pointer,
-  ;; decrease chunk_state.bytes and received_data_length
+  ;; decrease chunk_bytes_remaining and received_data_length
   ;;
 
   ld  a, (iy)
@@ -585,7 +596,7 @@ s_chunk_compressed_loop::
   and #0x03
   jr  nz, s_chunk_compressed_loop
 
-  ld  (_chunk_state), bc
+  ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
   ld  (_curr_write_pos), hl
   ld  (_received_data), iy
@@ -643,7 +654,7 @@ s_chunk_compressed_rept2::
   inc iy
   ld  a, (iy)
   inc iy
-  ld  (_rep_state), a
+  ld  (_rep_count), a
   ld  a, (iy)
   inc iy
   ld  (_rep_value), a
@@ -655,7 +666,7 @@ s_chunk_compressed_rept2::
   dec de
   dec de
 
-  ld  (_chunk_state), bc
+  ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
   ld  (_curr_write_pos), hl
   ld  (_received_data), iy
@@ -675,12 +686,14 @@ s_chunk_compressed_no_opt::
   ld  (_current_state+1), a
 
 s_chunk_compressed_write_back::
-  ld  (_chunk_state), bc
+  ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
   ld  (_curr_write_pos), hl
   ld  (_received_data), iy
 
 s_chunk_compressed_done::
+
+  ret
 
   __endasm;
 }
@@ -688,68 +701,96 @@ s_chunk_compressed_done::
 /* ------------------------------------------------------------------------- */
 
 DEFINE_STATE(s_chunk_compressed_escape)
+__naked
 {
-  uint8_t b = *received_data++;
-  received_data_length--;
-  chunk_state.bytes --;
+  __asm
 
-  if (b == Z80_ESCAPE) {
-    current_state = &s_chunk_repcount;
-  } else {
-    /*
-     * False alarm: the escape byte was followed by a non-escape byte,
-     *              so this is not a compressed sequence
-     */
-    *curr_write_pos++ = Z80_ESCAPE;
-    rep_state.plain_byte = b;
+    call  _get_next_byte
+    call  _dec_chunk_bytes
 
-    update_progress();
+    cp    a, #Z80_ESCAPE
+    jr    nz, 00001$
 
-    current_state = &s_chunk_single_escape;
-  }
-}
+    call  _set_next_state
+    .dw   _s_chunk_repcount
+    ;; implicit RET, handled by _set_next_state
 
-/* ------------------------------------------------------------------------- */
+00001$:
+    ;;
+    ;; False alarm: the escape byte was followed by a non-escape byte,
+    ;;              so this is not a compressed sequence
+    ;;
 
-DEFINE_STATE(s_chunk_single_escape)
-{
-  *curr_write_pos++ = rep_state.plain_byte;
+    push  af
 
-  update_progress();
+    ld    hl, (_curr_write_pos)
+    ld    (hl), #Z80_ESCAPE
+    inc   hl
+    ld    (_curr_write_pos), hl
+    call  _update_progress
 
-  current_state = &s_chunk_compressed;
+    pop   af
+
+    ld    hl, (_curr_write_pos)
+    ld    (hl), a
+    inc   hl
+    ld    (_curr_write_pos), hl
+    call  _update_progress
+
+    call  _set_next_state
+    .dw   _s_chunk_compressed
+    ;; implicit RET, handled by _set_next_state
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
 
 DEFINE_STATE(s_chunk_repcount)
+__naked
 {
-  rep_state.count = *received_data++;
-  received_data_length--;
-  chunk_state.bytes --;
+  __asm
 
-  current_state = &s_chunk_repvalue;
+    call _get_next_byte
+    ld   (_rep_count), a
+
+    call _dec_chunk_bytes
+
+    call _set_next_state
+    .dw  _s_chunk_repvalue
+    ;; implicit RET, handled by _set_next_state
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
 
 DEFINE_STATE(s_chunk_repvalue)
+__naked
 {
-  rep_value = *received_data++;
-  received_data_length--;
-  chunk_state.bytes --;
+  __asm
 
-  current_state = &s_chunk_repetition;
+    call _get_next_byte
+    ld   (_rep_value), a
+
+    call _dec_chunk_bytes
+
+    call _set_next_state
+    .dw  _s_chunk_repetition
+    ;; implicit RET, handled by _set_next_state
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
 
 DEFINE_STATE(s_chunk_repetition)
+__naked
 {
   __asm
 
-  ld  a, (_rep_state)
-  ld  b, a                      ;; loop counter rep_state.count
+  ld  a, (_rep_count)
+  ld  b, a                      ;; loop counter rep_count
   ld  hl, (_curr_write_pos)
   ld  a, (_rep_value)
   ld  c, a
@@ -776,22 +817,18 @@ s_chunk_repetition_loop::
   jr  nz, s_chunk_repetition_loop
 
   ld  a, b
-  ld  (_rep_state), a
+  ld  (_rep_count), a
   ld  (_curr_write_pos), hl
 
-  call  _update_progress
-  jr  s_chunk_repetition_done
+  jp  _update_progress
 
 s_chunk_repetition_write_back::
-  ld  (_rep_state), a           ;; copied from b above
+  ld  (_rep_count), a           ;; copied from b above
   ld  (_curr_write_pos), hl
 
-  ld  a, #<_s_chunk_compressed
-  ld  (_current_state), a
-  ld  a, #>_s_chunk_compressed
-  ld  (_current_state+1), a
-
-s_chunk_repetition_done::
+  call _set_next_state
+  .dw  _s_chunk_compressed
+  ;; implicit RET, handled by _set_next_state
 
 __endasm;
 }
@@ -806,6 +843,7 @@ __endasm;
  * Simply copies received data to the indicated location.
  */
 DEFINE_STATE(s_raw_data)
+__naked
 {
   __asm
 
@@ -815,6 +853,8 @@ DEFINE_STATE(s_raw_data)
   ldir
   ld  (_curr_write_pos), de
   ld  (_received_data_length), bc
+
+  ret
 
   __endasm;
 }
@@ -883,8 +923,17 @@ receive_file_data(void)
 #ifndef SB_MINIMAL
 void
 expect_snapshot(void)
+__naked
 {
-  curr_write_pos = (uint8_t *) 0x4000;
-  current_state  = &s_header;
+  __asm
+
+    ld   hl, #0x4000
+    ld   (_curr_write_pos), hl
+
+    call _set_next_state
+    .dw  _s_header
+    ;; implicit RET, handled by _set_next_state
+
+  __endasm;
 }
 #endif /* ifndef SB_MINIMAL */

@@ -661,6 +661,8 @@ show_attr_digit_address_known::   ;; special jump target for init_progress_displ
 // digits (BCD) for progress display while loading a snapshot
 static uint8_t digits = 0;
 
+// uses AF, BC, HL
+
 void
 update_progress_display(void)
 __naked
