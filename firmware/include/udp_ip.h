@@ -77,6 +77,10 @@ PACKED_STRUCT(udp_header_t) {                 /* UDP header */
   uint16_t        checksum;
 };
 
+#define UDP_HEADER_OFFSETOF_DST_PORT         (2)
+#define UDP_HEADER_OFFSETOF_LENGTH           (4)
+#define UDP_HEADER_OFFSETOF_CHECKSUM         (6)
+
 /* ------------------------------------------------------------------------- */
 
 PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
@@ -91,6 +95,15 @@ PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
   ipv4_address_t  dst_addr;
 };
 
+#define IPV4_HEADER_SIZE    (20)
+#define IPV4_ADDRESS_SIZE   (4)
+
+#define IPV4_HEADER_OFFSETOF_VERSION_AND_LENGTH       (0)
+#define IPV4_HEADER_OFFSETOF_TOTAL_LENGTH             (2)
+#define IPV4_HEADER_OFFSETOF_PROT                     (9)
+#define IPV4_HEADER_OFFSETOF_SRC_ADDR                 (12)
+#define IPV4_HEADER_OFFSETOF_DST_ADDR                 (16)
+
 /* ========================================================================= */
 
 /* IP address configuration */
@@ -99,6 +112,8 @@ extern struct ip_config_t {
   ipv4_address_t broadcast_address;
   ipv4_address_t tftp_server_address;
 } ip_config;
+
+#define IP_CONFIG_HOST_ADDRESS_OFFSET   (0)
 
 /* ========================================================================= */
 
