@@ -143,16 +143,16 @@ __naked
 {
   __asm
 
-    ld  hl, (_curr_write_pos)
+    ld   hl, (_curr_write_pos)
 
     ;; check if HL is an integral number of kilobytes,
     ;; return early otherwise
 
-    xor a
-    or  l
+    xor  a
+    or   l
     ret  nz
-    ld  a, h
-    and #0x03
+    ld   a, h
+    and  #0x03
     ret  nz
 
     ;; update the status display
@@ -205,29 +205,6 @@ __naked
     dec  hl
     ld   (_received_data_length), hl
 
-    ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Sets current_state to the 16-bit address after the CALL to this routine.
- * Then pops the real return address and returns to that.
- */
-static void
-set_next_state(void)
-__naked
-{
-  __asm
-
-    pop   hl
-    ld    e, (hl)
-    inc   hl
-    ld    d, (hl)
-    ex    de, hl
-    ld    (_current_state), hl
     ret
 
   __endasm;
@@ -302,9 +279,10 @@ __naked
     call _get_next_byte
     ld   (_chunk_bytes_remaining), a
 
-    call _set_next_state
-    .dw  #_s_chunk_header2
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_header2
+    ld    (_current_state), hl
+
+    ret
 
   __endasm;
 }
@@ -320,9 +298,10 @@ __naked
     call _get_next_byte
     ld   (_chunk_bytes_remaining + 1), a
 
-    call _set_next_state
-    .dw  #_s_chunk_header3
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_header3
+    ld    (_current_state), hl
+
+    ret
 
   __endasm;
 }
@@ -412,15 +391,17 @@ s_chunk_header3_set_page::
     ld   h, #0x40    ;; HL is now 0x4000
     ld   (_chunk_bytes_remaining), hl
 
-    call _set_next_state
-    .dw  #_s_chunk_uncompressed
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_uncompressed
+    ld    (_current_state), hl
+
+    ret
 
 s_chunk_header3_compressed::
 
-    call _set_next_state
-    .dw  #_s_chunk_compressed
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_compressed
+    ld    (_current_state), hl
+
+    ret
 
   __endasm;
 }
@@ -711,9 +692,10 @@ __naked
     cp    a, #Z80_ESCAPE
     jr    nz, 00001$
 
-    call  _set_next_state
-    .dw   _s_chunk_repcount
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_repcount
+    ld    (_current_state), hl
+
+    ret
 
 00001$:
     ;;
@@ -737,9 +719,10 @@ __naked
     ld    (_curr_write_pos), hl
     call  _update_progress
 
-    call  _set_next_state
-    .dw   _s_chunk_compressed
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_compressed
+    ld    (_current_state), hl
+
+    ret
 
   __endasm;
 }
@@ -756,9 +739,10 @@ __naked
 
     call _dec_chunk_bytes
 
-    call _set_next_state
-    .dw  _s_chunk_repvalue
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_repvalue
+    ld    (_current_state), hl
+
+    ret
 
   __endasm;
 }
@@ -775,9 +759,10 @@ __naked
 
     call _dec_chunk_bytes
 
-    call _set_next_state
-    .dw  _s_chunk_repetition
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_chunk_repetition
+    ld    (_current_state), hl
+
+    ret
 
   __endasm;
 }
@@ -826,9 +811,10 @@ s_chunk_repetition_write_back::
   ld  (_rep_count), a           ;; copied from b above
   ld  (_curr_write_pos), hl
 
-  call _set_next_state
-  .dw  _s_chunk_compressed
-  ;; implicit RET, handled by _set_next_state
+  ld    hl, #_s_chunk_compressed
+  ld    (_current_state), hl
+
+  ret
 
 __endasm;
 }
@@ -930,9 +916,10 @@ __naked
     ld   hl, #0x4000
     ld   (_curr_write_pos), hl
 
-    call _set_next_state
-    .dw  _s_header
-    ;; implicit RET, handled by _set_next_state
+    ld    hl, #_s_header
+    ld    (_current_state), hl
+
+    ret
 
   __endasm;
 }
