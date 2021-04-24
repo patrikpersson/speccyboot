@@ -60,9 +60,12 @@
       </li>
       <li>Edit <code>/etc/dnsmasq.conf</code> to something like the following:
         <pre class="code">port=0     # disable DNS
-
-dhcp-range=tap0,192.168.82.100,192.168.82.200,255.255.255.0,12h
 dhcp-authoritative
+
+# Serve a fixed IP address to SpeccyBoot's MAC address.
+# (If this dnsmasq.conf file doesn't have any other dhcp-range or dhcp-host
+# entries, no other DHCP requests are accidentally replied to.)
+dhcp-host=ba:db:ad:c0:ff:ee,192.168.82.48,infinite
 
 # TFTP server address (DHCP option 66)
 # NOTE: symbolic addresses are NOT supported (e.g., 'tftp.home.net'),
