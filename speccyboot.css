@@ -201,6 +201,11 @@ pre.code {
   border-left: 2px solid #8ac;
 }
 
+pre > .scriptcomment {
+  color: #779;
+  font-style: italic;
+}
+
 #warning {
   position: relative;
   display: block;

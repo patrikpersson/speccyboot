@@ -59,22 +59,24 @@
         <pre class="code">sudo mkdir -p /var/tftp</pre>
       </li>
       <li>Edit <code>/etc/dnsmasq.conf</code> to something like the following:
-        <pre class="code">port=0     # disable DNS
+        <pre class="code">port=0     <span class="scriptcomment"># disable dnsmasq's DNS (SpeccyBoot won't use it anyway)</span>
 dhcp-authoritative
 
-# Serve a fixed IP address to SpeccyBoot's MAC address.
+<span class="scriptcomment"># Serve a fixed IP address to SpeccyBoot's MAC address.
 # (If this dnsmasq.conf file doesn't have any other dhcp-range or dhcp-host
-# entries, no other DHCP requests are accidentally replied to.)
+# entries, no other DHCP requests are accidentally replied to.)</span>
 dhcp-host=ba:db:ad:c0:ff:ee,192.168.82.48,infinite
 
-# TFTP server address (DHCP option 66)
-# NOTE: symbolic addresses are NOT supported (e.g., 'tftp.home.net'),
-# as SpeccyBoot doesn't do DNS lookups. (Halts with magenta border.)
-dhcp-option=66,192.168.82.1
+<span class="scriptcomment"># By default, SpeccyBoot will attempt to use the DHCP server machine for TFTP too.
+# However, if your TFTP and DHCP servers runs on a different machines,
+# you can use DHCP option 150 to set the TFTP server address for SpeccyBoot:</span>
+<span class="scriptcomment"># dhcp-option=150,192.168.82.12</span>
 
-# If your DHCP server sends the numeric IP address instead (option 150),
-# SpeccyBoot will pick that up too.
-dhcp-option=150,192.168.82.1
+<span class="scriptcomment"># Some DHCP servers may not support option 150: then use option 66 instead.
+# This string must be on the dotted-decimal form below, as SpeccyBoot does NOT
+# perform DNS lookups. (Any symbolic address, such as 'tftp.home.net', will make
+# SpeccyBoot halt with magenta border.)</span>
+<span class="scriptcomment"># dhcp-option=66,192.168.82.12</span>
 
 enable-tftp
 tftp-root=/var/tftp</pre>
@@ -93,10 +95,10 @@ tftp-root=/var/tftp</pre>
       Copy your Z80 snapshots to
       this <span class="code">speccyboot</span> directory:</p>
 
-    <pre class="code">SNAPDIR=/var/tftp/speccyboot&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# &lt;-- adapt this path to match your setup
+    <pre class="code">SNAPDIR=/var/tftp/speccyboot&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="scriptcomment"># &lt;-- adapt this path to match your setup</span>
 sudo mkdir -p $SNAPDIR
-sudo chown <em>&lt;your-username&gt;</em> $SNAPDIR
-cp <em>&lt;path-to-snapshots&gt;</em>/*.z80 $SNAPDIR</pre>
+sudo chown <span class="scriptcomment">&lt;your-username&gt;</span> $SNAPDIR
+cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAPDIR</pre>
 
     <h3>Updating the snapshot index</h3>
 
