@@ -747,7 +747,7 @@ not_10k::
     ld    hl, #PROGRESS_BAR_BASE-1
     add   a, l
     ld    l, a
-    ld    (hl), #(PAPER(CYAN) + INK(CYAN) + BRIGHT)
+    ld    (hl), #(PAPER(WHITE) + INK(WHITE) + BRIGHT)
     ret
 
   __endasm;
