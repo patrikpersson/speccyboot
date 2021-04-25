@@ -57,6 +57,7 @@
 
 /* ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 /*
  * Bytes remaining to unpack in current chunk
  */
@@ -68,6 +69,7 @@ static uint8_t rep_count;
 
 /* Byte value for repetition */
 static uint8_t rep_value;
+#endif
 
 /* Pointer to received TFTP data */
 static const uint8_t *received_data;
@@ -102,6 +104,7 @@ typedef void state_func_t(void);
 /*
  * State functions
  */
+#ifndef SB_MINIMAL
 DECLARE_STATE(s_header);
 
 DECLARE_STATE(s_chunk_uncompressed);  /* uncompressed data */
@@ -116,20 +119,14 @@ DECLARE_STATE(s_chunk_single_escape);     /* single escape, no repetition */
 DECLARE_STATE(s_chunk_repcount);          /* repetition length */
 DECLARE_STATE(s_chunk_repvalue);          /* repetition value */
 DECLARE_STATE(s_chunk_repetition);        /* write repeated value */
-
-#ifndef SB_MINIMAL
-DECLARE_STATE(s_raw_data);                /* receive raw data file */
 #endif
+
+DECLARE_STATE(s_raw_data);                /* receive raw data file */
 
 /* ------------------------------------------------------------------------- */
 
-#ifdef SB_MINIMAL
-static uint8_t *curr_write_pos = 0x4000;
-static const state_func_t *current_state = &s_header;
-#else
 static uint8_t *curr_write_pos = (uint8_t *) snapshot_list_buf;
 static const state_func_t *current_state = &s_raw_data;
-#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -137,6 +134,7 @@ static const state_func_t *current_state = &s_raw_data;
  * If the number of bytes loaded reached an even kilobyte,
  * increase kilobyte counter and update status display
  */
+#ifndef SB_MINIMAL
 static void
 update_progress(void)
 __naked
@@ -180,6 +178,7 @@ __naked
 
   __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -215,6 +214,7 @@ __naked
 /*
  * Decreases chunk_bytes_remaining (byte counter in compressed chunk)
  */
+#ifndef SB_MINIMAL
 static void
 dec_chunk_bytes(void)
 __naked
@@ -228,6 +228,7 @@ __naked
 
   __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -240,6 +241,7 @@ __naked
  * This function does some header parsing; it initializes compression_method
  * and verifies compatibility.
  */
+#ifndef SB_MINIMAL
 DEFINE_STATE(s_header)
 {
   uint16_t header_length = offsetof(struct z80_snapshot_header_t,
@@ -305,6 +307,7 @@ __naked
 
   __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -315,6 +318,7 @@ __naked
  * https://www.worldofspectrum.org/faq/reference/z80format.htm
  * https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
  */
+#ifndef SB_MINIMAL
 DEFINE_STATE(s_chunk_header3)
 __naked
 {
@@ -405,9 +409,11 @@ s_chunk_header3_compressed::
 
   __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 DEFINE_STATE(s_chunk_uncompressed)
 __naked
 {
@@ -515,9 +521,11 @@ no_copy::
 
   __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 DEFINE_STATE(s_chunk_compressed)
 __naked
 {
@@ -818,10 +826,9 @@ s_chunk_repetition_write_back::
 
 __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
-
-#ifndef SB_MINIMAL
 
 /*
  * State RAW_DATA:
@@ -845,8 +852,6 @@ __naked
   __endasm;
 }
 
-#endif
-
 /* ========================================================================= */
 
 void
@@ -861,10 +866,9 @@ receive_file_data(void)
                          - sizeof(struct tftp_header_t);
 
   while (received_data_length != 0) {
-    if ((LOBYTE(curr_write_pos) == 0)
 #ifndef SB_MINIMAL
+    if ((LOBYTE(curr_write_pos) == 0)
     && (current_state != &s_raw_data)
-#endif
     ) {
 
       if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
@@ -880,11 +884,11 @@ receive_file_data(void)
         evacuating     = false;
       }
     }
+    #endif
 
     (*current_state)();
   }
 
-#ifndef SB_MINIMAL
   /*
    * If we received a TFTP frame with less than the maximal payload, it must
    * be the last one. If it was a snapshot, we would not come here (but
@@ -896,12 +900,20 @@ receive_file_data(void)
 					   + sizeof(struct udp_header_t)
 					   + sizeof(struct tftp_header_t)))
   {
+#ifdef SB_MINIMAL
+    __asm
+        ld  a, #7
+        out (254), a
+        di
+        halt        ;; FIXME
+    __endasm;
+#else
     *curr_write_pos = 0;
 
     expect_snapshot();
     run_menu();
-  }
 #endif
+  }
 }
 
 /* ------------------------------------------------------------------------- */

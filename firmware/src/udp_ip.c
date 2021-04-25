@@ -267,17 +267,21 @@ ip_receive_check_checksum::
     inc  a   ;; if both bytes are 0xff, A will now become zero
     ret  z
 
+#ifndef SB_MINIMAL
     ld   hl, #ip_receive_bad_checksum
     push hl
     call	_syslog
     pop  af   ;; pop arg to syslog
+#endif
     pop  af   ;; pop return address within ip_receive
 
     ret       ;; return to caller of ip_recieve
 
+#ifndef SB_MINIMAL
 ip_receive_bad_checksum::
     .ascii "bad checksum"
     .db 0x00
+#endif
 
   __endasm;
 }
@@ -289,28 +293,155 @@ udp_create_impl(const struct mac_address_t  *dst_hwaddr,
                 const ipv4_address_t        *dst_ipaddr,
                 uint16_t                     udp_length,
                 enc28j60_addr_t              frame_class)
+__naked
 {
-  current_packet_length = udp_length + sizeof(struct ipv4_header_t);
+  (void) dst_hwaddr, dst_ipaddr, udp_length, frame_class;
 
-  header_template.ip.version_and_header_length = 0x45;
-  header_template.ip.type_of_service = 0;
-  header_template.ip.total_length    = htons(current_packet_length);
-  header_template.ip.id_and_fraginfo = 0x00400000; /* don't fragment */
-  header_template.ip.time_to_live    = 0x40;
-  header_template.ip.prot            = IP_PROTOCOL_UDP;
-  header_template.ip.checksum        = 0;  /* temporary value for computation */
-  header_template.ip.src_addr        = ip_config.host_address;
-  header_template.ip.dst_addr        = *dst_ipaddr;
+  __asm
 
-  ip_checksum_set(0);
-  ip_checksum_add(header_template.ip);
-  header_template.ip.checksum        = ip_checksum_value();
+    push  ix
 
-  header_template.udp.length         = htons(udp_length);
-  header_template.udp.checksum       = 0;
+    ld    ix, #4
+    add   ix, sp
 
-  eth_create(dst_hwaddr, htons(ETHERTYPE_IP), frame_class);
-  eth_add(header_template);
+    ;; assume
+    ;; dst_hwaddr  at (ix + 0)
+    ;; dst_ipaddr  at (ix + 2)
+    ;; udp_length  at (ix + 4)
+    ;; frame_class at (ix + 6)
+
+    ;; ----------------------------------------------------------------------
+    ;; set up a header template, to be filled in with proper data below
+    ;; ----------------------------------------------------------------------
+
+    ld    hl, #ip_header_defaults
+    ld    de, #_header_template
+    ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
+    ldir
+
+    ;; current_packet_length = udp_length + sizeof(struct ipv4_header_t);
+
+    ld    l, 4(ix)
+    ld    h, 5(ix)
+    ld    c, #IPV4_HEADER_SIZE        ;; B is zero after LDIR above
+    add   hl, bc
+    ld    (_current_packet_length), hl
+
+    ;; ----------------------------------------------------------------------
+    ;; prepare IP header in _header_template
+    ;; ----------------------------------------------------------------------
+
+    ex    de, hl
+    ld    hl, #_header_template + 2    ;; total length
+    ld    (hl), d       ;; total_length  (network order)
+    inc   hl
+    ld    (hl), e       ;; total_length, continued
+
+    ;; copy source IP address
+
+    ld    de, #_header_template + 12   ;; source IP address
+    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld    c, #4   ;; B is zero after LDIR/add above
+    ldir
+
+    ;; copy destination IP address
+
+    ld    l, 2(ix)
+    ld    h, 3(ix)
+    ld    c, #4
+    ldir
+
+    ;; ----------------------------------------------------------------------
+    ;; compute checksum of IP header
+    ;; ----------------------------------------------------------------------
+
+    ld     h, b   ;; BC=0 here
+    ld     l, c
+    ld     (_enc28j60_ip_checksum), hl
+
+    ld     c, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10); B=0 here
+    ld     hl, #_header_template
+    push   bc
+    push   hl
+    call   _enc28j60_add_checksum
+    pop    hl
+    pop    bc
+
+    ld     hl, #_enc28j60_ip_checksum
+    ld     de, #_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
+    ld     a, (hl)
+    cpl
+    ld     (de), a
+    inc    hl
+    inc    de
+    ld     a, (hl)
+    cpl
+    ld     (de), a
+
+    ;; ----------------------------------------------------------------------
+    ;; set UDP length (network order) and clear UDP checksum
+    ;; ----------------------------------------------------------------------
+
+    ld     hl, #_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld     a, 5(ix)
+    ld     (hl), a
+    inc    hl
+    ld     a, 4(ix)
+    ld     (hl), a
+    inc    hl
+
+    xor    a
+    ld     (hl), a
+    inc    hl
+    ld     (hl), a
+
+    ;; ----------------------------------------------------------------------
+    ;; call eth_create(dst_hwaddr, htons(ETHERTYPE_IP), frame_class)
+    ;; ----------------------------------------------------------------------
+
+    ld    l, 6(ix)
+    ld    h, 7(ix)
+    push  hl             ;; frame_class
+    ld    c, #0x08       ;; htons(ETHERTYPE_IP)    (B=0 here)
+    push  bc
+    ld    l, 0(ix)
+    ld    h, 1(ix)
+    push  hl             ;; dst_hwaddr
+    call  _eth_create
+    pop   hl
+    pop   bc
+    pop   hl
+
+    ;; ----------------------------------------------------------------------
+    ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
+    ;; ----------------------------------------------------------------------
+
+    ld     c, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE   ;; B=0 here
+    push   bc
+    ld     hl, #_header_template
+    push   hl
+    call   _enc28j60_write_memory_cont
+    pop    hl
+    pop    bc
+
+    pop    ix
+    ret
+
+    ;; ----------------------------------------------------------------------
+    ;; IP header defaults
+    ;; https://en.wikipedia.org/wiki/IPv4#Header
+    ;; ----------------------------------------------------------------------
+
+ip_header_defaults::
+    .db   0x45, 0            ;; version, IHL, DSCP, EN
+    .dw   0xffff             ;; total length (to be replaced)
+    .dw   0                  ;; identification
+    .db   0x40, 0            ;; DO NOT FRAGMENT, fragment offset 0
+    .db   0x40               ;; time to live
+    .db   IP_PROTOCOL_UDP    ;; protocol
+    .dw   0                  ;; checksum (temporary value for computation)
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */

@@ -117,6 +117,7 @@
 
 /* ========================================================================= */
 
+#ifndef SB_MINIMAL
 void
 evacuate_data(void)
 {
@@ -252,6 +253,7 @@ write_trampoline_loop::
 			   (uint8_t *) EVACUATION_TEMP_BUFFER,
 			   RUNTIME_DATA_LENGTH);
 }
+#endif
 
 /* ------------------------------------------------------------------------ */
 

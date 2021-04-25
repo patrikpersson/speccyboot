@@ -5,7 +5,7 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION      = 1.8
+VERSION      = 1.9-dev
 
 CC           = sdcc
 AS           = sdasz80
@@ -53,12 +53,12 @@ endif
 
 # module = source + header
 MODULES      = util file_loader context_switch enc28j60 spi globals
-MODULES     += eth arp udp_ip tftp syslog
+MODULES     += eth arp udp_ip tftp
 
 ifdef MINIMAL
 MODULES     += bootp
 else
-MODULES     += dhcp ui menu
+MODULES     += dhcp ui menu syslog
 endif
 
 # -----------------------------------------------------------------------------

@@ -77,6 +77,8 @@ PACKED_STRUCT(udp_header_t) {                 /* UDP header */
   uint16_t        checksum;
 };
 
+#define UDP_HEADER_SIZE                      (8)
+
 #define UDP_HEADER_OFFSETOF_DST_PORT         (2)
 #define UDP_HEADER_OFFSETOF_LENGTH           (4)
 #define UDP_HEADER_OFFSETOF_CHECKSUM         (6)
@@ -98,9 +100,10 @@ PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
 #define IPV4_HEADER_SIZE    (20)
 #define IPV4_ADDRESS_SIZE   (4)
 
-#define IPV4_HEADER_OFFSETOF_VERSION_AND_LENGTH       (0)
-#define IPV4_HEADER_OFFSETOF_TOTAL_LENGTH             (2)
-#define IPV4_HEADER_OFFSETOF_PROT                     (9)
+#define IPV4_HEADER_OFFSETOF_VERSION_AND_LENGTH        (0)
+#define IPV4_HEADER_OFFSETOF_TOTAL_LENGTH              (2)
+#define IPV4_HEADER_OFFSETOF_PROT                      (9)
+#define IPV4_HEADER_OFFSETOF_CHECKSUM                 (10)
 #define IPV4_HEADER_OFFSETOF_SRC_ADDR                 (12)
 #define IPV4_HEADER_OFFSETOF_DST_ADDR                 (16)
 
