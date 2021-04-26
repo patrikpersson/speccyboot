@@ -95,6 +95,16 @@ img#logo {
   display: inline-block;
 }
 
+img#concept {
+  margin: 3rem 0;
+}
+
+img.fw-loader {
+  margin: 1rem auto 1rem 2rem;
+  width: 50%;
+  border: 1px solid #ddd;
+}
+
 li {
   margin: 0.5rem;
   padding-left: 0.5rem;
@@ -183,6 +193,7 @@ iframe#video {
 
 h2 {
   margin-top: 24px;
+  line-height: 150%;
 }
 
 hr {

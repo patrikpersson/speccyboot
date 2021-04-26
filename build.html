@@ -50,9 +50,9 @@
           <li>I chose to use the
             <a href="http://www.olimex.com/dev/enc28j60-h.html">Olimex
             ENC28J60-H development board</a> for the Ethernet subsystem. This is
-            not only easier, it also helps to avoid disturbances from my limited
-            soldering skills. (The ENC28J60 data sheet actually recommends surface
-            mounting at least some components.)</li>
+            not only easier, it also helps to avoid disturbances from my abysmal
+            soldering skills. (The ENC28J60 data sheet recommends surface
+            mounting at least some components, and this is done on the ENC28J60-H board.)</li>
 
           <li>The jumper JP1, when closed, disables the EEPROM (useful when it
             contains garbage).</li>
@@ -153,14 +153,14 @@ make</pre>
           <li>Load the file <span class="code">speccyboot.wav</span>, produced by building the
             software above, to the Spectrum. After about a minute of loading,
             you should see the following screen:<br>
-            <img src="fw-loader-1.png" /></li>
+            <img class="fw-loader" src="fw-loader-1.png" /></li>
           <li>Remove the JP1 jumper to enable EEPROM (if you hadn't already).</li>
           <li>Press 1, 2 or 3 (depending on the EEPROM model you use). The new
           firmware is written to EEPROM. If you chose to use software-controlled
           write protection, this stage will take about six seconds, otherwise it
           will take about one.</li>
           <li>A message indicating success (or failure) is displayed:<br>
-            <img src="fw-loader-2.png" />
+            <img class="fw-loader" src="fw-loader-2.png" />
             <br>If this step fails, repeat from step 1, and ensure
             JP1 is set correctly.</li>
           <li>Reboot your Spectrum. It should now be running the recently loaded

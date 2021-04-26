@@ -107,14 +107,14 @@
     uses the
     <a href="http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en022889">MicroChip
       ENC28J60 Ethernet Controller</a> to connect to Ethernet. The
-      controller communicates with the Spectrum using the
+      controller is connected to the Spectrum using a simple
       <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
-      protocol using a very simple SPI host. Finally, the device also
+      host. The device also
       contains an 8kB EEPROM for firmware, with a dedicated stack for the protocols
       involved.</p>
 
     <p align=center>
-      <img src="concept-hw.png" />
+      <img id="concept" src="concept-hw.svg" />
     </p>
 
     <h3>Hardware/software interface</h3>
@@ -174,9 +174,9 @@
 
     <a name="compatibility"><h2>Compatibility</h2></a>
 
-    <p>I'm using SpeccyBoot with a Spectrum 128. It should work equally well
+    <p>I'm using the SpeccyBoot with a Spectrum 128. It should work equally well
     with a 48k machine, and probably with a 16k machine too. Tests with
-    <a href="emulation.html">Fuse emulation</a> seem to confirm this.</p>
+    <a href="emulation.html">Fuse emulation</a> confirm this.</p>
 
     <p>The later Amstrad Spectrum machines (+2A/+2B/+3) have a different
       expansion connector, and will not work directly with the SpeccyBoot as

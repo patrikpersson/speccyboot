@@ -59,23 +59,23 @@
         <pre class="code">sudo mkdir -p /var/tftp</pre>
       </li>
       <li>Edit <code>/etc/dnsmasq.conf</code> to something like the following:
-        <pre class="code">port=0     <span class="scriptcomment"># disable dnsmasq's DNS (SpeccyBoot won't use it anyway)</span>
+        <pre class="code">port=0  <span class="scriptcomment"># disable dnsmasq's DNS (SpeccyBoot won't use it anyway)</span>
 dhcp-authoritative
 
-<span class="scriptcomment"># Serve a fixed IP address to SpeccyBoot's MAC address.
+<span class="scriptcomment"># Assign a fixed IP address to SpeccyBoot's MAC address.
 # (If this dnsmasq.conf file doesn't have any other dhcp-range or dhcp-host
 # entries, no other DHCP requests are accidentally replied to.)</span>
 dhcp-host=ba:db:ad:c0:ff:ee,192.168.82.48,infinite
 
-<span class="scriptcomment"># By default, SpeccyBoot will attempt to use the DHCP server machine for TFTP too.
-# However, if your TFTP and DHCP servers runs on a different machines,
-# you can use DHCP option 150 to set the TFTP server address for SpeccyBoot:</span>
+<span class="scriptcomment"># By default, SpeccyBoot will attempt to use the DHCP server machine with TFTP too.
+# If your TFTP server runs on a different machine, use DHCP option 150 to set the
+# TFTP server address for SpeccyBoot:</span>
 <span class="scriptcomment"># dhcp-option=150,192.168.82.12</span>
 
-<span class="scriptcomment"># Some DHCP servers may not support option 150: then use option 66 instead.
+<span class="scriptcomment"># Some DHCP servers may not support option 150 &ndash; then use option 66 instead.
 # This string must be on the dotted-decimal form below, as SpeccyBoot does NOT
 # perform DNS lookups. (Any symbolic address, such as 'tftp.home.net', will make
-# SpeccyBoot halt with magenta border.)</span>
+# SpeccyBoot halt with a magenta border.)</span>
 <span class="scriptcomment"># dhcp-option=66,192.168.82.12</span>
 
 enable-tftp
@@ -145,10 +145,10 @@ cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAPDIR</
 
     <table>
       <tr><th style="padding-right:1rem">Border&nbsp;colour</th><th>Failure</th></tr>
-      <tr><td style="padding:6px"><div style="background-color:#f00;text-align:center;padding:2px">red</div></td><td>No response from server (despite several attempts to contact it)</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#ff0;text-align:center;padding:2px">yellow</div></td><td>File not found on server</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#0ff;text-align:center;padding:2px">cyan</div></td><td>The selected snapshot is not compatible with this hardware</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#f0f;text-align:center;padding:2px">magenta</div></td><td>The DHCP server uses a symbolic hostname for the TFTP server (must be an IP address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal (quad-dotted) notation</a>, on form w.x.y.z)</td></tr>
+      <tr><td style="padding:6px"><div style="background-color:#f00;text-align:center;padding:2px">red</div></td><td>Timed out: no response was received from the server (despite several attempts to contact it).</td></tr>
+      <tr><td style="padding:6px"><div style="background-color:#ff0;text-align:center;padding:2px">yellow</div></td><td>The TFTP server responded with <code>ERROR</code>. (This usually means the requested file could  not be found on the server.)</td></tr>
+      <tr><td style="padding:6px"><div style="background-color:#0ff;text-align:center;padding:2px">cyan</div></td><td>The selected snapshot is not compatible with this hardware.</td></tr>
+      <tr><td style="padding:6px"><div style="background-color:#f0f;text-align:center;padding:2px">magenta</div></td><td>The server's DHCPOFFER/BOOTREPLY response included a symbolic hostname for the TFTP server. (Option 66 or the <code>sname</code> field must be an IP address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal (quad-dotted) notation</a>, on form w.x.y.z.)</td></tr>
     </table>
 
     <h3>Demo video</h3>

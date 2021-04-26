@@ -91,30 +91,23 @@ WantedBy=multi-user.target</pre>
       <h2>Configuring DHCP &amp; TFTP for your local TAP network</h2>
 
       <p>
-        This is done mostly the same way as you would
+        This is done much the same way you would
         <a href="usage.html">configure DHCP &amp; TFTP
-        for a physical machine</a>. You probably want
-        to ensure that your DHCP server only responds
-        to requests on your TAP interface, though.
-        In <code>dnsmasq.conf</code> this can be done by
-        adding the line
+        for a physical machine</a>.
+        Ensure your DHCP server does not respond to requests from
+        other machines in the network. (The linked <code>dnsmasq.conf</code>
+        configures <code>dnsmasq</code> to only respond to the SpeccyBoot's
+        MAC address, so that should be fine.)
       </p>
-
-      <pre class="code">interface=tap0</pre>
-
-      <p>Finally, you will need to prepare a directory of
-      snapshots in <code>/var/lib/tftpboot/speccyboot</code> as
-      outlined under <a href="usage.html#tftpserver">TFTP server
-      configuration</a>.</p>
 
       <p>The TAP interface configuration, as well as the TFTP and
       DHCP configurations, take effect upon boot. Hence, you need
       to <b>reboot your Linux machine</b> at this point.</p>
 
-      <h2>Running Fuse (the Free Unix Spectrum Emulator) with SpeccyBoot emulation</h2>
+      <h2>Running Fuse with SpeccyBoot emulation</h2>
 
       <p>
-        Recent versions of Fuse support emulation of the SpeccyBoot hardware.
+        Recent versions of Fuse (the Free Unix Spectrum Emulator) support emulation of the SpeccyBoot hardware.
         Install Fuse:
       </p>
 
@@ -132,11 +125,7 @@ WantedBy=multi-user.target</pre>
 
       <pre class="code">fuse --speccyboot --speccyboot-tap=tap0</pre>
 
-        <p>Here's what it looks like:</p>
-
-        <img src="fuse.png" />
-
-        <hr>
+      <hr>
 
       <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
     </div>
