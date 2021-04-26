@@ -88,8 +88,7 @@
  */
 
 #define VRAM_TRAMPOLINE_HOST_IP         0x4500
-#define VRAM_TRAMPOLINE_BCAST_IP        0x4600
-#define VRAM_TRAMPOLINE_TFTP_SERVER_IP  0x4700
+#define VRAM_TRAMPOLINE_TFTP_SERVER_IP  0x4600
 
 /* ------------------------------------------------------------------------ */
 
@@ -245,7 +244,6 @@ write_trampoline_loop::
    * Write IP configuration to VRAM trampoline area
    */
   STORE_IP(VRAM_TRAMPOLINE_HOST_IP, ip_config.host_address);
-  STORE_IP(VRAM_TRAMPOLINE_BCAST_IP, ip_config.broadcast_address);
   STORE_IP(VRAM_TRAMPOLINE_TFTP_SERVER_IP, ip_config.tftp_server_address);
 
   /* Write data to ENC28J60. */

@@ -112,11 +112,12 @@ PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
 /* IP address configuration */
 extern struct ip_config_t {
   ipv4_address_t host_address;
-  ipv4_address_t broadcast_address;
   ipv4_address_t tftp_server_address;
 } ip_config;
 
 #define IP_CONFIG_HOST_ADDRESS_OFFSET   (0)
+
+extern const ipv4_address_t ip_bcast_address;
 
 /* ========================================================================= */
 
@@ -133,37 +134,6 @@ extern PACKED_STRUCT(header_template_t) {
 extern uint16_t tftp_client_port;
 
 #define new_tftp_client_port()           (tftp_client_port += 0x0100)
-
-/* -------------------------------------------------------------------------
- * IP-style checksum computation
- * ------------------------------------------------------------------------- */
-
-#define ip_checksum_add_raw(_data, _sz)                                       \
-  enc28j60_add_checksum((&_data), ((_sz) >> 1))
-
-#define ip_checksum_add(_data)                                                \
-  ip_checksum_add_raw(_data, sizeof(_data))
-
-#define ip_checksum_set           enc28j60_set_checksum
-
-#define ip_checksum_value()       (~(enc28j60_get_checksum()))
-
-/*
- * Logical true if the computed IP-style checksum is OK.
- *
- * If the packet is intact, the computed sum is the sum of
- *   the actual packet contents, excluding checksum       (~_cs_rx)
- * + the checksum itself in one's complement              ( _cs_rx)
- *
- * Since X+~X == 0xffff for all X, the computed checksum must be 0xffff.
- */
-#define ip_checksum_ok()          (enc28j60_get_checksum() == 0xffffu)
-
-/* -------------------------------------------------------------------------
- * Returns true if a valid IP address has been set
- * (assumes first byte is always non-zero when valid)
- * ------------------------------------------------------------------------- */
-#define ip_valid_address()       (*((const uint8_t *) &ip_config.host_address))
 
 /* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an IP packet has been

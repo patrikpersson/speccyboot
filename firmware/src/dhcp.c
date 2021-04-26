@@ -60,7 +60,6 @@
  * DHCP options (RFC 2131)
  */
 #define DHCP_OPTION_PAD               (0)
-#define DHCP_OPTION_BCAST_ADDR        (28)
 #define DHCP_OPTION_REQ_IP_ADDR       (50)
 #define DHCP_OPTION_OVERLOAD          (52)
 #define DHCP_OPTION_MSG_TYPE          (53)
@@ -141,7 +140,6 @@ static const uint32_t dhcp_magic = htonl(DHCP_MAGIC);
 
 static const uint8_t dhcp_common_options[] = {
   DHCP_OPTION_PARAM_REQ, 5,
-  DHCP_OPTION_BCAST_ADDR,
   DHCP_OPTION_SERVER_ID,
   DHCP_OPTION_TFTP_SERVER_NAME,
   DHCP_OPTION_TFTP_SERVER_ADDR,
@@ -173,8 +171,7 @@ COMPILE_ASSERT(SIZEOF_DHCP_REQUEST + sizeof(struct ipv4_header_t) <= ETH_MAX_TX_
 /* ------------------------------------------------------------------------- */
 
 /* Parameters received from DHCP, with default values */
-static ipv4_address_t broadcast_address = IP_DEFAULT_BCAST_ADDRESS;
-static uint8_t msg_type                 = DHCPACK;
+static uint8_t msg_type = DHCPACK;
 
 /* ------------------------------------------------------------------------- */
 
@@ -212,7 +209,7 @@ dhcp_init(void)
   set_attrs(INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT, 23, 0, 4);
 
   udp_create(&eth_broadcast_address,
-             &ip_config.broadcast_address,
+             &ip_bcast_address,
              htons(UDP_PORT_DHCP_CLIENT),
              htons(UDP_PORT_DHCP_SERVER),
              SIZEOF_DHCP_DISCOVER,
@@ -265,9 +262,6 @@ dhcp_receive(void)
       option_length = *options++;
 
       switch (option) {
-      case DHCP_OPTION_BCAST_ADDR:
-        broadcast_address = *((const ipv4_address_t *) options);
-        break;
       case DHCP_OPTION_OVERLOAD:
         overload = *options;
         break;
@@ -339,8 +333,7 @@ dhcp_receive(void)
 
   switch (msg_type) {
   case DHCPACK:
-    ip_config.host_address      = rx_frame.udp.app.dhcp.header.sub.yiaddr;
-    ip_config.broadcast_address = broadcast_address;
+    ip_config.host_address = rx_frame.udp.app.dhcp.header.sub.yiaddr;
 
     // The TFTP server address is chosen as follows:
     //

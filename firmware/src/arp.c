@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -58,11 +58,18 @@ static const struct arp_header_t arp_ip_ethernet_reply_header = {
 
 /* ========================================================================= */
 
+static bool
+ip_valid_address()   // FIXME: remove this when rewriting this file
+{
+  uint8_t *p = (uint8_t *) &ip_config.host_address;
+  return (*p != 0);
+}
+
 void
 arp_receive(void)
 {
   eth_retrieve_payload(&rx_frame.arp, sizeof(struct arp_ip_ethernet_t));
-    
+
   if (    (rx_frame.arp.header.oper == htons(ARP_OPER_REQUEST))
       && (rx_frame.arp.header.ptype == htons(ETHERTYPE_IP))
       && (rx_frame.arp.header.htype == htons(ETH_HWTYPE))
@@ -72,13 +79,13 @@ arp_receive(void)
     eth_create(&rx_eth_adm.eth_header.src_addr,
 	       htons(ETHERTYPE_ARP),
 	       ETH_FRAME_OPTIONAL);
-      
+
     eth_add(arp_ip_ethernet_reply_header);
     eth_add(eth_local_address);
     eth_add(ip_config.host_address);
     eth_add(rx_eth_adm.eth_header.src_addr);
     eth_add(rx_frame.arp.spa);
-    
+
     eth_send(sizeof(struct arp_ip_ethernet_t));
   }
 }

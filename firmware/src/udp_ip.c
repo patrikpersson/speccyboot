@@ -39,10 +39,12 @@
 
 /* ------------------------------------------------------------------------- */
 
+const ipv4_address_t ip_bcast_address = IP_DEFAULT_BCAST_ADDRESS;
+// FIXME overlap with ethernet default address
+
 /* Global IP configuration */
 struct ip_config_t ip_config = {
   IP_DEFAULT_HOST_ADDRESS,
-  IP_DEFAULT_BCAST_ADDRESS
   /* no value specified for TFTP server -- will be all zero */
 };
 
@@ -449,8 +451,8 @@ ip_header_defaults::
 void
 udp_create_reply(uint16_t udp_payload_length, bool broadcast)
 {
-  udp_create(broadcast ? &eth_broadcast_address       : &rx_eth_adm.eth_header.src_addr,
-             broadcast ? &ip_config.broadcast_address : &rx_frame.ip.src_addr,
+  udp_create(broadcast ? &eth_broadcast_address : &rx_eth_adm.eth_header.src_addr,
+             broadcast ? &ip_bcast_address : &rx_frame.ip.src_addr,
              rx_frame.udp.header.dst_port,
              rx_frame.udp.header.src_port,
              udp_payload_length,

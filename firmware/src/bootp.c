@@ -73,7 +73,7 @@ void
 bootp_init(void)
 {
   udp_create(&eth_broadcast_address,
-             &ip_config.broadcast_address,
+             &ip_bcast_address,
              htons(UDP_PORT_BOOTP_CLIENT),
              htons(UDP_PORT_BOOTP_SERVER),
              sizeof(struct udp_header_t) + sizeof(struct bootp_packet_t),
