@@ -54,15 +54,14 @@
  * ---
  * 644 bytes
  */
-#define ETH_MAX_RX_FRAME_SIZE      (sizeof(struct eth_header_t) + 644)
+#define ETH_MAX_RX_FRAME_SIZE      (ETH_HEADER_SIZE + 644)
 
 /*
  * Transmission buffer size:
  * Ethernet header, payload, and 8 bytes of administrative info stored
  * by controller
  */
-#define ENC28J60_TXBUF_SIZE                                                   \
-  (sizeof(struct eth_header_t) + ETH_MAX_TX_PAYLOAD + 8)
+#define ENC28J60_TXBUF_SIZE        (ETH_HEADER_SIZE + ETH_MAX_TX_PAYLOAD + 8)
 
 /*
  * MEMORY MAP
@@ -128,6 +127,11 @@ PACKED_STRUCT(eth_adm_t) {
     uint16_t              ethertype;
   } eth_header;
 };
+
+#define ETH_ADM_OFFSETOF_SRC_ADDR     (12)
+
+/* sizeof(eth_header_t), in a format usable in assembly code */
+#define ETH_HEADER_SIZE               (14)
 
 /* ========================================================================= */
 

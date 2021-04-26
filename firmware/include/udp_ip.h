@@ -79,6 +79,7 @@ PACKED_STRUCT(udp_header_t) {                 /* UDP header */
 
 #define UDP_HEADER_SIZE                      (8)
 
+#define UDP_HEADER_OFFSETOF_SRC_PORT         (0)
 #define UDP_HEADER_OFFSETOF_DST_PORT         (2)
 #define UDP_HEADER_OFFSETOF_LENGTH           (4)
 #define UDP_HEADER_OFFSETOF_CHECKSUM         (6)

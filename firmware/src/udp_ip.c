@@ -450,13 +450,54 @@ ip_header_defaults::
 
 void
 udp_create_reply(uint16_t udp_payload_length, bool broadcast)
+__naked
 {
-  udp_create(broadcast ? &eth_broadcast_address : &rx_eth_adm.eth_header.src_addr,
-             broadcast ? &ip_bcast_address : &rx_frame.ip.src_addr,
-             rx_frame.udp.header.dst_port,
-             rx_frame.udp.header.src_port,
-             udp_payload_length,
-             ETH_FRAME_PRIORITY);
+  (void) udp_payload_length, broadcast;
+
+  __asm
+
+    push  ix
+
+    ld    ix, #4
+    add   ix, sp
+
+    ;; assume
+    ;; udp_payload_length  at (ix + 0)
+    ;; broadcast           at (ix + 2)
+
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+
+    ld   hl, #ETH_FRAME_PRIORITY
+    push hl
+    ld   c, 0(ix)
+    ld   b, 1(ix)
+    push bc
+
+    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    bit  0, 2(ix)
+    jr   z, 00001$   ;; broadcast?
+    ld   hl, #_eth_broadcast_address
+    ld   bc, #_ip_bcast_address
+00001$:
+    push bc
+    push hl
+
+    call _udp_create_impl
+
+    pop  af
+    pop  af
+    pop  af
+    pop  af
+
+    pop  ix
+
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
