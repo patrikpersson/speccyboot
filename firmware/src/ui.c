@@ -138,26 +138,6 @@ poll_done::
  * ------------------------------------------------------------------------- */
 
 void
-cls(void)
-__naked
-{
-    __asm
-
-    xor a
-    out (0xfe), a
-    ld  hl, #0x4000
-    ld  de, #0x4001
-    ld  bc, #0x1AFF
-    ld  (hl), a
-    ldir
-    ret
-
-    __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
 print_at(uint8_t row,
          uint8_t start_col,
          char terminator,

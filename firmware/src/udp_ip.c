@@ -39,14 +39,8 @@
 
 /* ------------------------------------------------------------------------- */
 
-const ipv4_address_t ip_bcast_address = IP_DEFAULT_BCAST_ADDRESS;
-// FIXME overlap with ethernet default address
-
-/* Global IP configuration */
-struct ip_config_t ip_config = {
-  IP_DEFAULT_HOST_ADDRESS,
-  /* no value specified for TFTP server -- will be all zero */
-};
+/* Global IP configuration: defaults are all zero */
+struct ip_config_t ip_config;
 
 /* Length of currently constructed TX UDP packet */
 static uint16_t current_packet_length;
@@ -481,7 +475,8 @@ __naked
     bit  0, 2(ix)
     jr   z, 00001$   ;; broadcast?
     ld   hl, #_eth_broadcast_address
-    ld   bc, #_ip_bcast_address
+    ld   b, h   ;; use Ethernet broadcast address FF:FF:FF:FF:FF:FF
+    ld   c, l   ;; for IPv4 too (255.255.255.255)
 00001$:
     push bc
     push hl

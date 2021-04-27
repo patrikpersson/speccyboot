@@ -1,6 +1,6 @@
   ;; crt0.s for SpeccyBoot
   ;;
-  ;; Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+  ;; Part of SpeccyBoot <https://patrikpersson.github.io/speccyboot/>
   ;; --------------------------------------------------------------------------
   ;;
   ;; Copyright (c) 2009-  Patrik Persson & Imrich Kolkol
@@ -165,6 +165,12 @@ end_of_data::
   .area _GSINIT
 
 gsinit::
+  ;; clear RAM up to _font_data; this also sets screen to PAPER+INK 0
+  ld hl, #0x4000
+  ld de, #0x4001
+  ld bc, #_font_data - 0x4001
+  ldir
+
   ld bc, #l__INITIALIZER
   ld de, #s__INITIALIZED
   ld hl, #s__INITIALIZER

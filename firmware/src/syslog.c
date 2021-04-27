@@ -63,13 +63,13 @@ syslog(const char *msg)
   }
 
   udp_create(&eth_broadcast_address,
-	     &ip_bcast_address,
-	     htons(UDP_PORT_SYSLOG),
-	     htons(UDP_PORT_SYSLOG),
-	     msg_length
-	       + sizeof(struct udp_header_t)
-	       + sizeof(syslog_prefix),
-	     ETH_FRAME_OPTIONAL);
+      	     IP_BROADCAST_ADDRESS_PTR,
+      	     htons(UDP_PORT_SYSLOG),
+      	     htons(UDP_PORT_SYSLOG),
+      	     msg_length
+      	       + sizeof(struct udp_header_t)
+      	       + sizeof(syslog_prefix),
+      	     ETH_FRAME_OPTIONAL);
   udp_add(syslog_prefix);
   udp_add_w_len(msg, msg_length);
   udp_send();

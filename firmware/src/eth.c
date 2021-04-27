@@ -296,26 +296,12 @@ __naked
 #ifdef PAINT_STACK
   paint_stack();
 #endif
-#ifdef SB_MINIMAL
-
-  __asm
-
-    xor a
-    out (0xfe), a
-    ld  hl, #0x4000
-    ld  de, #0x4001
-    ld  bc, #0x1AFF
-    ld  (hl), a
-    ldir
-
-  __endasm;
 
   eth_init();
+
+#ifdef SB_MINIMAL
   bootp_init();
 #else
-  cls();
-
-  eth_init();
   dhcp_init();
 #endif
 

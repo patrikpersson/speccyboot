@@ -118,7 +118,12 @@ extern struct ip_config_t {
 
 #define IP_CONFIG_HOST_ADDRESS_OFFSET   (0)
 
-extern const ipv4_address_t ip_bcast_address;
+/*
+ * Pointer to global IPv4 broadcast address (255.255.255.255). Reuse some
+ * of the bytes of the Ethernet broadcast address (FF:FF:FF:FF:FF:FF).
+ */
+#define IP_BROADCAST_ADDRESS_PTR        \
+  ((const ipv4_address_t *) &eth_broadcast_address)
 
 /* ========================================================================= */
 

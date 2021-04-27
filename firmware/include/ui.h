@@ -97,12 +97,6 @@ typedef char key_t;
 #define FATAL_INVALID_BOOT_SERVER   (MAGENTA)
 
 /* -------------------------------------------------------------------------
- * Clear screen and set all attributes to INK 0, PAPER 0.
- * ------------------------------------------------------------------------- */
-void
-cls(void);
-
-/* -------------------------------------------------------------------------
  * Display a string at given coordinates, in 8x8 font. The string is
  * terminated by the character 'terminator.'
  *

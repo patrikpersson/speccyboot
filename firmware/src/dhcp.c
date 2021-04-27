@@ -209,7 +209,7 @@ dhcp_init(void)
   set_attrs(INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT, 23, 0, 4);
 
   udp_create(&eth_broadcast_address,
-             &ip_bcast_address,
+             IP_BROADCAST_ADDRESS_PTR,
              htons(UDP_PORT_DHCP_CLIENT),
              htons(UDP_PORT_DHCP_SERVER),
              SIZEOF_DHCP_DISCOVER,
