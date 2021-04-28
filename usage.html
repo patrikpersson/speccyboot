@@ -62,6 +62,9 @@
         <pre class="code">port=0  <span class="scriptcomment"># disable dnsmasq's DNS (SpeccyBoot won't use it anyway)</span>
 dhcp-authoritative
 
+<span class="scriptcomment"># Set aside this range for static assignments</span>
+dhcp-range=192.168.82.0,static
+
 <span class="scriptcomment"># Assign a fixed IP address to SpeccyBoot's MAC address.
 # (If this dnsmasq.conf file doesn't have any other dhcp-range or dhcp-host
 # entries, no other DHCP requests are accidentally replied to.)</span>
