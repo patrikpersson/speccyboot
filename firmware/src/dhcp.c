@@ -139,7 +139,7 @@ static const struct dhcp_sub_header_t dhcp_sub_header = {
 static const uint32_t dhcp_magic = htonl(DHCP_MAGIC);
 
 static const uint8_t dhcp_common_options[] = {
-  DHCP_OPTION_PARAM_REQ, 5,
+  DHCP_OPTION_PARAM_REQ, 4,
   DHCP_OPTION_SERVER_ID,
   DHCP_OPTION_TFTP_SERVER_NAME,
   DHCP_OPTION_TFTP_SERVER_ADDR,

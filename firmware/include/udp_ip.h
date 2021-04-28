@@ -117,6 +117,7 @@ extern struct ip_config_t {
 } ip_config;
 
 #define IP_CONFIG_HOST_ADDRESS_OFFSET   (0)
+#define IP_CONFIG_TFTP_ADDRESS_OFFSET   (4)
 
 /*
  * Pointer to global IPv4 broadcast address (255.255.255.255). Reuse some

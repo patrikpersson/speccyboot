@@ -7,7 +7,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009-  Patrik Persson
+ * Copyright (c) 2021-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -33,56 +33,16 @@
 #ifndef SPECCYBOOT_BOOTP_INCLUSION_GUARD
 #define SPECCYBOOT_BOOTP_INCLUSION_GUARD
 
-#include "eth.h"
-#include "udp_ip.h"
-
-/* =========================================================================
- * BOOTP packets
- * ========================================================================= */
-
-PACKED_STRUCT(bootp_header_t) {
-  uint8_t                   op;
-  uint8_t                   htype;
-  uint8_t                   hlen;
-  uint8_t                   hops;
-  uint32_t                  xid;
-};
-
-/* These are all zero in the BOOTREQUEST */
-PACKED_STRUCT(bootp_part1_t) {
-  uint16_t                  secs;
-  uint16_t                  unused;
-  ipv4_address_t            ciaddr;
-  ipv4_address_t            yiaddr;
-  ipv4_address_t            siaddr;
-  ipv4_address_t            giaddr;
-};
-
-/* These are all zero in the BOOTREQUEST */
-PACKED_STRUCT(bootp_part2_t) {
-  uint8_t                   chaddr_padding[10];
-  uint8_t                   sname[64];
-  uint8_t                   file[128];
-  uint8_t                   vend[64];
-};
-
-PACKED_STRUCT(bootp_packet_t) {
-  struct bootp_header_t     header;
-  struct bootp_part1_t      part1;
-  struct mac_address_t      chaddr;
-  struct bootp_part2_t      part2;
-};
-
 /* -------------------------------------------------------------------------
- * Called by UDP when a BOOTP packet has been received
+ * Called by UDP when a BOOTP packet has been received.
+ * If a BOOTREPLY with an IP address is found, call tftp_read_request().
  * ------------------------------------------------------------------------- */
 void
 bootp_receive(void);
 
 /* -------------------------------------------------------------------------
- * Obtain client configuration (IP address, boot file name, TFTP server
- * address) using BOOTP.
- * When an address has been obtained, call tftp_read_request().
+ * Send a BOOTREQUEST for client configuration
+ * (IP address, boot file name, TFTP server address)
  * ------------------------------------------------------------------------- */
 void
 bootp_init(void);

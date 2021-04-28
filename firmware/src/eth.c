@@ -34,6 +34,8 @@
 #include "eth.h"
 
 #include "arp.h"
+#include "bootp.h"
+#include "dhcp.h"
 #include "globals.h"
 #include "syslog.h"
 #include "udp_ip.h"
