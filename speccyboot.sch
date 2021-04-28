@@ -9821,7 +9821,7 @@ Based on the following sources:
 <text x="170.18" y="-38.1" size="1.778" layer="91">GND</text>
 <text x="170.18" y="-40.64" size="1.778" layer="91">RST</text>
 <text x="170.18" y="-43.18" size="1.778" layer="91">CS</text>
-<text x="68.58" y="-58.42" size="1.778" layer="91">Updated Dec 25, 2015</text>
+<text x="68.58" y="-58.42" size="1.778" layer="91">Updated April 10, 2021</text>
 </plain>
 <instances>
 <instance part="IC2" gate="A" x="104.14" y="-27.94" smashed="yes">
