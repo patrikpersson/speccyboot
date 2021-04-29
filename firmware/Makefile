@@ -53,12 +53,12 @@ endif
 
 # module = source + header
 MODULES      = util file_loader context_switch enc28j60 spi globals
-MODULES     += eth arp udp_ip tftp
+MODULES     += eth arp udp_ip tftp ui
 
 ifdef MINIMAL
 MODULES     += bootp
 else
-MODULES     += dhcp ui menu syslog
+MODULES     += dhcp menu syslog
 endif
 
 # -----------------------------------------------------------------------------

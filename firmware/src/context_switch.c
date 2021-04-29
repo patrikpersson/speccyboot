@@ -305,7 +305,7 @@ context_switch(void)
     ld     a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
     rra
     and    a, #0x07
-    out    (__ula_port), a
+    out    (ULA_PORT), a
 
     ;; Restore interrupt mode
 

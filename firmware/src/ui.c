@@ -68,6 +68,7 @@
  * 11111110
  *-------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 static const uint8_t key_rows[] = {
   0x20, 0, 0x4d, 0x4e, 0x42,      /* 7FFE: space, shift, 'M', 'N', 'B' */
   0x0d, 0x4c, 0x4b, 0x4a, 0x48,   /* BFFE: enter, 'L', 'K', 'J', 'H' */
@@ -78,6 +79,7 @@ static const uint8_t key_rows[] = {
   0x41, 0x53, 0x44, 0x46, 0x47,   /* FDFE: 'A', 'S', 'D', 'F', 'G' */
   0, 0x5a, 0x58, 0x43, 0x56,      /* FEFE: shift, 'Z', 'X', 'C', 'V' */
 };
+#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
 
@@ -90,8 +92,26 @@ static const uint8_t key_rows[] = {
 #define REPEAT_FIRST_TIMEOUT    (20)
 #define REPEAT_NEXT_TIMEOUT     (5)
 
+#define REPEAT_NEXT_TIMEOUT     (5)
+
 /* ------------------------------------------------------------------------- */
 
+void
+fail(void)
+__naked
+{
+  __asm
+
+    out  (ULA_PORT), a
+    di
+    halt
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+#ifndef SB_MINIMAL
 /*
  * Poll keyboard: return currently pressed key, or KEY_NONE
  */
@@ -732,3 +752,4 @@ not_10k::
 
   __endasm;
 }
+#endif /* SB_MINIMAL */

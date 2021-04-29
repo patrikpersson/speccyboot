@@ -318,9 +318,7 @@ bootp_receive_invalid_address::
     ;; ERROR: boot server name is not a dotted-decimal IP address
 
     ld   a, #FATAL_INVALID_BOOT_SERVER
-    out  (0xFE), a
-    di
-    halt
+    jp   _fail
 
 bootp_receive_default_file::
     .ascii 'stage2.bin'

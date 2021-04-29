@@ -96,6 +96,20 @@ typedef char key_t;
 #define FATAL_INCOMPATIBLE          (CYAN)
 #define FATAL_INVALID_BOOT_SERVER   (MAGENTA)
 
+#define ULA_PORT                    (0xFE)
+
+/* -------------------------------------------------------------------------
+ * Set border to the value of register A, and halt the machine (DI+HALT)
+ * ------------------------------------------------------------------------- */
+void
+fail(void);
+
+#define fatal_error(_status)                                                  \
+  __asm                                                                       \
+    ld   a, #(_status)                                                        \
+    jp   _fail                                                                \
+  __endasm
+
 /* -------------------------------------------------------------------------
  * Display a string at given coordinates, in 8x8 font. The string is
  * terminated by the character 'terminator.'
@@ -149,24 +163,6 @@ init_progress_display(void);
  * ------------------------------------------------------------------------- */
 void
 update_progress_display(void);
-
-/* ------------------------------------------------------------------------- *
- * Signal a fatal error message. Terminate all network activity, set the
- * border to the indicated colour, and wait for the user to reset the machine.
- * ------------------------------------------------------------------------- */
-#define fatal_error(_status)           {                                      \
-  set_border(_status);                                                        \
-  __asm                                                                       \
-  di                                                                          \
-  halt                                                                        \
-  __endasm;                            }
-
-/* ------------------------------------------------------------------------- *
- * Set border attributes
- * ------------------------------------------------------------------------- */
-__sfr __at(0xfe) _ula_port;
-
-#define set_border(_clr)      _ula_port = (_clr) & 0x07
 
 #pragma restore
 
