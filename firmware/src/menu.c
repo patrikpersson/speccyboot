@@ -54,7 +54,7 @@
 void
 run_menu(void)
 {
-  unsigned char *src = snapshot_list_buf;
+  unsigned char *src = tftp_file_buf;
   uint16_t nbr_snapshots = 0;
 
   syslog("menu ready");

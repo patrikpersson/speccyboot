@@ -59,6 +59,8 @@ PACKED_STRUCT(tftp_header_t) {
   uint16_t        block_no;
 };
 
+#define TFTP_HEADER_SIZE    (4)
+
 /* -------------------------------------------------------------------------
  * Called by UDP when a TFTP packet has been identified
  * ------------------------------------------------------------------------- */

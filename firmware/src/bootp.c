@@ -250,7 +250,7 @@ bootp_receive_sname_done::
 
     ;; ------------------------------------------------------------------------
     ;; Send TFTP read request for filename in FILE field, or, if none given,
-    ;; use the default 'stage2.bin'
+    ;; use the default 'spboot.bin'
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
@@ -321,7 +321,7 @@ bootp_receive_invalid_address::
     jp   _fail
 
 bootp_receive_default_file::
-    .ascii 'stage2.bin'
+    .ascii 'spboot.bin'
     .db    0
 
   __endasm;

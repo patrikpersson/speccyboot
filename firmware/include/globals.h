@@ -74,8 +74,8 @@ extern uint8_t kilobytes_expected;
 
 /* ------------------------------------------------------------------------ */
 
-/* Buffer for snapshot list */
-char __at(0x6300) snapshot_list_buf[0x9d00];
+/* Buffer for snapshot list, or second-stage loader */
+char __at(0x6300) tftp_file_buf[0x9d00];
 
 /* ========================================================================= */
 

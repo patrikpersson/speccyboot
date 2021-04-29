@@ -57,7 +57,13 @@
 
 /* ------------------------------------------------------------------------- */
 
+/* Pointer to received TFTP data */
+static const uint8_t *received_data;
+
 #ifndef SB_MINIMAL
+/* Number of valid bytes remaining in received_data */
+static uint16_t received_data_length;
+
 /*
  * Bytes remaining to unpack in current chunk
  */
@@ -70,12 +76,6 @@ static uint8_t rep_count;
 /* Byte value for repetition */
 static uint8_t rep_value;
 #endif
-
-/* Pointer to received TFTP data */
-static const uint8_t *received_data;
-
-/* Number of valid bytes remaining in received_data */
-static uint16_t received_data_length;
 
 /* ========================================================================= */
 
@@ -121,12 +121,15 @@ DECLARE_STATE(s_chunk_repvalue);          /* repetition value */
 DECLARE_STATE(s_chunk_repetition);        /* write repeated value */
 #endif
 
-DECLARE_STATE(s_raw_data);                /* receive raw data file */
-
 /* ------------------------------------------------------------------------- */
 
-static uint8_t *curr_write_pos = (uint8_t *) snapshot_list_buf;
-static const state_func_t *current_state = &s_raw_data;
+static uint8_t *curr_write_pos = (uint8_t *) tftp_file_buf;
+static const state_func_t *tftp_receive_hook
+#ifdef SB_MINIMAL
+  = NULL;
+#else
+  = &s_raw_data;
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -182,6 +185,7 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 /*
  * Returns *received_data++ in A
  * also decreases received_data_length
@@ -208,6 +212,7 @@ __naked
 
   __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -255,11 +260,11 @@ DEFINE_STATE(s_header)
     }
     header_length += rx_frame.udp.app.tftp.data.z80.extended_length + 2;
 
-    current_state = &s_chunk_header;
+    tftp_receive_hook = &s_chunk_header;
   } else {
     chunk_bytes_remaining = 0xc000;
 
-    current_state = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
+    tftp_receive_hook = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
                      & SNAPSHOT_FLAGS_COMPRESSED_MASK)
                   ? &s_chunk_compressed : &s_chunk_uncompressed;
   }
@@ -282,7 +287,7 @@ __naked
     ld   (_chunk_bytes_remaining), a
 
     ld    hl, #_s_chunk_header2
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
@@ -301,7 +306,7 @@ __naked
     ld   (_chunk_bytes_remaining + 1), a
 
     ld    hl, #_s_chunk_header3
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
@@ -396,14 +401,14 @@ s_chunk_header3_set_page::
     ld   (_chunk_bytes_remaining), hl
 
     ld    hl, #_s_chunk_uncompressed
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
 s_chunk_header3_compressed::
 
     ld    hl, #_s_chunk_compressed
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
@@ -487,7 +492,7 @@ checked_chunk_length::
   jr  nz, no_new_state
 
   ld  de, #_s_chunk_header
-  ld  (_current_state), de
+  ld  (_tftp_receive_hook), de
 
 no_new_state::
   ld  (_chunk_bytes_remaining), hl
@@ -599,9 +604,9 @@ s_chunk_compressed_loop::
 
 s_chunk_compressed_chunk_end::
   ld  a, #<_s_chunk_header
-  ld  (_current_state), a
+  ld  (_tftp_receive_hook), a
   ld  a, #>_s_chunk_header
-  ld  (_current_state+1), a
+  ld  (_tftp_receive_hook+1), a
   jr  s_chunk_compressed_write_back
 
   ;;
@@ -661,7 +666,7 @@ s_chunk_compressed_rept2::
   ld  (_received_data), iy
 
   ld  hl, #_s_chunk_repetition
-  ld  (_current_state), hl
+  ld  (_tftp_receive_hook), hl
   jp  (hl)
 
 s_chunk_compressed_no_opt::
@@ -670,9 +675,9 @@ s_chunk_compressed_no_opt::
   ;;
 
   ld  a, #<_s_chunk_compressed_escape
-  ld  (_current_state), a
+  ld  (_tftp_receive_hook), a
   ld  a, #>_s_chunk_compressed_escape
-  ld  (_current_state+1), a
+  ld  (_tftp_receive_hook+1), a
 
 s_chunk_compressed_write_back::
   ld  (_chunk_bytes_remaining), bc
@@ -701,7 +706,7 @@ __naked
     jr    nz, 00001$
 
     ld    hl, #_s_chunk_repcount
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
@@ -728,7 +733,7 @@ __naked
     call  _update_progress
 
     ld    hl, #_s_chunk_compressed
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
@@ -748,7 +753,7 @@ __naked
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repvalue
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
@@ -768,7 +773,7 @@ __naked
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repetition
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
@@ -820,7 +825,7 @@ s_chunk_repetition_write_back::
   ld  (_curr_write_pos), hl
 
   ld    hl, #_s_chunk_compressed
-  ld    (_current_state), hl
+  ld    (_tftp_receive_hook), hl
 
   ret
 
@@ -828,8 +833,7 @@ __endasm;
 }
 #endif
 
-/* ------------------------------------------------------------------------- */
-
+#ifndef SB_MINIMAL
 /*
  * State RAW_DATA:
  *
@@ -838,7 +842,7 @@ __endasm;
 DEFINE_STATE(s_raw_data)
 __naked
 {
-  __asm
+   __asm
 
   ld  de, (_curr_write_pos)
   ld  hl, (_received_data)
@@ -851,12 +855,66 @@ __naked
 
   __endasm;
 }
+#endif
 
 /* ========================================================================= */
 
 void
 receive_file_data(void)
 {
+#ifdef SB_MINIMAL
+  __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; If a receive hook has been installed, jump there
+    ;; ------------------------------------------------------------------------
+
+    ld  hl, (_tftp_receive_hook)
+    ld  a, h
+    or  l
+    jr  z, 00002$
+    jp  (hl)
+
+00002$:
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld  d, (hl)
+    inc hl
+    ld  e, (hl)    ;; network order
+    ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
+    ld  de, #UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    xor a
+    sbc hl, de
+    ld  b, h
+    ld  c, l       ;; BC is now payload length, 0..512
+
+    ;; ------------------------------------------------------------------------
+    ;; check if BC == 0x200; store result of comparison in alternate AF
+    ;; ------------------------------------------------------------------------
+
+    or  a, c       ;; is C zero?
+    jr  nz, 00001$
+    ld  a, #2
+    cp  a, b
+00001$:
+    .db 8   ;; silly assembler rejects "ex  af, af'"
+
+    ld  de, (_curr_write_pos)
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ldir
+    ld  (_curr_write_pos), de
+
+    ;; ------------------------------------------------------------------------
+    ;; If a full TFTP packet was loaded, return.
+    ;; Otherwise, this was the last packet: execute the loaded binary.
+    ;; ------------------------------------------------------------------------
+
+    .db 8   ;; silly assembler rejects "ex  af, af'"
+    jp  nz, _tftp_file_buf
+
+    ret
+
+  __endasm;
+#else
   /* Indicates an evacuation is ongoing (see below) */
   static bool evacuating = false;
 
@@ -866,9 +924,8 @@ receive_file_data(void)
                          - sizeof(struct tftp_header_t);
 
   while (received_data_length != 0) {
-#ifndef SB_MINIMAL
     if ((LOBYTE(curr_write_pos) == 0)
-    && (current_state != &s_raw_data)
+    && (tftp_receive_hook != &s_raw_data)
     ) {
 
       if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
@@ -884,9 +941,8 @@ receive_file_data(void)
         evacuating     = false;
       }
     }
-    #endif
 
-    (*current_state)();
+    (*tftp_receive_hook)();
   }
 
   /*
@@ -900,20 +956,12 @@ receive_file_data(void)
 					   + sizeof(struct udp_header_t)
 					   + sizeof(struct tftp_header_t)))
   {
-#ifdef SB_MINIMAL
-    __asm
-        ld  a, #7
-        out (254), a
-        di
-        halt        ;; FIXME
-    __endasm;
-#else
     *curr_write_pos = 0;
 
     expect_snapshot();
     run_menu();
-#endif
   }
+#endif /* SB_MINIMAL */
 }
 
 /* ------------------------------------------------------------------------- */
@@ -929,7 +977,7 @@ __naked
     ld   (_curr_write_pos), hl
 
     ld    hl, #_s_header
-    ld    (_current_state), hl
+    ld    (_tftp_receive_hook), hl
 
     ret
 
