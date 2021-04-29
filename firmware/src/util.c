@@ -49,12 +49,23 @@ volatile timer_t timer_tick_count = 0;
 
 timer_t
 timer_value(timer_t timer)
+__naked
 {
-  timer_t current_value;
-  DISABLE_INTERRUPTS;
-  current_value = timer_tick_count;
-  ENABLE_INTERRUPTS;
-  return current_value - timer;
+  (void) timer;
+
+  __asm
+
+    pop   de
+    pop   bc
+    push  bc
+    push  de
+
+    ld    hl, (_timer_tick_count)   ;; assumed to be atomic
+    xor   a
+    sbc   hl, bc
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
