@@ -92,15 +92,6 @@ __naked
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_DST_ADDR
     ld   b, #4
     call _memory_compare
-#if 0
-ip_receive_chk_addr_loop::
-    ld   a, (de)
-    cp   a, (hl)
-    ret  nz
-    inc  hl
-    inc  de
-    djnz ip_receive_chk_addr_loop
-#endif
 
 ip_receive_address_checked::
 

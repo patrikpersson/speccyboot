@@ -70,11 +70,17 @@ arp_receive(void)
     ;; (ARP_OPER_REQUEST, ETHERTYPE_IP, ETH_HWTYPE)
     ;; ------------------------------------------------------------------------
 
-    ld   de, #arp_receive_req_template
-    ld   b, #ARP_HEADER_SIZE
+    ;; first check everything except OPER
 
+    ld   de, #arp_receive_reply_template
+    ld   b, #(ARP_HEADER_SIZE - 1)
     call _memory_compare
     ret  nz   ;; if the receive packet does not match the expected header, return
+
+    ;; HL now points to the low-order OPER byte, expected to be 1 (REQUEST)
+    ld   a, (hl)
+    dec  a
+    ret  nz
 
     ;; ------------------------------------------------------------------------
     ;; check that a local IP address has been set,
@@ -162,21 +168,6 @@ arp_receive(void)
     pop  bc
 
     ret
-
-    ;; ------------------------------------------------------------------------
-    ;; template for expected incoming ARP_OPER_REQUESTs
-    ;; ------------------------------------------------------------------------
-
-arp_receive_req_template::
-    .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
-    .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
-    .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
-    .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
-    .db  0, ARP_OPER_REQUEST   ;; OPER: 16 bits, network order
-
-    ;; ------------------------------------------------------------------------
-    ;; template for outgoing ARP_OPER_REPLYs
-    ;; ------------------------------------------------------------------------
 
 arp_receive_reply_template::
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
