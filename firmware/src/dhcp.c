@@ -34,11 +34,11 @@
 #include "dhcp.h"
 
 #include "eth.h"
-#include "file_loader.h"
 #include "globals.h"
 #include "udp_ip.h"
 #include "ui.h"
 #include "tftp.h"
+#include "z80_loader.h"
 
 /* ========================================================================= */
 

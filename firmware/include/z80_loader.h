@@ -1,10 +1,8 @@
 /*
- * Module file_loader:
+ * Module z80_loader:
  *
- * Accepts a stream of bytes, and, depending on the current state, either:
- *
- * - unpacks it as a .z80 snapshot, loads it into RAM, and executes it.
- * - loads it as a raw file into a specified location.
+ * Accepts a stream of bytes, unpacks it as a .z80 snapshot,
+ * loads it into RAM, and executes it.
  *
  * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
@@ -34,21 +32,14 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SPECCYBOOT_FILE_LOADER_INCLUSION_GUARD
-#define SPECCYBOOT_FILE_LOADER_INCLUSION_GUARD
-
-#include <stdint.h>
-
-/* -------------------------------------------------------------------------
- * Called from tftp.c when a TFTP DATA datagram has been received.
- * ------------------------------------------------------------------------- */
-void
-receive_file_data(void);
+#ifndef SPECCYBOOT_Z80_LOADER_INCLUSION_GUARD
+#define SPECCYBOOT_Z80_LOADER_INCLUSION_GUARD
 
 /* -------------------------------------------------------------------------
  * Called from tftp.c to indicate that a .z80 snapshot is expected.
+ * Installs a TFTP read hook to relay received data to Z80 snapshot parser.
  * ------------------------------------------------------------------------- */
 void
 expect_snapshot(void);
 
-#endif /* SPECCYBOOT_FILE_LOADER_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_Z80_LOADER_INCLUSION_GUARD */

@@ -76,9 +76,9 @@
  * ------------------------------------------------------------------------- */
 
 /*
- * Runtime data (the stuff to evacuate). Note that the file_loader code
- * currently requires RUNTIME_DATA_LENGTH to be a multiple of 0x400
- * (for kilobyte counter display)
+ * Runtime data (the stuff to evacuate). Note that the z80_loader code
+ * requires RUNTIME_DATA_LENGTH to be a multiple of 0x400 (for kilobyte
+ * counter display)
  */
 #define RUNTIME_DATA                  (0x5800)
 #define RUNTIME_DATA_LENGTH           (0x0800)

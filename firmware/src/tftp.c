@@ -34,10 +34,11 @@
 #include "tftp.h"
 
 #include "eth.h"
-#include "file_loader.h"
 #include "globals.h"
+#include "menu.h"
 #include "syslog.h"
 #include "ui.h"
+#include "z80_loader.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -49,6 +50,11 @@
 
 /* Size of a TFTP ACK */
 #define TFTP_SIZE_OF_ACK          (4)
+
+/* ------------------------------------------------------------------------- */
+
+uint8_t *curr_write_pos           = (uint8_t *) tftp_file_buf;
+void (*tftp_receive_hook)(void)   = NULL;
 
 /* ------------------------------------------------------------------------- */
 
@@ -76,6 +82,74 @@ static const uint8_t error_packet[] = {
   0, 4,                 /* error 'illegal TFTP operation', network order */
   0                     /* no particular message */
 };
+
+/* ------------------------------------------------------------------------- */
+
+static void
+receive_tftp_data(void)
+__naked
+{
+  __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; If a receive hook has been installed, jump there
+    ;; ------------------------------------------------------------------------
+
+    ld  hl, (_tftp_receive_hook)
+    ld  a, h
+    or  l
+    jr  z, 00002$
+    jp  (hl)
+
+00002$:
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld  d, (hl)
+    inc hl
+    ld  e, (hl)    ;; network order
+    ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
+    ld  de, #UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    xor a          ;; clear C flag; also A == 0 will be useful below
+    sbc hl, de
+    ld  b, h
+    ld  c, l       ;; BC is now payload length, 0..512
+
+    ;; ------------------------------------------------------------------------
+    ;; check if BC == 0x200; store result of comparison in alternate AF
+    ;; ------------------------------------------------------------------------
+
+    or  a, c       ;; is C zero?
+    jr  nz, 00001$
+    ld  a, #>0x0200
+    cp  a, b
+00001$:
+    .db 8   ;; silly assembler rejects "ex  af, af'"
+
+    ld  de, (_curr_write_pos)
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ldir
+    ld  (_curr_write_pos), de
+
+    ;; ------------------------------------------------------------------------
+    ;; If a full TFTP packet was loaded, return.
+
+    .db 8   ;; silly assembler rejects "ex  af, af'"
+    ret z
+
+#ifdef SB_MINIMAL
+    ;; ------------------------------------------------------------------------
+    ;; This was the last packet: execute the loaded binary.
+    ;; ------------------------------------------------------------------------
+    jp  _tftp_file_buf
+#else
+    ;; ------------------------------------------------------------------------
+    ;; This was the last packet: prepare for snapshot loading and display menu.
+    ;; ------------------------------------------------------------------------
+    call _expect_snapshot
+    jp   _run_menu
+#endif
+
+__endasm;
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -109,7 +183,7 @@ tftp_receive(void)
 
   if (received_block_no == expected_tftp_block_no) {
     expected_tftp_block_no ++;
-    receive_file_data();
+    receive_tftp_data();
   }
 }
 

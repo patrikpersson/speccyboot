@@ -1,10 +1,8 @@
 /*
- * Module file_loader:
+ * Module z80_loader:
  *
- * Accepts a stream of bytes, and, depending on the current state, either:
- *
- * - unpacks it as a .z80 snapshot, loads it into RAM, and executes it.
- * - loads it as a raw file into a specified location.
+ * Accepts a stream of bytes, unpacks it as a .z80 snapshot,
+ * loads it into RAM, and executes it.
  *
  * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
@@ -36,7 +34,7 @@
 
 #include <stddef.h>
 
-#include "file_loader.h"
+#include "z80_loader.h"
 
 #include "context_switch.h"
 #include "globals.h"
@@ -60,7 +58,6 @@
 /* Pointer to received TFTP data */
 static const uint8_t *received_data;
 
-#ifndef SB_MINIMAL
 /* Number of valid bytes remaining in received_data */
 static uint16_t received_data_length;
 
@@ -75,7 +72,6 @@ static uint8_t rep_count;
 
 /* Byte value for repetition */
 static uint8_t rep_value;
-#endif
 
 /* ========================================================================= */
 
@@ -99,12 +95,13 @@ static uint8_t rep_value;
 
 typedef void state_func_t(void);
 
+static state_func_t *current_state = &s_header;
+
 /* ========================================================================= */
 
 /*
  * State functions
  */
-#ifndef SB_MINIMAL
 DECLARE_STATE(s_header);
 
 DECLARE_STATE(s_chunk_uncompressed);  /* uncompressed data */
@@ -119,17 +116,6 @@ DECLARE_STATE(s_chunk_single_escape);     /* single escape, no repetition */
 DECLARE_STATE(s_chunk_repcount);          /* repetition length */
 DECLARE_STATE(s_chunk_repvalue);          /* repetition value */
 DECLARE_STATE(s_chunk_repetition);        /* write repeated value */
-#endif
-
-/* ------------------------------------------------------------------------- */
-
-static uint8_t *curr_write_pos = (uint8_t *) tftp_file_buf;
-static const state_func_t *tftp_receive_hook
-#ifdef SB_MINIMAL
-  = NULL;
-#else
-  = &s_raw_data;
-#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -137,7 +123,6 @@ static const state_func_t *tftp_receive_hook
  * If the number of bytes loaded reached an even kilobyte,
  * increase kilobyte counter and update status display
  */
-#ifndef SB_MINIMAL
 static void
 update_progress(void)
 __naked
@@ -159,12 +144,10 @@ __naked
     ;; update the status display
 
     ld    hl, #_kilobytes_loaded
-#ifndef SB_MINIMAL
     inc   (hl)
     push  hl
     call  _update_progress_display
     pop   hl
-#endif
 
     ;; if all data has been loaded, perform the context switch
 
@@ -181,11 +164,9 @@ __naked
 
   __endasm;
 }
-#endif
 
 /* ------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 /*
  * Returns *received_data++ in A
  * also decreases received_data_length
@@ -212,14 +193,12 @@ __naked
 
   __endasm;
 }
-#endif
 
 /* ------------------------------------------------------------------------- */
 
 /*
  * Decreases chunk_bytes_remaining (byte counter in compressed chunk)
  */
-#ifndef SB_MINIMAL
 static void
 dec_chunk_bytes(void)
 __naked
@@ -233,7 +212,6 @@ __naked
 
   __endasm;
 }
-#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -246,7 +224,6 @@ __naked
  * This function does some header parsing; it initializes compression_method
  * and verifies compatibility.
  */
-#ifndef SB_MINIMAL
 DEFINE_STATE(s_header)
 {
   uint16_t header_length = offsetof(struct z80_snapshot_header_t,
@@ -260,11 +237,11 @@ DEFINE_STATE(s_header)
     }
     header_length += rx_frame.udp.app.tftp.data.z80.extended_length + 2;
 
-    tftp_receive_hook = &s_chunk_header;
+    current_state = &s_chunk_header;
   } else {
     chunk_bytes_remaining = 0xc000;
 
-    tftp_receive_hook = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
+    current_state = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
                      & SNAPSHOT_FLAGS_COMPRESSED_MASK)
                   ? &s_chunk_compressed : &s_chunk_uncompressed;
   }
@@ -287,7 +264,7 @@ __naked
     ld   (_chunk_bytes_remaining), a
 
     ld    hl, #_s_chunk_header2
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
@@ -306,13 +283,12 @@ __naked
     ld   (_chunk_bytes_remaining + 1), a
 
     ld    hl, #_s_chunk_header3
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
   __endasm;
 }
-#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -323,7 +299,6 @@ __naked
  * https://www.worldofspectrum.org/faq/reference/z80format.htm
  * https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
  */
-#ifndef SB_MINIMAL
 DEFINE_STATE(s_chunk_header3)
 __naked
 {
@@ -401,24 +376,22 @@ s_chunk_header3_set_page::
     ld   (_chunk_bytes_remaining), hl
 
     ld    hl, #_s_chunk_uncompressed
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
 s_chunk_header3_compressed::
 
     ld    hl, #_s_chunk_compressed
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
   __endasm;
 }
-#endif
 
 /* ------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 DEFINE_STATE(s_chunk_uncompressed)
 __naked
 {
@@ -492,7 +465,7 @@ checked_chunk_length::
   jr  nz, no_new_state
 
   ld  de, #_s_chunk_header
-  ld  (_tftp_receive_hook), de
+  ld  (_current_state), de
 
 no_new_state::
   ld  (_chunk_bytes_remaining), hl
@@ -526,11 +499,9 @@ no_copy::
 
   __endasm;
 }
-#endif
 
 /* ------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 DEFINE_STATE(s_chunk_compressed)
 __naked
 {
@@ -604,9 +575,9 @@ s_chunk_compressed_loop::
 
 s_chunk_compressed_chunk_end::
   ld  a, #<_s_chunk_header
-  ld  (_tftp_receive_hook), a
+  ld  (_current_state), a
   ld  a, #>_s_chunk_header
-  ld  (_tftp_receive_hook+1), a
+  ld  (_current_state+1), a
   jr  s_chunk_compressed_write_back
 
   ;;
@@ -666,7 +637,7 @@ s_chunk_compressed_rept2::
   ld  (_received_data), iy
 
   ld  hl, #_s_chunk_repetition
-  ld  (_tftp_receive_hook), hl
+  ld  (_current_state), hl
   jp  (hl)
 
 s_chunk_compressed_no_opt::
@@ -675,9 +646,9 @@ s_chunk_compressed_no_opt::
   ;;
 
   ld  a, #<_s_chunk_compressed_escape
-  ld  (_tftp_receive_hook), a
+  ld  (_current_state), a
   ld  a, #>_s_chunk_compressed_escape
-  ld  (_tftp_receive_hook+1), a
+  ld  (_current_state+1), a
 
 s_chunk_compressed_write_back::
   ld  (_chunk_bytes_remaining), bc
@@ -706,7 +677,7 @@ __naked
     jr    nz, 00001$
 
     ld    hl, #_s_chunk_repcount
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
@@ -733,7 +704,7 @@ __naked
     call  _update_progress
 
     ld    hl, #_s_chunk_compressed
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
@@ -753,7 +724,7 @@ __naked
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repvalue
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
@@ -773,7 +744,7 @@ __naked
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repetition
-    ld    (_tftp_receive_hook), hl
+    ld    (_current_state), hl
 
     ret
 
@@ -825,96 +796,18 @@ s_chunk_repetition_write_back::
   ld  (_curr_write_pos), hl
 
   ld    hl, #_s_chunk_compressed
-  ld    (_tftp_receive_hook), hl
+  ld    (_current_state), hl
 
   ret
 
 __endasm;
 }
-#endif
 
-#ifndef SB_MINIMAL
-/*
- * State RAW_DATA:
- *
- * Simply copies received data to the indicated location.
- */
-DEFINE_STATE(s_raw_data)
-__naked
+/* ------------------------------------------------------------------------- */
+
+static void
+receive_snapshot_data(void)
 {
-   __asm
-
-  ld  de, (_curr_write_pos)
-  ld  hl, (_received_data)
-  ld  bc, (_received_data_length)
-  ldir
-  ld  (_curr_write_pos), de
-  ld  (_received_data_length), bc
-
-  ret
-
-  __endasm;
-}
-#endif
-
-/* ========================================================================= */
-
-void
-receive_file_data(void)
-{
-#ifdef SB_MINIMAL
-  __asm
-
-    ;; ------------------------------------------------------------------------
-    ;; If a receive hook has been installed, jump there
-    ;; ------------------------------------------------------------------------
-
-    ld  hl, (_tftp_receive_hook)
-    ld  a, h
-    or  l
-    jr  z, 00002$
-    jp  (hl)
-
-00002$:
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    ld  d, (hl)
-    inc hl
-    ld  e, (hl)    ;; network order
-    ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
-    ld  de, #UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    xor a
-    sbc hl, de
-    ld  b, h
-    ld  c, l       ;; BC is now payload length, 0..512
-
-    ;; ------------------------------------------------------------------------
-    ;; check if BC == 0x200; store result of comparison in alternate AF
-    ;; ------------------------------------------------------------------------
-
-    or  a, c       ;; is C zero?
-    jr  nz, 00001$
-    ld  a, #2
-    cp  a, b
-00001$:
-    .db 8   ;; silly assembler rejects "ex  af, af'"
-
-    ld  de, (_curr_write_pos)
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ldir
-    ld  (_curr_write_pos), de
-
-    ;; ------------------------------------------------------------------------
-    ;; If a full TFTP packet was loaded, return.
-    ;; Otherwise, this was the last packet: execute the loaded binary.
-    ;; ------------------------------------------------------------------------
-
-    .db 8   ;; silly assembler rejects "ex  af, af'"
-    jp  nz, _tftp_file_buf
-
-    ret
-
-  __endasm;
-#else
   /* Indicates an evacuation is ongoing (see below) */
   static bool evacuating = false;
 
@@ -924,10 +817,7 @@ receive_file_data(void)
                          - sizeof(struct tftp_header_t);
 
   while (received_data_length != 0) {
-    if ((LOBYTE(curr_write_pos) == 0)
-    && (tftp_receive_hook != &s_raw_data)
-    ) {
-
+    if ((LOBYTE(curr_write_pos) == 0)) {
       if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
         curr_write_pos = (uint8_t *) EVACUATION_TEMP_BUFFER;
         evacuating     = true;
@@ -942,31 +832,12 @@ receive_file_data(void)
       }
     }
 
-    (*tftp_receive_hook)();
+    (*current_state)();
   }
-
-  /*
-   * If we received a TFTP frame with less than the maximal payload, it must
-   * be the last one. If it was a snapshot, we would not come here (but
-   * context-switched instead). Therefore, we must now have finished loading
-   * the snapshot list. NUL-terminate the list, prepare for loading a
-   * snapshot, and run the menu.
-   */
-  if (ntohs(rx_frame.udp.header.length) < (TFTP_DATA_MAXSIZE
-					   + sizeof(struct udp_header_t)
-					   + sizeof(struct tftp_header_t)))
-  {
-    *curr_write_pos = 0;
-
-    expect_snapshot();
-    run_menu();
-  }
-#endif /* SB_MINIMAL */
 }
 
-/* ------------------------------------------------------------------------- */
+/* ========================================================================= */
 
-#ifndef SB_MINIMAL
 void
 expect_snapshot(void)
 __naked
@@ -976,11 +847,10 @@ __naked
     ld   hl, #0x4000
     ld   (_curr_write_pos), hl
 
-    ld    hl, #_s_header
+    ld    hl, #_receive_snapshot_data
     ld    (_tftp_receive_hook), hl
 
     ret
 
   __endasm;
 }
-#endif /* ifndef SB_MINIMAL */

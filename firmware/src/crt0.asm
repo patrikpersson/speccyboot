@@ -169,6 +169,7 @@ gsinit::
   ld hl, #0x4000
   ld de, #0x4001
   ld bc, #_font_data - 0x4001
+  ld (hl), a
   ldir
 
   ld bc, #l__INITIALIZER
