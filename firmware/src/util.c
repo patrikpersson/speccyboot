@@ -6,7 +6,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -38,7 +38,6 @@
  * Tick count, increased by the 50Hz timer ISR in crt0.asm
  */
 volatile timer_t timer_tick_count = 0;
-
 
 /* -------------------------------------------------------------------------
  * Public API
@@ -73,13 +72,13 @@ __naked
 {
   __asm
 
-memory_compare_loop::
+00001$:
     ld   a, (de)
     cp   a, (hl)
     ret  nz
     inc  de
     inc  hl
-    djnz memory_compare_loop
+    djnz 00001$
     ret
 
   __endasm;

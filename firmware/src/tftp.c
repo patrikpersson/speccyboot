@@ -35,10 +35,7 @@
 
 #include "eth.h"
 #include "globals.h"
-#include "menu.h"
-#include "syslog.h"
 #include "ui.h"
-#include "z80_loader.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -48,8 +45,17 @@
 #define TFTP_OPCODE_ACK           (4)
 #define TFTP_OPCODE_ERROR         (5)
 
-/* Size of a TFTP ACK */
+/* Packet sizes */
 #define TFTP_SIZE_OF_ACK          (4)
+#define TFTP_SIZE_OF_ERROR        (5)
+
+#ifdef SB_MINIMAL
+#define RRQ_PREFIX_SIZE           (2)
+#else
+#define RRQ_PREFIX_SIZE           (13)
+#endif
+
+#define RRQ_OPTION_SIZE           (6)
 
 /* ------------------------------------------------------------------------- */
 
@@ -66,15 +72,6 @@ static uint16_t server_port;
 
 /* Opcode for ACK */
 static const uint16_t ack_opcode = htons(TFTP_OPCODE_ACK);
-
-/* Opcode + path for RRQ */
-static const uint8_t rrq_prefix[] = {
-  0, TFTP_OPCODE_RRQ,   /* opcode in network order */
-  's', 'p', 'e', 'c', 'c', 'y', 'b', 'o', 'o', 't', '/'  /* no NUL! */
-};
-
-/* Transfer type for RRQ */
-static const uint8_t rrq_option[] = "octet";
 
 /* TFTP ERROR packet */
 static const uint8_t error_packet[] = {
@@ -191,28 +188,115 @@ tftp_receive(void)
 
 void
 tftp_read_request(const char *filename)
+__naked
 {
-  uint8_t len = 1;  /* include filenames's NUL */
-  const char *p = filename;
+  (void) filename;
 
-  while (*p++) {
-    len ++;
-  }
+  __asm
 
-  expected_tftp_block_no = 1;
-  new_tftp_client_port();
+    ;; ------------------------------------------------------------------------
+    ;; reset _expected_tftp_block_no to 1
+    ;; ------------------------------------------------------------------------
 
-  udp_create(&eth_broadcast_address,
-             &ip_config.tftp_server_address,
-             tftp_client_port,
-             htons(UDP_PORT_TFTP_SERVER),
-             sizeof(struct udp_header_t)
-               + sizeof(rrq_prefix)
-               + sizeof(rrq_option)
-               + len,
-             ETH_FRAME_PRIORITY);
-  udp_add(rrq_prefix);
-  udp_add_w_len(filename, len);
-  udp_add(rrq_option);
-  udp_send();
+    ld   hl, #1
+    ld   (_expected_tftp_block_no), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; create UDP packet
+    ;; ------------------------------------------------------------------------
+
+    ;; set UDP ports
+
+    ld   hl, #UDP_PORT_TFTP_SERVER * 0x0100    ;; network order
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   hl, (_tftp_client_port)
+    inc  hl
+    ld   (_tftp_client_port), hl
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+
+    ;; calculate length of filename
+
+    pop  bc
+    pop  hl        ;; HL now points to filename
+    push hl
+    push bc
+
+    ld   d, h
+    ld   e, l
+
+    xor  a
+    ld   b, a
+    ld   c, a
+00001$:
+    inc  bc
+    cp   a, (hl)
+    inc  hl
+    jr   nz, 00001$
+
+    push bc        ;; remember filename length for later
+    push de        ;; remember filename pointer for later
+
+    ld   hl, #UDP_HEADER_SIZE + RRQ_PREFIX_SIZE + RRQ_OPTION_SIZE
+    add  hl, bc
+
+    ;; stack arguments
+
+    ld   de, #ETH_FRAME_PRIORITY
+    push de
+
+    push hl
+
+    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
+    push hl
+
+    ld   hl, #_eth_broadcast_address    ;; all we know at this point
+    push hl
+
+    call _udp_create_impl
+    pop  hl
+    pop  hl
+    pop  hl
+    pop  hl
+
+    ;; append 16-bit TFTP opcode
+
+    ld   bc, #RRQ_PREFIX_SIZE
+    push bc
+    ld   hl, #tftp_rrq_prefix
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    ;; filename and length already stacked above
+
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    ;; append option ("octet" mode)
+
+    ld   bc, #RRQ_OPTION_SIZE
+    push bc
+    ld   hl, #tftp_rrq_option
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    jp   _udp_send
+
+    ;; ------------------------------------------------------------------------
+    ;; constant data for outgoing TFTP packets
+    ;; ------------------------------------------------------------------------
+
+tftp_rrq_option::
+    .ascii "octet"             ;; trailing NUL pinched from following packet
+tftp_rrq_prefix::
+    .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
+#ifndef SB_MINIMAL
+    .ascii "speccyboot/"
+#endif
+
+  __endasm;
 }
