@@ -176,6 +176,18 @@ timer_t
 timer_value(timer_t timer);
 
 /* -------------------------------------------------------------------------
+ * Compare memory blocks pointed to by HL and DE. Register B indicates the
+ * number of bytes to compare (so, max 256).
+ *
+ * On return, Z is set if blocks are equal.
+ * HL and DE are increased to first byte after the compared blocks.
+ * B is zero on successful compare.
+ * A is destroyed.
+ * ------------------------------------------------------------------------- */
+void
+memory_compare(void);
+
+/* -------------------------------------------------------------------------
  * Fill stack with magic value (for debugging/tuning)
  * ------------------------------------------------------------------------- */
 #ifdef PAINT_STACK
@@ -184,4 +196,4 @@ void
 paint_stack(void);
 #endif
 
-#endif /* SPECCYBOOT_UI_INCLUSION_GUARD */
+#endif /* SPECCYBOOT_UTIL_INCLUSION_GUARD */

@@ -104,9 +104,12 @@
  * to a struct mac_address_t pointer is guaranteed to be OK.
  */
 
+#define ETH_ADDRESS_SIZE    (6)
+
 PACKED_STRUCT(mac_address_t) {
-  uint8_t addr[6];      /* 48 bits */
+  uint8_t addr[ETH_ADDRESS_SIZE];      /* 48 bits */
 };
+
 
 /*
  * Ethernet and administrative data, as written by ENC28J60 reception logic

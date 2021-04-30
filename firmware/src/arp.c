@@ -7,7 +7,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -33,59 +33,157 @@
 
 #include "arp.h"
 
-#include "eth.h"
-#include "globals.h"
-
 /* ========================================================================= */
 
-/*
- * Opcodes for the ARP packets we support
- */
+/* Opcodes for supported ARP packets */
+#define ARP_OPER_REQUEST        (1)
+#define ARP_OPER_REPLY          (2)
 
-#define ARP_OPER_REQUEST   (1)
-#define ARP_OPER_REPLY     (2)
+#define ARP_HEADER_SIZE         (8)
+#define ARP_OFFSET_SPA          (14)
+#define ARP_OFFSET_TPA          (24)
 
-/* -------------------------------------------------------------------------
- * Header data for IP-to-Ethernet ARP replies
- * ------------------------------------------------------------------------- */
-static const struct arp_header_t arp_ip_ethernet_reply_header = {
-  htons(ETH_HWTYPE),
-  htons(ETHERTYPE_IP),
-  sizeof(struct mac_address_t),
-  sizeof(ipv4_address_t),
-  htons(ARP_OPER_REPLY)
-};
+/* Size of an ARP packet for an IP-Ethernet mapping */
+#define ARP_IP_ETH_PACKET_SIZE  (ARP_HEADER_SIZE + 20)
 
 /* ========================================================================= */
-
-static bool
-ip_valid_address()   // FIXME: remove this when rewriting this file
-{
-  uint8_t *p = (uint8_t *) &ip_config.host_address;
-  return (*p != 0);
-}
 
 void
 arp_receive(void)
 {
-  eth_retrieve_payload(&rx_frame.arp, sizeof(struct arp_ip_ethernet_t));
+  __asm
 
-  if (    (rx_frame.arp.header.oper == htons(ARP_OPER_REQUEST))
-      && (rx_frame.arp.header.ptype == htons(ETHERTYPE_IP))
-      && (rx_frame.arp.header.htype == htons(ETH_HWTYPE))
-      && (ip_valid_address())
-      &&          (rx_frame.arp.tpa == ip_config.host_address))
-  {
-    eth_create(&rx_eth_adm.eth_header.src_addr,
-	       htons(ETHERTYPE_ARP),
-	       ETH_FRAME_OPTIONAL);
+    ;; ------------------------------------------------------------------------
+    ;; retrieve ARP payload
+    ;; ------------------------------------------------------------------------
 
-    eth_add(arp_ip_ethernet_reply_header);
-    eth_add(eth_local_address);
-    eth_add(ip_config.host_address);
-    eth_add(rx_eth_adm.eth_header.src_addr);
-    eth_add(rx_frame.arp.spa);
+    ld   bc, #ARP_IP_ETH_PACKET_SIZE
+    push bc
+    ld   hl, #_rx_frame
+    push hl
+    call _enc28j60_read_memory_cont
+    pop  hl
+    pop  bc
 
-    eth_send(sizeof(struct arp_ip_ethernet_t));
-  }
+    ;; ------------------------------------------------------------------------
+    ;; check header against template
+    ;; (ARP_OPER_REQUEST, ETHERTYPE_IP, ETH_HWTYPE)
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #arp_receive_req_template
+    ld   b, #ARP_HEADER_SIZE
+
+    call _memory_compare
+    ret  nz   ;; if the receive packet does not match the expected header, return
+
+    ;; ------------------------------------------------------------------------
+    ;; check that a local IP address has been set,
+    ;; and that the packet was sent to this address
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   a, (hl)
+    or   a, a
+    ret  z
+
+    ld   de , #_rx_frame + ARP_OFFSET_TPA
+    ld   b, #IPV4_ADDRESS_SIZE
+    call _memory_compare
+    ret  nz   ;; if the packet is not for the local IP address, return
+
+    ;; ========================================================================
+    ;; create ARP response
+    ;; ========================================================================
+
+    ld   hl, #ETH_FRAME_OPTIONAL
+    push hl
+    ld   hl, #0x0608           ;; ETHERTYPE_ARP, network order
+    push hl
+    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    push hl
+    call _eth_create
+    pop  hl
+    pop  hl
+    pop  hl
+
+    ;; ARP header
+
+    ld   bc, #ARP_HEADER_SIZE
+    push bc
+    ld   hl, #arp_receive_reply_template
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    ;; SHA: local MAC address
+
+    ld   bc, #ETH_ADDRESS_SIZE
+    push bc
+    ld   hl, #_eth_local_address
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    ;; SPA: local IPv4 address
+
+    ld   c, #IPV4_ADDRESS_SIZE         ;; B==0 here
+    push bc
+    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    ;; THA: sender MAC address
+
+    ld   c, #ETH_ADDRESS_SIZE          ;; B==0 here
+    push bc
+    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    ;; TPA: sender IP address, taken from SPA field in request
+
+    ld   c, #IPV4_ADDRESS_SIZE         ;; B==0 here
+    push bc
+    ld   hl, #_rx_frame + ARP_OFFSET_SPA
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  bc
+
+    ld   c, #ARP_IP_ETH_PACKET_SIZE
+    push bc
+    call _eth_send
+    pop  bc
+
+    ret
+
+    ;; ------------------------------------------------------------------------
+    ;; template for expected incoming ARP_OPER_REQUESTs
+    ;; ------------------------------------------------------------------------
+
+arp_receive_req_template::
+    .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
+    .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
+    .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
+    .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
+    .db  0, ARP_OPER_REQUEST   ;; OPER: 16 bits, network order
+
+    ;; ------------------------------------------------------------------------
+    ;; template for outgoing ARP_OPER_REPLYs
+    ;; ------------------------------------------------------------------------
+
+arp_receive_reply_template::
+    .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
+    .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
+    .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
+    .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
+    .db  0, ARP_OPER_REPLY     ;; OPER: 16 bits, network order
+
+  __endasm;
 }

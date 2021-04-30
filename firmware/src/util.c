@@ -32,16 +32,13 @@
 
 #include "util.h"
 
-#include "eth.h"
-#include "globals.h"
-#include "syslog.h"
-
 /* ------------------------------------------------------------------------- */
 
 /*
  * Tick count, increased by the 50Hz timer ISR in crt0.asm
  */
 volatile timer_t timer_tick_count = 0;
+
 
 /* -------------------------------------------------------------------------
  * Public API
@@ -63,6 +60,26 @@ __naked
     ld    hl, (_timer_tick_count)   ;; assumed to be atomic
     xor   a
     sbc   hl, bc
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+memory_compare(void)
+__naked
+{
+  __asm
+
+memory_compare_loop::
+    ld   a, (de)
+    cp   a, (hl)
+    ret  nz
+    inc  de
+    inc  hl
+    djnz memory_compare_loop
     ret
 
   __endasm;
