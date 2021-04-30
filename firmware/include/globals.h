@@ -113,9 +113,6 @@ extern union rx_frame_t {
     } app;
   } udp;
 
-  /* ------------------------------------------------------------------- ARP */
-  struct arp_ip_ethernet_t              arp;
-
   /* --------------------------------------------------- Snapshot name array */
   const char *snapshot_names [MAX_SNAPSHOTS];
 } rx_frame;

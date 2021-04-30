@@ -170,6 +170,7 @@ gsinit::
   ld de, #0x4001
   ld bc, #_font_data - 0x4001
   ld (hl), a
+  out (0xFE), a
   ldir
 
   ld bc, #l__INITIALIZER

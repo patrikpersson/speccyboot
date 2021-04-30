@@ -32,30 +32,9 @@
 #ifndef SPECCYBOOT_ARP_INCLUSION_GUARD
 #define SPECCYBOOT_ARP_INCLUSION_GUARD
 
-#include "udp_ip.h"
-
 /* ========================================================================= */
 
 #define ETHERTYPE_ARP           (0x0806)
-
-/* ARP header */
-PACKED_STRUCT(arp_header_t) {
-  uint16_t htype;
-  uint16_t ptype;
-  uint8_t  hlen;
-  uint8_t  plen;
-  uint16_t oper;
-};
-
-/* ARP packet for IP-to-Ethernet mapping */
-PACKED_STRUCT(arp_ip_ethernet_t) {
-  struct arp_header_t  header;
-
-  struct mac_address_t sha;
-  ipv4_address_t       spa;
-  struct mac_address_t tha;
-  ipv4_address_t       tpa;
-};
 
 /* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an ARP packet has been

@@ -33,11 +33,9 @@
 
 #include "arp.h"
 
-/* ========================================================================= */
+#include "udp_ip.h"
 
-/* Opcodes for supported ARP packets */
-#define ARP_OPER_REQUEST        (1)
-#define ARP_OPER_REPLY          (2)
+/* ========================================================================= */
 
 #define ARP_HEADER_SIZE         (8)
 #define ARP_OFFSET_SPA          (14)
@@ -50,6 +48,7 @@
 
 void
 arp_receive(void)
+__naked
 {
   __asm
 
@@ -174,7 +173,7 @@ arp_receive_reply_template::
     .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
     .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
-    .db  0, ARP_OPER_REPLY     ;; OPER: 16 bits, network order
+    .db  0, 2                  ;; OPER: reply, 16 bits, network order
 
   __endasm;
 }
