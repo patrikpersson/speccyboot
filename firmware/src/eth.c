@@ -35,9 +35,7 @@
 
 #include "arp.h"
 #include "bootp.h"
-#include "dhcp.h"
 #include "globals.h"
-#include "syslog.h"
 #include "udp_ip.h"
 #include "ui.h"
 
@@ -288,7 +286,7 @@ eth_send(uint16_t total_nbr_of_bytes_in_payload)
 }
 
 /* -------------------------------------------------------------------------
- * Main function: initiate DHCP, receive frames and act on them
+ * Main function: initiate BOOTP, receive frames and act on them
  * ------------------------------------------------------------------------- */
 
 void
@@ -300,16 +298,11 @@ __naked
 #endif
 
   eth_init();
-
-#ifdef SB_MINIMAL
   bootp_init();
-#else
-  dhcp_init();
-#endif
 
   /*
    * At this point, eth_send() has already been called once for a PRIORITY
-   * frame (DHCP above), so the ACK timer does not need to be reset.
+   * frame (BOOTP above), so the ACK timer does not need to be reset.
    */
 
   for (;;) {
@@ -360,7 +353,6 @@ __naked
 
           __endasm;
 
-          syslog("re-sending");
           perform_transmission(ENC28J60_TXBUF1_START, end_of_critical_frame);
         }
       }
@@ -376,7 +368,6 @@ __naked
     next_frame = rx_eth_adm.next_ptr;
     if (next_frame > ENC28J60_RXBUF_END) {  /* sanity check */
       eth_init();
-      syslog("ETH reset");
       continue;
     }
 

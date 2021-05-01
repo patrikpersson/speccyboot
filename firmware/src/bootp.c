@@ -7,7 +7,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2021-  Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -36,7 +36,6 @@
 #include "eth.h"
 #include "globals.h"
 #include "udp_ip.h"
-#include "syslog.h"
 #include "tftp.h"
 #include "ui.h"
 
@@ -72,6 +71,75 @@ __naked
 {
   __asm
 
+#ifndef SB_MINIMAL
+    ;; ========================================================================
+    ;; Presentation
+    ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; print 'SpeccyBoot x.y' at (0,0)
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #title_str       ;; 'SpeccyBoot x.y'
+    push  hl
+    ld    bc, #0
+    push  bc                   ;; terminator (NUL)
+    inc   sp
+    push  bc                   ;; coordinates (0,0)
+    call  _print_at
+    pop   bc
+    inc   sp
+    pop   hl
+
+    ;; ------------------------------------------------------------------------
+    ;; print 'BOOTP' at (23,0)
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #bootp_str       ;; 'BOOTP'
+    push  hl
+    push  bc                   ;; terminator (NUL)
+    inc   sp
+    ld    c, #23
+    push  bc                   ;; coordinates (23,0)
+    call  _print_at
+    pop   bc
+    inc   sp
+    pop   hl
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'SpeccyBoot' heading: white ink, black paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ld    c, #20              ;; B==0 here
+    push  bc
+    ld    hl, #ATTRS_BASE     ;; (0,0)
+    push  hl
+    ld    a, #INK(WHITE) | PAPER(BLACK) | BRIGHT
+    push  af
+    inc   sp
+    call  _set_attrs_impl
+    inc   sp
+    pop   hl
+    pop   bc
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'BOOTP' indicator: white ink, black paper, flash, bright
+    ;; ------------------------------------------------------------------------
+
+    ld    c, #4               ;; B==0 here
+    push  bc
+    ld    hl, #ATTRS_BASE + 23 * 32     ;; (23,0)
+    push  hl
+    ld    a, #INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT
+    push  af
+    inc   sp
+    call  _set_attrs_impl
+    inc   sp
+    pop   hl
+    pop   bc
+
+#endif
+
     ;; ========================================================================
     ;; the BOOTREQUEST is built in steps:
     ;; - 8 constant-valued bytes
@@ -85,19 +153,16 @@ __naked
     ;; create UDP packet
     ;; ------------------------------------------------------------------------
 
-    ld   bc, #UDP_PORT_BOOTP_CLIENT * 0x100    ;; network order
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), bc
-    ld   b, #UDP_PORT_BOOTP_SERVER
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), bc
-    ld   hl, #ETH_FRAME_PRIORITY
-    push hl
+    ld   hl, #UDP_PORT_BOOTP_CLIENT * 0x100    ;; network order
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+    ld   h, #UDP_PORT_BOOTP_SERVER
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
     ld   hl, #UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
     push hl
     ld   hl, #_eth_broadcast_address   ;; works for IP broadcast too
     push hl
     push hl
     call _udp_create_impl
-    pop  af
     pop  af
     pop  af
     pop  af
@@ -165,6 +230,16 @@ bootrequest_header_data::
     .db   0                  ;; hops
 bootrequest_xid::
     .db   0x5a, 0x58, 0x38, 0x32  ;; 'ZX82'
+
+#ifndef SB_MINIMAL
+title_str::
+    .ascii "SpeccyBoot "
+    .ascii str(VERSION)
+    .db   0
+bootp_str::
+    .ascii "BOOTP"
+    .db   0
+#endif
 
   __endasm;
 }
@@ -262,6 +337,82 @@ bootp_receive_sname_done::
     call _tftp_read_request
     pop  hl
 
+#ifndef SB_MINIMAL
+
+    ;; ------------------------------------------------------------------------
+    ;; print 'Local:' at (23,0); 'TFTP:' at (23,17)
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #bootp_progress
+    push  hl
+    ld    bc, #0
+    push  bc                   ;; terminator (NUL)
+    inc   sp
+    ld    c, #23               ;; B==0 here
+    push  bc                   ;; coordinates (23,0)
+    call  _print_at
+    pop   bc
+    inc   sp
+    pop   hl
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for local IP address: white ink, black paper
+    ;; ------------------------------------------------------------------------
+
+    ld    c, #3              ;; B==0 here
+    push  bc
+    ld    hl, #ATTRS_BASE + 23 * 32 + 17     ;; (23,17)
+    push  hl
+    ld    a, #INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT
+    push  af
+    inc   sp
+    call  _set_attrs_impl
+    inc   sp
+    pop   hl
+    pop   bc
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for TFTP status: white ink, black paper, bright, flash
+    ;; ------------------------------------------------------------------------
+
+    ld    c, #15              ;; B==0 here
+    push  bc
+    ld    hl, #ATTRS_BASE + 23 * 32     ;; (23,0)
+    push  hl
+    ld    a, #INK(WHITE) | PAPER(BLACK)
+    push  af
+    inc   sp
+    call  _set_attrs_impl
+    inc   sp
+    pop   hl
+    pop   bc
+
+    ;; ------------------------------------------------------------------------
+    ;; print local IP address
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #LOCAL_IP_POS
+    push  hl
+    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    push  hl
+    call  _print_ip_addr
+    pop   hl
+    pop   hl
+
+    ;; ------------------------------------------------------------------------
+    ;; print TFTP server IP address
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #SERVER_IP_POS
+    push  hl
+    ld    hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
+    push  hl
+    call  _print_ip_addr
+    pop   hl
+    pop   hl
+
+#endif
+
     ret
 
 bootp_receive_parse_octet::
@@ -321,8 +472,18 @@ bootp_receive_invalid_address::
     jp   _fail
 
 bootp_receive_default_file::
+#ifdef SB_MINIMAL
     .ascii 'spboot.bin'
-    .db    0
+#else
+    .ascii 'snapshots.lst'
+#endif
+    .db   0
+
+#ifndef SB_MINIMAL
+bootp_progress::
+    .ascii 'Local:           TFTP:'
+    .db   0
+#endif
 
   __endasm;
 }

@@ -203,7 +203,7 @@ ip_receive_options_done::
 ip_receive_udp_checksum_done::
 
     ;; ------------------------------------------------------------
-    ;; Pass on to BOOTP/DHCP/TFTP
+    ;; Pass on to BOOTP/TFTP
     ;; ------------------------------------------------------------
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
@@ -227,18 +227,14 @@ ip_receive_udp_checksum_done::
 
 ip_receive_not_tftp::
 
-    ;; DHCP response?
+    ;; BOOTP response?
 
     ld   a, e
     or   a
     ret  nz
     ld   a, d
-    cp   a, #UDP_PORT_DHCP_CLIENT
-#ifdef SB_MINIMAL
+    cp   a, #UDP_PORT_BOOTP_CLIENT
     jp   z, _bootp_receive
-#else
-    jp   z, _dhcp_receive
-#endif
     ret
 
 ;; -----------------------------------------------------------------------
@@ -257,21 +253,8 @@ ip_receive_check_checksum::
     inc  a   ;; if both bytes are 0xff, A will now become zero
     ret  z
 
-#ifndef SB_MINIMAL
-    ld   hl, #ip_receive_bad_checksum
-    push hl
-    call	_syslog
-    pop  af   ;; pop arg to syslog
-#endif
     pop  af   ;; pop return address within ip_receive
-
-    ret       ;; return to caller of ip_recieve
-
-#ifndef SB_MINIMAL
-ip_receive_bad_checksum::
-    .ascii "bad checksum"
-    .db 0x00
-#endif
+    ret       ;; return to _caller_ of ip_receive
 
   __endasm;
 }
@@ -281,11 +264,10 @@ ip_receive_bad_checksum::
 void
 udp_create_impl(const struct mac_address_t  *dst_hwaddr,
                 const ipv4_address_t        *dst_ipaddr,
-                uint16_t                     udp_length,
-                enc28j60_addr_t              frame_class)
+                uint16_t                     udp_length)
 __naked
 {
-  (void) dst_hwaddr, dst_ipaddr, udp_length, frame_class;
+  (void) dst_hwaddr, dst_ipaddr, udp_length;
 
   __asm
 
@@ -298,7 +280,6 @@ __naked
     ;; dst_hwaddr  at (ix + 0)
     ;; dst_ipaddr  at (ix + 2)
     ;; udp_length  at (ix + 4)
-    ;; frame_class at (ix + 6)
 
     ;; ----------------------------------------------------------------------
     ;; set up a header template, to be filled in with proper data below
@@ -386,11 +367,10 @@ __naked
     ld     (hl), a
 
     ;; ----------------------------------------------------------------------
-    ;; call eth_create(dst_hwaddr, htons(ETHERTYPE_IP), frame_class)
+    ;; call eth_create(dst_hwaddr, htons(ETHERTYPE_IP), ENC28J60_TXBUF1_START)
     ;; ----------------------------------------------------------------------
 
-    ld    l, 6(ix)
-    ld    h, 7(ix)
+    ld    hl, #ENC28J60_TXBUF1_START
     push  hl             ;; frame_class
     ld    c, #0x08       ;; htons(ETHERTYPE_IP)    (B=0 here)
     push  bc
@@ -458,8 +438,6 @@ __naked
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
     ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
-    ld   hl, #ETH_FRAME_PRIORITY
-    push hl
     ld   c, 0(ix)
     ld   b, 1(ix)
     push bc
@@ -477,7 +455,6 @@ __naked
 
     call _udp_create_impl
 
-    pop  af
     pop  af
     pop  af
     pop  af

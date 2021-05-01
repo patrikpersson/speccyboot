@@ -48,15 +48,9 @@
 /* Protocol indicating UDP payload in a IPv4 packet */
 #define IP_PROTOCOL_UDP           (17)
 
-/* Default (power-on) IP addresses */
-#define IP_DEFAULT_HOST_ADDRESS   (0x00000000u)
-#define IP_DEFAULT_BCAST_ADDRESS  (0xffffffffu)
-
 /* Static UDP ports */
 #define UDP_PORT_BOOTP_SERVER     (67)
 #define UDP_PORT_BOOTP_CLIENT     (68)
-#define UDP_PORT_DHCP_SERVER      (UDP_PORT_BOOTP_SERVER)
-#define UDP_PORT_DHCP_CLIENT      (UDP_PORT_BOOTP_CLIENT)
 #define UDP_PORT_TFTP_SERVER      (69)
 #define UDP_PORT_TFTP_CLIENT      (69)
 #define UDP_PORT_SYSLOG           (514)
@@ -156,18 +150,17 @@ ip_receive(void);
  *  - Source and destination ports are passed in network endian order.
  *  - The 'udp_length' argument must include sizeof(struct udp_header_t).
  * ------------------------------------------------------------------------- */
-#define udp_create(_dst_hwaddr, _dst_ipaddr, _src_p, _dst_p, _len, _cls)      \
+#define udp_create(_dst_hwaddr, _dst_ipaddr, _src_p, _dst_p, _len)            \
   do {                                                                        \
     header_template.udp.src_port = _src_p;                                    \
     header_template.udp.dst_port = _dst_p;                                    \
-    udp_create_impl(_dst_hwaddr, _dst_ipaddr, _len, _cls);                    \
+    udp_create_impl(_dst_hwaddr, _dst_ipaddr, _len);                          \
   } while(0)
 
 void
 udp_create_impl(const struct mac_address_t  *dst_hwaddr,
 		const ipv4_address_t        *dst_ipaddr,
-		uint16_t                     udp_length,
-		enc28j60_addr_t              frame_class);
+		uint16_t                     udp_length);
 
 /* -------------------------------------------------------------------------
  * Create UDP reply to the sender of the received packet currently processed.

@@ -95,6 +95,7 @@ typedef char key_t;
 #define FATAL_FILE_NOT_FOUND        (YELLOW)
 #define FATAL_INCOMPATIBLE          (CYAN)
 #define FATAL_INVALID_BOOT_SERVER   (MAGENTA)
+#define FATAL_INTERNAL_ERROR        (WHITE)
 
 #define ULA_PORT                    (0xFE)
 

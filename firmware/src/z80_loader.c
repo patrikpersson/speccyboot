@@ -39,7 +39,6 @@
 #include "context_switch.h"
 #include "globals.h"
 #include "menu.h"
-#include "syslog.h"
 #include "ui.h"
 
 /* ------------------------------------------------------------------------- */

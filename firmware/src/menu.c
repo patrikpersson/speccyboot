@@ -34,7 +34,6 @@
 #include "menu.h"
 
 #include "globals.h"
-#include "syslog.h"
 #include "ui.h"
 #include "util.h"
 
@@ -56,8 +55,6 @@ run_menu(void)
 {
   unsigned char *src = tftp_file_buf;
   uint16_t nbr_snapshots = 0;
-
-  syslog("menu ready");
 
   eth_disable();
   set_attrs(INK(WHITE) | PAPER(BLACK), 23, 17, 15);

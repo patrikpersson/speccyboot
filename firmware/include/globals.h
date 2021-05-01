@@ -34,7 +34,6 @@
 #include "eth.h"
 #include "udp_ip.h"
 #include "arp.h"
-#include "dhcp.h"
 #include "tftp.h"
 #include "context_switch.h"
 
@@ -102,7 +101,6 @@ extern union rx_frame_t {
     struct udp_header_t                 header;
 
     union {
-      struct dhcp_packet_t              dhcp;
       PACKED_STRUCT() {
         struct tftp_header_t            header;
         union {

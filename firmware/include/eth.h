@@ -52,8 +52,8 @@
  *
  * 0xXXXX+1 ... 0xYYYY  TX buffer 1: BOOTP/TFTP frames. Re-sent on time-out.
  *
- * 0xYYYY+1 ... 0x17FF  TX buffer 2: ARP/syslog frames, where no reply is
- *                      expected. Never re-sent.
+ * 0xYYYY+1 ... 0x17FF  TX buffer 2: ARP frames, where no reply is expected.
+ *                                   Never re-sent.
  *
  * 0x1800   ... 0x1FFF  Reserved for temporary storage during snapshot
  *                      loading (see context_switch.c)
@@ -76,17 +76,9 @@
  * Worst-case payload for transmitted ARP frames (ARP REPLY):
  *
  *     28b  ARP
- *
- * Worst-case payload for transmitted SYSLOG frames (using ARP tx buffer):
- *     20b  IP
- *      8b  UDP
- *     15b  prefix
- *     12b  message
- *     ---
- *     55b
  */
-#define ETH_MAX_BOOTP_TX_PAYLOAD       (328)
-#define ETH_MAX_SYSLOG_TX_PAYLOAD      (55)
+#define ETH_MAX_UDP_TX_PAYLOAD      (328)
+#define ETH_MAX_ARP_TX_PAYLOAD      (28)
 
 /*
  * Worst-case payload for received frames:
@@ -104,16 +96,16 @@
  * by controller
  */
 #define ENC28J60_UDP_TXBUF_SIZE \
-  (ETH_HEADER_SIZE + ETH_MAX_BOOTP_TX_PAYLOAD + 8)
+  (ETH_HEADER_SIZE + ETH_MAX_UDP_TX_PAYLOAD + 8)
 
 #define ENC28J60_ARP_TXBUF_SIZE \
-  (ETH_HEADER_SIZE + ETH_MAX_SYSLOG_TX_PAYLOAD + 8)
+  (ETH_HEADER_SIZE + ETH_MAX_ARP_TX_PAYLOAD + 8)
 
 #define ENC28J60_TXBUF2_START \
-  (ENC28J60_EVACUATED_DATA - ETH_MAX_SYSLOG_TX_PAYLOAD)
+  (ENC28J60_EVACUATED_DATA - ETH_MAX_ARP_TX_PAYLOAD)
 
 #define ENC28J60_TXBUF1_START \
-  (ENC28J60_TXBUF2_START - ETH_MAX_BOOTP_TX_PAYLOAD)
+  (ENC28J60_TXBUF2_START - ETH_MAX_UDP_TX_PAYLOAD)
 
 #define ENC28J60_RXBUF_END \
   (ENC28J60_TXBUF1_START - 1)
@@ -171,7 +163,7 @@ PACKED_STRUCT(eth_adm_t) {
  *                another PRIORITY frame is transmitted, the timer is reset.
  *
  *                This means frames where we care about an answer
- *                (DHCP, TFTP).
+ *                (BOOTP, TFTP).
  *
  * OPTIONAL       Not automatically re-transmitted. The timer is not affected
  *                in any way. The frame may be silently dropped if the
@@ -179,7 +171,7 @@ PACKED_STRUCT(eth_adm_t) {
  *                eth_store_data().
  *
  *                This means frames where we do NOT care about an answer
- *                (ARP replies, syslog).
+ *                (ARP replies).
  *
  * NOTE: the frame class value actually maps directly to a transmission buffer
  *       address.

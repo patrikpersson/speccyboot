@@ -183,10 +183,11 @@ __naked
     xor  a, a
     or   a, (hl)
     inc  hl
-    jr   z, tftp_receive_got_data
+    jr   nz, tftp_receive_bad_reply
     ld   a, (hl)
     cp   a, #TFTP_OPCODE_DATA
 
+tftp_receive_bad_reply::
     ld   a, #FATAL_FILE_NOT_FOUND
     jp   nz, _fail
 
@@ -402,21 +403,14 @@ __naked
     ld   hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
     add  hl, bc
 
-    ;; stack arguments
-
-    ld   de, #ETH_FRAME_PRIORITY
-    push de
+    ;; stack arguments and call
 
     push hl
-
     ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     push hl
-
     ld   hl, #_eth_broadcast_address    ;; all we know at this point
     push hl
-
     call _udp_create_impl
-    pop  hl
     pop  hl
     pop  hl
     pop  hl

@@ -34,7 +34,7 @@
 #include "enc28j60.h"
 
 #include "util.h"
-#include "syslog.h"
+#include "ui.h"
 
 /* ========================================================================= */
 
@@ -106,7 +106,7 @@ enc28j60_poll_register(uint8_t register_descr,
     }
   }
 
-  syslog("poll fail");
+  fatal_error(FATAL_INTERNAL_ERROR);
 }
 
 /* ------------------------------------------------------------------------- */

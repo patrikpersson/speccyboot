@@ -36,7 +36,6 @@
 
 #include "enc28j60.h"
 #include "globals.h"
-#include "syslog.h"
 #include "ui.h"
 
 /* ========================================================================= */
