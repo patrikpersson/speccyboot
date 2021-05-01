@@ -7,7 +7,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -58,10 +58,14 @@ syslog(const char *msg)
 
   const char *p = msg;
 
-  while (*p++) {
+  while (*p++ && msg_length < SYSLOG_MESSAGE_SIZE_LIMIT) {
     msg_length ++;
   }
 
+  /*
+   * Although syslog uses UDP, it is transmitted using the ARP tx buffer,
+   * since re-transmission would be neither necessary nor useful
+   */
   udp_create(&eth_broadcast_address,
       	     IP_BROADCAST_ADDRESS_PTR,
       	     htons(UDP_PORT_SYSLOG),

@@ -7,7 +7,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -33,6 +33,13 @@
 
 #ifndef SPECCYBOOT_SYSLOG_INCLUSION_GUARD
 #define SPECCYBOOT_SYSLOG_INCLUSION_GUARD
+
+/*
+ * NOTE:
+ * syslog messages must be at most SYSLOG_MESSAGE_SIZE_LIMIT characters
+ */
+#define SYSLOG_MESSAGE_SIZE_LIMIT    (12)
+#define SYSLOG_PREFIX_SIZE           (15)
 
 #ifdef SB_MINIMAL
 #define syslog(s)

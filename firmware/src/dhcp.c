@@ -164,9 +164,9 @@ static const uint8_t dhcp_request_options_server[] = {
 
 /* Ensure assumptions about max Ethernet frame size is valid */
 
-COMPILE_ASSERT(SIZEOF_DHCP_DISCOVER + sizeof(struct ipv4_header_t) <= ETH_MAX_TX_PAYLOAD);
+COMPILE_ASSERT(SIZEOF_DHCP_DISCOVER + sizeof(struct ipv4_header_t) <= ETH_MAX_BOOTP_TX_PAYLOAD);
 
-COMPILE_ASSERT(SIZEOF_DHCP_REQUEST + sizeof(struct ipv4_header_t) <= ETH_MAX_TX_PAYLOAD);
+COMPILE_ASSERT(SIZEOF_DHCP_REQUEST + sizeof(struct ipv4_header_t) <= ETH_MAX_BOOTP_TX_PAYLOAD);
 
 /* ------------------------------------------------------------------------- */
 
