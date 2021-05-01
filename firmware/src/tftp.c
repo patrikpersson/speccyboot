@@ -39,23 +39,36 @@
 
 /* ------------------------------------------------------------------------- */
 
-/* TFTP opcodes */
-#define TFTP_OPCODE_RRQ           (1)
-#define TFTP_OPCODE_DATA          (3)
-#define TFTP_OPCODE_ACK           (4)
-#define TFTP_OPCODE_ERROR         (5)
+/*
+ * TFTP opcodes
+ */
+#define TFTP_OPCODE_RRQ              (1)
+#define TFTP_OPCODE_DATA             (3)
+#define TFTP_OPCODE_ACK              (4)
+#define TFTP_OPCODE_ERROR            (5)
 
-/* Packet sizes */
-#define TFTP_SIZE_OF_ACK          (4)
-#define TFTP_SIZE_OF_ERROR        (5)
+/*
+ * Sizes and offsets of individual fields
+ */
+#define TFTP_SIZE_OF_OPCODE          (2)
+#define TFTP_OFFSET_OF_OPCODE        (0)
+
+#define TFTP_OFFSET_OF_BLOCKNO       (2)
 
 #ifdef SB_MINIMAL
-#define RRQ_PREFIX_SIZE           (2)
+#define TFTP_SIZE_OF_RRQ_PREFIX      (2)
 #else
-#define RRQ_PREFIX_SIZE           (13)
+#define TFTP_SIZE_OF_RRQ_PREFIX      (13)
 #endif
 
-#define RRQ_OPTION_SIZE           (6)
+#define TFTP_SIZE_OF_RRQ_OPTION      (6)
+
+/*
+ * Packet sizes
+ */
+#define TFTP_SIZE_OF_ACK_PACKET      (4)
+#define TFTP_SIZE_OF_ERROR_PACKET    (5)
+
 
 /* ------------------------------------------------------------------------- */
 
@@ -69,16 +82,6 @@ static uint16_t expected_tftp_block_no;
 
 /* Source port currently used by server */
 static uint16_t server_port;
-
-/* Opcode for ACK */
-static const uint16_t ack_opcode = htons(TFTP_OPCODE_ACK);
-
-/* TFTP ERROR packet */
-static const uint8_t error_packet[] = {
-  0, TFTP_OPCODE_ERROR, /* opcode in network order */
-  0, 4,                 /* error 'illegal TFTP operation', network order */
-  0                     /* no particular message */
-};
 
 /* ------------------------------------------------------------------------- */
 
@@ -128,6 +131,7 @@ __naked
 
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
+    ;; ------------------------------------------------------------------------
 
     .db 8   ;; silly assembler rejects "ex  af, af'"
     ret z
@@ -141,6 +145,11 @@ __naked
     ;; ------------------------------------------------------------------------
     ;; This was the last packet: prepare for snapshot loading and display menu.
     ;; ------------------------------------------------------------------------
+
+    ;; place a NUL byte after the loaded data, to terminate the snapshot list
+    xor  a, a
+    ld   (de), a
+
     call _expect_snapshot
     jp   _run_menu
 #endif
@@ -152,36 +161,190 @@ __endasm;
 
 void
 tftp_receive(void)
+__naked
 {
-  uint16_t received_block_no = ntohs(rx_frame.udp.app.tftp.header.block_no);
+  __asm
 
-  if (rx_frame.udp.app.tftp.header.opcode != ntohs(TFTP_OPCODE_DATA)) {
-    fatal_error(FATAL_FILE_NOT_FOUND); /* ERROR, RRQ, WRQ, ACK: all wrong */
-  }
+    ;; ------------------------------------------------------------------------
+    ;; check destination port (should be _tftp_client_port)
+    ;; ------------------------------------------------------------------------
 
-  if (   received_block_no > expected_tftp_block_no
-      || received_block_no < (expected_tftp_block_no - 1)
-      || (expected_tftp_block_no != 1
-	  && rx_frame.udp.header.src_port != server_port))
-  {
-    udp_create_reply(sizeof(struct udp_header_t) + sizeof(error_packet), false);
-    udp_add(error_packet);
-    udp_send();
-    return;
-  }
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT
+    ld   de, #_tftp_client_port
+    ld   b, #2
+    call _memory_compare
+    ret  nz
 
-  server_port = rx_frame.udp.header.src_port;
+    ;; ------------------------------------------------------------------------
+    ;; only accept DATA packets; anything else is a fatal error
+    ;; ------------------------------------------------------------------------
 
-  /* ACK */
-  udp_create_reply(sizeof(struct udp_header_t) + TFTP_SIZE_OF_ACK, false);
-  udp_add(ack_opcode);
-  udp_add(rx_frame.udp.app.tftp.header.block_no);
-  udp_send();
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
+    xor  a, a
+    or   a, (hl)
+    inc  hl
+    jr   z, tftp_receive_got_data
+    ld   a, (hl)
+    cp   a, #TFTP_OPCODE_DATA
 
-  if (received_block_no == expected_tftp_block_no) {
-    expected_tftp_block_no ++;
-    receive_tftp_data();
-  }
+    ld   a, #FATAL_FILE_NOT_FOUND
+    jp   nz, _fail
+
+tftp_receive_got_data::
+
+    ;; ========================================================================
+    ;; check block number: acceptable cases are
+    ;; received == expected   (normal case: acknowledge and read)
+    ;; received == expected-1 (previous ACK lost: acknowledge, but do not read)
+    ;; ========================================================================
+
+    inc   hl
+    ld    d, (hl)    ;; stored in network order, so read D first
+    inc   hl
+    ld    e, (hl)    ;; DE is now the received block number, in host order
+
+    ld    hl, (_expected_tftp_block_no)
+
+    ;; ------------------------------------------------------------------------
+    ;; keep server-side port number in BC, and received block number in DE & IX
+    ;; ------------------------------------------------------------------------
+
+    ld    bc, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    push  de
+    pop   ix
+
+    ;; ------------------------------------------------------------------------
+    ;; special case: if received and expected both are 1,
+    ;; remember server port, and skip some checks
+    ;; ------------------------------------------------------------------------
+
+    ld    a, h        ;; are these
+    or    a, d        ;; both zero?
+    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+    ld    a, e        ;; are these
+    cp    a, l        ;; both the same value (specifically, 1) ?
+    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+    dec   a           ;; is A now 1?
+    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+
+    ;; this is the first packet, so note server port and accept the packet
+
+    ld    (_server_port), bc
+    jr    tftp_receive_blk_nbr_and_port_ok
+
+tftp_receive_check_blk_nbr::
+
+    ;; ------------------------------------------------------------------------
+    ;; received == expected ?
+    ;; ------------------------------------------------------------------------
+
+    xor   a
+    sbc   hl, de
+    jr    z, tftp_receive_blk_nbr_ok
+
+    ;; ------------------------------------------------------------------------
+    ;; received == expected-1 ?   means HL-DE == expected-received == 1
+    ;; ------------------------------------------------------------------------
+
+    dec   hl
+    ld    a, h
+    or    a, l
+    jr    nz, tftp_receive_error
+
+tftp_receive_blk_nbr_ok::
+
+    ;; ------------------------------------------------------------------------
+    ;; check server port number:
+    ;; must be the same as used for first packet
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_server_port)
+    ;; BC was loaded above, early on; holds server-side port nbr from packet
+    xor   a
+    sbc   hl, bc
+    jr    nz, tftp_receive_error
+
+tftp_receive_blk_nbr_and_port_ok::
+
+    ;; ========================================================================
+    ;; reply with ACK packet
+    ;; ========================================================================
+
+    xor   a, a
+    push  af
+    inc   sp
+    ld    hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
+    push  hl
+    call    _udp_create_reply
+    pop   hl
+    inc   sp
+
+    ld    bc, #TFTP_SIZE_OF_OPCODE
+    push  bc
+    ld    hl, #tftp_receive_ack_opcode
+    push  hl
+    call    _enc28j60_write_memory_cont
+    pop   hl
+
+    ;; keep BC==2 on stack
+
+    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
+    push  hl
+    call    _enc28j60_write_memory_cont
+    pop   hl
+    pop   bc
+
+    call  _udp_send
+
+    ;; ========================================================================
+    ;; if expected block nbr == received, increase expected and accept the data
+    ;; ========================================================================
+
+    ld    hl, (_expected_tftp_block_no)
+    ld    d, h
+    ld    e, l
+
+    push  ix
+    pop   bc
+    xor   a
+    sbc   hl, bc
+    ret   nz
+
+    inc   de
+    ld    (_expected_tftp_block_no), de
+
+    jp    _receive_tftp_data     ;; FIXME: merge these functions
+
+tftp_receive_error::
+
+    xor   a
+    push  af
+    inc   sp
+    ld    bc, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
+    push  bc
+    call    _udp_create_reply
+    pop   bc
+    inc   sp
+
+    ld    c, #TFTP_SIZE_OF_ERROR_PACKET         ;; B==0 here
+    push  bc
+    ld    hl, #tftp_receive_error_packet
+    push  hl
+    call    _enc28j60_write_memory_cont
+    pop   hl
+    pop   bc
+
+    jp    _udp_send
+
+tftp_receive_ack_opcode::
+    .db   0, TFTP_OPCODE_ACK           ;; network order
+
+tftp_receive_error_packet::
+    .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
+    .db   0, 4               ;; illegal TFTP operation, network order
+    .db   0                  ;; no particular message
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -236,7 +399,7 @@ __naked
     push bc        ;; remember filename length for later
     push de        ;; remember filename pointer for later
 
-    ld   hl, #UDP_HEADER_SIZE + RRQ_PREFIX_SIZE + RRQ_OPTION_SIZE
+    ld   hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
     add  hl, bc
 
     ;; stack arguments
@@ -260,7 +423,7 @@ __naked
 
     ;; append 16-bit TFTP opcode
 
-    ld   bc, #RRQ_PREFIX_SIZE
+    ld   bc, #TFTP_SIZE_OF_RRQ_PREFIX
     push bc
     ld   hl, #tftp_rrq_prefix
     push hl
@@ -276,7 +439,7 @@ __naked
 
     ;; append option ("octet" mode)
 
-    ld   bc, #RRQ_OPTION_SIZE
+    ld   bc, #TFTP_SIZE_OF_RRQ_OPTION
     push bc
     ld   hl, #tftp_rrq_option
     push hl
