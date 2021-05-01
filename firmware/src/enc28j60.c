@@ -112,24 +112,24 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_write_register16_impl(uint8_t regdesc_hi, uint8_t regdesc_lo, uint16_t value)
+enc28j60_write_register16_impl(uint8_t regdesc_lo, uint8_t regdesc_hi, uint16_t value)
 {
   (void) regdesc_hi, regdesc_lo, value;
 
   __asm
 
     pop    bc     ;; return address
-    pop    de     ;; E=reg_hi, D=reg_lo
+    pop    de     ;; D=reg_hi, E=reg_lo
     pop    hl     ;; value
     push   hl
     push   de
     push   bc
 
-    ld     c, e
+    ld     c, d
     ld     b, h
     push   bc
 
-    ld     c, d
+    ld     c, e
     ld     b, l
     push   bc
 

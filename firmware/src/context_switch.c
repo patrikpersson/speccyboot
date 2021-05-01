@@ -54,9 +54,8 @@
  *    ei / di       (depending on whether interrupts are to be enabled)
  *    jp  NN
  *
- * (IP configuration and state for registers BC, DE, HL, SP, F, R follow
+ * (state for registers BC, DE, HL, SP, F, R follow
  * in the remaining scan lines of this 5-cell trampoline)
-
  */
 #define VRAM_TRAMPOLINE_START           0x4000
 #define VRAM_TRAMPOLINE_OUT             (VRAM_TRAMPOLINE_START)
@@ -81,13 +80,6 @@
 #define VRAM_REGSTATE_DE                0x4400
 #define VRAM_REGSTATE_HL                0x4402
 #define VRAM_REGSTATE_R                 0x4404
-
-/*
- * IP configuration, stored in VRAM along with the trampoline
- */
-
-#define VRAM_TRAMPOLINE_HOST_IP         0x4500
-#define VRAM_TRAMPOLINE_TFTP_SERVER_IP  0x4600
 
 /* ------------------------------------------------------------------------ */
 
@@ -239,12 +231,6 @@ write_trampoline_loop::
     snapshot_header.hw_state_7ffd = 0x30 + DEFAULT_BANK; /* lock, ROM 1 */
   }
 
-  /*
-   * Write IP configuration to VRAM trampoline area
-   */
-  STORE_IP(VRAM_TRAMPOLINE_HOST_IP, ip_config.host_address);
-  STORE_IP(VRAM_TRAMPOLINE_TFTP_SERVER_IP, ip_config.tftp_server_address);
-
   /* Write data to ENC28J60. */
   enc28j60_write_memory_at(ENC28J60_EVACUATED_DATA,
 			   (uint8_t *) EVACUATION_TEMP_BUFFER,
@@ -259,54 +245,92 @@ write_trampoline_loop::
  */
 void
 context_switch(void)
+__naked
 {
-  // set up ERDPT for reading from the ENC28J60 below (ENC28J60_READ_INLINE)
-  enc28j60_write_register16(ERDPT, ENC28J60_EVACUATED_DATA);
-
-  /*
-   * Restore paging and sound register contents, if valid values exist
-   */
-  if (IS_EXTENDED_SNAPSHOT_HEADER(&snapshot_header)
-      && IS_128K_MACHINE(snapshot_header.hw_type))
-  {
-    static __sfr __banked __at(0xfffd) register_select;
-    static __sfr __banked __at(0xbffd) register_value;
-
-    uint8_t reg;
-
-    for (reg = 0; reg < 16; reg++) {
-      register_select = reg;
-      register_value  = snapshot_header.hw_state_snd[reg];
-    }
-    register_select = snapshot_header.hw_state_fffd;
-
-    /*
-     * For a plain 128k snapshot on a +2A/+3 machine, copy the ROM
-     * selection bit to the +2A/+3 memory configuration
-     */
-    memcfg_plus((snapshot_header.hw_state_7ffd & MEMCFG_PLUS_ROM_HI) >> 2);
-    memcfg(snapshot_header.hw_state_7ffd);
-  } else {
-    /*
-     * For 48k snapshots, we still need to write something to the
-     * paging registers
-     *
-     * (page in bank 0 at 0xc000, screen 0, 48k ROM, lock)
-     */
-    memcfg_plus(MEMCFG_PLUS_ROM_HI);
-    memcfg(MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK);
-  }
-
   __asm
 
+    ;; ------------------------------------------------------------------------
+    ;; set ERDPT := ENC28J60_EVACUATED_DATA
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #ENC28J60_EVACUATED_DATA
+    push hl
+    ld   hl, #ENC_OPCODE_WCR(ERDPTL) + 0x0100 * ENC_OPCODE_WCR(ERDPTH)
+    push hl
+    call _enc28j60_write_register16_impl
+    pop  hl
+    pop  hl
+
+    ;; ------------------------------------------------------------------------
+    ;; check whether this is a 48k or 128k snapshot
+    ;; ------------------------------------------------------------------------
+
+    ld   bc, #MEMCFG_ADDR
+
+    ;; 128k snapshots are only supported with .z80 versions with extended
+    ;; header, indicated by PC==0
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
+    ld   a, h
+    or   a, l
+    
+    ;; ------------------------------------------------------------------------
+    ;; For 48k snapshots, we still need to write something to the paging
+    ;; register (page in bank 0 at 0xc000, screen 0, 48k ROM, lock)
+    ;; ------------------------------------------------------------------------
+
+    ld   a, #MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK
+    jr   nz, context_switch_48k_snapshot ;; no extended header, so no 128k snapshot
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+    cp   a, #HW_TYPE_SPECTRUM_128K
+
+    ld   a, #MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK
+    jr   c, context_switch_48k_snapshot
+
+    ;; ------------------------------------------------------------------------
+    ;; 128k snapshot: restore sound registers
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #16   ;; D := 0; E := 16
+    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
+context_switch_snd_reg_loop::
+    ld   b, #>SND_REG_SELECT
+    out  (c), d
+    ld   b, #>SND_REG_VALUE
+    ld   a, (hl)
+    out  (c), a
+    inc  d
+    dec  e
+    jr   nz, context_switch_snd_reg_loop
+
+    ld   b, #>SND_REG_SELECT
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
+    out  (c), a
+
+    ;; ------------------------------------------------------------------------
+    ;; 128k snapshot: configure memory banks
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_7FFD)
+    ld   b, #>MEMCFG_ADDR
+
+context_switch_48k_snapshot::
+
+    out  (c), a
+
+    ;; ------------------------------------------------------------------------
     ;; Restore border
+    ;; ------------------------------------------------------------------------
 
     ld     a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
     rra
     and    a, #0x07
     out    (ULA_PORT), a
 
+    ;; ------------------------------------------------------------------------
     ;; Restore interrupt mode
+    ;; ------------------------------------------------------------------------
 
     di
 
@@ -320,11 +344,13 @@ context_switch(void)
     im     2
 context_switch_im_done::
 
+    ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
     ;; so we can avoid using VRAM for them:
     ;; - alternate registers (BC, DE, HL, AF)
     ;; - IX & IY
     ;; - I (interrupt register)
+    ;; ------------------------------------------------------------------------
 
     ld     bc, (_snapshot_header + Z80_HEADER_OFFSET_BC_P)
     ld     de, (_snapshot_header + Z80_HEADER_OFFSET_DE_P)
@@ -345,27 +371,33 @@ context_switch_im_done::
 
     ENC28J60_READ_INLINE(RUNTIME_DATA, RUNTIME_DATA_LENGTH)
 
+    ;; ------------------------------------------------------------------------
     ;; Restore F
+    ;; ------------------------------------------------------------------------
 
     ld    hl, #VRAM_REGSTATE_F
     ld    sp, hl
     pop   af
 
+    ;; ------------------------------------------------------------------------
     ;; Restore BC, DE, HL & SP
+    ;; ------------------------------------------------------------------------
 
     ld    bc, (VRAM_REGSTATE_BC)
     ld    de, (VRAM_REGSTATE_DE)
     ld    hl, (VRAM_REGSTATE_HL)
     ld    sp, (VRAM_REGSTATE_SP)
 
+    ;; ------------------------------------------------------------------------
     ;; Restore R
+    ;; ------------------------------------------------------------------------
 
     ld    a, (VRAM_REGSTATE_R)
     ld    r, a
 
-    ;;
+    ;; ------------------------------------------------------------------------
     ;; Set up final register state for trampoline
-    ;;
+    ;; ------------------------------------------------------------------------
 
     ld    a, #0x20      ;; page out SpeccyBoot, pull reset on ENC28J60 low
 

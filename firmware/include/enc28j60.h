@@ -260,7 +260,7 @@ enc28j60_internal_write8plus8(uint8_t opcode, uint8_t value);
 /* ------------------------------------------------------------------------- */
 
 #define enc28j60_write_register16(_r, _v) \
-  enc28j60_write_register16_impl(ENC_OPCODE_WCR(_r ## H), ENC_OPCODE_WCR(_r ## L), (_v))
+  enc28j60_write_register16_impl(ENC_OPCODE_WCR(_r ## L), ENC_OPCODE_WCR(_r ## H), (_v))
 
 /*
  * Write a 16-bit register, given as two register descriptors.

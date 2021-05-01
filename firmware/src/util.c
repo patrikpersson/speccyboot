@@ -30,7 +30,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "util.h"
+ #include "util.h"
+ #include "globals.h"
 
 /* ------------------------------------------------------------------------- */
 

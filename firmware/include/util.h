@@ -144,11 +144,9 @@ typedef uint16_t timer_t;
  * Configure memory (128k and +2A/+3 registers)
  * ------------------------------------------------------------------------- */
 #define memcfg(_c)              _memcfg_reg = (_c)
-#define memcfg_plus(_c)         _memcfg_plus_reg = (_c)
 
 /* Spectrum 128k/+2 memory configuration register */
 #define MEMCFG_ADDR             0x7ffd
-#define MEMCFG_SCREEN           0x08
 #define MEMCFG_ROM_LO           0x10
 #define MEMCFG_LOCK             0x20
 
@@ -157,7 +155,12 @@ typedef uint16_t timer_t;
 #define MEMCFG_PLUS_ROM_HI      0x04
 
 __sfr __banked __at(MEMCFG_ADDR)      _memcfg_reg;
-__sfr __banked __at(MEMCFG_PLUS_ADDR) _memcfg_plus_reg;
+
+/* -------------------------------------------------------------------------
+ * Sound registers (128k machines)
+ * ------------------------------------------------------------------------- */
+#define SND_REG_SELECT          0xfffd
+#define SND_REG_VALUE           0xbffd
 
 /* -------------------------------------------------------------------------
  * Reset/initialize a timer (set it to zero)
@@ -180,8 +183,8 @@ timer_value(timer_t timer);
  * number of bytes to compare (so, max 256).
  *
  * On return, Z is set if blocks are equal.
- * HL and DE are increased to first byte after the compared blocks.
- * B is zero on successful compare.
+ * On a successful compare, B is zero, and HL and DE point to the
+ * first byte after the compared blocks.
  * A is destroyed.
  * ------------------------------------------------------------------------- */
 void

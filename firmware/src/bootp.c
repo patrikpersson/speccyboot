@@ -1,7 +1,7 @@
 /*
-* Module bootp:
-*
-* Boot Protocol (BOOTP, RFC 951)
+ * Module bootp:
+ *
+ * Boot Protocol (BOOTP, RFC 951)
  *
  * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
  *
