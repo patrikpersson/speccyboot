@@ -210,29 +210,11 @@ eth_create(const struct mac_address_t *destination,
            eth_frame_class_t           frame_class);
 
 /* -------------------------------------------------------------------------
- * Append payload to a frame previously created with eth_create().
- * ------------------------------------------------------------------------- */
-#define eth_add_w_len(_pld, _n)                                               \
-  enc28j60_write_memory_cont((const uint8_t *) (_pld), (_n))
-
-#define eth_add(_pld)                                                         \
-   eth_add_w_len(&(_pld), sizeof(_pld))
-
-/* -------------------------------------------------------------------------
  * Send an Ethernet frame, previously created with eth_create().
  * total_nbr_of_bytes_in_payload:   number of bytes in payload
  *                                  (that is, excluding Ethernet header)
  * ------------------------------------------------------------------------- */
 void
 eth_send(uint16_t total_nbr_of_bytes_in_payload);
-
-/* -------------------------------------------------------------------------
- * Retrieve received Ethernet payload.  Returns 16-bit checksum of retrieved
- * data, using _checksum_in as the initial value.
- *
- * Assumes ERDPT points to the current reading location.
- * ------------------------------------------------------------------------- */
-#define eth_retrieve_payload(_buf_ptr, _nbr_bytes)                            \
-  enc28j60_read_memory_cont((const uint8_t *) (_buf_ptr), (_nbr_bytes))
 
 #endif /* SPECCYBOOT_ETH_INCLUSION_GUARD */

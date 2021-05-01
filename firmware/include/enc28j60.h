@@ -259,14 +259,15 @@ enc28j60_internal_write8plus8(uint8_t opcode, uint8_t value);
 
 /* ------------------------------------------------------------------------- */
 
+#define enc28j60_write_register16(_r, _v) \
+  enc28j60_write_register16_impl(ENC_OPCODE_WCR(_r ## H), ENC_OPCODE_WCR(_r ## L), (_v))
+
 /*
- * Writes a 16-bit register.
+ * Write a 16-bit register, given as two register descriptors.
+ * Use macro above to call.
  */
-#define enc28j60_write_register16(_r, _v)      do {                           \
-    uint16_t val = _v;                                                        \
-    enc28j60_write_register(_r ## L, LOBYTE(val));                            \
-    enc28j60_write_register(_r ## H, HIBYTE(val));                            \
-  } while(0)
+void
+enc28j60_write_register16_impl(uint8_t regdesc_hi, uint8_t regdesc_lo, uint16_t value);
 
 /* ------------------------------------------------------------------------- */
 

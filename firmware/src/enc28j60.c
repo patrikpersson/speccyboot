@@ -111,6 +111,96 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
+void
+enc28j60_write_register16_impl(uint8_t regdesc_hi, uint8_t regdesc_lo, uint16_t value)
+{
+  (void) regdesc_hi, regdesc_lo, value;
+
+  __asm
+
+    pop    bc     ;; return address
+    pop    de     ;; E=reg_hi, D=reg_lo
+    pop    hl     ;; value
+    push   hl
+    push   de
+    push   bc
+
+    ld     c, e
+    ld     b, h
+    push   bc
+
+    ld     c, d
+    ld     b, l
+    push   bc
+
+    call   _enc28j60_internal_write8plus8
+    pop    bc
+    call   _enc28j60_internal_write8plus8
+    pop    bc
+
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
+enc28j60_write_memory_cont(const uint8_t *src_addr, uint16_t nbr_bytes)
+__naked
+{
+  (void) src_addr, nbr_bytes;
+
+  __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; start transaction: WBM
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #ENC_OPCODE_WBM
+    push  af
+    inc   sp
+    call  _spi_write_byte
+    inc   sp
+
+    pop   de       ;; return address
+    pop   hl       ;; pointer to data
+    pop   bc       ;; number of bytes to write
+    push  bc
+    push  hl
+    push  de
+
+    ;; ------------------------------------------------------------------------
+    ;; write BC bytes, starting at HL
+    ;; ------------------------------------------------------------------------
+
+00001$:
+    push  bc
+    ld    a, (hl)  ;; read byte from data
+    inc   hl
+
+    push  af
+    inc   sp
+    call  _spi_write_byte   ;; preserves HL, destroys AF+BC+DE
+    inc   sp
+
+    pop   bc
+    dec   bc
+    ld    a, b
+    or    a, c
+    jr    nz, 00001$
+
+    ;; ------------------------------------------------------------------------
+    ;; end transaction
+    ;; ------------------------------------------------------------------------
+
+    jr    enc28j60_end_transaction_and_return
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
 uint8_t
 enc28j60_read_register(uint8_t register_descr)
 __naked
@@ -434,62 +524,6 @@ checksum_words_done::
     ld    (_enc28j60_ip_checksum), hl
 
     ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_write_memory_cont(const uint8_t *src_addr, uint16_t nbr_bytes)
-__naked
-{
-  (void) src_addr, nbr_bytes;
-
-  __asm
-
-    ;; ------------------------------------------------------------------------
-    ;; start transaction: WBM
-    ;; ------------------------------------------------------------------------
-
-    ld    a, #ENC_OPCODE_WBM
-    push  af
-    inc   sp
-    call  _spi_write_byte
-    inc   sp
-
-    pop   de       ;; return address
-    pop   hl       ;; pointer to data
-    pop   bc       ;; number of bytes to write
-    push  bc
-    push  hl
-    push  de
-
-    ;; ------------------------------------------------------------------------
-    ;; write BC bytes, starting at HL
-    ;; ------------------------------------------------------------------------
-
-00001$:
-    push  bc
-    ld    a, (hl)  ;; read byte from data
-    inc   hl
-
-    push  af
-    inc   sp
-    call  _spi_write_byte   ;; preserves HL, destroys AF+BC+DE
-    inc   sp
-
-    pop   bc
-    dec   bc
-    ld    a, b
-    or    a, c
-    jr    nz, 00001$
-
-    ;; ------------------------------------------------------------------------
-    ;; end transaction
-    ;; ------------------------------------------------------------------------
-
-    jp    enc28j60_end_transaction_and_return
 
   __endasm;
 }
