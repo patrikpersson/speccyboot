@@ -216,16 +216,6 @@ typedef uint16_t enc28j60_addr_t;
  */
 #define enc28j60_init()     __asm     SPI_RESET     __endasm
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Pull controller into reset, and keep it there
- */
-void
-enc28j60_disable(void) __naked;
-
-/* ------------------------------------------------------------------------- */
-
 /*
  * Ensure that the bank of the indicated register is paged in. Page 0 is
  * always paged in when outside of eth.c.

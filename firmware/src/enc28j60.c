@@ -44,13 +44,35 @@ uint16_t enc28j60_ip_checksum;
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_disable(void)
+enc28j60_select_bank(uint8_t bank)
 __naked
 {
-    __asm
+  (void) bank;
 
-      xor a, a
-      out (SPI_OUT), a
+  __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; clear bits 0 and 1 of register ECON1
+    ;; ------------------------------------------------------------------------
+
+    ld   bc, #0x0100 * 0x03 + ENC_OPCODE_BFC(ECON1)
+    push bc
+    call _enc28j60_internal_write8plus8
+    pop  bc
+
+    ;; ------------------------------------------------------------------------
+    ;; mask in "bank" in bits 0 and 1 of register ECON1
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #2
+    add  hl, sp
+    ld   b, (hl)
+    ld   c, #ENC_OPCODE_BFS(ECON1)
+    push bc
+    call _enc28j60_internal_write8plus8
+    pop  bc
+
+    ret
 
   __endasm;
 }
@@ -58,20 +80,33 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_select_bank(uint8_t bank)
-{
-  enc28j60_bitfield_clear(ECON1, 0x03);    /* clear bits 0 and 1 in ECON1 */
-  enc28j60_bitfield_set(ECON1, bank);
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
 enc28j60_internal_write8plus8(uint8_t opcode, uint8_t value)
+__naked
 {
-  spi_start_transaction(opcode);
-  spi_write_byte(value);
-  spi_end_transaction();
+  (void) opcode, value;
+
+  __asm
+
+    pop    hl    ;; return address
+
+    ;; ------------------------------------------------------------------------
+    ;; start transaction
+    ;; ------------------------------------------------------------------------
+
+    call  _spi_write_byte         ;; preserves HL
+    inc   sp
+    call  _spi_write_byte
+    dec   sp
+
+    ;; ------------------------------------------------------------------------
+    ;; end transaction
+    ;; ------------------------------------------------------------------------
+
+    push  hl
+
+    jr    enc28j60_end_transaction_and_return
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -118,6 +153,8 @@ __naked
     ;; ------------------------------------------------------------------------
     ;; end transaction
     ;; ------------------------------------------------------------------------
+
+enc28j60_end_transaction_and_return:
 
     ld  a, #SPI_IDLE
     out (SPI_OUT), a
@@ -330,10 +367,9 @@ final::
     adc   hl, bc    ;; add final carry
     ld    (_enc28j60_ip_checksum), hl
 
-    SPI_END_TRANSACTION
-
     pop   ix
-    ret
+
+    jp    enc28j60_end_transaction_and_return
 
   __endasm;
 }
@@ -453,12 +489,7 @@ __naked
     ;; end transaction
     ;; ------------------------------------------------------------------------
 
-    ld  a, #SPI_IDLE
-    out (SPI_OUT), a
-    ld  a, #SPI_IDLE+SPI_CS
-    out (SPI_OUT), a
-
-    ret
+    jp    enc28j60_end_transaction_and_return
 
   __endasm;
 }

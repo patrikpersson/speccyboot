@@ -56,7 +56,8 @@ run_menu(void)
   unsigned char *src = tftp_file_buf;
   uint16_t nbr_snapshots = 0;
 
-  eth_disable();
+  // TODO: put ENC28J60 in idle here
+
   set_attrs(INK(WHITE) | PAPER(BLACK), 23, 17, 15);
 
   /* --------------------------------------------------------------------------

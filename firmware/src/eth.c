@@ -443,7 +443,12 @@ __naked
 
     next_frame = rx_eth_adm.next_ptr;
     if (next_frame > ENC28J60_RXBUF_END) {  /* sanity check */
-      eth_init();
+      __asm
+
+        xor   a, a
+        out   (SPI_OUT), a
+
+      __endasm;
       continue;
     }
 

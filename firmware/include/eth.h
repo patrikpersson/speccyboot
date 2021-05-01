@@ -197,11 +197,6 @@ void
 eth_init(void);
 
 /* -------------------------------------------------------------------------
- * Disable Ethernet (pull controller into reset, and keep it there)
- * ------------------------------------------------------------------------- */
-#define eth_disable enc28j60_disable
-
-/* -------------------------------------------------------------------------
  * Create an Ethernet frame for transmission. If a previous frame is
  * currently in transmission, block until that is done first.
  *
