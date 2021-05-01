@@ -49,8 +49,8 @@ __naked
 {
     __asm
 
-    xor a, a
-    out (SPI_OUT), a
+      xor a, a
+      out (SPI_OUT), a
 
   __endasm;
 }
@@ -78,17 +78,55 @@ enc28j60_internal_write8plus8(uint8_t opcode, uint8_t value)
 
 uint8_t
 enc28j60_read_register(uint8_t register_descr)
+__naked
 {
-  uint8_t value;
+  (void) register_descr;
 
-  spi_start_transaction(ENC_OPCODE_RCR(register_descr));
-  if (IS_MAC_OR_MII(register_descr)) {
-    (void) spi_read_byte();             /* dummy byte for MAC/MII registers */
-  }
-  value = spi_read_byte();
-  spi_end_transaction();
+  __asm
 
-  return value;
+    ;; ------------------------------------------------------------------------
+    ;; start transaction: RCR
+    ;; ------------------------------------------------------------------------
+
+    pop  bc   ;; return address
+    pop  hl   ;; L == register_descr
+    push hl
+    push bc
+
+    ld    a, l
+    and   a, #0x1f       ;; opcode RCR = 0x00
+    push  af
+    inc   sp
+    call  _spi_write_byte
+    inc   sp
+
+    ;; ------------------------------------------------------------------------
+    ;; for MAC and MII registers, read and ignore a dummy byte
+    ;; ------------------------------------------------------------------------
+
+    ld    a, l
+    add   a, a   ;; bit 7 in descriptor set? then this is a MAC or MII register
+
+    call  c, _spi_read_byte
+
+    ;; ------------------------------------------------------------------------
+    ;; now read the actual register value
+    ;; ------------------------------------------------------------------------
+
+    call  _spi_read_byte
+
+    ;; ------------------------------------------------------------------------
+    ;; end transaction
+    ;; ------------------------------------------------------------------------
+
+    ld  a, #SPI_IDLE
+    out (SPI_OUT), a
+    ld  a, #SPI_IDLE+SPI_CS
+    out (SPI_OUT), a
+
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -107,6 +145,48 @@ enc28j60_poll_register(uint8_t register_descr,
   }
 
   fatal_error(FATAL_INTERNAL_ERROR);
+}
+
+/*
+ * Poll register until   (value & mask) == expected
+ *
+ * H=register
+ * D=expected
+ * E=mask
+ */
+void
+enc28j60_poll_register2(void)
+__naked
+{
+  __asm
+
+    ld     bc, #20000                   ;; a short while
+
+00001$:
+    push   bc
+    push   de
+    push   hl
+    inc    sp
+    call   _enc28j60_read_register
+    dec    sp
+    ld     a, l
+    pop    hl
+    pop    de
+    pop    bc
+
+    and    a, d
+    cp     a, e
+    ret    z
+
+    dec    bc
+    ld     a, b
+    or     a, c
+    jr     nz, 00001$
+
+    ld     a, #FATAL_INTERNAL_ERROR
+    jp     _fail
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -326,12 +406,59 @@ checksum_words_done::
 
 void
 enc28j60_write_memory_cont(const uint8_t *src_addr, uint16_t nbr_bytes)
+__naked
 {
-  uint16_t i;
+  (void) src_addr, nbr_bytes;
 
-  spi_start_transaction(ENC_OPCODE_WBM);
-  for (i = 0; i < nbr_bytes; i++) {
-    spi_write_byte(*src_addr++);
-  }
-  spi_end_transaction();
+  __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; start transaction: WBM
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #ENC_OPCODE_WBM
+    push  af
+    inc   sp
+    call  _spi_write_byte
+    inc   sp
+
+    pop   de       ;; return address
+    pop   hl       ;; pointer to data
+    pop   bc       ;; number of bytes to write
+    push  bc
+    push  hl
+    push  de
+
+    ;; ------------------------------------------------------------------------
+    ;; write BC bytes, starting at HL
+    ;; ------------------------------------------------------------------------
+
+00001$:
+    push  bc
+    ld    a, (hl)  ;; read byte from data
+    inc   hl
+
+    push  af
+    inc   sp
+    call  _spi_write_byte   ;; preserves HL, destroys AF+BC+DE
+    inc   sp
+
+    pop   bc
+    dec   bc
+    ld    a, b
+    or    a, c
+    jr    nz, 00001$
+
+    ;; ------------------------------------------------------------------------
+    ;; end transaction
+    ;; ------------------------------------------------------------------------
+
+    ld  a, #SPI_IDLE
+    out (SPI_OUT), a
+    ld  a, #SPI_IDLE+SPI_CS
+    out (SPI_OUT), a
+
+    ret
+
+  __endasm;
 }

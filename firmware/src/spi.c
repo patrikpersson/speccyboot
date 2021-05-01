@@ -8,7 +8,7 @@
  * ----------------------------------------------------------------------------
  *
  * Copyright (c) 2009, Patrik Persson
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -47,7 +47,7 @@ spi_read_byte_loop::
     djnz spi_read_byte_loop
 
     ret
-  
+
   __endasm;
 }
 
@@ -57,20 +57,23 @@ void
 spi_write_byte(uint8_t x)
 __naked
 {
-  (void) x;       /* silence warning about argument 'x' not used */
+  (void) x;
 
   __asm
-  
+
     ;; assumes x to be passed in (sp + 2)
-    
-    ld  hl, #2
-    add hl, sp
-    ld  b, #8
+
+    pop   de     ;; return address
+    pop   bc     ;; C is now byte to write
+    push  bc
+    push  de
+
+    ld    b, #8
 spi_write_byte_loop::
-    SPI_WRITE_BIT_FROM((hl))
-    djnz spi_write_byte_loop
+    SPI_WRITE_BIT_FROM(c)
+    djnz  spi_write_byte_loop
 
     ret
-  
+
   __endasm;
 }

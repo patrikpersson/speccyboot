@@ -470,6 +470,15 @@ __naked
 
 void
 udp_send(void)
+__naked
 {
-  eth_send(current_packet_length);
+  __asm
+
+    ld   hl, (_current_packet_length)
+    push hl
+    call _eth_send
+    pop  hl
+    ret
+
+  __endasm;
 }

@@ -217,24 +217,100 @@ perform_transmission(enc28j60_addr_t start_address,
 
 void
 eth_init(void)
+__naked
 {
-  uint8_t reg;
-  const uint8_t *params = eth_register_values;
+  __asm
 
-  enc28j60_init();
-  enc28j60_poll_until_set(ESTAT, ESTAT_CLKRDY);
+    ;; ========================================================================
+    ;; reset Ethernet controller
+    ;;
+    ;; Data sheet, Table 16.3: Trstlow = 400ns
+    ;; (minimal RST low time, shorter pulses are filtered out)
+    ;;
+    ;; 400ns < 2 T-states == 571ns    (no problem at all)
+    ;;
+    ;; Data sheet, #11.2:
+    ;;
+    ;; Wait at least 50us after a System Reset before accessing PHY registers.
+    ;; Perform an explicit delay here to be absolutely sure.
+    ;;
+    ;; 64 iterations, each is 13 T-states, 64x13 = 832 T-states > 234 @3.55MHz
+    ;;
+    ;; ========================================================================
 
-  /*
-   * Set up registers using the table above. PHY register access requires a
-   * delay of at least 10.24us (approx 37 T-states) between writes. The
-   * overhead in this loop safely covers this.
-   */
-  while ((reg = *params++) != END_OF_TABLE) {
-    enc28j60_select_bank(BANK(reg));
-    enc28j60_write_register(reg, *params++);
-  }
+    xor  a, a
+    out  (SPI_OUT), a
+    ld   a, #SPI_IDLE
+    out  (SPI_OUT), a
+    ld   b, a
+00001$:
+    djnz  00001$
 
-  next_frame = ENC28J60_RXBUF_START;
+    ;; ------------------------------------------------------------------------
+    ;; poll ESTAT until ESTAT_CLKRDY is set
+    ;; ------------------------------------------------------------------------
+
+    ld    h, #ESTAT
+    ld    de, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
+    call  _enc28j60_poll_register2
+
+    ;; ========================================================================
+    ;; set up initial register values for ENC28J60
+    ;; ========================================================================
+
+    ld    hl, #_eth_register_values
+
+eth_init_registers_loop:
+
+    ld    a, (hl)  ;; register descriptor, 8 bits
+    cp    a, #END_OF_TABLE
+    jr    z, eth_init_registers_done
+    inc   hl
+
+    push  hl
+    push  af      ;; stack register descriptor
+
+    ;; ------------------------------------------------------------------------
+    ;; select register bank (encoded as bits 5-6 from descriptor)
+    ;; ------------------------------------------------------------------------
+
+    rlca          ;; rotate left 3 == rotate right 5
+    rlca
+    rlca
+    and   a, #3
+    push  af      ;; stack bank (0-3)
+    inc   sp
+    call  _enc28j60_select_bank
+    inc   sp
+
+    ;; ------------------------------------------------------------------------
+    ;; write register value
+    ;; ------------------------------------------------------------------------
+
+    pop   af             ;; A is now register descriptor
+    and   a, #0x1f       ;; mask out register index (0..1f)
+    or    a, #ENC_OPCODE_WCRx
+    ld    c, a
+
+    pop   hl
+    ld    b, (hl)
+    inc   hl
+
+    push  hl         ;; remember position in table
+    push  bc         ;; push args
+    call  _enc28j60_internal_write8plus8
+    pop   bc
+    pop   hl
+    jr    eth_init_registers_loop
+
+
+eth_init_registers_done::
+
+    ld    hl, #ENC28J60_RXBUF_START
+    ld    (_next_frame), hl
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
