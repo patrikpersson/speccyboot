@@ -498,7 +498,6 @@ flush_not_needed::
 key_t
 wait_key(void)
 {
-  static timer_t repeat_timer;
   static key_t previous_key = KEY_NONE;
   static bool first_repetition;
 
@@ -510,11 +509,11 @@ wait_key(void)
      */
     while(poll_key() == previous_key) {
       if ((first_repetition
-           && timer_value(repeat_timer) >= REPEAT_FIRST_TIMEOUT)
+           && timer_value() >= REPEAT_FIRST_TIMEOUT)
           || ((! first_repetition)
-              && timer_value(repeat_timer) >= REPEAT_NEXT_TIMEOUT))
+              && timer_value() >= REPEAT_NEXT_TIMEOUT))
       {
-        timer_reset(repeat_timer);
+        timer_reset();
         first_repetition = false;
         return previous_key;
       }
@@ -524,7 +523,7 @@ wait_key(void)
     key = poll_key();
   } while (key == KEY_NONE);
 
-  timer_reset(repeat_timer);
+  timer_reset();
   previous_key = key;
   first_repetition = true;
   return key;

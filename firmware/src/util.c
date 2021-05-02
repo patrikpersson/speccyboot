@@ -40,31 +40,6 @@
  */
 volatile timer_t timer_tick_count = 0;
 
-/* -------------------------------------------------------------------------
- * Public API
- * ------------------------------------------------------------------------- */
-
-timer_t
-timer_value(timer_t timer)
-__naked
-{
-  (void) timer;
-
-  __asm
-
-    pop   de
-    pop   bc
-    push  bc
-    push  de
-
-    ld    hl, (_timer_tick_count)   ;; assumed to be atomic
-    xor   a
-    sbc   hl, bc
-    ret
-
-  __endasm;
-}
-
 /* ------------------------------------------------------------------------- */
 
 void

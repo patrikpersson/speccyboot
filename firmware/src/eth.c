@@ -79,13 +79,8 @@ static enc28j60_addr_t end_of_critical_frame;
 #define RETRANSMISSION_TIMEOUT_MIN            (3 * (TICKS_PER_SECOND))
 #define RETRANSMISSION_TIMEOUT_MAX            (24 * (TICKS_PER_SECOND))
 
-#define ack_timer_expired()                                                   \
-  (timer_value(ack_timer) > retransmission_timeout)
-
-/* ------------------------------------------------------------------------- */
-
-/* Timer for re-transmissions */
-static timer_t ack_timer;
+#define timer_expired() \
+  (timer_value() > retransmission_timeout)
 
 /* ------------------------------------------------------------------------- */
 
@@ -338,6 +333,12 @@ eth_create(const struct mac_address_t *destination,
 void
 eth_send(uint16_t total_nbr_of_bytes_in_payload)
 {
+#if 0
+  __asm
+  // TODO
+  __endasm;
+#else
+#endif
   /*
    * Last address = start
    *              + 1 (per-packet control byte)
@@ -354,7 +355,7 @@ eth_send(uint16_t total_nbr_of_bytes_in_payload)
     end_of_critical_frame = end_address;
 
     /* Sending a PRIORITY frame implies the previous one was acknowledged. */
-    timer_reset(ack_timer);
+    timer_reset();
     retransmission_timeout = RETRANSMISSION_TIMEOUT_MIN;
   }
 
@@ -396,9 +397,9 @@ __naked
         break;
       }
 
-      if (ack_timer_expired()) {
+      if (timer_expired()) {
 
-        timer_reset(ack_timer);
+        timer_reset();
 
         if (end_of_critical_frame != NO_FRAME_NEEDS_RETRANSMISSION) {
           /*

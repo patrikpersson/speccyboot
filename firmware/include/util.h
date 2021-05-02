@@ -163,20 +163,15 @@ __sfr __banked __at(MEMCFG_ADDR)      _memcfg_reg;
 #define SND_REG_VALUE           0xbffd
 
 /* -------------------------------------------------------------------------
- * Reset/initialize a timer (set it to zero)
+ * Reset/initialize the timer (set it to zero)
  * ------------------------------------------------------------------------- */
-#define timer_reset(_tmr)                                                     \
-  DISABLE_INTERRUPTS;                                                         \
-  (_tmr) = timer_tick_count;						      \
-  ENABLE_INTERRUPTS
+#define timer_reset()             timer_tick_count = 0
+/* -------------------------------------------------------------------------
+ * Returns the value of the timer, in ticks since it was reset
+ * ------------------------------------------------------------------------- */
+#define timer_value()             timer_tick_count
 
 extern volatile timer_t timer_tick_count;
-
-/* -------------------------------------------------------------------------
- * Returns the value of the given timer, in ticks since it was reset
- * ------------------------------------------------------------------------- */
-timer_t
-timer_value(timer_t timer);
 
 /* -------------------------------------------------------------------------
  * Compare memory blocks pointed to by HL and DE. Register B indicates the
