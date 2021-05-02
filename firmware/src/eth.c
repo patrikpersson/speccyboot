@@ -52,9 +52,6 @@ const struct mac_address_t eth_local_address = {
 /* Position of next frame to read from the ENC28J60 */
 static enc28j60_addr_t next_frame;
 
-/* Per-packet control byte: datasheet, section 7.1 */
-static const uint8_t per_packet_control_byte = 0x0E;
-
 /* =========================================================================
  * RE-TRANSMISSION HANDLING
  *
@@ -314,18 +311,114 @@ void
 eth_create(const struct mac_address_t *destination,
            uint16_t                    ethertype,
            eth_frame_class_t           frame_class)
+__naked
 {
-  current_txbuf = frame_class;                  /* Maps directly to a buffer */
+  (void) destination, ethertype, frame_class;
+  __asm
 
-  enc28j60_select_bank(ENC28J60_DEFAULT_BANK);
-  enc28j60_write_memory_at(current_txbuf,
-                           &per_packet_control_byte,
-                           sizeof(per_packet_control_byte));
-  enc28j60_write_memory_cont(destination->addr,
-                             sizeof(struct mac_address_t));
-  enc28j60_write_memory_cont(eth_local_address.addr,
-                             sizeof(struct mac_address_t));
-  enc28j60_write_memory_cont((const uint8_t *) &ethertype, sizeof(ethertype));
+    push  ix
+    ld    ix, #4
+    add   ix, sp
+
+    ;; assume
+    ;; destination at 0(ix), 1(ix)
+    ;; ethertype   at 2(ix), 3(ix)
+    ;; frame_class at 4(ix), 5(ix)
+
+    ;; ------------------------------------------------------------------------
+    ;; select default bank for ENC28J60
+    ;; ------------------------------------------------------------------------
+
+    xor   a, a     ;; ENC28J60_DEFAULT_BANK
+    push  af
+    inc   sp
+    call  _enc28j60_select_bank
+    inc   sp
+
+    ;; ------------------------------------------------------------------------
+    ;; frame_class maps directly to a buffer;
+    ;; store it in _current_txbuf
+    ;; ------------------------------------------------------------------------
+
+    ld    l, 4(ix)
+    ld    h, 5(ix)
+    ld    (_current_txbuf), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; set up EWRPT for writing packet data
+    ;; ------------------------------------------------------------------------
+
+    push  hl
+    ld    hl, #ENC_OPCODE_WCR(EWRPTL) + 0x0100 * ENC_OPCODE_WCR(EWRPTH)
+    push  hl
+    call  _enc28j60_write_register16_impl
+    pop   hl
+    pop   hl
+
+    ;; ========================================================================
+    ;; write Ethernet header, including administrative control byte
+    ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; write per-packet control byte  (0x0E; datasheet, section 7.1)
+    ;; ------------------------------------------------------------------------
+
+    ld    bc, #1
+    push  bc
+    ld    hl, #eth_create_control_byte
+    push  hl
+    call  _enc28j60_write_memory_cont
+    pop   hl
+    pop   bc
+
+    ;; ------------------------------------------------------------------------
+    ;; write destination (remote) MAC address
+    ;; ------------------------------------------------------------------------
+
+    ;; address of a 0x0E constant byte (instruction LD C, n)
+
+eth_create_control_byte::
+    ld    c, #ETH_ADDRESS_SIZE           ;; B==0 here
+    push  bc
+    ld    l, 0(ix)
+    ld    h, 1(ix)
+    push  hl
+    call  _enc28j60_write_memory_cont
+    pop   hl
+    pop   bc
+
+    ;; ------------------------------------------------------------------------
+    ;; write source (local) MAC address
+    ;; ------------------------------------------------------------------------
+
+    ;; BC still correct size
+    push  bc
+    ld    hl, #_eth_local_address
+    push  hl
+    call  _enc28j60_write_memory_cont
+    pop   hl
+    pop   bc
+
+    ;; ------------------------------------------------------------------------
+    ;; write Ethertype
+    ;; ------------------------------------------------------------------------
+
+    ld    c, #ETH_SIZEOF_ETHERTYPE           ;; B==0 here
+    push  bc
+
+    push  ix
+    pop   hl
+    inc   hl
+    inc   hl   ;; points to ethertype on stack
+    push  hl
+    call  _enc28j60_write_memory_cont
+    pop   hl
+    pop   bc
+
+    pop   ix
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -432,14 +525,11 @@ __naked
      * of class 'ETH_FRAME_PRIORITY', and reset the timer.
      */
     for (;;) {
-
       enc28j60_select_bank(BANK(EPKTCNT));
       if (enc28j60_read_register(EPKTCNT)) {
         break;
       }
-
       if (timer_expired()) {
-
         timer_reset();
 
         if (end_of_critical_frame != NO_FRAME_NEEDS_RETRANSMISSION) {
@@ -475,7 +565,6 @@ __naked
         }
       }
     }
-
     enc28j60_select_bank(ENC28J60_DEFAULT_BANK);
 
     /* Parse the packet, pass it on to IP or ARP. */

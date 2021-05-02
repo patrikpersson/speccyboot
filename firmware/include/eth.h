@@ -156,6 +156,8 @@ PACKED_STRUCT(eth_adm_t) {
 /* Ethernet HW type (as used by, e.g., ARP) */
 #define ETH_HWTYPE                  (1)
 
+#define ETH_SIZEOF_ETHERTYPE        (2)
+
 /*
  * Two classes of frames:
  *
