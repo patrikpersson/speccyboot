@@ -332,34 +332,75 @@ eth_create(const struct mac_address_t *destination,
 
 void
 eth_send(uint16_t total_nbr_of_bytes_in_payload)
+__naked
 {
-#if 0
+  (void) total_nbr_of_bytes_in_payload;
+
   __asm
-  // TODO
+
+    pop   hl    ;; return address
+    pop   bc    ;; total_nbr_of_bytes_in_payload
+    push  bc
+    push  hl
+
+    ;; ------------------------------------------------------------------------
+    ;; set HL = end address of frame in transmission buffer,
+    ;;     DE = start address of frame in transmission buffer
+    ;;
+    ;; end address = start
+    ;;               + 1 (per-packet control byte)
+    ;;               + ETH_HEADER_SIZE
+    ;;               + nbr_bytes
+    ;;               - 1 (point to last byte, not after it)
+    ;;             = start + ETH_HEADER_SIZE + nbr_bytes
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_current_txbuf)
+    ld    d, h
+    ld    e, l
+    add   hl, bc
+    ld    bc, #ETH_HEADER_SIZE
+    add   hl, bc
+
+    ;; ------------------------------------------------------------------------
+    ;; check if DE points to a critical frame (BOOTP/TFTP, not ARP)
+    ;; ------------------------------------------------------------------------
+
+    ld    a, d
+    cp    a, #>ETH_FRAME_PRIORITY
+    jr    nz, eth_send_timer_done
+    ld    a, e
+    cp    a, #<ETH_FRAME_PRIORITY
+    jr    nz, eth_send_timer_done
+
+    ;; ------------------------------------------------------------------------
+    ;; this is a critical frame:
+    ;;   update _end_of_critical_frame,
+    ;;   and reset retransmission timer
+    ;; ------------------------------------------------------------------------
+
+    ld    (_end_of_critical_frame), hl
+
+    ld    bc, #0
+    ld    (_timer_tick_count), bc
+    ld    c, #RETRANSMISSION_TIMEOUT_MIN    ;; B==0 here
+    ld    (_retransmission_timeout), bc
+
+eth_send_timer_done::
+
+    ;; ------------------------------------------------------------------------
+    ;; send Ethernet frame
+    ;; ------------------------------------------------------------------------
+
+    push  hl
+    push  de
+    call  _perform_transmission
+    pop   de
+    pop   hl
+
+    ret
+
   __endasm;
-#else
-#endif
-  /*
-   * Last address = start
-   *              + 1 (per-packet control byte)
-   *              + sizeof(struct eth_header_t)
-   *              + nbr_bytes
-   *              - 1 (point to last byte, not after it)
-   *              = start + sizeof(struct eth_header_t) + nbr_bytes
-   */
-  uint16_t end_address = current_txbuf
-                       + sizeof(struct eth_header_t)
-                       + total_nbr_of_bytes_in_payload;
-
-  if (current_txbuf == ETH_FRAME_PRIORITY) {
-    end_of_critical_frame = end_address;
-
-    /* Sending a PRIORITY frame implies the previous one was acknowledged. */
-    timer_reset();
-    retransmission_timeout = RETRANSMISSION_TIMEOUT_MIN;
-  }
-
-  perform_transmission(current_txbuf, end_address);
 }
 
 /* -------------------------------------------------------------------------
