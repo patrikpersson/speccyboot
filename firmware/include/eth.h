@@ -146,7 +146,12 @@ PACKED_STRUCT(eth_adm_t) {
   } eth_header;
 };
 
+#define ETH_ADM_OFFSETOF_NEXT_PTR     (0)
 #define ETH_ADM_OFFSETOF_SRC_ADDR     (12)
+#define ETH_ADM_OFFSETOF_ETHERTYPE    (18)
+
+/* sizeof(eth_adm_t), in a format usable in assembly code */
+#define ETH_ADM_HEADER_SIZE           (20)
 
 /* sizeof(eth_header_t), in a format usable in assembly code */
 #define ETH_HEADER_SIZE               (14)

@@ -504,111 +504,220 @@ void
 main(void)
 __naked
 {
+  __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; system initialization
+    ;; ------------------------------------------------------------------------
+
 #ifdef PAINT_STACK
-  paint_stack();
+    call  _paint_stack
 #endif
 
-  eth_init();
-  bootp_init();
+    call  _eth_init
+    call  _bootp_init
 
-  /*
-   * At this point, eth_send() has already been called once for a PRIORITY
-   * frame (BOOTP above), so the ACK timer does not need to be reset.
-   */
+    ;; ========================================================================
+    ;; main loop: receive packets and act on them
+    ;; ========================================================================
 
-  for (;;) {
-    /*
-     * Spin here until at least one frame is received. Do this by
-     * polling EPKTCNT. (Errata rev B5, item #4: do not trust EIR.PKTIF)
-     *
-     * If the re-transmission timer expires, re-send the last frame
-     * of class 'ETH_FRAME_PRIORITY', and reset the timer.
-     */
-    for (;;) {
-      enc28j60_select_bank(BANK(EPKTCNT));
-      if (enc28j60_read_register(EPKTCNT)) {
-        break;
-      }
-      if (timer_expired()) {
-        timer_reset();
+    ;; At this point, eth_send() has already been called once for a PRIORITY
+    ;; frame (BOOTP above), so the ACK timer does not need to be reset.
 
-        if (end_of_critical_frame != NO_FRAME_NEEDS_RETRANSMISSION) {
-          /*
-           * Timed out waiting for acknowledgment of a PRIORITY frame. Re-send
-           * the last PRIORITY frame, and double the retransmission time-out.
-           * Also add a bit of pseudo-random stuff to the time-out, because the
-           * text-book says so. (Only matters if you have a large group of
-           * SpeccyBoots on your LAN. Congratulations.)
-           */
-          if (retransmission_timeout >= RETRANSMISSION_TIMEOUT_MAX) {
-            fatal_error(FATAL_NO_RESPONSE);
-          }
+main_loop::
 
-          __asm
+    ;; ------------------------------------------------------------------------
+    ;; Spin here until at least one frame is received. Do this by
+    ;; polling EPKTCNT. (Errata rev B5, item #4: do not trust EIR.PKTIF)
+    ;;
+    ;; If the re-transmission timer expires, re-send the last frame
+    ;; of class 'ETH_FRAME_PRIORITY' (if any), and reset the timer.
+    ;; ------------------------------------------------------------------------
 
-            ld    hl, (_retransmission_timeout)
-            add   hl, hl
+    ld    l, #BANK(EPKTCNT)
+    push  hl
+    call  _enc28j60_select_bank
+    pop   hl
 
-            ld    a, r
-            add   a, #MAC_ADDR_0+MAC_ADDR_1+MAC_ADDR_2+MAC_ADDR_3+MAC_ADDR_4+MAC_ADDR_5
-            and   a, #0x1f
-            add   a, l
-            jr    nc, 9999$
-            inc   h
-          9999$:
-            ld    l, a
-            ld    (_retransmission_timeout), hl
+main_spin_loop::
 
-          __endasm;
+    ld    l, #EPKTCNT
+    push  hl
+    call  _enc28j60_read_register
+    pop   af
 
-          perform_transmission(ENC28J60_TXBUF1_START, end_of_critical_frame);
-        }
-      }
-    }
-    enc28j60_select_bank(ENC28J60_DEFAULT_BANK);
+    ;; take care to not POP HL above
 
-    /* Parse the packet, pass it on to IP or ARP. */
-    enc28j60_read_memory_at((uint8_t *) rx_eth_adm,
-                            next_frame,
-                            sizeof(rx_eth_adm));
+    ld    a, l
+    or    a, a
+    jr    nz, main_packet           ;; NZ means a packet has been received
 
-    next_frame = rx_eth_adm.next_ptr;
-    if (next_frame > ENC28J60_RXBUF_END) {  /* sanity check */
-      __asm
+    ;; ------------------------------------------------------------------------
+    ;; check for time-out
+    ;; ------------------------------------------------------------------------
 
-        xor   a, a
-        out   (SPI_OUT), a
+    ;; The SBC below depends on the C flag, which is zero here (from OR above).
+    ;; (for this timeout, +/-1 corresponds to +/-20ms, which would not matter
+    ;; anyway)
 
-      __endasm;
-      continue;
-    }
+    ld    hl, (_timer_tick_count)
+    ld    bc, (_retransmission_timeout)
+    sbc   hl, bc
+    jr    c, main_spin_loop       ;; carry means no time-out -- keep spinning
 
-    enc28j60_bitfield_set(ECON2, ECON2_PKTDEC);         /* decrease EPKTCNT */
+    ;; ------------------------------------------------------------------------
+    ;; time-out detected: first, reset timer
+    ;; ------------------------------------------------------------------------
 
-    /* Filter out broadcasts from this host. */
-    if (   rx_eth_adm.eth_header.src_addr.addr[0] != MAC_ADDR_0
-        || rx_eth_adm.eth_header.src_addr.addr[1] != MAC_ADDR_1
-        || rx_eth_adm.eth_header.src_addr.addr[2] != MAC_ADDR_2
-        || rx_eth_adm.eth_header.src_addr.addr[3] != MAC_ADDR_3
-        || rx_eth_adm.eth_header.src_addr.addr[4] != MAC_ADDR_4
-        || rx_eth_adm.eth_header.src_addr.addr[5] != MAC_ADDR_5)
-    {
-      switch (rx_eth_adm.eth_header.ethertype) {
-        case htons(ETHERTYPE_IP):
-          ip_receive();
-          break;
-        case htons(ETHERTYPE_ARP):
-          arp_receive();
-          break;
-      }
-    }
+    ld    hl, #0
+    ld    (_timer_tick_count), hl
 
-    /*
-     * Advance ERXRDPT
-     *
-     * Errata B5, #11:  EXRDPT must always be written with an odd value
-     */
-    enc28j60_select_bank(BANK(ERXRDPTL));
-    enc28j60_write_register16(ERXRDPT, (next_frame - 1) | 1);
-  }
+    ;; ------------------------------------------------------------------------
+    ;; if _end_of_critical_frame has the special value zero, no critical
+    ;; frame currently needs retransmission
+    ;; ------------------------------------------------------------------------
+
+    ld    de, (_end_of_critical_frame)
+    ld    a, d
+    or    a, e
+    jr    z, main_spin_loop      ;; nothing to retransmit -- keep spinning
+
+    ;; ------------------------------------------------------------------------
+    ;; If _retransmission_timeout >= RETRANSMISSION_TIMEOUT_MAX, give up.
+    ;; (Check the high byte only, that should be enough.)
+    ;; ------------------------------------------------------------------------
+
+    ld    a, b
+    cp    a, #>RETRANSMISSION_TIMEOUT_MAX
+    ld    a, #FATAL_NO_RESPONSE
+    jp    nc, _fail
+
+    ;; ------------------------------------------------------------------------
+    ;; double _retransmission_timeout
+    ;; ------------------------------------------------------------------------
+
+    add   hl, bc        ;; HL==0, so this means HL := BC
+    add   hl, bc        ;; double timeout
+    ld    (_retransmission_timeout), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; re-send last critical (BOOTP/TFTP) frame
+    ;; ------------------------------------------------------------------------
+
+    push  de
+    ld    hl, #ENC28J60_TXBUF1_START
+    push  hl
+    call  _perform_transmission
+    pop   hl
+    pop   de
+
+    jr    main_loop
+
+main_packet::
+
+    ;; ========================================================================
+    ;; done spinning: a packet has been received, bring it into Spectrum RAM
+    ;; ========================================================================
+
+    xor   a, a    ;; ENC28J60_DEFAULT_BANK
+    push  af
+    inc   sp
+    call  _enc28j60_select_bank
+    inc   sp
+
+    ;; ------------------------------------------------------------------------
+    ;; set ERDPT to _next_frame
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_next_frame)
+    push  hl
+    ld    hl, #ENC_OPCODE_WCR(ERDPTL) + 0x0100 * ENC_OPCODE_WCR(ERDPTH)
+    push  hl
+    call  _enc28j60_write_register16_impl
+    pop   hl
+    pop   hl
+
+    ld    bc, #ETH_ADM_HEADER_SIZE
+    push  bc
+    ld    hl, #_rx_eth_adm
+    push  hl
+    call  _enc28j60_read_memory_cont
+    pop   hl
+    pop   hl
+
+    ;; ------------------------------------------------------------------------
+    ;; update _next_frame
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_rx_eth_adm + ETH_ADM_OFFSETOF_NEXT_PTR)
+    ld    (_next_frame), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; decrease EPKTCNT (by setting bit PKTDEC in ECON2), so as to acknowledge
+    ;; the packet has been received from ENC28J60 by this host
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #0x0100 * ECON2_PKTDEC + ENC_OPCODE_BFS(ECON2)
+    push  hl
+    call  _enc28j60_internal_write8plus8
+    pop   hl
+
+    ;; ------------------------------------------------------------------------
+    ;; ignore broadcasts from this host (duh)
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    ld    de, #_eth_local_address
+    ld    b, #ETH_ADDRESS_SIZE
+    call  _memory_compare
+    jr    z, main_packet_done
+
+    ;; ------------------------------------------------------------------------
+    ;; pass packet to IP or ARP, if ethertype matches
+    ;; 0x0608 -> IP
+    ;; 0x0008 -> ARP
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_rx_eth_adm + ETH_ADM_OFFSETOF_ETHERTYPE)
+    ld    a, l
+    cp    a, #8
+    jr    nz, main_packet_done   ;; neither IP nor ARP -- ignore
+
+    ld    a, h
+    or    a, a
+    jr    z, main_packet_ip
+    cp    a, #6
+    jr    nz, main_packet_done
+    call  _arp_receive
+    jr    main_packet_done
+main_packet_ip::
+    call  _ip_receive
+
+main_packet_done::
+
+    ;; ------------------------------------------------------------------------
+    ;; advance ERXRDPT
+    ;; ------------------------------------------------------------------------
+
+    ld    l, #BANK(ERXRDPTL)
+    push  hl
+    call  _enc28j60_select_bank
+    pop   hl
+
+    ;; errata B5, item 11:  EXRDPT must always be written with an odd value
+
+    ld    hl, (_next_frame)
+    dec   hl
+    set   0, l
+
+    push  hl
+    ld    hl, #ENC_OPCODE_WCR(ERXRDPTL) + 0x0100 * ENC_OPCODE_WCR(ERXRDPTH)
+    push  hl
+    call  _enc28j60_write_register16_impl
+    pop   hl
+    pop   hl
+
+    jp    main_loop
+
+  __endasm;
 }
