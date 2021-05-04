@@ -117,13 +117,6 @@
 #define COMPILE_ASSERT_NAME(ln)    COMPILE_ASSERT_NAME2(ln)
 #define COMPILE_ASSERT_NAME2(ln)   assertion_at_line_ ## ln
 
-/* -------------------------------------------------------------------------
- * Interrupt control
- * ------------------------------------------------------------------------- */
-
-#define DISABLE_INTERRUPTS      __asm  di  __endasm
-#define ENABLE_INTERRUPTS       __asm  ei  __endasm
-
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -150,14 +143,10 @@ typedef uint16_t timer_t;
 #define MEMCFG_ROM_LO           0x10
 #define MEMCFG_LOCK             0x20
 
-/* Spectrum 128 +2A/+3 memory configuration register */
-#define MEMCFG_PLUS_ADDR        0x1ffd
-#define MEMCFG_PLUS_ROM_HI      0x04
-
 __sfr __banked __at(MEMCFG_ADDR)      _memcfg_reg;
 
 /* -------------------------------------------------------------------------
- * Sound registers (128k machines)
+ * I/O addresses for sound registers (128k machines)
  * ------------------------------------------------------------------------- */
 #define SND_REG_SELECT          0xfffd
 #define SND_REG_VALUE           0xbffd

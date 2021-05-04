@@ -51,6 +51,10 @@
  *    ld  a, #N
  *    jp  0x4200
  * 0x4200:
+ *    im0/im1/im2   (depending on snapshot interrupt mode)
+ *    jp  0x4300
+ * 0x4300:
+ *    nop           (for symmetry of JPs)
  *    ei / di       (depending on whether interrupts are to be enabled)
  *    jp  NN
  *
@@ -60,8 +64,10 @@
 #define VRAM_TRAMPOLINE_START           0x4000
 #define VRAM_TRAMPOLINE_OUT             (VRAM_TRAMPOLINE_START)
 #define VRAM_TRAMPOLINE_LD_A            0x4100
-#define VRAM_TRAMPOLINE_EIDI            0x4200
-#define VRAM_TRAMPOLINE_JP_FINAL        0x4201
+#define VRAM_TRAMPOLINE_IM_2ND_BYTE     0x4201
+#define VRAM_TRAMPOLINE_NOP             0x4300
+#define VRAM_TRAMPOLINE_EIDI            0x4301
+#define VRAM_TRAMPOLINE_JP_FINAL        0x4302
 
 /* ------------------------------------------------------------------------ */
 
@@ -73,13 +79,11 @@
 
 #define VRAM_REGSTATE_A                 (VRAM_TRAMPOLINE_LD_A + 1)
 
-#define VRAM_REGSTATE_BC                0x4300
-#define VRAM_REGSTATE_SP                0x4302
-#define VRAM_REGSTATE_F                 0x4304
+#define VRAM_REGSTATE_F_BC_HL           0x4400
 
-#define VRAM_REGSTATE_DE                0x4400
-#define VRAM_REGSTATE_HL                0x4402
-#define VRAM_REGSTATE_R                 0x4404
+#define VRAM_REGSTATE_SP                0x4500
+#define VRAM_REGSTATE_DE                0x4502
+#define VRAM_REGSTATE_R                 0x4504
 
 /* ------------------------------------------------------------------------ */
 
@@ -94,22 +98,14 @@
  *          N = actual value of R (as presented in binary by the test image)
  * - Set REG_R_OFFSET := (E - N)
  */
-#define REG_R_OFFSET                    (0xf8)
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * Macros to store 8- or 16-bit values on absolute addresses
- */
-#define STORE8(addr, value)         (*((uint8_t *)(addr)) = value)
-#define STORE16(addr, value)        (*((uint16_t *)(addr)) = value)
-#define STORE_IP(addr, value)       (*((ipv4_address_t *)(addr)) = value)
+#define REG_R_OFFSET                    (0xf4)
 
 /* ========================================================================= */
 
 #ifndef SB_MINIMAL
 void
 evacuate_data(void)
+__naked
 {
   /*
    * Clear out the top-left five character cells, by setting ink colour
@@ -189,52 +185,122 @@ write_trampoline_loop::
       ld   a, h
       inc  a
       ld   (hl), a
-      inc  h
-      ld   a, h
-      cp   #0x42
+      ld   h, a
+      cp   #0x44
     jr   nz, write_trampoline_loop
 
-    ld   hl, #VRAM_TRAMPOLINE_OUT
-    ld   (hl), #0xD3             ;;  *0x4000 = OUT(N),A
+    ld   hl, #0xD3 + 0x100 * SPI_OUT    ;; *0x4000 = OUT(SPI_OUT), A
+    ld   (VRAM_TRAMPOLINE_OUT), hl
+
+    ld   hl, #VRAM_TRAMPOLINE_LD_A
+    ld   (hl), #0x3E                    ;;  *0x4100 = LD A, #N
     inc  h
-    ld   (hl), #0x3E             ;;  *0x4100 = LD A, #N
-    inc  l
+    ld   (hl), #0xED                    ;;  *0x4200 = first byte of IM x
     inc  h
-    ld   (hl), #0xC3             ;;  *0x4201 = JP NN
-    dec  h
-    dec  h
-    ld   (hl), #SPI_OUT          ;;  *0x4001 = address for OUT above
+    ld   (hl), #0                       ;;  *0x4300 = NOP
+
+    ;; ------------------------------------------------------------------------
+    ;; write IM0/IM1/IM2 to trampoline
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
+    ld   hl, #VRAM_TRAMPOLINE_IM_2ND_BYTE
+    ld   b, #0x46   ;; second byte of IM0
+    and  a, #3
+    jr   z, im_set
+    ld   b, #0x56   ;; second byte of IM1
+    dec  a
+    jr   z, im_set
+    ld   b, #0x5E   ;; second byte of IM2
+im_set::
+    ld   (hl), b
+
+    ;; ------------------------------------------------------------------------
+    ;; write EI or DI to trampoline, depending on IFF1 state in snapshot
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_IFF1)
+    or   a, a
+    ld   a, #0xFB           ;; EI
+    jr   nz, evacuate_ei
+    ld   a, #0xF3           ;; DI
+evacuate_ei::
+    ld   (VRAM_TRAMPOLINE_EIDI), a
+
+    ;; ------------------------------------------------------------------------
+    ;; write register state to VRAM trampoline area
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_A)
+    ld   (VRAM_REGSTATE_A), a
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_R)
+    add  a, #REG_R_OFFSET
+    and  a, #0x7f
+    ld   b, a
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
+    and  a, #0x01
+    rrca
+    or   a, b
+    ld   (VRAM_REGSTATE_R), a
+
+    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_F_BC_HL
+    ld   de, #VRAM_REGSTATE_F_BC_HL
+    ld   bc, #5                  ;; F + BC + HL
+    ldir
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_DE)
+    ld   (VRAM_REGSTATE_DE), hl
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_SP)
+    ld   (VRAM_REGSTATE_SP), hl
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
+    ld   a, h
+    or   a, l      ;; extended snapshot (version 2+) ?
+    jr   nz, evacuate_pc_z80v1
+
+    ;; ------------------------------------------------------------------------
+    ;; snapshot version 2+: use PC value from extended snapshot header
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_EXT_PC)
+    jr   evacuate_pc
+evacuate_pc_z80v1::
+
+    ;; ------------------------------------------------------------------------
+    ;; snapshot version 1: use PC value from regular snapshot header,
+    ;; and set 128k bank configuration to 48k mode (locked banks, ROM1)
+    ;; ------------------------------------------------------------------------
+
+    ld   a, #0x30 + DEFAULT_BANK
+    ld   (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_7FFD), a
+evacuate_pc::
+    ld   (VRAM_REGSTATE_PC), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; write evacuated data to ENC28J60 RAM
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #ENC28J60_EVACUATED_DATA
+    push hl
+    ld   hl, #ENC_OPCODE_WCR(EWRPTL) + 0x0100 * ENC_OPCODE_WCR(EWRPTH)
+    push hl
+    call _enc28j60_write_register16_impl
+    pop  hl
+    pop  hl
+
+    ld   bc, #RUNTIME_DATA_LENGTH
+    push bc
+    ld   hl, #EVACUATION_TEMP_BUFFER
+    push hl
+    call _enc28j60_write_memory_cont
+    pop  hl
+    pop  hl
+
+    ret
 
   __endasm;
-
-  STORE8(VRAM_TRAMPOLINE_EIDI,
-         (snapshot_header.iff1) ? 0xFB : 0xF3);  /* ei / di */
-
-  /*
-   * Write register state to VRAM trampoline area
-   */
-  STORE8(VRAM_REGSTATE_A, snapshot_header.a);
-  STORE8(VRAM_REGSTATE_F, snapshot_header.f);
-  STORE8(VRAM_REGSTATE_R,
-         ((snapshot_header.r + REG_R_OFFSET) & 0x7f)
-          | ((snapshot_header.snapshot_flags & 0x01) << 7));
-  STORE16(VRAM_REGSTATE_BC, snapshot_header.bc);
-  STORE16(VRAM_REGSTATE_DE, snapshot_header.de);
-  STORE16(VRAM_REGSTATE_HL, snapshot_header.hl);
-  STORE16(VRAM_REGSTATE_SP, snapshot_header.sp);
-
-  if (IS_EXTENDED_SNAPSHOT_HEADER(&snapshot_header)) {
-    STORE16(VRAM_REGSTATE_PC, snapshot_header.extended_pc);
-  }
-  else {
-    STORE16(VRAM_REGSTATE_PC, snapshot_header.pc);
-    snapshot_header.hw_state_7ffd = 0x30 + DEFAULT_BANK; /* lock, ROM 1 */
-  }
-
-  /* Write data to ENC28J60. */
-  enc28j60_write_memory_at(ENC28J60_EVACUATED_DATA,
-			   (uint8_t *) EVACUATION_TEMP_BUFFER,
-			   RUNTIME_DATA_LENGTH);
 }
 #endif
 
@@ -248,6 +314,8 @@ context_switch(void)
 __naked
 {
   __asm
+
+    di
 
     ;; ------------------------------------------------------------------------
     ;; set ERDPT := ENC28J60_EVACUATED_DATA
@@ -265,15 +333,13 @@ __naked
     ;; check whether this is a 48k or 128k snapshot
     ;; ------------------------------------------------------------------------
 
-    ld   bc, #MEMCFG_ADDR
-
     ;; 128k snapshots are only supported with .z80 versions with extended
     ;; header, indicated by PC==0
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
     ld   a, h
     or   a, l
-    
+
     ;; ------------------------------------------------------------------------
     ;; For 48k snapshots, we still need to write something to the paging
     ;; register (page in bank 0 at 0xc000, screen 0, 48k ROM, lock)
@@ -295,10 +361,11 @@ __naked
     ld   de, #16   ;; D := 0; E := 16
     ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
 context_switch_snd_reg_loop::
-    ld   b, #>SND_REG_SELECT
+    ld   bc, #SND_REG_SELECT
     out  (c), d
     ld   b, #>SND_REG_VALUE
     ld   a, (hl)
+    inc  hl
     out  (c), a
     inc  d
     dec  e
@@ -313,10 +380,10 @@ context_switch_snd_reg_loop::
     ;; ------------------------------------------------------------------------
 
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_7FFD)
-    ld   b, #>MEMCFG_ADDR
 
 context_switch_48k_snapshot::
 
+    ld   bc, #MEMCFG_ADDR
     out  (c), a
 
     ;; ------------------------------------------------------------------------
@@ -329,22 +396,6 @@ context_switch_48k_snapshot::
     out    (ULA_PORT), a
 
     ;; ------------------------------------------------------------------------
-    ;; Restore interrupt mode
-    ;; ------------------------------------------------------------------------
-
-    di
-
-    im     0   ;; start out with this as default, revise if needed
-    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
-    and    a, #0x03
-    jr     z, context_switch_im_done
-    im     1
-    cp     a, #1
-    jr     z, context_switch_im_done
-    im     2
-context_switch_im_done::
-
-    ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
     ;; so we can avoid using VRAM for them:
     ;; - alternate registers (BC, DE, HL, AF)
@@ -352,19 +403,26 @@ context_switch_im_done::
     ;; - I (interrupt register)
     ;; ------------------------------------------------------------------------
 
-    ld     bc, (_snapshot_header + Z80_HEADER_OFFSET_BC_P)
-    ld     de, (_snapshot_header + Z80_HEADER_OFFSET_DE_P)
-    ld     hl, (_snapshot_header + Z80_HEADER_OFFSET_HL_P)
+    ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_BC_P
+    ld     sp, hl
+    pop    bc
+    pop    de
+    pop    hl
     exx
 
-    ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_F_P
-    ld     sp, hl
-    pop    af
-    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_A_P)
-    ex     af, af'     ;; ' apostrophe for syntax coloring
+    ;; silly .z80 snapshot header has switched A and F,
+    ;; so some stack juggling is required
 
-    ld     ix, (_snapshot_header + Z80_HEADER_OFFSET_IX)
-    ld     iy, (_snapshot_header + Z80_HEADER_OFFSET_IY)
+    dec    sp
+    pop    af      ;; now we got A, but not F
+    ld     b, a
+    pop    af      ;; now we got F
+    dec    sp
+    ld     a, b
+    ex     af, af'     ;; ' apostrophe for syntax
+
+    pop     iy
+    pop     ix
 
     ld     a, (_snapshot_header + Z80_HEADER_OFFSET_I)
     ld     i, a
@@ -372,20 +430,21 @@ context_switch_im_done::
     ENC28J60_READ_INLINE(RUNTIME_DATA, RUNTIME_DATA_LENGTH)
 
     ;; ------------------------------------------------------------------------
-    ;; Restore F
+    ;; Restore F, BC, HL
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #VRAM_REGSTATE_F
+    ld    hl, #VRAM_REGSTATE_F_BC_HL
     ld    sp, hl
     pop   af
+    dec   sp
+    pop   bc
+    pop   hl
 
     ;; ------------------------------------------------------------------------
-    ;; Restore BC, DE, HL & SP
+    ;; Restore DE & SP
     ;; ------------------------------------------------------------------------
 
-    ld    bc, (VRAM_REGSTATE_BC)
     ld    de, (VRAM_REGSTATE_DE)
-    ld    hl, (VRAM_REGSTATE_HL)
     ld    sp, (VRAM_REGSTATE_SP)
 
     ;; ------------------------------------------------------------------------

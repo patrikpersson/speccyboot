@@ -152,10 +152,14 @@ PACKED_STRUCT(z80_snapshot_header_t) {
 /*
  * Offsets for use by assembly code  (should match header above)
  */
+#define Z80_HEADER_OFFSET_A                0
+#define Z80_HEADER_OFFSET_F_BC_HL          1
 #define Z80_HEADER_OFFSET_PC               6
 #define Z80_HEADER_OFFSET_SP               8
 #define Z80_HEADER_OFFSET_I                10
+#define Z80_HEADER_OFFSET_R                11
 #define Z80_HEADER_OFFSET_MISC_FLAGS       12
+#define Z80_HEADER_OFFSET_DE               13
 #define Z80_HEADER_OFFSET_BC_P             15
 #define Z80_HEADER_OFFSET_DE_P             17
 #define Z80_HEADER_OFFSET_HL_P             19
@@ -163,8 +167,10 @@ PACKED_STRUCT(z80_snapshot_header_t) {
 #define Z80_HEADER_OFFSET_F_P              22
 #define Z80_HEADER_OFFSET_IY               23
 #define Z80_HEADER_OFFSET_IX               25
+#define Z80_HEADER_OFFSET_IFF1             27
 #define Z80_HEADER_OFFSET_INT_MODE         29
 
+#define Z80_HEADER_OFFSET_EXT_PC           32
 #define Z80_HEADER_OFFSET_HW_TYPE          34
 #define Z80_HEADER_OFFSET_HW_STATE_7FFD    35
 #define Z80_HEADER_OFFSET_HW_STATE_FFFD    38
