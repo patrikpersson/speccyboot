@@ -87,12 +87,12 @@ static const uint8_t key_rows[] = {
  * Repeat time-outs: between the keypress and the first repetition, and for
  * any subsequent repetitions
  *
- * (measured in ticks of 20ms)
+ * (measured in double-ticks of 20ms)
  */
-#define REPEAT_FIRST_TIMEOUT    (20)
-#define REPEAT_NEXT_TIMEOUT     (5)
+#define REPEAT_FIRST_TIMEOUT    (40)
+#define REPEAT_NEXT_TIMEOUT     (10)
 
-#define REPEAT_NEXT_TIMEOUT     (5)
+#define REPEAT_NEXT_TIMEOUT     (10)
 
 /* ------------------------------------------------------------------------- */
 

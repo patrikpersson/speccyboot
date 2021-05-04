@@ -131,14 +131,15 @@ ram_trampoline::
   ;; --------------------------------------------------------------------------
   ;; RST 0x38 (50HZ INTERRUPT) ENTRYPOINT
   ;;
-  ;; Increase 16-bit value at '_timer_tick_count'
+  ;; Increase 16-bit value at '_timer_tick_count' by 2
   ;; --------------------------------------------------------------------------
 
   .org	0x38
   push  hl
-  ld	hl, (_timer_tick_count)
-  inc	hl
-  ld	(_timer_tick_count), hl
+  ld	  hl, (_timer_tick_count)
+  inc	  hl
+  inc	  hl
+  ld	  (_timer_tick_count), hl
   pop   hl
   ei
   ret

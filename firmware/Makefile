@@ -16,7 +16,7 @@ CFLAGS       = -mz80 --std-sdcc99 --Werror
 CFLAGS      += -I$(INCLUDEDIR) --opt-code-size
 
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
-LDFLAGS     += --code-loc 0x0043 --data-loc 0x5B60
+LDFLAGS     += --code-loc 0x0044 --data-loc 0x5B60
 
 # disable warnings about z80instructionSize(), don't matter
 CFLAGS      += -DVERSION='$(VERSION)' --disable-warning 218

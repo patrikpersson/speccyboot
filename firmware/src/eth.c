@@ -57,12 +57,12 @@ static enc28j60_addr_t next_frame;
  *
  * When ack_timer >= retransmission_timeout, and no acknowledgment received:
  *   retransmit
- *   double retransmission_timeout, up to 24s
+ *   double retransmission_timeout, up to 20.48s
  * When acknowledgment received:
- *   reset retransmission_timeout to 3s
+ *   reset retransmission_timeout to 2.56s
  * ========================================================================= */
 
-static uint16_t retransmission_timeout;
+static uint8_t retransmission_timeout;  /* high byte of time-out */
 
 /*
  * Special value for end_of_critical_frame to denote that no un-acknowledged
@@ -73,8 +73,9 @@ static uint16_t retransmission_timeout;
 /* Value to write to ETXND when a re-transmission is to be performed */
 static enc28j60_addr_t end_of_critical_frame;
 
-#define RETRANSMISSION_TIMEOUT_MIN            (3 * (TICKS_PER_SECOND))
-#define RETRANSMISSION_TIMEOUT_MAX            (24 * (TICKS_PER_SECOND))
+/* Timeouts for packet re-transmission, high byte only */
+#define RETRANSMISSION_TIMEOUT_MIN            (0x01)
+#define RETRANSMISSION_TIMEOUT_MAX            (0x08)
 
 /* ------------------------------------------------------------------------- */
 
@@ -535,12 +536,10 @@ __naked
     add   hl, bc
 
     ;; ------------------------------------------------------------------------
-    ;; check if DE points to a critical frame (BOOTP/TFTP, not ARP)
+    ;; Check if DE points to a critical frame (BOOTP/TFTP, not ARP). Only
+    ;; need to check the low byte.
     ;; ------------------------------------------------------------------------
 
-    ld    a, d
-    cp    a, #>ETH_FRAME_PRIORITY
-    jr    nz, eth_send_timer_done
     ld    a, e
     cp    a, #<ETH_FRAME_PRIORITY
     jr    nz, eth_send_timer_done
@@ -555,8 +554,8 @@ __naked
 
     ld    bc, #0
     ld    (_timer_tick_count), bc
-    ld    c, #RETRANSMISSION_TIMEOUT_MIN    ;; B==0 here
-    ld    (_retransmission_timeout), bc
+    ld    a, #RETRANSMISSION_TIMEOUT_MIN
+    ld    (_retransmission_timeout), a
 
 eth_send_timer_done::
 
@@ -635,30 +634,29 @@ main_spin_loop::
     ;; check for time-out
     ;; ------------------------------------------------------------------------
 
-    ;; The SBC below depends on the C flag, which is zero here (from OR above).
-    ;; (for this timeout, +/-1 corresponds to +/-20ms, which would not matter
-    ;; anyway)
-
-    ld    hl, (_timer_tick_count)
-    ld    bc, (_retransmission_timeout)
-    sbc   hl, bc
-    jr    c, main_spin_loop       ;; carry means no time-out -- keep spinning
+    ld    a, (_retransmission_timeout)
+    ld    b, a                             ;; remember for later
+    ld    a, (_timer_tick_count + 1)       ;; high byte
+    cp    a, b
+    jr    c, main_spin_loop         ;; carry means no time-out -- keep spinning
 
     ;; ------------------------------------------------------------------------
     ;; time-out detected: first, reset timer
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #0
+    xor   a, a      ;; better than ld hl, #0, as we can use A==0 below
+    ld    h, a
+    ld    l, a
     ld    (_timer_tick_count), hl
 
     ;; ------------------------------------------------------------------------
-    ;; if _end_of_critical_frame has the special value zero, no critical
-    ;; frame currently needs retransmission
+    ;; If _end_of_critical_frame has the special value zero, no critical
+    ;; frame currently needs retransmission. Only need to check high byte here,
+    ;; as the TX buffers are placed at the end of the ENC28J60 address space.
     ;; ------------------------------------------------------------------------
 
-    ld    de, (_end_of_critical_frame)
-    ld    a, d
-    or    a, e
+    ld    de, (_end_of_critical_frame)    ;; needed for later
+    or    a, d                   ;; assuming A==0
     jr    z, main_spin_loop      ;; nothing to retransmit -- keep spinning
 
     ;; ------------------------------------------------------------------------
@@ -667,7 +665,7 @@ main_spin_loop::
     ;; ------------------------------------------------------------------------
 
     ld    a, b
-    cp    a, #>RETRANSMISSION_TIMEOUT_MAX
+    cp    a, #RETRANSMISSION_TIMEOUT_MAX
     ld    a, #FATAL_NO_RESPONSE
     jp    nc, _fail
 
@@ -675,9 +673,9 @@ main_spin_loop::
     ;; double _retransmission_timeout
     ;; ------------------------------------------------------------------------
 
-    add   hl, bc        ;; HL==0, so this means HL := BC
-    add   hl, bc        ;; double timeout
-    ld    (_retransmission_timeout), hl
+    ld    a, b
+    add   a, a          ;; double timeout
+    ld    (_retransmission_timeout), a
 
     ;; ------------------------------------------------------------------------
     ;; re-send last critical (BOOTP/TFTP) frame
