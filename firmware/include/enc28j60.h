@@ -282,15 +282,19 @@ enc28j60_read_register(uint8_t register_descr);
 /*
  * Poll indicated ETH/MAC/MII register R until
  *
- *   (reg & mask) == value
+ *   (reg & mask) == expected_value
  *
  * If the condition is not fulfilled within a few seconds,
  * fatal_error() is called.
+ *
+ * Call with registers:
+ *
+ * H=reg
+ * D=mask
+ * E=expected_value
  */
 void
-enc28j60_poll_register(uint8_t register_descr,
-                       uint8_t mask,
-                       uint8_t value);
+enc28j60_poll_register(void);
 
 /* ------------------------------------------------------------------------- */
 

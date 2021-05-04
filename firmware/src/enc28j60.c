@@ -259,30 +259,7 @@ enc28j60_end_transaction_and_return:
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_poll_register(uint8_t register_descr,
-                       uint8_t mask,
-                       uint8_t value)
-{
-  int i;
-  for (i = 0; i < 10000; i++) {     /* a short while */
-    uint8_t r = enc28j60_read_register(register_descr);
-    if ((r & mask) == value) {
-      return;
-    }
-  }
-
-  fatal_error(FATAL_INTERNAL_ERROR);
-}
-
-/*
- * Poll register until   (value & mask) == expected
- *
- * H=register
- * D=expected
- * E=mask
- */
-void
-enc28j60_poll_register2(void)
+enc28j60_poll_register(void)
 __naked
 {
   __asm

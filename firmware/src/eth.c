@@ -76,9 +76,6 @@ static enc28j60_addr_t end_of_critical_frame;
 #define RETRANSMISSION_TIMEOUT_MIN            (3 * (TICKS_PER_SECOND))
 #define RETRANSMISSION_TIMEOUT_MAX            (24 * (TICKS_PER_SECOND))
 
-#define timer_expired() \
-  (timer_value() > retransmission_timeout)
-
 /* ------------------------------------------------------------------------- */
 
 /* Points to start of the buffer for the frame currently being created */
@@ -170,37 +167,119 @@ static const uint8_t eth_register_values[] = {
 static void
 perform_transmission(enc28j60_addr_t start_address,
                      enc28j60_addr_t end_address)
+__naked
 {
-  enc28j60_select_bank(BANK(ETXSTL));
-  enc28j60_write_register16(ETXST, start_address);
-  enc28j60_write_register16(ETXND, end_address);
+  (void) start_address, end_address;
 
-  /*
-   * Poll for link to come up (if it hasn't already)
-   *
-   * NOTE: this code assumes the MIREGADR/MICMD registers to be configured
-   *       for continuous scanning of PHSTAT2 -- see eth_init()
-   */
-  enc28j60_select_bank(BANK(MIRDH));
-  enc28j60_poll_until_set(MIRDH, PHSTAT2_HI_LSTAT);
+  __asm
 
-  /*
-   * Errata, #10:
-   *
-   * Reset transmit logic before transmitting a frame
-   */
-  enc28j60_bitfield_set(ECON1, ECON1_TXRST);
-  enc28j60_bitfield_clear(ECON1, ECON1_TXRST);
+      ;; ----------------------------------------------------------------------
+      ;; set up registers:  ETXST := start_address, ETXND := end_address
+      ;; ----------------------------------------------------------------------
 
-  enc28j60_bitfield_clear(EIE, EIE_TXIE);
-  enc28j60_bitfield_clear(EIR, EIR_TXIF + EIR_TXERIF);
+      ld    l, #BANK(ETXSTL)           ;; bank 0
+      push  hl
+      call  _enc28j60_select_bank
+      pop   hl
 
-  enc28j60_bitfield_clear(ESTAT, ESTAT_TXABRT);
+      pop   de   ;; return address
+      pop   hl   ;; start_address
+      pop   bc   ;; end_address
+      push  bc
+      push  hl
+      push  de
 
-  enc28j60_bitfield_set(ECON1, ECON1_TXRTS);
-  enc28j60_poll_until_clear(ECON1, ECON1_TXRTS);
+      push  bc   ;; remember BC=end_address
 
-  enc28j60_select_bank(ENC28J60_DEFAULT_BANK);
+      push  hl   ;; push start_address
+      ld    hl, #ENC_OPCODE_WCR(ETXSTL) + 0x0100 * ENC_OPCODE_WCR(ETXSTH)
+      push  hl
+      call  _enc28j60_write_register16_impl
+      pop   hl
+      pop   hl
+
+      ;; end_address already pushed above
+      ld    hl, #ENC_OPCODE_WCR(ETXNDL) + 0x0100 * ENC_OPCODE_WCR(ETXNDH)
+      push  hl
+      call  _enc28j60_write_register16_impl
+      pop   hl
+      pop   hl
+
+      ;; ----------------------------------------------------------------------
+      ;; Poll for link to come up (if it has not already)
+      ;;
+      ;; NOTE: this code assumes the MIREGADR/MICMD registers to be configured
+      ;;       for continuous scanning of PHSTAT2 -- see eth_init
+      ;; ----------------------------------------------------------------------
+
+      ld    l, #BANK(MIRDH)             ;; bank 2
+      push  hl
+      call  _enc28j60_select_bank
+      pop   hl
+
+      ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
+
+      ld    h, #MIRDH
+      ld    de, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
+      call  _enc28j60_poll_register
+
+      ;; ----------------------------------------------------------------------
+      ;; Errata, item 10:
+      ;;
+      ;; Reset transmit logic before transmitting a frame:
+      ;; set bit TXRST in ECON1, then clear it
+      ;; ----------------------------------------------------------------------
+
+      ld    l, #BANK(ECON1)           ;; bank 0
+      push  hl
+      call  _enc28j60_select_bank
+      pop   hl
+
+      ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFS(ECON1)
+      push  hl
+      call  _enc28j60_internal_write8plus8
+      pop   hl
+
+      ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFC(ECON1)
+      push  hl
+      call  _enc28j60_internal_write8plus8
+      pop   hl
+
+      ;; ----------------------------------------------------------------------
+      ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
+      ;; ----------------------------------------------------------------------
+
+      ld    hl, #0x0100 * EIE_TXIE + ENC_OPCODE_BFC(EIE)
+      push  hl
+      call  _enc28j60_internal_write8plus8
+      pop   hl
+
+      ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + ENC_OPCODE_BFC(EIR)
+      push  hl
+      call  _enc28j60_internal_write8plus8
+      pop   hl
+
+      ld    hl, #0x0100 * (ESTAT_TXABRT) + ENC_OPCODE_BFC(ESTAT)
+      push  hl
+      call  _enc28j60_internal_write8plus8
+      pop   hl
+
+      ;; ----------------------------------------------------------------------
+      ;; set ECON1.TXRTS, and poll it until it clears
+      ;; ----------------------------------------------------------------------
+
+      ld    hl, #0x0100 * ECON1_TXRTS + ENC_OPCODE_BFS(ECON1)
+      push  hl
+      call  _enc28j60_internal_write8plus8
+      pop   hl
+
+      ld    h, #ECON1
+      ld    de, #ECON1_TXRTS * 0x100
+      call  _enc28j60_poll_register
+
+      ret
+
+  __endasm;
 }
 
 /* ============================================================================
@@ -226,7 +305,7 @@ __naked
     ;; Wait at least 50us after a System Reset before accessing PHY registers.
     ;; Perform an explicit delay here to be absolutely sure.
     ;;
-    ;; 64 iterations, each is 13 T-states, 64x13 = 832 T-states > 234 @3.55MHz
+    ;; 64 iterations x (4+12)=16 T-states = 1024 T-states > 288us @3.55MHz
     ;;
     ;; ========================================================================
 
@@ -234,9 +313,9 @@ __naked
     out  (SPI_OUT), a
     ld   a, #SPI_IDLE
     out  (SPI_OUT), a
-    ld   b, a
 00001$:
-    djnz  00001$
+    dec  a
+    jr   nz, 00001$
 
     ;; ------------------------------------------------------------------------
     ;; poll ESTAT until ESTAT_CLKRDY is set
@@ -244,7 +323,7 @@ __naked
 
     ld    h, #ESTAT
     ld    de, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
-    call  _enc28j60_poll_register2
+    call  _enc28j60_poll_register
 
     ;; ========================================================================
     ;; set up initial register values for ENC28J60
