@@ -48,14 +48,20 @@
  *    out (0x9f), a
  *    jp  0x4100
  * 0x4100:
- *    ld  a, #N
+ *    ld  a, #N      (value to be set for I below)
  *    jp  0x4200
  * 0x4200:
- *    im0/im1/im2   (depending on snapshot interrupt mode)
+ *    ld  i, a
  *    jp  0x4300
  * 0x4300:
+ *    ld  a, #N
+ *    jp  0x4400
+ * 0x4400:
+ *    im0/im1/im2   (depending on snapshot interrupt mode)
+ *    jp  0x4500
+ * 0x4500:
  *    nop           (for symmetry of JPs)
- *    ei / di       (depending on whether interrupts are to be enabled)
+ *    ei / nop      (depending on whether interrupts are to be enabled)
  *    jp  NN
  *
  * (state for registers BC, DE, HL, SP, F, R follow
@@ -63,11 +69,13 @@
  */
 #define VRAM_TRAMPOLINE_START           0x4000
 #define VRAM_TRAMPOLINE_OUT             (VRAM_TRAMPOLINE_START)
-#define VRAM_TRAMPOLINE_LD_A            0x4100
-#define VRAM_TRAMPOLINE_IM_2ND_BYTE     0x4201
-#define VRAM_TRAMPOLINE_NOP             0x4300
-#define VRAM_TRAMPOLINE_EIDI            0x4301
-#define VRAM_TRAMPOLINE_JP_FINAL        0x4302
+#define VRAM_TRAMPOLINE_LD_A_FOR_I      0x4100
+#define VRAM_TRAMPOLINE_LD_I            0x4200
+#define VRAM_TRAMPOLINE_LD_A            0x4300
+#define VRAM_TRAMPOLINE_IM              0x4400
+#define VRAM_TRAMPOLINE_NOP             0x4500
+#define VRAM_TRAMPOLINE_EI_OR_NOP       0x4501
+#define VRAM_TRAMPOLINE_JP_FINAL        0x4502
 
 /* ------------------------------------------------------------------------ */
 
@@ -77,13 +85,16 @@
 
 #define VRAM_REGSTATE_PC                (VRAM_TRAMPOLINE_JP_FINAL + 1)
 
+#define VRAM_REGSTATE_I                 (VRAM_TRAMPOLINE_LD_A_FOR_I + 1)
+
 #define VRAM_REGSTATE_A                 (VRAM_TRAMPOLINE_LD_A + 1)
 
-#define VRAM_REGSTATE_F_BC_HL           0x4400
+#define VRAM_REGSTATE_BC_HL_F           0x4600
+#define VRAM_REGSTATE_F                 0x4604
 
-#define VRAM_REGSTATE_SP                0x4500
-#define VRAM_REGSTATE_DE                0x4502
-#define VRAM_REGSTATE_R                 0x4504
+#define VRAM_REGSTATE_SP                0x4700
+#define VRAM_REGSTATE_DE                0x4702
+#define VRAM_REGSTATE_R                 0x4704
 
 /* ------------------------------------------------------------------------ */
 
@@ -98,7 +109,7 @@
  *          N = actual value of R (as presented in binary by the test image)
  * - Set REG_R_OFFSET := (E - N)
  */
-#define REG_R_OFFSET                    (0xf4)
+#define REG_R_OFFSET                    (0xEF)
 
 /* ========================================================================= */
 
@@ -173,66 +184,88 @@ evac_colour_set::
       dec  d
     jr   nz, evacuate_data_loop1
 
-    ;;  write parts of trampoline code to VRAM (remainder done in C below)
+    ;; ------------------------------------------------------------------------
+    ;; write JP nn instructions to VRAM trampoline, at positions 0x40X2
+    ;; ------------------------------------------------------------------------
 
     ld   h, #0x40
+    ld   b, #6
 write_trampoline_loop::
       ld   l, #2
-      ld   (hl), #0xc3
+      ld   (hl), #0xc3        ;; JP nn
       inc  hl
-      ld   (hl), #0
+      ld   (hl), #0           ;; low byte of JP target is 0
       inc  hl
-      ld   a, h
-      inc  a
-      ld   (hl), a
-      ld   h, a
-      cp   #0x44
-    jr   nz, write_trampoline_loop
+      ld   (hl), h
+      inc  (hl)               ;; high byte of JP target
+      inc  h
+    djnz   write_trampoline_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; write OUT(SPI_OUT), A to trampoline
+    ;; ------------------------------------------------------------------------
 
     ld   hl, #0xD3 + 0x100 * SPI_OUT    ;; *0x4000 = OUT(SPI_OUT), A
     ld   (VRAM_TRAMPOLINE_OUT), hl
 
-    ld   hl, #VRAM_TRAMPOLINE_LD_A
-    ld   (hl), #0x3E                    ;;  *0x4100 = LD A, #N
-    inc  h
-    ld   (hl), #0xED                    ;;  *0x4200 = first byte of IM x
-    inc  h
-    ld   (hl), #0                       ;;  *0x4300 = NOP
-
     ;; ------------------------------------------------------------------------
-    ;; write IM0/IM1/IM2 to trampoline
+    ;; write LD A, x to trampoline  (value to be stored in I)
     ;; ------------------------------------------------------------------------
 
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_I - 1)
+    ld   l, #0x3E                  ;; LD A, n
+    ld   (VRAM_TRAMPOLINE_LD_A_FOR_I), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; write LD I, A to trampoline
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x47ED
+    ld   (VRAM_TRAMPOLINE_LD_I), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; write LD A, x to trampoline  (value to be stored in I)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_A - 1)
+    ld   l, #0x3E                  ;; LD A, n
+    ld   (VRAM_TRAMPOLINE_LD_A), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; write NOP and IM0/IM1/IM2 to trampoline
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #VRAM_TRAMPOLINE_NOP
+    ld   (hl), l                            ;; *0x4500 = NOP
+    dec  h
+    ld   (hl), #0xED                        ;; *0x04400 = first byte of IMx
+    inc  l
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
-    ld   hl, #VRAM_TRAMPOLINE_IM_2ND_BYTE
-    ld   b, #0x46   ;; second byte of IM0
+    ld   b, #0x46                           ;; second byte of IM0
     and  a, #3
     jr   z, im_set
-    ld   b, #0x56   ;; second byte of IM1
+    ld   b, #0x56                           ;; second byte of IM1
     dec  a
     jr   z, im_set
-    ld   b, #0x5E   ;; second byte of IM2
+    ld   b, #0x5E                           ;; second byte of IM2
 im_set::
     ld   (hl), b
 
     ;; ------------------------------------------------------------------------
-    ;; write EI or DI to trampoline, depending on IFF1 state in snapshot
+    ;; write EI or NOP to trampoline, depending on IFF1 state in snapshot
     ;; ------------------------------------------------------------------------
 
+    inc  h                                  ;; now back at 0x4501
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
+    jr   z, evacuate_di     ;; flag byte is zero, which also happens to be NOP
     ld   a, #0xFB           ;; EI
-    jr   nz, evacuate_ei
-    ld   a, #0xF3           ;; DI
-evacuate_ei::
-    ld   (VRAM_TRAMPOLINE_EIDI), a
+evacuate_di::
+    ld   (hl), a
 
     ;; ------------------------------------------------------------------------
     ;; write register state to VRAM trampoline area
     ;; ------------------------------------------------------------------------
-
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_A)
-    ld   (VRAM_REGSTATE_A), a
 
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_R)
     add  a, #REG_R_OFFSET
@@ -244,9 +277,13 @@ evacuate_ei::
     or   a, b
     ld   (VRAM_REGSTATE_R), a
 
-    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_F_BC_HL
-    ld   de, #VRAM_REGSTATE_F_BC_HL
+    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_F
+    ld   de, #VRAM_REGSTATE_F
     ld   bc, #5                  ;; F + BC + HL
+    ldi
+
+    ;; HL now points to _snapshot_header + Z80_HEADER_OFFSET_BC_HL
+    ld   de, #VRAM_REGSTATE_BC_HL_F
     ldir
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_DE)
@@ -424,21 +461,17 @@ context_switch_48k_snapshot::
     pop     iy
     pop     ix
 
-    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_I)
-    ld     i, a
-
     ENC28J60_READ_INLINE(RUNTIME_DATA, RUNTIME_DATA_LENGTH)
 
     ;; ------------------------------------------------------------------------
-    ;; Restore F, BC, HL
+    ;; Restore BC, HL, F
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #VRAM_REGSTATE_F_BC_HL
+    ld    hl, #VRAM_REGSTATE_BC_HL_F
     ld    sp, hl
-    pop   af
-    dec   sp
     pop   bc
     pop   hl
+    pop   af
 
     ;; ------------------------------------------------------------------------
     ;; Restore DE & SP

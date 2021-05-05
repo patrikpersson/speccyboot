@@ -153,7 +153,8 @@ PACKED_STRUCT(z80_snapshot_header_t) {
  * Offsets for use by assembly code  (should match header above)
  */
 #define Z80_HEADER_OFFSET_A                0
-#define Z80_HEADER_OFFSET_F_BC_HL          1
+#define Z80_HEADER_OFFSET_F                1
+#define Z80_HEADER_OFFSET_BC_HL            2
 #define Z80_HEADER_OFFSET_PC               6
 #define Z80_HEADER_OFFSET_SP               8
 #define Z80_HEADER_OFFSET_I                10
