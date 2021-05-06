@@ -43,7 +43,7 @@ __naked
 
     ld   b, #8
 spi_read_byte_loop::
-    SPI_READ_BIT_TO(L)
+    SPI_READ_BIT_TO(C)
     djnz spi_read_byte_loop
 
     ret
@@ -60,13 +60,6 @@ __naked
   (void) x;
 
   __asm
-
-    ;; assumes x to be passed in (sp + 2)
-
-    pop   de     ;; return address
-    pop   bc     ;; C is now byte to write
-    push  bc
-    push  de
 
     ld    b, #8
 spi_write_byte_loop::

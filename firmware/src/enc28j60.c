@@ -88,21 +88,22 @@ __naked
   __asm
 
     pop    hl    ;; return address
+    pop    de
+    push   de
+    push   hl
 
     ;; ------------------------------------------------------------------------
     ;; start transaction
     ;; ------------------------------------------------------------------------
 
-    call  _spi_write_byte         ;; preserves HL
-    inc   sp
+    ld    c, e
+    call  _spi_write_byte         ;; preserves HL+DE
+    ld    c, d
     call  _spi_write_byte
-    dec   sp
 
     ;; ------------------------------------------------------------------------
     ;; end transaction
     ;; ------------------------------------------------------------------------
-
-    push  hl
 
     jr    enc28j60_end_transaction_and_return
 
@@ -157,11 +158,8 @@ __naked
     ;; start transaction: WBM
     ;; ------------------------------------------------------------------------
 
-    ld    a, #ENC_OPCODE_WBM
-    push  af
-    inc   sp
+    ld    c, #ENC_OPCODE_WBM
     call  _spi_write_byte
-    inc   sp
 
     pop   de       ;; return address
     pop   hl       ;; pointer to data
@@ -176,13 +174,10 @@ __naked
 
 00001$:
     push  bc
-    ld    a, (hl)  ;; read byte from data
+    ld    c, (hl)  ;; read byte from data
     inc   hl
 
-    push  af
-    inc   sp
-    call  _spi_write_byte   ;; preserves HL, destroys AF+BC+DE
-    inc   sp
+    call  _spi_write_byte   ;; preserves HL+DE, destroys AF+BC
 
     pop   bc
     dec   bc
@@ -220,10 +215,8 @@ __naked
 
     ld    a, l
     and   a, #0x1f       ;; opcode RCR = 0x00
-    push  af
-    inc   sp
+    ld    c, a
     call  _spi_write_byte
-    inc   sp
 
     ;; ------------------------------------------------------------------------
     ;; for MAC and MII registers, read and ignore a dummy byte
@@ -273,7 +266,7 @@ __naked
     inc    sp
     call   _enc28j60_read_register
     dec    sp
-    ld     a, l
+    ld     a, c
     pop    hl
     pop    de
     pop    bc
@@ -309,11 +302,8 @@ __naked
 
     ;; spi_start_transaction(ENC_OPCODE_RBM);
 
-    ld    a, #ENC_OPCODE_RBM
-    push  af
-    inc   sp
+    ld    c, #ENC_OPCODE_RBM
     call  _spi_write_byte
-    inc   sp
 
     ;;
     ;; assume dst_addr    at (IX + 0)

@@ -295,7 +295,7 @@ evacuate_di::
 
     ;; ========================================================================
     ;; set PC value in VRAM trampoline, and clean up the values of
-    ;; these four fields in header:
+    ;; these fields in header:
     ;;   MISC_FLAGS,    to a good border value (0..7)
     ;;   A_P, F_P,      switched to make a single POP possible
     ;;   HW_TYPE,       to be either 0 (48k) or non-zero (128k)

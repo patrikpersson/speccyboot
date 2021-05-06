@@ -622,11 +622,11 @@ main_spin_loop::
     ld    l, #EPKTCNT
     push  hl
     call  _enc28j60_read_register
-    pop   af
+    pop   hl
 
     ;; take care to not POP HL above
 
-    ld    a, l
+    ld    a, c
     or    a, a
     jr    nz, main_packet           ;; NZ means a packet has been received
 

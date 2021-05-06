@@ -20,7 +20,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -54,7 +54,7 @@
  */
 
 #pragma save
-#pragma sdcc_hash + 
+#pragma sdcc_hash +
 
 /*
  * Reset the device on SPI (technically RST is not an SPI pin, but it happens
@@ -64,7 +64,7 @@
  * (minimal RST low time, shorter pulses are filtered out)
  *
  * 400ns < 2 T-states == 571ns    (no problem at all)
- * 
+ *
  * Data sheet, #11.2:
  *
  * Wait at least 50us after a System Reset before accessing PHY registers.
@@ -113,7 +113,7 @@ spi_reset_loop:                           \
  */
 
 #ifdef HWTARGET_SPECCYBOOT
-/* 
+/*
  * Optimized version for SpeccyBoot; assumes C=0x9f.
  * Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states
  */
@@ -156,26 +156,11 @@ spi_reset_loop:                           \
 
 #pragma restore
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Macros for beginning and ending an SPI transaction. The braces are there
- * for checking that two matching calls are used.
- */
-#define spi_start_transaction(opcode)   spi_write_byte(opcode); {
-
-/*
- * End an SPI transaction by pulling SCK low, then CS high.
- */
-#define spi_end_transaction()     }   \
-  __asm                               \
-  SPI_END_TRANSACTION                 \
-  __endasm
-
 /* ========================================================================= */
 
 /*
- * Read 8 bits from SPI.
+ * Read 8 bits from SPI to register C.
+ * Destroys B & AF.
  */
 uint8_t
 spi_read_byte(void)
@@ -184,7 +169,8 @@ __naked;
 /* ------------------------------------------------------------------------- */
 
 /*
- * Write 8 bits to SPI.
+ * Write 8 bits to SPI from register C.
+ * Destroys B & AF.
  */
 void
 spi_write_byte(uint8_t x)

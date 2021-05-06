@@ -272,7 +272,8 @@ enc28j60_write_register16_impl(uint8_t regdesc_hi, uint8_t regdesc_lo, uint16_t 
 /* ------------------------------------------------------------------------- */
 
 /*
- * Return value of indicated ETH/MAC/MII register.
+ * Read value of indicated ETH/MAC/MII register.
+ * The value is returned in (Z80) register C.
  */
 uint8_t
 enc28j60_read_register(uint8_t register_descr);
