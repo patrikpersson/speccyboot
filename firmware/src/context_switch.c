@@ -107,9 +107,9 @@
  * - Set it temporarily to 0, and run one of the test images
  * - Assume E = expected value of R        (0x2e in test image),
  *          N = actual value of R (as presented in binary by the test image)
- * - Set REG_R_OFFSET := (E - N)
+ * - Set REG_R_ADJUSTMENT := (E - N)
  */
-#define REG_R_OFFSET                    (0xEF)
+#define REG_R_ADJUSTMENT                    (0xEF)
 
 /* ========================================================================= */
 
@@ -118,15 +118,16 @@ void
 evacuate_data(void)
 __naked
 {
-  /*
-   * Clear out the top-left five character cells, by setting ink colour
-   * to the same as the paper colour. Which colour is chosen depends on how
-   * many pixels are set in that particular character cell.
-   *
-   * (These character cells are used as temporary storage for the trampoline
-   * below.)
-   */
   __asm
+
+    ;; ========================================================================
+    ;; Clear out the top-left five character cells, by setting ink colour
+    ;; to the same as the paper colour. Which colour is chosen depends on how
+    ;; many pixels are set in that particular character cell.
+    ;;
+    ;; (These character cells are used as temporary storage for the trampoline
+    ;; below.)
+    ;; ========================================================================
 
     ld   bc, #EVACUATION_TEMP_BUFFER
     ld   hl, #BITMAP_BASE
@@ -217,19 +218,19 @@ write_trampoline_loop::
     ld   (VRAM_TRAMPOLINE_LD_A_FOR_I), hl
 
     ;; ------------------------------------------------------------------------
+    ;; write LD A, x to trampoline  (actual value for A)
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_A)
+    ld   h, a
+    ld   (VRAM_TRAMPOLINE_LD_A), hl
+
+    ;; ------------------------------------------------------------------------
     ;; write LD I, A to trampoline
     ;; ------------------------------------------------------------------------
 
     ld   hl, #0x47ED
     ld   (VRAM_TRAMPOLINE_LD_I), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; write LD A, x to trampoline  (value to be stored in I)
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_A - 1)
-    ld   l, #0x3E                  ;; LD A, n
-    ld   (VRAM_TRAMPOLINE_LD_A), hl
 
     ;; ------------------------------------------------------------------------
     ;; write NOP and IM0/IM1/IM2 to trampoline
@@ -268,7 +269,7 @@ evacuate_di::
     ;; ------------------------------------------------------------------------
 
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_R)
-    add  a, #REG_R_OFFSET
+    add  a, #REG_R_ADJUSTMENT
     and  a, #0x7f
     ld   b, a
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
@@ -292,32 +293,75 @@ evacuate_di::
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_SP)
     ld   (VRAM_REGSTATE_SP), hl
 
+    ;; ========================================================================
+    ;; set PC value in VRAM trampoline, and clean up the values of
+    ;; these four fields in header:
+    ;;   MISC_FLAGS,    to a good border value (0..7)
+    ;;   A_P, F_P,      switched to make a single POP possible
+    ;;   HW_TYPE,       to be either 0 (48k) or non-zero (128k)
+    ;;   HW_STATE_7FFD, to a good default value also for 48k snapshots
+    ;; ========================================================================
+
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
     ld   a, h
     or   a, l      ;; extended snapshot (version 2+) ?
-    jr   nz, evacuate_pc_z80v1
+    jr   nz, evacuate_pc_z80v1_or_48k
 
     ;; ------------------------------------------------------------------------
-    ;; snapshot version 2+: use PC value from extended snapshot header
+    ;; snapshot version 2+: use PC value from extended snapshot header,
+    ;; load HW_TYPE into C, and memory config into B
     ;; ------------------------------------------------------------------------
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_EXT_PC)
-    jr   evacuate_pc
-evacuate_pc_z80v1::
+    ld   bc, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
 
     ;; ------------------------------------------------------------------------
-    ;; snapshot version 1: use PC value from regular snapshot header,
-    ;; and set 128k bank configuration to 48k mode (locked banks, ROM1)
+    ;; The HW_TYPE field interpretation depends on the .z80 snaphost
+    ;; version (sigh). So if the length field is >= 24 (i.e., version 3),
+    ;; HW_TYPE needs to be decreased by one.
     ;; ------------------------------------------------------------------------
 
-    ld   a, #0x30 + DEFAULT_BANK
-    ld   (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_7FFD), a
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_EXT_LENGTH)   ;; low byte
+    cp   a, #24
+    jr   c, evacuate_pc_z80v2      ;; C set if version 2 snapshot: keep HW_TYPE
+    dec  c                              ;; version 3 snapshot: decrease HW_TYPE
+evacuate_pc_z80v2::
+    ld   a, c
+    cp   a, #HW_TYPE_SPECTRUM_128K
+    jr   nc, evacuate_pc                 ;; 128k snapshot: keep config as it is
+evacuate_pc_z80v1_or_48k::
+    ld   b, #MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK
+    xor  a
 evacuate_pc::
     ld   (VRAM_REGSTATE_PC), hl
+    ld   c, a
+    ld   (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE), bc
 
     ;; ------------------------------------------------------------------------
-    ;; write evacuated data to ENC28J60 RAM
+    ;; clean up MISC_FLAGS, turn it into a value ready for OUT (0xFE), A
     ;; ------------------------------------------------------------------------
+
+    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+    ld   a, (hl)
+    rra
+    and    a, #0x07
+    ld   (hl), a
+
+    ;; ------------------------------------------------------------------------
+    ;; swap A_P and F_P (to make simple POP in context switch possible)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_A_P
+    ld   a, (hl)
+    inc  hl
+    ld   b, (hl)
+    ld   (hl), a
+    dec  hl
+    ld   (hl), b
+
+    ;; ========================================================================
+    ;; write evacuated data to ENC28J60 RAM
+    ;; ========================================================================
 
     ld   hl, #ENC28J60_EVACUATED_DATA
     push hl
@@ -367,29 +411,17 @@ __naked
     pop  hl
 
     ;; ------------------------------------------------------------------------
-    ;; check whether this is a 48k or 128k snapshot
+    ;; set up 128k memory configuration,
+    ;; and check whether this is a 48k or 128k snapshot
     ;; ------------------------------------------------------------------------
 
-    ;; 128k snapshots are only supported with .z80 versions with extended
-    ;; header, indicated by PC==0
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+    ld   bc, #MEMCFG_ADDR
+    out  (c), h
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
-    ld   a, h
-    or   a, l
-
-    ;; ------------------------------------------------------------------------
-    ;; For 48k snapshots, we still need to write something to the paging
-    ;; register (page in bank 0 at 0xc000, screen 0, 48k ROM, lock)
-    ;; ------------------------------------------------------------------------
-
-    ld   a, #MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK
-    jr   nz, context_switch_48k_snapshot ;; no extended header, so no 128k snapshot
-
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-    cp   a, #HW_TYPE_SPECTRUM_128K
-
-    ld   a, #MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK
-    jr   c, context_switch_48k_snapshot
+    ld   a, l
+    or   a, a
+    jr   z, context_switch_48k_snapshot
 
     ;; ------------------------------------------------------------------------
     ;; 128k snapshot: restore sound registers
@@ -398,7 +430,7 @@ __naked
     ld   de, #16   ;; D := 0; E := 16
     ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
 context_switch_snd_reg_loop::
-    ld   bc, #SND_REG_SELECT
+    ld   b, #>SND_REG_SELECT
     out  (c), d
     ld   b, #>SND_REG_VALUE
     ld   a, (hl)
@@ -412,24 +444,14 @@ context_switch_snd_reg_loop::
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
     out  (c), a
 
-    ;; ------------------------------------------------------------------------
-    ;; 128k snapshot: configure memory banks
-    ;; ------------------------------------------------------------------------
-
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_7FFD)
-
 context_switch_48k_snapshot::
 
-    ld   bc, #MEMCFG_ADDR
-    out  (c), a
-
     ;; ------------------------------------------------------------------------
-    ;; Restore border
+    ;; Restore border:
+    ;; the value at MISC_FLAGS has been pre-processed in _evacuate_data
     ;; ------------------------------------------------------------------------
 
     ld     a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
-    rra
-    and    a, #0x07
     out    (ULA_PORT), a
 
     ;; ------------------------------------------------------------------------
@@ -437,7 +459,6 @@ context_switch_48k_snapshot::
     ;; so we can avoid using VRAM for them:
     ;; - alternate registers (BC, DE, HL, AF)
     ;; - IX & IY
-    ;; - I (interrupt register)
     ;; ------------------------------------------------------------------------
 
     ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_BC_P
@@ -447,15 +468,11 @@ context_switch_48k_snapshot::
     pop    hl
     exx
 
-    ;; silly .z80 snapshot header has switched A and F,
-    ;; so some stack juggling is required
+    ;; the values for A and F are swapped in _evacuate_data,
+    ;; so these registers can be restored with a simple POP
+    ;; (otherwise some tedious stack juggling would be required)
 
-    dec    sp
-    pop    af      ;; now we got A, but not F
-    ld     b, a
-    pop    af      ;; now we got F
-    dec    sp
-    ld     a, b
+    pop    af
     ex     af, af'     ;; ' apostrophe for syntax
 
     pop     iy
@@ -471,7 +488,7 @@ context_switch_48k_snapshot::
     ld    sp, hl
     pop   bc
     pop   hl
-    pop   af
+    pop   af        ;; A gets wrong value here, but this is fixed in trampoline
 
     ;; ------------------------------------------------------------------------
     ;; Restore DE & SP

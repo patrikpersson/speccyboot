@@ -171,6 +171,7 @@ PACKED_STRUCT(z80_snapshot_header_t) {
 #define Z80_HEADER_OFFSET_IFF1             27
 #define Z80_HEADER_OFFSET_INT_MODE         29
 
+#define Z80_HEADER_OFFSET_EXT_LENGTH       30
 #define Z80_HEADER_OFFSET_EXT_PC           32
 #define Z80_HEADER_OFFSET_HW_TYPE          34
 #define Z80_HEADER_OFFSET_HW_STATE_7FFD    35
