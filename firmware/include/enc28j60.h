@@ -230,33 +230,12 @@ enc28j60_select_bank(uint8_t bank);
 /*
  * Write an 8-bit opcode plus another 8-bit value.
  *
- * (Not intended to be used directly, use macros below.)
+ * L holds opcode, H holds the value.
+ * Destroys BC, AF.
  */
 void
-enc28j60_internal_write8plus8(uint8_t opcode, uint8_t value);
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Write an 8-bit value to an ETH/MAC/MII register
- */
-#define enc28j60_write_register(descr, value)                                 \
-  enc28j60_internal_write8plus8(ENC_OPCODE_WCR(descr), value)
-
-/*
- * Set indicated bits of an ETH/MAC/MII register
- * (resulting register value = old value OR bits_to_set)
- */
-#define enc28j60_bitfield_set(descr, bits_to_set)                             \
-  enc28j60_internal_write8plus8(ENC_OPCODE_BFS(descr), bits_to_set)
-
-/*
- * Clear indicated bits of an ETH/MAC/MII register
- * (resulting register value = old value AND NOT bits_to_clear)
- */
-#define enc28j60_bitfield_clear(descr, bits_to_clear)                         \
-  enc28j60_internal_write8plus8(ENC_OPCODE_BFC(descr), bits_to_clear)
-
+enc28j60_internal_write8plus8(void );
+´
 /* ------------------------------------------------------------------------- */
 
 #define enc28j60_write_register16(_r, _v) \

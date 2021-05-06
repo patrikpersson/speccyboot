@@ -237,42 +237,30 @@ __naked
       pop   hl
 
       ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFS(ECON1)
-      push  hl
       call  _enc28j60_internal_write8plus8
-      pop   hl
 
       ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFC(ECON1)
-      push  hl
       call  _enc28j60_internal_write8plus8
-      pop   hl
 
       ;; ----------------------------------------------------------------------
       ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
       ;; ----------------------------------------------------------------------
 
       ld    hl, #0x0100 * EIE_TXIE + ENC_OPCODE_BFC(EIE)
-      push  hl
       call  _enc28j60_internal_write8plus8
-      pop   hl
 
       ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + ENC_OPCODE_BFC(EIR)
-      push  hl
       call  _enc28j60_internal_write8plus8
-      pop   hl
 
       ld    hl, #0x0100 * (ESTAT_TXABRT) + ENC_OPCODE_BFC(ESTAT)
-      push  hl
       call  _enc28j60_internal_write8plus8
-      pop   hl
 
       ;; ----------------------------------------------------------------------
       ;; set ECON1.TXRTS, and poll it until it clears
       ;; ----------------------------------------------------------------------
 
       ld    hl, #0x0100 * ECON1_TXRTS + ENC_OPCODE_BFS(ECON1)
-      push  hl
       call  _enc28j60_internal_write8plus8
-      pop   hl
 
       ld    h, #ECON1
       ld    de, #ECON1_TXRTS * 0x100
@@ -369,9 +357,9 @@ eth_init_registers_loop:
     inc   hl
 
     push  hl         ;; remember position in table
-    push  bc         ;; push args
+    push  bc         ;; move args
+    pop   hl         ;; into HL
     call  _enc28j60_internal_write8plus8
-    pop   bc
     pop   hl
     jr    eth_init_registers_loop
 
@@ -735,9 +723,7 @@ main_packet::
     ;; ------------------------------------------------------------------------
 
     ld    hl, #0x0100 * ECON2_PKTDEC + ENC_OPCODE_BFS(ECON2)
-    push  hl
     call  _enc28j60_internal_write8plus8
-    pop   hl
 
     ;; ------------------------------------------------------------------------
     ;; ignore broadcasts from this host (duh)

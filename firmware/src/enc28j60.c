@@ -55,10 +55,8 @@ __naked
     ;; clear bits 0 and 1 of register ECON1
     ;; ------------------------------------------------------------------------
 
-    ld   bc, #0x0100 * 0x03 + ENC_OPCODE_BFC(ECON1)
-    push bc
+    ld   hl, #0x0100 * 0x03 + ENC_OPCODE_BFC(ECON1)
     call _enc28j60_internal_write8plus8
-    pop  bc
 
     ;; ------------------------------------------------------------------------
     ;; mask in "bank" in bits 0 and 1 of register ECON1
@@ -66,11 +64,9 @@ __naked
 
     ld   hl, #2
     add  hl, sp
-    ld   b, (hl)
-    ld   c, #ENC_OPCODE_BFS(ECON1)
-    push bc
+    ld   h, (hl)
+    ld   l, #ENC_OPCODE_BFS(ECON1)
     call _enc28j60_internal_write8plus8
-    pop  bc
 
     ret
 
@@ -80,25 +76,18 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_internal_write8plus8(uint8_t opcode, uint8_t value)
+enc28j60_internal_write8plus8(void)
 __naked
 {
-  (void) opcode, value;
-
   __asm
-
-    pop    hl    ;; return address
-    pop    de
-    push   de
-    push   hl
 
     ;; ------------------------------------------------------------------------
     ;; start transaction
     ;; ------------------------------------------------------------------------
 
-    ld    c, e
+    ld    c, l
     call  _spi_write_byte         ;; preserves HL+DE
-    ld    c, d
+    ld    c, h
     call  _spi_write_byte
 
     ;; ------------------------------------------------------------------------
@@ -130,14 +119,12 @@ enc28j60_write_register16_impl(uint8_t regdesc_lo, uint8_t regdesc_hi, uint16_t 
     ld     b, h
     push   bc
 
-    ld     c, e
-    ld     b, l
-    push   bc
+    ld     h, l
+    ld     l, e
 
     call   _enc28j60_internal_write8plus8
-    pop    bc
+    pop    hl
     call   _enc28j60_internal_write8plus8
-    pop    bc
 
     ret
 
