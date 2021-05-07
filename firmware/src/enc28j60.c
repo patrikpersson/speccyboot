@@ -44,11 +44,22 @@ uint16_t enc28j60_ip_checksum;
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_select_bank(uint8_t bank)
+enc28j60_select_bank0(void)
 __naked
 {
-  (void) bank;
+  __asm
 
+    ld   e, #0
+
+    ;; fall-through to enc28j60_select_bank
+
+  __endasm;
+}
+
+void
+enc28j60_select_bank(void)
+__naked
+{
   __asm
 
     ;; ------------------------------------------------------------------------
@@ -62,13 +73,10 @@ __naked
     ;; mask in "bank" in bits 0 and 1 of register ECON1
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #2
-    add  hl, sp
-    ld   h, (hl)
+    ld   h, e
     ld   l, #ENC_OPCODE_BFS(ECON1)
-    call _enc28j60_internal_write8plus8
 
-    ret
+    ;; fall-through to enc28j60_internal_write8plus8
 
   __endasm;
 }
@@ -102,31 +110,21 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_write_register16_impl(uint8_t regdesc_lo, uint8_t regdesc_hi, uint16_t value)
+enc28j60_write_register16(void)
 {
-  (void) regdesc_hi, regdesc_lo, value;
-
   __asm
 
-    pop    bc     ;; return address
-    pop    de     ;; D=reg_hi, E=reg_lo
-    pop    hl     ;; value
-    push   hl
-    push   de
-    push   bc
-
-    ld     c, d
-    ld     b, h
-    push   bc
+    ld     e, a
+    inc    e
+    ld     d, h
 
     ld     h, l
-    ld     l, e
+    ld     l, a
 
     call   _enc28j60_internal_write8plus8
-    pop    hl
-    call   _enc28j60_internal_write8plus8
 
-    ret
+    ex     de, hl
+    jr     _enc28j60_internal_write8plus8
 
   __endasm;
 }

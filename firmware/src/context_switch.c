@@ -364,12 +364,8 @@ evacuate_pc::
     ;; ========================================================================
 
     ld   hl, #ENC28J60_EVACUATED_DATA
-    push hl
-    ld   hl, #ENC_OPCODE_WCR(EWRPTL) + 0x0100 * ENC_OPCODE_WCR(EWRPTH)
-    push hl
-    call _enc28j60_write_register16_impl
-    pop  hl
-    pop  hl
+    ld   a, #ENC_OPCODE_WCR(EWRPTL)
+    call _enc28j60_write_register16
 
     ld   bc, #RUNTIME_DATA_LENGTH
     push bc
@@ -403,12 +399,8 @@ __naked
     ;; ------------------------------------------------------------------------
 
     ld   hl, #ENC28J60_EVACUATED_DATA
-    push hl
-    ld   hl, #ENC_OPCODE_WCR(ERDPTL) + 0x0100 * ENC_OPCODE_WCR(ERDPTH)
-    push hl
-    call _enc28j60_write_register16_impl
-    pop  hl
-    pop  hl
+    ld   a, #ENC_OPCODE_WCR(ERDPTL)
+    call _enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
     ;; set up 128k memory configuration,

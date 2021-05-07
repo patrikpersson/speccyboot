@@ -212,18 +212,25 @@ typedef uint16_t enc28j60_addr_t;
 /* ========================================================================= */
 
 /*
- * Reset and initialize the controller.
- */
-#define enc28j60_init()     __asm     SPI_RESET     __endasm
-
-/*
- * Ensure that the bank of the indicated register is paged in. Page 0 is
- * always paged in when outside of eth.c.
+ * Ensure that register bank 0 is paged in.
+ *
+ * Destroys AF, BC, E, HL.
  */
 void
-enc28j60_select_bank(uint8_t bank);
+enc28j60_select_bank0(void);
 
-#define ENC28J60_DEFAULT_BANK        (0)
+/*
+ * Ensure that the bank in register E (0..3) is paged in. Page 0 is
+ * always paged in when outside of eth.c.
+ *
+ * Destroys AF, BC, HL.
+ */
+void
+enc28j60_select_bank(void);
+
+/* ------------------------------------------------------------------------- */
+
+extern uint16_t enc28j60_ip_checksum;
 
 /* ------------------------------------------------------------------------- */
 
@@ -238,15 +245,14 @@ enc28j60_internal_write8plus8(void );
 ´
 /* ------------------------------------------------------------------------- */
 
-#define enc28j60_write_register16(_r, _v) \
-  enc28j60_write_register16_impl(ENC_OPCODE_WCR(_r ## L), ENC_OPCODE_WCR(_r ## H), (_v))
-
 /*
- * Write a 16-bit register, given as two register descriptors.
- * Use macro above to call.
+ * Write a 16-bit register.
+ *
+ * Call with A set to a WCR opcode for the low half of the register,
+ * e.g., ENC_OPCODE_WCR(ERXRDPTL), and HL set to the 16-bit value to write.
  */
 void
-enc28j60_write_register16_impl(uint8_t regdesc_hi, uint8_t regdesc_lo, uint16_t value);
+enc28j60_write_register16(void);
 
 /* ------------------------------------------------------------------------- */
 
@@ -279,32 +285,11 @@ enc28j60_poll_register(void);
 /* ------------------------------------------------------------------------- */
 
 /*
- * Poll indicated ETH/MAC/MII register until indicated flag becomes cleared.
- *
- * If the flag is not cleared within a few seconds, fatal_error() is called.
- */
-#define enc28j60_poll_until_clear(reg, flag)                                  \
-  enc28j60_poll_register((reg), (flag), 0)
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Poll indicated ETH/MAC/MII register until indicated flag becomes set.
- *
- * If the flag is not set within a few seconds, fatal_error() is called.
- */
-#define enc28j60_poll_until_set(reg, flag)                                    \
-  enc28j60_poll_register((reg), (flag), (flag))
-
-/* ------------------------------------------------------------------------- */
-
-/*
  * Read a number of bytes from on-chip SRAM, continuing from previous read.
  * The checksum is updated automatically.
  */
 void
-enc28j60_read_memory_cont(uint8_t *dst_addr, uint16_t nbr_bytes)
-__naked;
+enc28j60_read_memory_cont(uint8_t *dst_addr, uint16_t nbr_bytes);
 
 /* ------------------------------------------------------------------------- */
 
@@ -312,37 +297,7 @@ __naked;
  * Add a number of 16-bit words to the IP-style checksum.
  */
 void
-enc28j60_add_checksum(const void *start_addr, uint16_t nbr_words)
-__naked;
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Access the IP-style (16 bit one-complement) checksum updated by
- * enc28j60_read_memory_{at|cont} and enc28j60_add_checksum.
- */
-#define enc28j60_get_checksum()                (enc28j60_ip_checksum)
-#define enc28j60_set_checksum(_c)              (enc28j60_ip_checksum = (_c))
-
-extern uint16_t enc28j60_ip_checksum;
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Read a number of bytes from a given address in on-chip SRAM.
- */
-#define enc28j60_read_memory_at(_dst, _src, _n)  {                            \
-  enc28j60_write_register16(ERDPT, (_src));                                   \
-  enc28j60_read_memory_cont((_dst), (_n));    }
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * Write a number of bytes to on-chip SRAM at a given address
- */
-#define enc28j60_write_memory_at(_dst, _src, _n)  {                           \
-  enc28j60_write_register16(EWRPT, (_dst));                                   \
-  enc28j60_write_memory_cont((_src), (_n));       }
+enc28j60_add_checksum(const void *start_addr, uint16_t nbr_words);
 
 /* ------------------------------------------------------------------------- */
 

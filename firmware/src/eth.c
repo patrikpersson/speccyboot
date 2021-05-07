@@ -178,10 +178,8 @@ __naked
       ;; set up registers:  ETXST := start_address, ETXND := end_address
       ;; ----------------------------------------------------------------------
 
-      ld    l, #BANK(ETXSTL)           ;; bank 0
-      push  hl
+      ld    e, #BANK(ETXSTL)           ;; bank 0
       call  _enc28j60_select_bank
-      pop   hl
 
       pop   de   ;; return address
       pop   hl   ;; start_address
@@ -192,19 +190,12 @@ __naked
 
       push  bc   ;; remember BC=end_address
 
-      push  hl   ;; push start_address
-      ld    hl, #ENC_OPCODE_WCR(ETXSTL) + 0x0100 * ENC_OPCODE_WCR(ETXSTH)
-      push  hl
-      call  _enc28j60_write_register16_impl
-      pop   hl
-      pop   hl
+      ld    a, #ENC_OPCODE_WCR(ETXSTL)
+      call  _enc28j60_write_register16
 
-      ;; end_address already pushed above
-      ld    hl, #ENC_OPCODE_WCR(ETXNDL) + 0x0100 * ENC_OPCODE_WCR(ETXNDH)
-      push  hl
-      call  _enc28j60_write_register16_impl
-      pop   hl
-      pop   hl
+      ld    a, #ENC_OPCODE_WCR(ETXNDL)
+      pop   hl   ;; end_address pushed above
+      call  _enc28j60_write_register16
 
       ;; ----------------------------------------------------------------------
       ;; Poll for link to come up (if it has not already)
@@ -213,10 +204,8 @@ __naked
       ;;       for continuous scanning of PHSTAT2 -- see eth_init
       ;; ----------------------------------------------------------------------
 
-      ld    l, #BANK(MIRDH)             ;; bank 2
-      push  hl
+      ld    e, #BANK(MIRDH)             ;; bank 2
       call  _enc28j60_select_bank
-      pop   hl
 
       ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
 
@@ -231,10 +220,8 @@ __naked
       ;; set bit TXRST in ECON1, then clear it
       ;; ----------------------------------------------------------------------
 
-      ld    l, #BANK(ECON1)           ;; bank 0
-      push  hl
+      ld    e, #BANK(ECON1)           ;; bank 0
       call  _enc28j60_select_bank
-      pop   hl
 
       ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFS(ECON1)
       call  _enc28j60_internal_write8plus8
@@ -338,10 +325,8 @@ eth_init_registers_loop:
     rlca
     rlca
     and   a, #3
-    push  af      ;; stack bank (0-3)
-    inc   sp
+    ld    e, a
     call  _enc28j60_select_bank
-    inc   sp
 
     ;; ------------------------------------------------------------------------
     ;; write register value
@@ -397,11 +382,7 @@ __naked
     ;; select default bank for ENC28J60
     ;; ------------------------------------------------------------------------
 
-    xor   a, a     ;; ENC28J60_DEFAULT_BANK
-    push  af
-    inc   sp
-    call  _enc28j60_select_bank
-    inc   sp
+    call  _enc28j60_select_bank0
 
     ;; ------------------------------------------------------------------------
     ;; frame_class maps directly to a buffer;
@@ -416,12 +397,8 @@ __naked
     ;; set up EWRPT for writing packet data
     ;; ------------------------------------------------------------------------
 
-    push  hl
-    ld    hl, #ENC_OPCODE_WCR(EWRPTL) + 0x0100 * ENC_OPCODE_WCR(EWRPTH)
-    push  hl
-    call  _enc28j60_write_register16_impl
-    pop   hl
-    pop   hl
+    ld    a, #ENC_OPCODE_WCR(EWRPTL)
+    call  _enc28j60_write_register16
 
     ;; ========================================================================
     ;; write Ethernet header, including administrative control byte
@@ -600,10 +577,8 @@ main_loop::
     ;; of class 'ETH_FRAME_PRIORITY' (if any), and reset the timer.
     ;; ------------------------------------------------------------------------
 
-    ld    l, #BANK(EPKTCNT)
-    push  hl
+    ld    e, #BANK(EPKTCNT)
     call  _enc28j60_select_bank
-    pop   hl
 
 main_spin_loop::
 
@@ -684,23 +659,15 @@ main_packet::
     ;; done spinning: a packet has been received, bring it into Spectrum RAM
     ;; ========================================================================
 
-    xor   a, a    ;; ENC28J60_DEFAULT_BANK
-    push  af
-    inc   sp
-    call  _enc28j60_select_bank
-    inc   sp
-
     ;; ------------------------------------------------------------------------
     ;; set ERDPT to _next_frame
     ;; ------------------------------------------------------------------------
 
+    call  _enc28j60_select_bank0
+
     ld    hl, (_next_frame)
-    push  hl
-    ld    hl, #ENC_OPCODE_WCR(ERDPTL) + 0x0100 * ENC_OPCODE_WCR(ERDPTH)
-    push  hl
-    call  _enc28j60_write_register16_impl
-    pop   hl
-    pop   hl
+    ld    a, #ENC_OPCODE_WCR(ERDPTL)
+    call  _enc28j60_write_register16
 
     ld    bc, #ETH_ADM_HEADER_SIZE
     push  bc
@@ -762,10 +729,8 @@ main_packet_done::
     ;; advance ERXRDPT
     ;; ------------------------------------------------------------------------
 
-    ld    l, #BANK(ERXRDPTL)
-    push  hl
+    ld    e, #BANK(ERXRDPTL)
     call  _enc28j60_select_bank
-    pop   hl
 
     ;; errata B5, item 11:  EXRDPT must always be written with an odd value
 
@@ -773,12 +738,8 @@ main_packet_done::
     dec   hl
     set   0, l
 
-    push  hl
-    ld    hl, #ENC_OPCODE_WCR(ERXRDPTL) + 0x0100 * ENC_OPCODE_WCR(ERXRDPTH)
-    push  hl
-    call  _enc28j60_write_register16_impl
-    pop   hl
-    pop   hl
+    ld    a, #ENC_OPCODE_WCR(ERXRDPTL)
+    call  _enc28j60_write_register16
 
     jp    main_loop
 
