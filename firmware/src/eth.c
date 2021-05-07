@@ -408,60 +408,44 @@ __naked
     ;; write per-packet control byte  (0x0E; datasheet, section 7.1)
     ;; ------------------------------------------------------------------------
 
-    ld    bc, #1
-    push  bc
+    ld    de, #1
     ld    hl, #eth_create_control_byte
-    push  hl
     call  _enc28j60_write_memory_cont
-    pop   hl
-    pop   bc
 
     ;; ------------------------------------------------------------------------
     ;; write destination (remote) MAC address
     ;; ------------------------------------------------------------------------
 
-    ;; address of a 0x0E constant byte (instruction LD C, n)
-
-eth_create_control_byte::
-    ld    c, #ETH_ADDRESS_SIZE           ;; B==0 here
-    push  bc
+    ld    e, #ETH_ADDRESS_SIZE           ;; D==0 here
     ld    l, 0(ix)
     ld    h, 1(ix)
-    push  hl
     call  _enc28j60_write_memory_cont
-    pop   hl
-    pop   bc
 
     ;; ------------------------------------------------------------------------
     ;; write source (local) MAC address
     ;; ------------------------------------------------------------------------
 
-    ;; BC still correct size
-    push  bc
+    ld    e, #ETH_ADDRESS_SIZE           ;; D==0 here
     ld    hl, #_eth_local_address
-    push  hl
     call  _enc28j60_write_memory_cont
-    pop   hl
-    pop   bc
 
     ;; ------------------------------------------------------------------------
     ;; write Ethertype
     ;; ------------------------------------------------------------------------
 
-    ld    c, #ETH_SIZEOF_ETHERTYPE           ;; B==0 here
-    push  bc
+    ld    e, #ETH_SIZEOF_ETHERTYPE           ;; D==0 here
 
     push  ix
     pop   hl
     inc   hl
     inc   hl   ;; points to ethertype on stack
-    push  hl
     call  _enc28j60_write_memory_cont
-    pop   hl
-    pop   bc
 
     pop   ix
     ret
+
+eth_create_control_byte::
+    .db   0x0E
 
   __endasm;
 }

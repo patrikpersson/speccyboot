@@ -386,13 +386,9 @@ __naked
     ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
     ;; ----------------------------------------------------------------------
 
-    ld     c, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE   ;; B=0 here
-    push   bc
+    ld     de, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
     ld     hl, #_header_template
-    push   hl
     call   _enc28j60_write_memory_cont
-    pop    hl
-    pop    bc
 
     pop    ix
     ret

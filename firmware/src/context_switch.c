@@ -367,15 +367,10 @@ evacuate_pc::
     ld   a, #ENC_OPCODE_WCR(EWRPTL)
     call _enc28j60_write_register16
 
-    ld   bc, #RUNTIME_DATA_LENGTH
-    push bc
+    ld   de, #RUNTIME_DATA_LENGTH
     ld   hl, #EVACUATION_TEMP_BUFFER
-    push hl
-    call _enc28j60_write_memory_cont
-    pop  hl
-    pop  hl
 
-    ret
+    jp   _enc28j60_write_memory_cont
 
   __endasm;
 }

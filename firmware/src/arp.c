@@ -113,58 +113,38 @@ __naked
 
     ;; ARP header
 
-    ld   bc, #ARP_HEADER_SIZE
-    push bc
+    ld   de, #ARP_HEADER_SIZE
     ld   hl, #arp_receive_reply_template
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     ;; SHA: local MAC address
 
-    ld   bc, #ETH_ADDRESS_SIZE
-    push bc
+    ld   e, #ETH_ADDRESS_SIZE     ;; D==0 here
     ld   hl, #_eth_local_address
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     ;; SPA: local IPv4 address
 
-    ld   c, #IPV4_ADDRESS_SIZE         ;; B==0 here
-    push bc
+    ld   e, #IPV4_ADDRESS_SIZE         ;; D==0 here
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     ;; THA: sender MAC address
 
-    ld   c, #ETH_ADDRESS_SIZE          ;; B==0 here
-    push bc
+    ld   e, #ETH_ADDRESS_SIZE          ;; D==0 here
     ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     ;; TPA: sender IP address, taken from SPA field in request
 
-    ld   c, #IPV4_ADDRESS_SIZE         ;; B==0 here
-    push bc
+    ld   e, #IPV4_ADDRESS_SIZE         ;; D==0 here
     ld   hl, #_rx_frame + ARP_OFFSET_SPA
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
-    ld   c, #ARP_IP_ETH_PACKET_SIZE
-    push bc
+    ld   e, #ARP_IP_ETH_PACKET_SIZE    ;; D==0 here
+    push de
     call _eth_send
-    pop  bc
+    pop  de
 
     ret
 

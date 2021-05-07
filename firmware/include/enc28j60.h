@@ -250,6 +250,8 @@ enc28j60_internal_write8plus8(void );
  *
  * Call with A set to a WCR opcode for the low half of the register,
  * e.g., ENC_OPCODE_WCR(ERXRDPTL), and HL set to the 16-bit value to write.
+ *
+ * Destroys F, BC, DE.
  */
 void
 enc28j60_write_register16(void);
@@ -302,10 +304,14 @@ enc28j60_add_checksum(const void *start_addr, uint16_t nbr_words);
 /* ------------------------------------------------------------------------- */
 
 /*
- * Write a number of bytes to on-chip SRAM, continuing after previous write
+ * Write a number of bytes to on-chip SRAM, continuing after previous write.
+ *
+ * Call with HL=pointer to data, DE=length of data. Destroys AF, BC.
+ *
+ * On exit, DE==0, and HL points to the next byte after the written data.
  */
 void
-enc28j60_write_memory_cont(const uint8_t *src_addr, uint16_t nbr_bytes);
+enc28j60_write_memory_cont(void);
 
 /* ------------------------------------------------------------------------- */
 

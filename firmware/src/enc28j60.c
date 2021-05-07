@@ -132,11 +132,9 @@ enc28j60_write_register16(void)
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_write_memory_cont(const uint8_t *src_addr, uint16_t nbr_bytes)
+enc28j60_write_memory_cont(void)
 __naked
 {
-  (void) src_addr, nbr_bytes;
-
   __asm
 
     ;; ------------------------------------------------------------------------
@@ -146,28 +144,19 @@ __naked
     ld    c, #ENC_OPCODE_WBM
     call  _spi_write_byte
 
-    pop   de       ;; return address
-    pop   hl       ;; pointer to data
-    pop   bc       ;; number of bytes to write
-    push  bc
-    push  hl
-    push  de
-
     ;; ------------------------------------------------------------------------
-    ;; write BC bytes, starting at HL
+    ;; write DE bytes, starting at HL
     ;; ------------------------------------------------------------------------
 
 00001$:
-    push  bc
     ld    c, (hl)  ;; read byte from data
     inc   hl
 
     call  _spi_write_byte   ;; preserves HL+DE, destroys AF+BC
 
-    pop   bc
-    dec   bc
-    ld    a, b
-    or    a, c
+    dec   de
+    ld    a, d
+    or    a, e
     jr    nz, 00001$
 
     ;; ------------------------------------------------------------------------

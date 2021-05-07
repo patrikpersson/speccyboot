@@ -171,51 +171,35 @@ __naked
     ;; part 1: 8 bytes of header (constants)
     ;; ------------------------------------------------------------------------
 
-    ld   bc, #BOOTP_PART1_SIZE
-    push bc
+    ld   de, #BOOTP_PART1_SIZE
     ld   hl, #bootrequest_header_data
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     ;; ------------------------------------------------------------------------
     ;; part 2: 20 bytes of zeros
-    ;; use address 0x4814 as source of 20 zero-valued bytes (VRAM)
+    ;; use VRAM as source of 20 zero-valued bytes
     ;; ------------------------------------------------------------------------
 
-    ld   c, #BOOTP_PART2_SIZE
-    push bc
-    ld   b, #0x48
-    push bc
+    ld   e, #BOOTP_PART2_SIZE       ;; D==0 here
+    ld   hl, #0x4800
     call _enc28j60_write_memory_cont
-    pop  bc
-    pop  bc
 
     ;; ------------------------------------------------------------------------
     ;; part 3: 6 bytes of MAC address
     ;; ------------------------------------------------------------------------
 
-    ld   c, #BOOTP_PART3_SIZE    ;; just popped BC with B==0
-    push bc
+    ld   e, #BOOTP_PART3_SIZE    ;; D==0 here
     ld   hl, #_eth_local_address
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     ;; ------------------------------------------------------------------------
     ;; part 4: 266 bytes of zeros
-    ;; use address 0x480a as source of 266 zero-valued bytes (VRAM)
+    ;; use VRAM as source of 266 zero-valued bytes
     ;; ------------------------------------------------------------------------
 
-    ld   bc, #BOOTP_PART4_SIZE
-    push bc
-    ld   b, #0x48    ;; C is 0x0A from assignment above
-    push bc
+    ld   e, #BOOTP_PART4_SIZE    ;; D==0 here
+    ld   hl, #0x4800
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     jp   _udp_send
 

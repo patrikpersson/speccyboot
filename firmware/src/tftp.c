@@ -280,20 +280,13 @@ tftp_receive_blk_nbr_and_port_ok::
     pop   hl
     inc   sp
 
-    ld    bc, #TFTP_SIZE_OF_OPCODE
-    push  bc
+    ld    de, #TFTP_SIZE_OF_OPCODE
     ld    hl, #tftp_receive_ack_opcode
-    push  hl
     call    _enc28j60_write_memory_cont
-    pop   hl
 
-    ;; keep BC==2 on stack
-
+    ld    e, #TFTP_SIZE_OF_OPCODE    ;; D==0 here
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
-    push  hl
     call    _enc28j60_write_memory_cont
-    pop   hl
-    pop   bc
 
     call  _udp_send
 
@@ -323,17 +316,13 @@ tftp_receive_error::
     inc   sp
     ld    bc, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
     push  bc
-    call    _udp_create_reply
+    call  _udp_create_reply
     pop   bc
     inc   sp
 
-    ld    c, #TFTP_SIZE_OF_ERROR_PACKET         ;; B==0 here
-    push  bc
+    ld    de, #TFTP_SIZE_OF_ERROR_PACKET
     ld    hl, #tftp_receive_error_packet
-    push  hl
-    call    _enc28j60_write_memory_cont
-    pop   hl
-    pop   bc
+    call  _enc28j60_write_memory_cont
 
     jp    _udp_send
 
@@ -417,29 +406,22 @@ __naked
 
     ;; append 16-bit TFTP opcode
 
-    ld   bc, #TFTP_SIZE_OF_RRQ_PREFIX
-    push bc
+    ld   de, #TFTP_SIZE_OF_RRQ_PREFIX
     ld   hl, #tftp_rrq_prefix
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     ;; filename and length already stacked above
 
-    call _enc28j60_write_memory_cont
     pop  hl
-    pop  bc
+    pop  de
+
+    call _enc28j60_write_memory_cont
 
     ;; append option ("octet" mode)
 
-    ld   bc, #TFTP_SIZE_OF_RRQ_OPTION
-    push bc
+    ld   de, #TFTP_SIZE_OF_RRQ_OPTION
     ld   hl, #tftp_rrq_option
-    push hl
     call _enc28j60_write_memory_cont
-    pop  hl
-    pop  bc
 
     jp   _udp_send
 
