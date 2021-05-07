@@ -64,13 +64,9 @@ __naked
 
     ;; read a minimal IPv4 header
 
-    ld   l, #IPV4_HEADER_SIZE   ;; H is already zero here
-    push hl
+    ld   de, #IPV4_HEADER_SIZE
     ld   hl, #_rx_frame
-    push hl
     call _enc28j60_read_memory_cont
-    pop  af
-    pop  af
 
     ;; ------------------------------------------------------------
     ;; Check the IP destination address
@@ -113,7 +109,7 @@ ip_receive_address_checked::
     and  a, #0x0f
     add  a, a
     add  a, a
-    push af     ;; remember for later
+    push af     ;; remember IP header size for later
 
     sub  a, #IPV4_HEADER_SIZE
     jr   z, ip_receive_options_done
@@ -121,14 +117,10 @@ ip_receive_address_checked::
     ;; To skip forward past any options, load additional header data
     ;; into UDP part of the buffer (overwritten soon afterwards)
 
-    ld   b, #0
-    ld   c, a
-    push bc
+    ld   d, #0
+    ld   e, a
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
-    push hl
     call _enc28j60_read_memory_cont
-    pop  hl
-    pop  bc
 
 ip_receive_options_done::
 
@@ -162,12 +154,9 @@ ip_receive_options_done::
     ld   b, a        ;; BC now holds IP header size
     sbc  hl, bc
 
-    push hl
-    ld   bc, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
-    push bc
+    ex   de, hl
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call _enc28j60_read_memory_cont
-    pop  bc
-    pop  hl
 
     ;; ------------------------------------------------------------
     ;; Check UDP checksum

@@ -289,9 +289,15 @@ enc28j60_poll_register(void);
 /*
  * Read a number of bytes from on-chip SRAM, continuing from previous read.
  * The checksum is updated automatically.
+ *
+ * Call with
+ * HL = destination address (buffer to read data into=
+ * BC = number of bytes to read
+ *
+ * Destroys all registers, including alternate ones, except IX/IY.
  */
 void
-enc28j60_read_memory_cont(uint8_t *dst_addr, uint16_t nbr_bytes);
+enc28j60_read_memory_cont(void);
 
 /* ------------------------------------------------------------------------- */
 

@@ -263,15 +263,16 @@ __naked
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_read_memory_cont(uint8_t *dst_addr, uint16_t nbr_bytes)
+enc28j60_read_memory_cont(void)
 __naked
 {
-  (void) dst_addr, nbr_bytes;
-
   __asm
 
+    push  de         ;; nbr_bytes
+    push  hl         ;; dst_addr
+
     push  ix
-    ld    ix, #4     ;; PC + IX on stack
+    ld    ix, #2     ;; IX on stack
     add   ix, sp
 
     ;; spi_start_transaction(ENC_OPCODE_RBM);
@@ -399,6 +400,9 @@ final::
     ld    (_enc28j60_ip_checksum), hl
 
     pop   ix
+
+    pop   hl
+    pop   de
 
     jp    enc28j60_end_transaction_and_return
 

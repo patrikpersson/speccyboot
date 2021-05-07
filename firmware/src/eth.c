@@ -653,13 +653,9 @@ main_packet::
     ld    a, #ENC_OPCODE_WCR(ERDPTL)
     call  _enc28j60_write_register16
 
-    ld    bc, #ETH_ADM_HEADER_SIZE
-    push  bc
+    ld    de, #ETH_ADM_HEADER_SIZE
     ld    hl, #_rx_eth_adm
-    push  hl
     call  _enc28j60_read_memory_cont
-    pop   hl
-    pop   hl
 
     ;; ------------------------------------------------------------------------
     ;; update _next_frame

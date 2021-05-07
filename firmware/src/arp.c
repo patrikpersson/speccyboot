@@ -56,13 +56,9 @@ __naked
     ;; retrieve ARP payload
     ;; ------------------------------------------------------------------------
 
-    ld   bc, #ARP_IP_ETH_PACKET_SIZE
-    push bc
+    ld   de, #ARP_IP_ETH_PACKET_SIZE
     ld   hl, #_rx_frame
-    push hl
     call _enc28j60_read_memory_cont
-    pop  hl
-    pop  bc
 
     ;; ------------------------------------------------------------------------
     ;; check header against template
