@@ -35,6 +35,7 @@
   .globl	_main
   .globl	_stack_top
   .globl	_timer_tick_count
+  .globl  _tftp_file_buffer
 
   .globl	l__INITIALIZER
   .globl	s__INITIALIZED
@@ -159,6 +160,7 @@ ram_trampoline::
   .area _BSS
 
 end_of_data::
+_tftp_file_buffer::
 
   .area _HEAP
 

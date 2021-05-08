@@ -53,7 +53,7 @@
 void
 run_menu(void)
 {
-  unsigned char *src = tftp_file_buf;
+  unsigned char *src = &tftp_file_buffer;
   uint16_t nbr_snapshots = 0;
 
   // TODO: put ENC28J60 in idle here

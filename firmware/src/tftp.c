@@ -72,7 +72,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t *curr_write_pos           = (uint8_t *) tftp_file_buf;
+uint8_t *curr_write_pos           = (uint8_t *) &tftp_file_buffer;
 void (*tftp_receive_hook)(void)   = NULL;
 
 /* ------------------------------------------------------------------------- */
@@ -314,7 +314,7 @@ tftp_receive_blk_nbr_and_port_ok::
     ;; ------------------------------------------------------------------------
     ;; This was the last packet: execute the loaded binary.
     ;; ------------------------------------------------------------------------
-    jp  _tftp_file_buf
+    jp  _tftp_file_buffer
 #else
     ;; ------------------------------------------------------------------------
     ;; This was the last packet: prepare for snapshot loading and display menu.

@@ -84,11 +84,11 @@
  * Worst-case payload for received frames:
  *  60   (max IP header size)
  *   8   (UDP header)
- * 576   (maximal accepted DHCP packet size; minimal value allowed by RFC)
+ * 516   (TFTP: 4 bytes header, 512 bytes data)
  * ---
  * 644 bytes
  */
-#define ETH_MAX_RX_FRAME_SIZE      (ETH_HEADER_SIZE + 644)
+#define ETH_MAX_RX_FRAME_SIZE      (ETH_HEADER_SIZE + 584)
 
 /*
  * Transmission buffer sizes:
