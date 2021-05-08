@@ -178,8 +178,7 @@ __naked
       ;; set up registers:  ETXST := start_address, ETXND := end_address
       ;; ----------------------------------------------------------------------
 
-      ld    e, #BANK(ETXSTL)           ;; bank 0
-      call  _enc28j60_select_bank
+      call  _enc28j60_select_bank0     ;; bank of ETXST and ETXND
 
       pop   de   ;; return address
       pop   hl   ;; start_address
@@ -220,8 +219,7 @@ __naked
       ;; set bit TXRST in ECON1, then clear it
       ;; ----------------------------------------------------------------------
 
-      ld    e, #BANK(ECON1)           ;; bank 0
-      call  _enc28j60_select_bank
+      call  _enc28j60_select_bank0    ;; bank of ECON1
 
       ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFS(ECON1)
       call  _enc28j60_internal_write8plus8
@@ -560,7 +558,7 @@ main_loop::
     ;; of class 'ETH_FRAME_PRIORITY' (if any), and reset the timer.
     ;; ------------------------------------------------------------------------
 
-    ld    e, #BANK(EPKTCNT)
+    ld    e, #BANK(EPKTCNT)       ;; bank 1
     call  _enc28j60_select_bank
 
 main_spin_loop::
@@ -703,8 +701,7 @@ main_packet_done::
     ;; advance ERXRDPT
     ;; ------------------------------------------------------------------------
 
-    ld    e, #BANK(ERXRDPTL)
-    call  _enc28j60_select_bank
+    call  _enc28j60_select_bank0     ;; bank of ERXRDPT
 
     ;; errata B5, item 11:  EXRDPT must always be written with an odd value
 
