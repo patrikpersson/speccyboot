@@ -71,7 +71,6 @@ __naked
 {
   __asm
 
-#ifndef SB_MINIMAL
     ;; ========================================================================
     ;; Presentation
     ;; ========================================================================
@@ -80,65 +79,38 @@ __naked
     ;; print 'SpeccyBoot x.y' at (0,0)
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #title_str       ;; 'SpeccyBoot x.y'
-    push  hl
-    ld    bc, #0
-    push  bc                   ;; terminator (NUL)
-    inc   sp
-    push  bc                   ;; coordinates (0,0)
-    call  _print_at
-    pop   bc
-    inc   sp
-    pop   hl
+    ld    ix, #title_str       ;; 'SpeccyBoot x.y'
+    ld    de, #0x4000          ;; coordinates (0,0)
+    call  _print_str
 
     ;; ------------------------------------------------------------------------
     ;; print 'BOOTP' at (23,0)
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #bootp_str       ;; 'BOOTP'
-    push  hl
-    push  bc                   ;; terminator (NUL)
-    inc   sp
-    ld    c, #23
-    push  bc                   ;; coordinates (23,0)
-    call  _print_at
-    pop   bc
-    inc   sp
-    pop   hl
+    ld    de, #0x50E0          ;; coordinates (23, 0)
+    call  _print_str
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'SpeccyBoot' heading: white ink, black paper, bright
     ;; ------------------------------------------------------------------------
 
-    ld    c, #20              ;; B==0 here
-    push  bc
     ld    hl, #ATTRS_BASE     ;; (0,0)
-    push  hl
-    ld    a, #INK(WHITE) | PAPER(BLACK) | BRIGHT
-    push  af
-    inc   sp
-    call  _set_attrs_impl
-    inc   sp
-    pop   hl
-    pop   bc
+    ld    bc, #0x1f00 + (INK(WHITE) | PAPER(BLACK) | BRIGHT)
+bootp_attr_lp1::
+    ld    (hl), c
+    inc   hl
+    djnz  bootp_attr_lp1
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'BOOTP' indicator: white ink, black paper, flash, bright
     ;; ------------------------------------------------------------------------
 
-    ld    c, #4               ;; B==0 here
-    push  bc
     ld    hl, #ATTRS_BASE + 23 * 32     ;; (23,0)
-    push  hl
-    ld    a, #INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT
-    push  af
-    inc   sp
-    call  _set_attrs_impl
-    inc   sp
-    pop   hl
-    pop   bc
-
-#endif
+    ld    bc, #0x0500 + (INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
+bootp_attr_lp2::
+    ld    (hl), c
+    inc   hl
+    djnz  bootp_attr_lp2
 
     ;; ========================================================================
     ;; the BOOTREQUEST is built in steps:
@@ -215,15 +187,16 @@ bootrequest_header_data::
 bootrequest_xid::
     .db   0x5a, 0x58, 0x38, 0x32  ;; 'ZX82'
 
-#ifndef SB_MINIMAL
 title_str::
     .ascii "SpeccyBoot "
     .ascii str(VERSION)
     .db   0
 bootp_str::
     .ascii "BOOTP"
-    .db   0
+#ifdef SB_MINIMAL
+    .ascii " TFTP"
 #endif
+    .db   0
 
   __endasm;
 }
@@ -321,7 +294,23 @@ bootp_receive_sname_done::
     call _tftp_read_request
     pop  hl
 
-#ifndef SB_MINIMAL
+#ifdef SB_MINIMAL
+
+    ld    hl, #(ATTRS_BASE + 23 * 32)
+    ld    bc, #0x0500 + (INK(GREEN) | PAPER(BLACK))
+tftp_attr_lp2::
+    ld    (hl), c
+    inc   hl
+    djnz  tftp_attr_lp2
+
+    inc   hl
+    ld    bc, #0x0400 + (INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
+tftp_attr_lp1::
+    ld    (hl), c
+    inc   hl
+    djnz  tftp_attr_lp1
+
+#else   /* SB_MINIMAL  */
 
     ;; ------------------------------------------------------------------------
     ;; print 'Local:' at (23,0); 'TFTP:' at (23,17)

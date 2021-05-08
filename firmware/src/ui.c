@@ -152,11 +152,13 @@ poll_done::
 
   __endasm;
 }
+#endif
 
 /* -------------------------------------------------------------------------
  * Public API
  * ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 void
 print_at(uint8_t row,
          uint8_t start_col,
@@ -264,14 +266,52 @@ print_done::
 
   __endasm;
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
+
+void
+print_str(void)
+__naked
+{
+  __asm
+
+    ld   a, (ix)
+    inc  ix
+    or   a, a
+    ret  z
+
+    ld   l, a
+    ld   h, #0
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   bc, #_font_data - 32 * 8
+    add  hl, bc
+
+    ld   b, #8
+    ld   c, d
+00001$:
+    ld   a, (hl)
+    ld   (de), a
+    inc  d
+    inc  hl
+    djnz 00001$
+
+    ld   d, c
+    inc  e
+    jr   _print_str
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+#ifndef SB_MINIMAL
 
 // only used while VRAM lines 2..20 are blacked out -> pick a location there
 static uint8_t __at(0x4020) bitcounter = 0;
 static uint8_t __at(0x4021) pixel_buffer[6];
-
-/* ------------------------------------------------------------------------- */
 
 void
 print_ip_addr(const ipv4_address_t *ip, uint8_t *p)
@@ -492,9 +532,11 @@ flush_not_needed::
 
   __endasm;
 }
+#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 key_t
 wait_key(void)
 {
@@ -528,8 +570,11 @@ wait_key(void)
   first_repetition = true;
   return key;
 }
+#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
+
+#ifndef SB_MINIMAL
 void
 set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len)
 __naked
@@ -558,9 +603,11 @@ __naked
 
   __endasm;
 }
+#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
 
+#ifndef SB_MINIMAL
 void
 init_progress_display(void)
 __naked
@@ -590,9 +637,9 @@ __naked
 
   __endasm;
 }
+#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
-
 
 /*
  * subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
@@ -605,6 +652,7 @@ __naked
  * instruction above)
  */
 
+#ifndef SB_MINIMAL
 static void
 show_attr_digit(void)
 __naked
