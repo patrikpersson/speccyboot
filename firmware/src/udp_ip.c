@@ -60,7 +60,7 @@ __naked
     ;; clear IP checksum
 
     ld   hl, #0
-    ld   (_enc28j60_ip_checksum), hl
+    ld   (_ip_checksum), hl
 
     ;; read a minimal IPv4 header
 
@@ -138,7 +138,7 @@ ip_receive_options_done::
 
     ;; Set IP checksum to htons(IP_PROTOCOL_UDP), for pseudo header
     ld   hl, #(IP_PROTOCOL_UDP << 8)   ;; network order is big-endian
-    ld   (_enc28j60_ip_checksum), hl
+    ld   (_ip_checksum), hl
 
     ;; compute T-N, where
     ;;   T is the total packet length
@@ -172,20 +172,12 @@ ip_receive_options_done::
     ;; it here.
 
     ld   bc, #IPV4_ADDRESS_SIZE ;; BC is number of words (4)
-    ld   hl, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    push bc
-    push hl
+    ld   iy, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
     call _enc28j60_add_checksum
-    pop  hl
-    pop  bc
 
-    ld   bc, #1 ;; one word
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    push bc
-    push hl
+    ld   c, #1 ;; one word, B==0 here
+    ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
     call _enc28j60_add_checksum
-    pop  hl
-    pop  bc
 
     call ip_receive_check_checksum
 
@@ -236,7 +228,7 @@ ip_receive_not_tftp::
 ;; -----------------------------------------------------------------------
 
 ip_receive_check_checksum::
-    ld   hl, (_enc28j60_ip_checksum)
+    ld   hl, (_ip_checksum)
     ld   a, h
     and  a, l
     inc  a   ;; if both bytes are 0xff, A will now become zero
@@ -317,17 +309,13 @@ __naked
 
     ld     h, b   ;; BC=0 here
     ld     l, c
-    ld     (_enc28j60_ip_checksum), hl
+    ld     (_ip_checksum), hl
 
     ld     c, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10); B=0 here
-    ld     hl, #_header_template
-    push   bc
-    push   hl
+    ld     iy, #_header_template
     call   _enc28j60_add_checksum
-    pop    hl
-    pop    bc
 
-    ld     hl, #_enc28j60_ip_checksum
+    ld     hl, #_ip_checksum
     ld     de, #_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
     ld     a, (hl)
     cpl

@@ -38,11 +38,6 @@
 
 /* ========================================================================= */
 
-/* Current checksum */
-uint16_t enc28j60_ip_checksum;
-
-/* ------------------------------------------------------------------------- */
-
 void
 enc28j60_select_bank0(void)
 __naked
@@ -293,7 +288,7 @@ __naked
 
     ld    d, 1(ix)
     ld    e, 0(ix)
-    ld    hl, (_enc28j60_ip_checksum)
+    ld    hl, (_ip_checksum)
     exx
 
     and   a           ;; reset initial C flag
@@ -383,7 +378,7 @@ odd_byte_loop::
 
 final::
     adc   hl, bc    ;; add final carry
-    ld    (_enc28j60_ip_checksum), hl
+    ld    (_ip_checksum), hl
 
     pop   ix
 
@@ -398,34 +393,16 @@ final::
 /* ------------------------------------------------------------------------- */
 
 void
-enc28j60_add_checksum(const void *start_addr, uint16_t nbr_words)
+enc28j60_add_checksum(void)
 __naked
 {
-  /* -----------------------------------------------------------------------
-   * Can't use the ENC28J60's checksum offload (errata, item #15)
-   *
-   * Implemented in assembly to save some space.
-   * ----------------------------------------------------------------------- */
-
-  (void) start_addr, nbr_words;  /* no warning about unused args */
-
   __asm
 
-    ld    hl, #2
-    add   hl, sp
+    ;; ------------------------------------------------------------------------
+    ;; Can't use the ENC28J60's checksum offload (errata, item #15)
+    ;; ------------------------------------------------------------------------
 
-    ld    e, (hl)
-    inc   hl
-    ld    d, (hl)
-    inc   hl
-    ld    c, (hl)
-    inc   hl
-    ld    b, (hl)   ;;  BC=nbr_words
-
-    push  de
-    pop   iy        ;;  IY=start_addr
-
-    ld    hl, (_enc28j60_ip_checksum)
+    ld    hl, (_ip_checksum)
 
     xor   a         ;; clear addition carry
 
@@ -452,7 +429,7 @@ checksum_words_done::
     ex    af, af'   ;; ' load addition carry
     adc   hl, bc    ;;  final carry (BC is zero here)
 
-    ld    (_enc28j60_ip_checksum), hl
+    ld    (_ip_checksum), hl
 
     ret
 

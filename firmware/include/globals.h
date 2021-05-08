@@ -76,6 +76,10 @@ extern uint8_t kilobytes_expected;
 /* Buffer for snapshot list, or second-stage loader */
 char __at(0x6300) tftp_file_buf[0x9d00];
 
+/* ------------------------------------------------------------------------- */
+
+extern uint16_t ip_checksum;
+
 /* ========================================================================= */
 
 /* Administrative Ethernet information, including Ethernet header */

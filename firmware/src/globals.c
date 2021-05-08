@@ -40,3 +40,7 @@ struct eth_adm_t  rx_eth_adm;
 
 uint8_t kilobytes_loaded   = 0;
 uint8_t kilobytes_expected = 48;
+
+uint16_t ip_checksum;
+
+/* ------------------------------------------------------------------------- */

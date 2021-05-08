@@ -230,10 +230,6 @@ enc28j60_select_bank(void);
 
 /* ------------------------------------------------------------------------- */
 
-extern uint16_t enc28j60_ip_checksum;
-
-/* ------------------------------------------------------------------------- */
-
 /*
  * Write an 8-bit opcode plus another 8-bit value.
  *
@@ -308,9 +304,17 @@ enc28j60_read_memory_cont(void);
 
 /*
  * Add a number of 16-bit words to the IP-style checksum.
+ *
+ * On entry:
+ *   IY = pointer to 16-words
+ *   BC = number of 16-bit words (!) to add
+ *
+ * On exit:
+ *   BC == 0
+ *   IY points to next byte after checksummed data
  */
 void
-enc28j60_add_checksum(const void *start_addr, uint16_t nbr_words);
+enc28j60_add_checksum(void);
 
 /* ------------------------------------------------------------------------- */
 
