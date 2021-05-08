@@ -93,8 +93,7 @@
 #define VRAM_REGSTATE_F                 0x4604
 
 #define VRAM_REGSTATE_SP                0x4700
-#define VRAM_REGSTATE_DE                0x4702
-#define VRAM_REGSTATE_R                 0x4704
+#define VRAM_REGSTATE_R                 0x4702
 
 /* ------------------------------------------------------------------------ */
 
@@ -287,9 +286,6 @@ evacuate_di::
     ld   de, #VRAM_REGSTATE_BC_HL_F
     ldir
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_DE)
-    ld   (VRAM_REGSTATE_DE), hl
-
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_SP)
     ld   (VRAM_REGSTATE_SP), hl
 
@@ -433,23 +429,29 @@ context_switch_snd_reg_loop::
 
 context_switch_48k_snapshot::
 
+    ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+
     ;; ------------------------------------------------------------------------
     ;; Restore border:
     ;; the value at MISC_FLAGS has been pre-processed in _evacuate_data
     ;; ------------------------------------------------------------------------
 
-    ld     a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
+    ld     a, (hl)
     out    (ULA_PORT), a
+    inc    a
 
     ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
     ;; so we can avoid using VRAM for them:
+    ;; - DE
     ;; - alternate registers (BC, DE, HL, AF)
     ;; - IX & IY
     ;; ------------------------------------------------------------------------
 
-    ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_BC_P
+    inc    hl
     ld     sp, hl
+    pop    de
+    exx
     pop    bc
     pop    de
     pop    hl
@@ -465,7 +467,41 @@ context_switch_48k_snapshot::
     pop     iy
     pop     ix
 
-    ENC28J60_READ_INLINE(RUNTIME_DATA, RUNTIME_DATA_LENGTH)
+    ;; ========================================================================
+    ;; restore application data temporarily stored in ENC28J60 RAM
+    ;; ========================================================================
+
+    ld     bc, #0x0800 + ENC_OPCODE_RBM        ;; 8 bits, opcode RBM
+context_switch_restore_rbm_loop::
+    SPI_WRITE_BIT_FROM(c)
+    djnz  context_switch_restore_rbm_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; read RUNTIME_DATA_LENGTH bytes from current ERDPT to RUNTIME_DATA
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #(RUNTIME_DATA)
+context_switch_restore_bytes_loop::
+
+    ld    b, #8                      ;; one byte
+context_switch_restore_bits_loop::
+    SPI_READ_BIT_TO(c)
+    djnz  context_switch_restore_bits_loop
+
+    ld    (hl), c
+    inc   hl
+    ld    a, h
+    cp    a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH) ;; integral number of pages
+    jr    nz, context_switch_restore_bytes_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; end SPI transaction
+    ;; ------------------------------------------------------------------------
+
+    ld  a, #SPI_IDLE
+    out (SPI_OUT), a
+    ld  a, #SPI_IDLE+SPI_CS
+    out (SPI_OUT), a
 
     ;; ------------------------------------------------------------------------
     ;; Restore BC, HL, F
@@ -478,15 +514,10 @@ context_switch_48k_snapshot::
     pop   af        ;; A gets wrong value here, but this is fixed in trampoline
 
     ;; ------------------------------------------------------------------------
-    ;; Restore DE & SP
+    ;; Restore SP & R
     ;; ------------------------------------------------------------------------
 
-    ld    de, (VRAM_REGSTATE_DE)
     ld    sp, (VRAM_REGSTATE_SP)
-
-    ;; ------------------------------------------------------------------------
-    ;; Restore R
-    ;; ------------------------------------------------------------------------
 
     ld    a, (VRAM_REGSTATE_R)
     ld    r, a

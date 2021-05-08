@@ -34,7 +34,6 @@
 #ifndef SPECCYBOOT_SPI_INCLUSION_GUARD
 #define SPECCYBOOT_SPI_INCLUSION_GUARD
 
-#include <stdint.h>
 #include "spi_asm.h"
 
 /* ------------------------------------------------------------------------- */
@@ -55,34 +54,6 @@
 
 #pragma save
 #pragma sdcc_hash +
-
-/*
- * Reset the device on SPI (technically RST is not an SPI pin, but it happens
- * to fit here nicely).
- *
- * Data sheet, Table 16.3: Trstlow = 400ns
- * (minimal RST low time, shorter pulses are filtered out)
- *
- * 400ns < 2 T-states == 571ns    (no problem at all)
- *
- * Data sheet, #11.2:
- *
- * Wait at least 50us after a System Reset before accessing PHY registers.
- * Perform an explicit delay here to be absolutely sure.
- *
- * 64 iterations, each is 18 T-states, 64x18 = 1152 T-states > 300us @3.55MHz
- *
- * Use A rather than B register to avoid confusing register allocation.
- */
-#define SPI_RESET                         \
-  xor a, a                                \
-  out (SPI_OUT), a                        \
-  ld  a, #SPI_IDLE                        \
-  out (SPI_OUT), a                        \
-  \
-spi_reset_loop:                           \
-  dec   a                                 \
-  jr    nz,  spi_reset_loop
 
 /*
  * Write bit 7 from register REG to SPI MOSI, and then shift REG left one bit
@@ -145,15 +116,6 @@ spi_reset_loop:                           \
   rla
 #endif
 
-/*
- * End an SPI transaction by pulling SCK low, then CS high.
- */
-#define SPI_END_TRANSACTION               \
-  ld  a, #SPI_IDLE                        \
-  out (SPI_OUT), a                        \
-  ld  a, #SPI_IDLE+SPI_CS                 \
-  out (SPI_OUT), a
-
 #pragma restore
 
 /* ========================================================================= */
@@ -162,9 +124,8 @@ spi_reset_loop:                           \
  * Read 8 bits from SPI to register C.
  * Destroys BC & AF; B will be zero on exit.
  */
-uint8_t
-spi_read_byte(void)
-__naked;
+void
+spi_read_byte(void);
 
 /* ------------------------------------------------------------------------- */
 
@@ -173,7 +134,6 @@ __naked;
  * Destroys BC & AF; B will be zero on exit.
  */
 void
-spi_write_byte(uint8_t x)
-__naked;
+spi_write_byte(void);
 
 #endif /* SPECCYBOOT_SPI_INCLUSION_GUARD */

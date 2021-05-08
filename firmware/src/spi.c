@@ -35,7 +35,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t
+void
 spi_read_byte(void)
 __naked
 {
@@ -54,11 +54,9 @@ spi_read_byte_loop::
 /* ------------------------------------------------------------------------- */
 
 void
-spi_write_byte(uint8_t x)
+spi_write_byte(void)
 __naked
 {
-  (void) x;
-
   __asm
 
     ld    b, #8

@@ -328,39 +328,4 @@ enc28j60_add_checksum(void);
 void
 enc28j60_write_memory_cont(void);
 
-/* ------------------------------------------------------------------------- */
-
-#pragma save
-#pragma sdcc_hash +
-
-/*
- * Read a number of bytes from current ERDPT to a given address.
- *
- * Destroys AF, BC, DE, HL. Does not use the stack.
- */
-#define ENC28J60_READ_INLINE(_dst, _nbytes)   \
-  ld   bc, #0x083a                            \
-rest_appdata_cmd_loop::                       \
-  SPI_WRITE_BIT_FROM(c)                       \
-  djnz  rest_appdata_cmd_loop                 \
-                                              \
-  ld    hl, #(_nbytes)                        \
-  ld    de, #(_dst)                           \
-restore_appdata_loop::                        \
-  ld    b, #8                                 \
-restore_appdata_bit_loop::                    \
-  SPI_READ_BIT_TO(c)                          \
-  djnz  restore_appdata_bit_loop              \
-  ld    a, c                                  \
-  ld    (de), a                               \
-  dec   hl                                    \
-  inc   de                                    \
-  ld    a, h                                  \
-  or    a, l                                  \
-  jr    nz, restore_appdata_loop              \
-                                              \
-  SPI_END_TRANSACTION
-
-#pragma restore
-
 #endif /* SPECCYBOOT_ENC28J60_INCLUSION_GUARD */
