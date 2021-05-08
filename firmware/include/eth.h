@@ -218,7 +218,7 @@ eth_create(const struct mac_address_t *destination,
 
 /* -------------------------------------------------------------------------
  * Send an Ethernet frame, previously created with eth_create().
- * HL:   number of bytes in payload (that is, excluding Ethernet header)
+ * HL:  number of bytes in payload (that is, excluding Ethernet header)
  * ------------------------------------------------------------------------- */
 void
 eth_send(void);

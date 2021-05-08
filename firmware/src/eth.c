@@ -154,107 +154,6 @@ static const uint8_t eth_register_values[] = {
   END_OF_TABLE
 };
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Perform a frame transmission. Registers and ETXST and ETXND must be set
- * before this function is called.
- *
- * Does not return until the frame has been transmitted.
- *
- * start_address: address of the first byte in the frame
- * end_address:   address of the last byte in the frame
- */
-static void
-perform_transmission(enc28j60_addr_t start_address,
-                     enc28j60_addr_t end_address)
-__naked
-{
-  (void) start_address, end_address;
-
-  __asm
-
-      ;; ----------------------------------------------------------------------
-      ;; set up registers:  ETXST := start_address, ETXND := end_address
-      ;; ----------------------------------------------------------------------
-
-      call  _enc28j60_select_bank0     ;; bank of ETXST and ETXND
-
-      pop   de   ;; return address
-      pop   hl   ;; start_address
-      pop   bc   ;; end_address
-      push  bc
-      push  hl
-      push  de
-
-      push  bc   ;; remember BC=end_address
-
-      ld    a, #ENC_OPCODE_WCR(ETXSTL)
-      call  _enc28j60_write_register16
-
-      ld    a, #ENC_OPCODE_WCR(ETXNDL)
-      pop   hl   ;; end_address pushed above
-      call  _enc28j60_write_register16
-
-      ;; ----------------------------------------------------------------------
-      ;; Poll for link to come up (if it has not already)
-      ;;
-      ;; NOTE: this code assumes the MIREGADR/MICMD registers to be configured
-      ;;       for continuous scanning of PHSTAT2 -- see eth_init
-      ;; ----------------------------------------------------------------------
-
-      ld    e, #BANK(MIRDH)             ;; bank 2
-      call  _enc28j60_select_bank
-
-      ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
-
-      ld    e, #MIRDH
-      ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
-      call  _enc28j60_poll_register
-
-      ;; ----------------------------------------------------------------------
-      ;; Errata, item 10:
-      ;;
-      ;; Reset transmit logic before transmitting a frame:
-      ;; set bit TXRST in ECON1, then clear it
-      ;; ----------------------------------------------------------------------
-
-      call  _enc28j60_select_bank0    ;; bank of ECON1
-
-      ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFS(ECON1)
-      call  _enc28j60_internal_write8plus8
-
-      ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFC(ECON1)
-      call  _enc28j60_internal_write8plus8
-
-      ;; ----------------------------------------------------------------------
-      ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
-      ;; ----------------------------------------------------------------------
-
-      ld    hl, #0x0100 * EIE_TXIE + ENC_OPCODE_BFC(EIE)
-      call  _enc28j60_internal_write8plus8
-
-      ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + ENC_OPCODE_BFC(EIR)
-      call  _enc28j60_internal_write8plus8
-
-      ld    hl, #0x0100 * (ESTAT_TXABRT) + ENC_OPCODE_BFC(ESTAT)
-      call  _enc28j60_internal_write8plus8
-
-      ;; ----------------------------------------------------------------------
-      ;; set ECON1.TXRTS, and poll it until it clears
-      ;; ----------------------------------------------------------------------
-
-      ld    hl, #0x0100 * ECON1_TXRTS + ENC_OPCODE_BFS(ECON1)
-      call  _enc28j60_internal_write8plus8
-
-      ld    e, #ECON1
-      ld    hl, #ECON1_TXRTS * 0x100
-
-      jp    _enc28j60_poll_register
-
-  __endasm;
-}
-
 /* ============================================================================
  * PUBLIC API
  * ========================================================================= */
@@ -456,8 +355,8 @@ __naked
   __asm
 
     ;; ------------------------------------------------------------------------
-    ;; set HL = end address of frame in transmission buffer,
-    ;;     DE = start address of frame in transmission buffer
+    ;; set DE = start address of frame in transmission buffer,
+    ;;     HL = end address of frame in transmission buffer
     ;;
     ;; end address = start
     ;;               + 1 (per-packet control byte)
@@ -467,10 +366,8 @@ __naked
     ;;             = start + ETH_HEADER_SIZE + nbr_bytes
     ;; ------------------------------------------------------------------------
 
-    ld    bc, (_current_txbuf)
-    ld    d, b
-    ld    e, c
-    add   hl, bc
+    ld    de, (_current_txbuf)
+    add   hl, de
     ld    bc, #ETH_HEADER_SIZE
     add   hl, bc
 
@@ -481,7 +378,7 @@ __naked
 
     ld    a, e
     cp    a, #<ETH_FRAME_PRIORITY
-    jr    nz, eth_send_timer_done
+    jr    nz, perform_transmission
 
     ;; ------------------------------------------------------------------------
     ;; this is a critical frame:
@@ -491,24 +388,102 @@ __naked
 
     ld    (_end_of_critical_frame), hl
 
-    ld    bc, #0
+    ;; skip ld bc, 0 here: BC is 0x0E (ETH_HEADER_SIZE), which is close enough
+
     ld    (_timer_tick_count), bc
     ld    a, #RETRANSMISSION_TIMEOUT_MIN
     ld    (_retransmission_timeout), a
 
-eth_send_timer_done::
+    ;; FALL THROUGH to perform_transmission
 
-    ;; ------------------------------------------------------------------------
-    ;; send Ethernet frame
-    ;; ------------------------------------------------------------------------
+    ;; ########################################################################
+    ;; perform_transmission:
+    ;;
+    ;; Perform a frame transmission. Registers and ETXST and ETXND must be set
+    ;; before this function is called.
+    ;;
+    ;; Does not return until the frame has been transmitted.
+    ;;
+    ;; DE: address of the first byte in the frame
+    ;; HL: address of the last byte in the frame
+    ;; ########################################################################
 
-    push  hl
-    push  de
-    call  _perform_transmission
-    pop   de
-    pop   hl
+perform_transmission::
 
-    ret
+      ;; ----------------------------------------------------------------------
+      ;; set up registers:  ETXST := start_address, ETXND := end_address
+      ;; ----------------------------------------------------------------------
+
+      push  hl   ;; remember HL=end_address
+      push  de
+
+      call  _enc28j60_select_bank0     ;; bank of ETXST and ETXND
+
+      pop   hl
+      ;; keep end_address on stack
+
+      ld    a, #ENC_OPCODE_WCR(ETXSTL)
+      call  _enc28j60_write_register16
+
+      ld    a, #ENC_OPCODE_WCR(ETXNDL)
+      pop   hl   ;; end_address pushed above
+      call  _enc28j60_write_register16
+
+      ;; ----------------------------------------------------------------------
+      ;; Poll for link to come up (if it has not already)
+      ;;
+      ;; NOTE: this code assumes the MIREGADR/MICMD registers to be configured
+      ;;       for continuous scanning of PHSTAT2 -- see eth_init
+      ;; ----------------------------------------------------------------------
+
+      ld    e, #BANK(MIRDH)             ;; bank 2
+      call  _enc28j60_select_bank
+
+      ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
+
+      ld    e, #MIRDH
+      ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
+      call  _enc28j60_poll_register
+
+      ;; ----------------------------------------------------------------------
+      ;; Errata, item 10:
+      ;;
+      ;; Reset transmit logic before transmitting a frame:
+      ;; set bit TXRST in ECON1, then clear it
+      ;; ----------------------------------------------------------------------
+
+      call  _enc28j60_select_bank0    ;; bank of ECON1
+
+      ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFS(ECON1)
+      call  _enc28j60_internal_write8plus8
+
+      ld    hl, #0x0100 * ECON1_TXRST + ENC_OPCODE_BFC(ECON1)
+      call  _enc28j60_internal_write8plus8
+
+      ;; ----------------------------------------------------------------------
+      ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
+      ;; ----------------------------------------------------------------------
+
+      ld    hl, #0x0100 * EIE_TXIE + ENC_OPCODE_BFC(EIE)
+      call  _enc28j60_internal_write8plus8
+
+      ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + ENC_OPCODE_BFC(EIR)
+      call  _enc28j60_internal_write8plus8
+
+      ld    hl, #0x0100 * (ESTAT_TXABRT) + ENC_OPCODE_BFC(ESTAT)
+      call  _enc28j60_internal_write8plus8
+
+      ;; ----------------------------------------------------------------------
+      ;; set ECON1.TXRTS, and poll it until it clears
+      ;; ----------------------------------------------------------------------
+
+      ld    hl, #0x0100 * ECON1_TXRTS + ENC_OPCODE_BFS(ECON1)
+      call  _enc28j60_internal_write8plus8
+
+      ld    e, #ECON1
+      ld    hl, #ECON1_TXRTS * 0x100
+
+      jp    _enc28j60_poll_register
 
   __endasm;
 }
@@ -613,12 +588,8 @@ main_spin_loop::
     ;; re-send last critical (BOOTP/TFTP) frame
     ;; ------------------------------------------------------------------------
 
-    push  de
     ld    hl, #ENC28J60_TXBUF1_START
-    push  hl
-    call  _perform_transmission
-    pop   hl
-    pop   de
+    call  perform_transmission
 
     jr    main_loop
 
