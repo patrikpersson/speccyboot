@@ -146,10 +146,4 @@ udp_create_impl(const struct mac_address_t  *dst_hwaddr,
 		const ipv4_address_t        *dst_ipaddr,
 		uint16_t                     udp_length);
 
-/* -------------------------------------------------------------------------
- * Send a completed UDP packet
- * ------------------------------------------------------------------------- */
-void
-udp_send(void);
-
 #endif /* SPECCYBOOT_UDP_IP_INCLUSION_GUARD */

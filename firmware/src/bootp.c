@@ -174,7 +174,7 @@ bootp_attr_lp2::
     ld   hl, #0x4800
     call _enc28j60_write_memory_cont
 
-    jp   _udp_send
+    jp   _ip_send
 
     ;; ========================================================================
     ;; data for the first 8 bytes of the BOOTREQUEST

@@ -246,7 +246,7 @@ tftp_receive_blk_nbr_and_port_ok::
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
     call    _enc28j60_write_memory_cont
 
-    call  _udp_send
+    call  _ip_send
 
     ;; ========================================================================
     ;; if expected block nbr == received, increase expected and accept the data
@@ -337,7 +337,7 @@ tftp_receive_error::
     ld    hl, #tftp_receive_error_packet
     call  _enc28j60_write_memory_cont
 
-    jp    _udp_send
+    jp    _ip_send
 
 tftp_receive_ack_opcode::
     .db   0, TFTP_OPCODE_ACK           ;; network order
@@ -436,7 +436,7 @@ __naked
     ld   hl, #tftp_rrq_option
     call _enc28j60_write_memory_cont
 
-    jp   _udp_send
+    jp   _ip_send
 
     ;; ------------------------------------------------------------------------
     ;; constant data for outgoing TFTP packets

@@ -274,7 +274,6 @@ __naked
     ld    h, 5(ix)
     ld    c, #IPV4_HEADER_SIZE        ;; B is zero after LDIR above
     add   hl, bc
-    ld    (_current_packet_length), hl
 
     ;; ----------------------------------------------------------------------
     ;; prepare IP header in _header_template

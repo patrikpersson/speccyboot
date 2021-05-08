@@ -349,12 +349,15 @@ eth_create_control_byte::
 /* ------------------------------------------------------------------------- */
 
 void
-udp_send(void)
+ip_send(void)
 __naked
 {
   __asm
 
-    ld   hl, (_current_packet_length)
+    ld   hl, (_header_template + 2)   ;; IP length
+    ld   a, l  ;; swap byte order in HL
+    ld   l, h
+    ld   h, a
 
     ;; FALL THROUGH to eth_send
 
@@ -496,7 +499,8 @@ perform_transmission::
       call  _enc28j60_internal_write8plus8
 
       ld    e, #ECON1
-      ld    hl, #ECON1_TXRTS * 0x100
+      ;; H=ECON1_TXRTS from above, B=0 from _spi_write_byte
+      ld    l, b
 
       jp    _enc28j60_poll_register
 

@@ -223,4 +223,10 @@ eth_create(const struct mac_address_t *destination,
 void
 eth_send(void);
 
+/* -------------------------------------------------------------------------
+ * Send a completed IP packet (packet length determined by IP header)
+ * ------------------------------------------------------------------------- */
+void
+ip_send(void);
+
 #endif /* SPECCYBOOT_ETH_INCLUSION_GUARD */
