@@ -113,13 +113,6 @@ extern struct ip_config_t {
 #define IP_CONFIG_HOST_ADDRESS_OFFSET   (0)
 #define IP_CONFIG_TFTP_ADDRESS_OFFSET   (4)
 
-/*
- * Pointer to global IPv4 broadcast address (255.255.255.255). Reuse some
- * of the bytes of the Ethernet broadcast address (FF:FF:FF:FF:FF:FF).
- */
-#define IP_BROADCAST_ADDRESS_PTR        \
-  ((const ipv4_address_t *) &eth_broadcast_address)
-
 /* ========================================================================= */
 
 /* Header template, used by udp_create() & co below */
@@ -133,8 +126,6 @@ extern PACKED_STRUCT(header_template_t) {
  * ------------------------------------------------------------------------- */
 
 extern uint16_t tftp_client_port;
-
-#define new_tftp_client_port()           (tftp_client_port += 0x0100)
 
 /* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an IP packet has been
@@ -150,13 +141,6 @@ ip_receive(void);
  *  - Source and destination ports are passed in network endian order.
  *  - The 'udp_length' argument must include sizeof(struct udp_header_t).
  * ------------------------------------------------------------------------- */
-#define udp_create(_dst_hwaddr, _dst_ipaddr, _src_p, _dst_p, _len)            \
-  do {                                                                        \
-    header_template.udp.src_port = _src_p;                                    \
-    header_template.udp.dst_port = _dst_p;                                    \
-    udp_create_impl(_dst_hwaddr, _dst_ipaddr, _len);                          \
-  } while(0)
-
 void
 udp_create_impl(const struct mac_address_t  *dst_hwaddr,
 		const ipv4_address_t        *dst_ipaddr,
@@ -170,13 +154,6 @@ udp_create_impl(const struct mac_address_t  *dst_hwaddr,
  * ------------------------------------------------------------------------- */
 void
 udp_create_reply(uint16_t udp_payload_length, bool broadcast);
-
-/* -------------------------------------------------------------------------
- * Append payload to a UDP packet, previously created with udp_create() or
- * udp_create_reply()
- * ------------------------------------------------------------------------- */
-#define udp_add(_data)  eth_add_w_len(&(_data), sizeof(_data))
-#define udp_add_w_len   eth_add_w_len
 
 /* -------------------------------------------------------------------------
  * Send a completed UDP packet
