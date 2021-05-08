@@ -137,12 +137,8 @@ __naked
     ld   hl, #_rx_frame + ARP_OFFSET_SPA
     call _enc28j60_write_memory_cont
 
-    ld   e, #ARP_IP_ETH_PACKET_SIZE    ;; D==0 here
-    push de
-    call _eth_send
-    pop  de
-
-    ret
+    ld   hl, #ARP_IP_ETH_PACKET_SIZE
+    jp   _eth_send
 
 arp_receive_reply_template::
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order

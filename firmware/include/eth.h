@@ -218,10 +218,9 @@ eth_create(const struct mac_address_t *destination,
 
 /* -------------------------------------------------------------------------
  * Send an Ethernet frame, previously created with eth_create().
- * total_nbr_of_bytes_in_payload:   number of bytes in payload
- *                                  (that is, excluding Ethernet header)
+ * HL:   number of bytes in payload (that is, excluding Ethernet header)
  * ------------------------------------------------------------------------- */
 void
-eth_send(uint16_t total_nbr_of_bytes_in_payload);
+eth_send(void);
 
 #endif /* SPECCYBOOT_ETH_INCLUSION_GUARD */

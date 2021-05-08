@@ -448,10 +448,7 @@ __naked
   __asm
 
     ld   hl, (_current_packet_length)
-    push hl
-    call _eth_send
-    pop  hl
-    ret
+    jp   _eth_send
 
   __endasm;
 }

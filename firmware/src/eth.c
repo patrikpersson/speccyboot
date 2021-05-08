@@ -450,17 +450,10 @@ eth_create_control_byte::
 /* ------------------------------------------------------------------------- */
 
 void
-eth_send(uint16_t total_nbr_of_bytes_in_payload)
+eth_send(void)
 __naked
 {
-  (void) total_nbr_of_bytes_in_payload;
-
   __asm
-
-    pop   hl    ;; return address
-    pop   bc    ;; total_nbr_of_bytes_in_payload
-    push  bc
-    push  hl
 
     ;; ------------------------------------------------------------------------
     ;; set HL = end address of frame in transmission buffer,
@@ -474,9 +467,9 @@ __naked
     ;;             = start + ETH_HEADER_SIZE + nbr_bytes
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_current_txbuf)
-    ld    d, h
-    ld    e, l
+    ld    bc, (_current_txbuf)
+    ld    d, b
+    ld    e, c
     add   hl, bc
     ld    bc, #ETH_HEADER_SIZE
     add   hl, bc
