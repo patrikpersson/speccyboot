@@ -159,6 +159,44 @@ __endasm;
 
 /* ------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------
+ * Create UDP reply to the sender of the received packet currently processed.
+ * Source/destination ports are swapped. Frame class is ETH_FRAME_PRIORITY.
+ *
+ * Call with BC=number of bytes in payload
+ * ------------------------------------------------------------------------- */
+void
+tftp_create_reply(void)
+__naked
+{
+  __asm
+
+    push bc
+
+    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    push bc
+
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+
+    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    push hl
+
+    call _udp_create_impl
+
+    pop  af
+    pop  af
+    pop  af
+
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
 void
 tftp_receive(void)
 __naked
@@ -271,14 +309,8 @@ tftp_receive_blk_nbr_and_port_ok::
     ;; reply with ACK packet
     ;; ========================================================================
 
-    xor   a, a
-    push  af
-    inc   sp
-    ld    hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
-    push  hl
-    call    _udp_create_reply
-    pop   hl
-    inc   sp
+    ld    bc, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
+    call    _tftp_create_reply
 
     ld    de, #TFTP_SIZE_OF_OPCODE
     ld    hl, #tftp_receive_ack_opcode
@@ -311,14 +343,8 @@ tftp_receive_blk_nbr_and_port_ok::
 
 tftp_receive_error::
 
-    xor   a
-    push  af
-    inc   sp
     ld    bc, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
-    push  bc
-    call  _udp_create_reply
-    pop   bc
-    inc   sp
+    call  _tftp_create_reply
 
     ld    de, #TFTP_SIZE_OF_ERROR_PACKET
     ld    hl, #tftp_receive_error_packet

@@ -147,15 +147,6 @@ udp_create_impl(const struct mac_address_t  *dst_hwaddr,
 		uint16_t                     udp_length);
 
 /* -------------------------------------------------------------------------
- * Create UDP reply to the sender of the received packet currently processed.
- * Source/destination ports are swapped. Frame class is ETH_FRAME_PRIORITY.
- *
- * If 'broadcast' is true, the reply is sent to broadcast MAC & IP addresses.
- * ------------------------------------------------------------------------- */
-void
-udp_create_reply(uint16_t udp_payload_length, bool broadcast);
-
-/* -------------------------------------------------------------------------
  * Send a completed UDP packet
  * ------------------------------------------------------------------------- */
 void
