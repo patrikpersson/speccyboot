@@ -79,14 +79,15 @@ __naked
     ;; print 'SpeccyBoot x.y' at (0,0)
     ;; ------------------------------------------------------------------------
 
-    ld    ix, #title_str       ;; 'SpeccyBoot x.y'
+    ld    hl, #title_str       ;; 'SpeccyBoot x.y'
     ld    de, #0x4000          ;; coordinates (0,0)
     call  _print_str
 
     ;; ------------------------------------------------------------------------
-    ;; print 'BOOTP' at (23,0)
+    ;; print 'BOOTP TFTP' at (23,0)
     ;; ------------------------------------------------------------------------
 
+    ;; HL already has the right value after call above
     ld    de, #0x50E0          ;; coordinates (23, 0)
     call  _print_str
 
@@ -95,9 +96,9 @@ __naked
     ;; ------------------------------------------------------------------------
 
     ld    hl, #ATTRS_BASE     ;; (0,0)
-    ld    bc, #0x1f00 + (INK(WHITE) | PAPER(BLACK) | BRIGHT)
+    ld    b, #20
 bootp_attr_lp1::
-    ld    (hl), c
+    ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT)
     inc   hl
     djnz  bootp_attr_lp1
 
@@ -106,9 +107,9 @@ bootp_attr_lp1::
     ;; ------------------------------------------------------------------------
 
     ld    hl, #ATTRS_BASE + 23 * 32     ;; (23,0)
-    ld    bc, #0x0500 + (INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
+    ld    b, #5
 bootp_attr_lp2::
-    ld    (hl), c
+    ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
     inc   hl
     djnz  bootp_attr_lp2
 
@@ -297,18 +298,17 @@ bootp_receive_sname_done::
 #ifdef SB_MINIMAL
 
     ld    hl, #(ATTRS_BASE + 23 * 32)
-    ld    bc, #0x0500 + (INK(GREEN) | PAPER(BLACK))
-tftp_attr_lp2::
-    ld    (hl), c
-    inc   hl
-    djnz  tftp_attr_lp2
-
-    inc   hl
-    ld    bc, #0x0400 + (INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
+    ld    bc, #0x0604    ;; 6 chars, green ink
 tftp_attr_lp1::
     ld    (hl), c
     inc   hl
     djnz  tftp_attr_lp1
+
+    ld    b, c      ;; 4 chars
+tftp_attr_lp2::
+    ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
+    inc   hl
+    djnz  tftp_attr_lp2
 
 #else   /* SB_MINIMAL  */
 

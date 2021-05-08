@@ -125,11 +125,12 @@ print_at(uint8_t row,
          const char *s);
 
 /* -------------------------------------------------------------------------
-* Print a string to VRAM.
-* IX: points to string, NUL terminated
+* Print a string to bitmap VRAM.
+* HL: points to string, NUL terminated
 * DE: points to VRAM address
 *
-* On return, IX points to next byte after NUL terminator
+* Destroys AF, HL', BC'
+* On return, A==0, and HL points to next byte after NUL terminator
 * ------------------------------------------------------------------------- */
 void
 print_str(void);

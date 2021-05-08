@@ -276,10 +276,16 @@ __naked
 {
   __asm
 
-    ld   a, (ix)
-    inc  ix
+    ld   a, (hl)
+    inc  hl
     or   a, a
     ret  z
+    ld   c, d
+
+    exx
+
+    ;; use of alternate registers:
+    ;; HL=font data, BC=temp
 
     ld   l, a
     ld   h, #0
@@ -290,14 +296,16 @@ __naked
     add  hl, bc
 
     ld   b, #8
-    ld   c, d
 00001$:
     ld   a, (hl)
+    exx
     ld   (de), a
     inc  d
+    exx
     inc  hl
     djnz 00001$
 
+    exx
     ld   d, c
     inc  e
     jr   _print_str
