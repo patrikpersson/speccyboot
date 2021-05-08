@@ -209,8 +209,8 @@ __naked
 
       ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
 
-      ld    h, #MIRDH
-      ld    de, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
+      ld    e, #MIRDH
+      ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
       call  _enc28j60_poll_register
 
       ;; ----------------------------------------------------------------------
@@ -249,11 +249,10 @@ __naked
       ld    hl, #0x0100 * ECON1_TXRTS + ENC_OPCODE_BFS(ECON1)
       call  _enc28j60_internal_write8plus8
 
-      ld    h, #ECON1
-      ld    de, #ECON1_TXRTS * 0x100
-      call  _enc28j60_poll_register
+      ld    e, #ECON1
+      ld    hl, #ECON1_TXRTS * 0x100
 
-      ret
+      jp    _enc28j60_poll_register
 
   __endasm;
 }
@@ -297,8 +296,8 @@ __naked
     ;; poll ESTAT until ESTAT_CLKRDY is set
     ;; ------------------------------------------------------------------------
 
-    ld    h, #ESTAT
-    ld    de, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
+    ld    e, #ESTAT
+    ld    hl, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
     call  _enc28j60_poll_register
 
     ;; ========================================================================
@@ -566,12 +565,8 @@ main_loop::
 
 main_spin_loop::
 
-    ld    l, #EPKTCNT
-    push  hl
+    ld    e, #EPKTCNT
     call  _enc28j60_read_register
-    pop   hl
-
-    ;; take care to not POP HL above
 
     ld    a, c
     or    a, a
@@ -608,7 +603,6 @@ main_spin_loop::
 
     ;; ------------------------------------------------------------------------
     ;; If _retransmission_timeout >= RETRANSMISSION_TIMEOUT_MAX, give up.
-    ;; (Check the high byte only, that should be enough.)
     ;; ------------------------------------------------------------------------
 
     ld    a, b

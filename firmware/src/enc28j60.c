@@ -170,24 +170,17 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t
-enc28j60_read_register(uint8_t register_descr)
+void
+enc28j60_read_register(void)
 __naked
 {
-  (void) register_descr;
-
   __asm
 
     ;; ------------------------------------------------------------------------
     ;; start transaction: RCR
     ;; ------------------------------------------------------------------------
 
-    pop  bc   ;; return address
-    pop  hl   ;; L == register_descr
-    push hl
-    push bc
-
-    ld    a, l
+    ld    a, e
     and   a, #0x1f       ;; opcode RCR = 0x00
     ld    c, a
     call  _spi_write_byte
@@ -196,7 +189,7 @@ __naked
     ;; for MAC and MII registers, read and ignore a dummy byte
     ;; ------------------------------------------------------------------------
 
-    ld    a, l
+    ld    a, e
     add   a, a   ;; bit 7 in descriptor set? then this is a MAC or MII register
 
     call  c, _spi_read_byte
@@ -231,22 +224,15 @@ __naked
 {
   __asm
 
-    ld     bc, #20000                   ;; a short while
-
+    ld     bc, #20000       ;; should give controller plenty of time to respond
 00001$:
     push   bc
-    push   de
-    push   hl
-    inc    sp
     call   _enc28j60_read_register
-    dec    sp
     ld     a, c
-    pop    hl
-    pop    de
     pop    bc
 
-    and    a, d
-    cp     a, e
+    and    a, h
+    cp     a, l
     ret    z
 
     dec    bc

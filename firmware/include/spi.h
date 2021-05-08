@@ -160,7 +160,7 @@ spi_reset_loop:                           \
 
 /*
  * Read 8 bits from SPI to register C.
- * Destroys B & AF.
+ * Destroys BC & AF; B will be zero on exit.
  */
 uint8_t
 spi_read_byte(void)
@@ -170,7 +170,7 @@ __naked;
 
 /*
  * Write 8 bits to SPI from register C.
- * Destroys B & AF.
+ * Destroys BC & AF; B will be zero on exit.
  */
 void
 spi_write_byte(uint8_t x)

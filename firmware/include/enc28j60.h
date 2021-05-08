@@ -260,10 +260,13 @@ enc28j60_write_register16(void);
 
 /*
  * Read value of indicated ETH/MAC/MII register.
- * The value is returned in (Z80) register C.
+ *
+ * On entry, E should hold the register descriptor for the register to read.
+ * Returns the read value in C.
+ * Destroys AF, B. B will be zero on exit.
  */
-uint8_t
-enc28j60_read_register(uint8_t register_descr);
+void
+enc28j60_read_register(void);
 
 /* ------------------------------------------------------------------------- */
 
@@ -277,9 +280,11 @@ enc28j60_read_register(uint8_t register_descr);
  *
  * Call with registers:
  *
- * H=reg
- * D=mask
- * E=expected_value
+ * E=reg
+ * H=mask
+ * L=expected_value
+ *
+ * Destroys AF, BC
  */
 void
 enc28j60_poll_register(void);
