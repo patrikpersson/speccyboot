@@ -349,6 +349,21 @@ eth_create_control_byte::
 /* ------------------------------------------------------------------------- */
 
 void
+udp_send(void)
+__naked
+{
+  __asm
+
+    ld   hl, (_current_packet_length)
+
+    ;; FALL THROUGH to eth_send
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
 eth_send(void)
 __naked
 {

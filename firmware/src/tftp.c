@@ -85,80 +85,6 @@ static uint16_t server_port;
 
 /* ------------------------------------------------------------------------- */
 
-static void
-receive_tftp_data(void)
-__naked
-{
-  __asm
-
-    ;; ------------------------------------------------------------------------
-    ;; If a receive hook has been installed, jump there
-    ;; ------------------------------------------------------------------------
-
-    ld  hl, (_tftp_receive_hook)
-    ld  a, h
-    or  l
-    jr  z, 00002$
-    jp  (hl)
-
-00002$:
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    ld  d, (hl)
-    inc hl
-    ld  e, (hl)    ;; network order
-    ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
-    ld  de, #UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    xor a          ;; clear C flag; also A == 0 will be useful below
-    sbc hl, de
-    ld  b, h
-    ld  c, l       ;; BC is now payload length, 0..512
-
-    ;; ------------------------------------------------------------------------
-    ;; check if BC == 0x200; store result of comparison in alternate AF
-    ;; ------------------------------------------------------------------------
-
-    or  a, c       ;; is C zero?
-    jr  nz, 00001$
-    ld  a, #>0x0200
-    cp  a, b
-00001$:
-    .db 8   ;; silly assembler rejects "ex  af, af'"
-
-    ld  de, (_curr_write_pos)
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ldir
-    ld  (_curr_write_pos), de
-
-    ;; ------------------------------------------------------------------------
-    ;; If a full TFTP packet was loaded, return.
-    ;; ------------------------------------------------------------------------
-
-    .db 8   ;; silly assembler rejects "ex  af, af'"
-    ret z
-
-#ifdef SB_MINIMAL
-    ;; ------------------------------------------------------------------------
-    ;; This was the last packet: execute the loaded binary.
-    ;; ------------------------------------------------------------------------
-    jp  _tftp_file_buf
-#else
-    ;; ------------------------------------------------------------------------
-    ;; This was the last packet: prepare for snapshot loading and display menu.
-    ;; ------------------------------------------------------------------------
-
-    ;; place a NUL byte after the loaded data, to terminate the snapshot list
-    xor  a, a
-    ld   (de), a
-
-    call _expect_snapshot
-    jp   _run_menu
-#endif
-
-__endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
 /* -------------------------------------------------------------------------
  * Create UDP reply to the sender of the received packet currently processed.
  * Source/destination ports are swapped. Frame class is ETH_FRAME_PRIORITY.
@@ -339,7 +265,68 @@ tftp_receive_blk_nbr_and_port_ok::
     inc   de
     ld    (_expected_tftp_block_no), de
 
-    jp    _receive_tftp_data     ;; FIXME: merge these functions
+    ;; ------------------------------------------------------------------------
+    ;; If a receive hook has been installed, jump there
+    ;; ------------------------------------------------------------------------
+
+    ld  hl, (_tftp_receive_hook)
+    ld  a, h
+    or  l
+    jr  z, 00002$
+    jp  (hl)
+
+00002$:
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld  d, (hl)
+    inc hl
+    ld  e, (hl)    ;; network order
+    ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
+    ld  de, #UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    xor a          ;; clear C flag; also A == 0 will be useful below
+    sbc hl, de
+    ld  b, h
+    ld  c, l       ;; BC is now payload length, 0..512
+
+    ;; ------------------------------------------------------------------------
+    ;; check if BC == 0x200; store result of comparison in alternate AF
+    ;; ------------------------------------------------------------------------
+
+    or  a, c       ;; is C zero?
+    jr  nz, 00001$
+    ld  a, #>0x0200
+    cp  a, b
+00001$:
+    ex  af, af'             ;; '
+
+    ld  de, (_curr_write_pos)
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ldir
+    ld  (_curr_write_pos), de
+
+    ;; ------------------------------------------------------------------------
+    ;; If a full TFTP packet was loaded, return.
+    ;; ------------------------------------------------------------------------
+
+    ex  af, af'             ;; '
+    ret z
+
+#ifdef SB_MINIMAL
+    ;; ------------------------------------------------------------------------
+    ;; This was the last packet: execute the loaded binary.
+    ;; ------------------------------------------------------------------------
+    jp  _tftp_file_buf
+#else
+    ;; ------------------------------------------------------------------------
+    ;; This was the last packet: prepare for snapshot loading and display menu.
+    ;; ------------------------------------------------------------------------
+
+    ;; place a NUL byte after the loaded data, to terminate the snapshot list
+    xor  a, a
+    ld   (de), a
+
+    call _expect_snapshot
+    jp   _run_menu
+#endif
 
 tftp_receive_error::
 

@@ -43,4 +43,7 @@ uint8_t kilobytes_expected = 48;
 
 uint16_t ip_checksum;
 
+/* Length of currently constructed TX UDP packet */
+uint16_t current_packet_length;
+
 /* ------------------------------------------------------------------------- */

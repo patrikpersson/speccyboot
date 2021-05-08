@@ -42,9 +42,6 @@
 /* Global IP configuration: defaults are all zero */
 struct ip_config_t ip_config;
 
-/* Length of currently constructed TX UDP packet */
-static uint16_t current_packet_length;
-
 /* Definitions for state exposed in header */
 PACKED_STRUCT(header_template_t) header_template;
 uint16_t tftp_client_port = htons(0xc000);
@@ -383,20 +380,6 @@ ip_header_defaults::
     .db   0x40               ;; time to live
     .db   IP_PROTOCOL_UDP    ;; protocol
     .dw   0                  ;; checksum (temporary value for computation)
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-udp_send(void)
-__naked
-{
-  __asm
-
-    ld   hl, (_current_packet_length)
-    jp   _eth_send
 
   __endasm;
 }
