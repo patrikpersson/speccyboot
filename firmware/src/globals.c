@@ -43,4 +43,6 @@ uint8_t kilobytes_expected = 48;
 
 uint16_t ip_checksum;
 
+struct z80_snapshot_header_t  snapshot_header;
+
 /* ------------------------------------------------------------------------- */

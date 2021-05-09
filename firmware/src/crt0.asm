@@ -120,8 +120,8 @@ ram_trampoline::
 #endif
 
   ld    hl, #0x3d00 ;; address of font data in ROM1
-  ld    de, #_font_data
-  ld    b, d        ;; BC is now 0x4fd (overkill, but fine)
+  ld    de, #_font_data ;; address of font buffer in RAM; means E is now 3
+  ld    b, e  ;; BC is now 0x3FD (SpeccyBoot) or 0x300 (DGBoot), overkill is ok
   ldir
 
   xor   a           ;; page in SpeccyBoot, keep ETH in reset

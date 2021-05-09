@@ -52,14 +52,20 @@
 #define STACK_SIZE   (0x50)
 uint8_t __at(0x5b00 + STACK_SIZE) stack_top;
 
-/* Buffer for font data (copied from 48K ROM by crt0.asm) */
-uint8_t __at(0x5F31) font_data[0x300];
+/*
+ * Buffer for font data (copied from 48K ROM by crt0.asm)
+ *
+ * The 3 is there for a reason: it allows us to quickly load BC with a sensible
+ * value while copying data from Spectrum ROM to this buffer, in crt0.asm.
+ * The '3' also means that the last 3 bytes of the last character (127,
+ * copyright sign) will be garbled (mapped to ROM). Shouldn't matter, as this
+ * character (DEL) is not expected in UNIX filenames. */
+uint8_t __at(0xfd03) font_data[0x300];
 
 /*
- * Storage for Z80 snapshot header. This is used while loading a snapshot,
- * so we re-use some of the space used for font data (SPACE to &)
+ * Storage for Z80 snapshot header. Used while loading a snapshot.
  */
-struct z80_snapshot_header_t  __at(0x5F31) snapshot_header;
+extern struct z80_snapshot_header_t  snapshot_header;
 
 /* ------------------------------------------------------------------------ */
 
