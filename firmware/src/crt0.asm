@@ -36,6 +36,7 @@
   .globl	_stack_top
   .globl	_timer_tick_count
   .globl  _tftp_file_buffer
+  .globl  _run_menu
 
   .globl	l__INITIALIZER
   .globl	s__INITIALIZED
@@ -151,6 +152,10 @@ ram_trampoline::
 
   .area	_HOME
   .area	_CODE
+#ifndef STAGE2_IN_RAM
+  .area _STAGE2        ;; this is where the stage 2 bootloader starts
+  .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
+#endif
   .area _INITIALIZER
   .area _GSINIT
   .area _GSFINAL
@@ -158,6 +163,13 @@ ram_trampoline::
   .area	_DATA
   .area _INITIALIZED
   .area _BSS
+
+#ifdef STAGE2_IN_RAM
+  .area _STAGE2        ;; this is where the stage 2 bootloader starts
+  .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
+#endif
+
+  .area _SNAPSHOTLIST  ;; area for loaded snapshot
 
 end_of_data::
 _tftp_file_buffer::
@@ -186,3 +198,10 @@ gsinit::
   jp _main
 
 end_of_code::
+
+  .area _STAGE2
+_stage2::
+  jp  _run_menu
+
+  .area _SNAPSHOTLIST
+_snapshot_list::

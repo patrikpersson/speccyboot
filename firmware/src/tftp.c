@@ -55,11 +55,7 @@
 
 #define TFTP_OFFSET_OF_BLOCKNO       (2)
 
-#ifdef SB_MINIMAL
-#define TFTP_SIZE_OF_RRQ_PREFIX      (2)
-#else
 #define TFTP_SIZE_OF_RRQ_PREFIX      (13)
-#endif
 
 #define TFTP_SIZE_OF_RRQ_OPTION      (6)
 
@@ -72,7 +68,13 @@
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t *curr_write_pos           = (uint8_t *) &tftp_file_buffer;
+uint8_t *curr_write_pos           = (uint8_t *)
+#ifdef STAGE2_IN_RAM
+&stage2;
+#else
+&snapshot_list;
+#endif
+
 void (*tftp_receive_hook)(void)   = NULL;
 
 /* ------------------------------------------------------------------------- */
@@ -310,23 +312,11 @@ tftp_receive_blk_nbr_and_port_ok::
     ex  af, af'             ;; '
     ret z
 
-#ifdef SB_MINIMAL
     ;; ------------------------------------------------------------------------
     ;; This was the last packet: execute the loaded binary.
     ;; ------------------------------------------------------------------------
-    jp  _tftp_file_buffer
-#else
-    ;; ------------------------------------------------------------------------
-    ;; This was the last packet: prepare for snapshot loading and display menu.
-    ;; ------------------------------------------------------------------------
 
-    ;; place a NUL byte after the loaded data, to terminate the snapshot list
-    xor  a, a
-    ld   (de), a
-
-    call _expect_snapshot
-    jp   _run_menu
-#endif
+    jp  _stage2
 
 tftp_receive_error::
 
@@ -446,9 +436,7 @@ tftp_rrq_option::
     .ascii "octet"             ;; trailing NUL pinched from following packet
 tftp_rrq_prefix::
     .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
-#ifndef SB_MINIMAL
     .ascii "speccyboot/"
-#endif
 
   __endasm;
 }

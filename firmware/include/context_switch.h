@@ -75,19 +75,78 @@
  *                          the Spectrum RAM (temporary storage during loading)
  * ------------------------------------------------------------------------- */
 
+ /* ========================================================================= */
+
+ /*
+  * VRAM trampoline layout. Split onto multiple pixel lines, to reduce the
+  * number of distorted character cells to 5.
+  *
+  * 0x4000:
+  *    out (0x9f), a
+  *    jp  0x4100
+  * 0x4100:
+  *    ld  a, #N      (value to be set for I below)
+  *    jp  0x4200
+  * 0x4200:
+  *    ld  i, a
+  *    jp  0x4300
+  * 0x4300:
+  *    ld  a, #N
+  *    jp  0x4400
+  * 0x4400:
+  *    im0/im1/im2   (depending on snapshot interrupt mode)
+  *    jp  0x4500
+  * 0x4500:
+  *    nop           (for symmetry of JPs)
+  *    ei / nop      (depending on whether interrupts are to be enabled)
+  *    jp  NN
+  *
+  * (state for registers BC, DE, HL, SP, F, R follow
+  * in the remaining scan lines of this 5-cell trampoline)
+  */
+ #define VRAM_TRAMPOLINE_START           0x4000
+ #define VRAM_TRAMPOLINE_OUT             (VRAM_TRAMPOLINE_START)
+ #define VRAM_TRAMPOLINE_LD_A_FOR_I      0x4100
+ #define VRAM_TRAMPOLINE_LD_I            0x4200
+ #define VRAM_TRAMPOLINE_LD_A            0x4300
+ #define VRAM_TRAMPOLINE_IM              0x4400
+ #define VRAM_TRAMPOLINE_NOP             0x4500
+ #define VRAM_TRAMPOLINE_EI_OR_NOP       0x4501
+ #define VRAM_TRAMPOLINE_JP_FINAL        0x4502
+
+ /* ------------------------------------------------------------------------ */
+
+ /*
+  * Register state, stored in VRAM along with the trampoline
+  */
+
+ #define VRAM_REGSTATE_PC                (VRAM_TRAMPOLINE_JP_FINAL + 1)
+
+ #define VRAM_REGSTATE_I                 (VRAM_TRAMPOLINE_LD_A_FOR_I + 1)
+
+ #define VRAM_REGSTATE_A                 (VRAM_TRAMPOLINE_LD_A + 1)
+
+ #define VRAM_REGSTATE_BC_HL_F           0x4600
+ #define VRAM_REGSTATE_F                 0x4604
+
+ #define VRAM_REGSTATE_SP                0x4700
+ #define VRAM_REGSTATE_R                 0x4702
+
+ /* ------------------------------------------------------------------------ */
+
 /*
  * Runtime data (the stuff to evacuate). Note that the z80_loader code
  * requires RUNTIME_DATA_LENGTH to be a multiple of 0x400 (for kilobyte
  * counter display)
  */
 #define RUNTIME_DATA                  (0x5800)
-#define RUNTIME_DATA_LENGTH           (0x0800)
+#define RUNTIME_DATA_LENGTH           (0x0C00)
 
 /*
  * Buffer to write evacuated data into, before we write all off it to the
- * ENC28J60
+ * ENC28J60.
  */
-#define EVACUATION_TEMP_BUFFER        (0x6000)
+#define EVACUATION_TEMP_BUFFER        (0xF400)
 
 /*
  * When curr_write_pos passes beyond this address, we know evacuation is done
@@ -206,13 +265,6 @@ PACKED_STRUCT(z80_snapshot_header_t) {
 #define evacuate_z80_header()       memcpy(&snapshot_header,                  \
                                            &rx_frame.udp.app.tftp.data.z80,   \
                                            sizeof(snapshot_header))
-
-/*
- * Evacuate data from the temporary buffer to ENC28J60 SRAM. Examine the stored
- * .z80 header, and prepare the context switch to use information
- * (register state etc.) in it.
- */
-void evacuate_data(void);
 
 /*
  * Restore application data from ENC28J60 SRAM, restore register values

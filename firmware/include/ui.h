@@ -170,12 +170,6 @@ set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len);
 void
 init_progress_display(void);
 
-/* ------------------------------------------------------------------------- *
- * Update progress bar
- * ------------------------------------------------------------------------- */
-void
-update_progress_display(void);
-
 #pragma restore
 
 #endif /* SPECCYBOOT_UI_INCLUSION_GUARD */

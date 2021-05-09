@@ -37,15 +37,15 @@ else
 TARGETFLAGS  = -DHWTARGET_SPECCYBOOT
 endif
 
-CFLAGS      += $(TARGETFLAGS)
-
-ifdef MINIMAL
-CFLAGS      += -DSB_MINIMAL
+ifdef STAGE2_IN_RAM
+TARGETFLAGS += -DSTAGE2_IN_RAM
 endif
 
 ifdef PAINT_STACK
-CFLAGS      += -DPAINT_STACK
+TARGETFLAGS += -DPAINT_STACK
 endif
+
+CFLAGS      += $(TARGETFLAGS)
 
 # =============================================================================
 # COMPONENTS
@@ -53,13 +53,8 @@ endif
 
 # module = source + header
 MODULES      = util context_switch enc28j60 spi globals
-MODULES     += eth arp udp_ip bootp tftp ui
-
-ifdef MINIMAL
-MODULES     +=
-else
-MODULES     += menu z80_loader
-endif
+MODULES     += eth arp udp_ip bootp tftp bootui
+MODULES     += ui menu z80_loader
 
 # -----------------------------------------------------------------------------
 
@@ -69,10 +64,11 @@ OFILES       = crt0.rel $(CFILES:.c=.rel)
 
 # -----------------------------------------------------------------------------
 
-# ROM:       binary file to be loaded into EEPROM (address 0x0000)
+# ROM:       stage 1, binary file to be loaded into EEPROM (address 0x0000)
+# STAGE2BIN: binary file to be loaded over TFTP by stage 1
 
 ROM          = speccyboot.rom
-
+STAGE2BIN    = spboot.bin
 
 # =============================================================================
 # DIRECTORIES
@@ -99,10 +95,20 @@ vpath %.h    $(INCLUDEDIR)
 
 all: bin
 
+ifdef STAGE2_IN_RAM
+
+MAKEBINFLAGS=-p
+bin: $(ROM) $(STAGE2BIN)
+
+else
+
+MAKEBINFLAGS=-s 8192
 bin: $(ROM)
 
+endif
+
 clean:
-	rm -rf $(OBJDIR) $(ROM)
+	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
 
 install: $(ROM)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
@@ -125,6 +131,10 @@ check_sizes: bin
 # CROSS-COMPILATION TARGETS
 # =============================================================================
 
+# temporary result when building binary: both stages are built into a single
+# binary, then split
+COMBINED = $(OBJDIR)/combined.bin
+
 %.rel: %.c $(OBJDIR) $(HFILES)
 	$(CC) $(CFLAGS) -c -o $(OBJDIR)/$@ $<
 
@@ -136,6 +146,12 @@ crt0.rel: crt0.asm $(OBJDIR)
 $(OBJDIR):
 	mkdir -p $@
 
-$(ROM): $(OFILES)
+$(COMBINED): $(OFILES)
 	$(CC) $(LDFLAGS) -o $(OBJDIR)/$(ROM) $(OFILES:%=$(OBJDIR)/%)
-	$(MAKEBIN) -s 8192 $(OBJDIR)/$(ROM) $@
+	$(MAKEBIN) $(MAKEBINFLAGS) $(OBJDIR)/$(ROM) $@
+
+$(ROM): $(COMBINED)
+	dd if=$< of=$@ bs=1k count=8
+
+$(STAGE2BIN): $(COMBINED)
+	dd if=$< of=$@ bs=1 skip=$(shell grep s__STAGE2 $(OBJDIR)/speccyboot.noi | cut -d' ' -f3 | sed -e 's/0x/obase=10;ibase=16; /g' | bc)

@@ -36,29 +36,38 @@
 #include "globals.h"
 #include "ui.h"
 #include "util.h"
+#include "z80_loader.h"
 
-/* ------------------------------------------------------------------------- */
-
-#ifndef VERSION
-#error Bad Makefile, does not define VERSION
-#endif
+#pragma codeseg NONRESIDENT
 
 /* ------------------------------------------------------------------------- */
 
 /* Number of snapshot names displayed at a time */
 #define DISPLAY_LINES     (20)
 
+static const char menu_progress[] = "Local:           TFTP:";
+
 /* ------------------------------------------------------------------------- */
 
 void
 run_menu(void)
 {
-  unsigned char *src = &tftp_file_buffer;
+  unsigned char *src = &snapshot_list;
   uint16_t nbr_snapshots = 0;
 
-  // TODO: put ENC28J60 in idle here
+  print_at(23, 0, '\0', "Local:           TFTP:");
+  set_attrs(INK(WHITE) | PAPER(BLACK), 23, 0, 31);
+  print_ip_addr( &ip_config.host_address, (uint8_t *) LOCAL_IP_POS);
+  print_ip_addr( &ip_config.tftp_server_address, (uint8_t *) SERVER_IP_POS);
 
-  set_attrs(INK(WHITE) | PAPER(BLACK), 23, 17, 15);
+#ifdef STAGE2_IN_RAM
+  if (curr_write_pos == &snapshot_list) {
+    tftp_read_request("snapshots.lst");
+    __asm
+      jp   main_loop
+    __endasm;
+  }
+#endif
 
   /* --------------------------------------------------------------------------
    * Scan through the loaded snapshot list, and build an array of pointers
@@ -149,6 +158,7 @@ run_menu(void)
       case KEY_ENTER:
         init_progress_display();
         eth_init();
+        expect_snapshot();
         tftp_read_request(rx_frame.snapshot_names[idx]);
         return;
       case KEY_UP:

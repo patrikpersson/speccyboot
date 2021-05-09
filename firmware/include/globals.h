@@ -77,7 +77,11 @@ extern struct z80_snapshot_header_t  snapshot_header;
 extern uint8_t kilobytes_loaded;
 extern uint8_t kilobytes_expected;
 
-extern uint8_t tftp_file_buffer;   /* defined in crt0.asm */
+/* Important addresses, defined in crt0.asm */
+extern uint8_t stage2;        /* Beginning of second-stage loader */
+extern uint8_t snapshot_list;  /* First byte after second-stage loader */
+
+/* Administrative Ethernet information, including Ethernet header */
 
 /* ------------------------------------------------------------------------ */
 

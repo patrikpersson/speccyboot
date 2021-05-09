@@ -35,8 +35,7 @@
 
 #include "globals.h"
 
-/* Attribute address for large digits (kilobyte counter) */
-#define ATTR_DIGIT_ROW  (0x5a00)
+#pragma codeseg NONRESIDENT
 
 /* ----------------------------------------------------------------------------
  * Keyboard mapping (used by _poll_key below)
@@ -68,7 +67,6 @@
  * 11111110
  *-------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 static const uint8_t key_rows[] = {
   0x20, 0, 0x4d, 0x4e, 0x42,      /* 7FFE: space, shift, 'M', 'N', 'B' */
   0x0d, 0x4c, 0x4b, 0x4a, 0x48,   /* BFFE: enter, 'L', 'K', 'J', 'H' */
@@ -79,7 +77,6 @@ static const uint8_t key_rows[] = {
   0x41, 0x53, 0x44, 0x46, 0x47,   /* FDFE: 'A', 'S', 'D', 'F', 'G' */
   0, 0x5a, 0x58, 0x43, 0x56,      /* FEFE: shift, 'Z', 'X', 'C', 'V' */
 };
-#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
 
@@ -96,22 +93,6 @@ static const uint8_t key_rows[] = {
 
 /* ------------------------------------------------------------------------- */
 
-void
-fail(void)
-__naked
-{
-  __asm
-
-    out  (ULA_PORT), a
-    di
-    halt
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-#ifndef SB_MINIMAL
 /*
  * Poll keyboard: return currently pressed key, or KEY_NONE
  */
@@ -152,13 +133,11 @@ poll_done::
 
   __endasm;
 }
-#endif
 
 /* -------------------------------------------------------------------------
  * Public API
  * ------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 void
 print_at(uint8_t row,
          uint8_t start_col,
@@ -266,56 +245,8 @@ print_done::
 
   __endasm;
 }
-#endif
 
 /* ------------------------------------------------------------------------- */
-
-void
-print_str(void)
-__naked
-{
-  __asm
-
-    ld   a, (hl)
-    inc  hl
-    or   a, a
-    ret  z
-    ld   c, d
-
-    exx
-
-    ;; use of alternate registers:
-    ;; HL=font data, BC=temp
-
-    ld   l, a
-    ld   h, #0
-    add  hl, hl
-    add  hl, hl
-    add  hl, hl
-    ld   bc, #_font_data - 32 * 8
-    add  hl, bc
-
-    ld   b, #8
-00001$:
-    ld   a, (hl)
-    exx
-    ld   (de), a
-    inc  d
-    exx
-    inc  hl
-    djnz 00001$
-
-    exx
-    ld   d, c
-    inc  e
-    jr   _print_str
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-#ifndef SB_MINIMAL
 
 // only used while VRAM lines 2..20 are blacked out -> pick a location there
 static uint8_t __at(0x4020) bitcounter = 0;
@@ -540,11 +471,9 @@ flush_not_needed::
 
   __endasm;
 }
-#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 key_t
 wait_key(void)
 {
@@ -578,11 +507,9 @@ wait_key(void)
   first_repetition = true;
   return key;
 }
-#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 void
 set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len)
 __naked
@@ -611,11 +538,9 @@ __naked
 
   __endasm;
 }
-#endif /* SB_MINIMAL */
 
 /* ------------------------------------------------------------------------- */
 
-#ifndef SB_MINIMAL
 void
 init_progress_display(void)
 __naked
@@ -641,170 +566,7 @@ __naked
     ld    l, #25
     ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
     push  bc   ;; because the routine jumped to will pop that before ret:ing
-    jr    show_attr_digit_address_known
+    jp    show_attr_digit_address_known
 
   __endasm;
 }
-#endif /* SB_MINIMAL */
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
- * L: column (0..31)
- * A: digit (0..9), bits 4-7 are ignored
- *
- * Destroys DE, saves BC
- *
- * (encapsulated in a C function so we can place it within range for JR
- * instruction above)
- */
-
-#ifndef SB_MINIMAL
-static void
-show_attr_digit(void)
-__naked
-{
-  __asm
-
-    push  bc
-    ld    de, #_font_data + 8 * 16 + 1   ;; address of '0' bits
-    and   a, #0xf
-    add   a, a
-    add   a, a
-    add   a, a
-    add   a, e
-    ld    e, a
-
-    ld    h, #>ATTR_DIGIT_ROW
-
-show_attr_digit_address_known::   ;; special jump target for init_progress_display
-    ;; NOTE: must have stacked BC+DE before jumping here
-
-    ld    c, #6
-00001$:
-    ld    a, (de)
-    add   a, a
-    inc   de
-    ld    b, #6
-00002$:
-    add   a, a
-    jr    nc, 00003$
-    ld    (hl), #PAPER(WHITE) + INK(WHITE)
-    jr    00004$
-00003$:
-    ld    (hl), #PAPER(BLACK) + INK(BLACK)
-00004$:
-    inc   hl
-    djnz  00002$
-
-    ld    a, #(ROW_LENGTH-6)
-    add   a, l
-    ld    l, a
-
-    dec   c
-    jr    nz, 00001$
-
-    pop   bc
-    ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-// digits (BCD) for progress display while loading a snapshot
-static uint8_t digits = 0;
-
-// uses AF, BC, HL
-
-void
-update_progress_display(void)
-__naked
-{
-  __asm
-
-    ld    bc, #_digits
-    ld    a, (bc)
-    inc   a
-    daa
-    push  af             ;; remember flags
-    ld    (bc), a
-    jr    nz, not_100k   ;; turned from 99->100?
-
-    ;; Number of kilobytes became zero in BCD:
-    ;; means it just turned from 99 to 100.
-    ;; Print the digit '1' for hundreds.
-
-    ld    l, a   ;; L is now 0
-    inc   a      ;; A is now 1
-    call  _show_attr_digit
-    ld    a, (bc)
-
-not_100k::
-    pop   hl             ;; recall flags, old F is now in L
-    bit   #4, l          ;; was H flag set? Then the tens have increased
-    jr    z, not_10k
-
-    ;; Print tens (_x_)
-
-    rra
-    rra
-    rra
-    rra
-    ld    l, #7
-    call  _show_attr_digit
-
-not_10k::
-    ;; Print single-number digit (__x)
-
-    ld    a, (bc)
-    ld    l, #14
-    call  _show_attr_digit
-
-    ;; ************************************************************************
-    ;; update progress bar
-    ;; ************************************************************************
-
-    ld    a, (_kilobytes_expected)
-    sub   a, #48     ;; 48k snapshot?
-    ld    h, a       ;; if it is, store zero in H (useful later)
-    ld    a, (_kilobytes_loaded)
-    jr    z, 00003$
-    srl   a          ;; 128k snapshot => progress = kilobytes / 4
-    srl   a
-    jr    00002$
-
-00003$:   ;; 48k snapshot, multiply A by approximately 2/3
-          ;; approximated here as (A-1)*11/16
-
-    dec   a
-    ld    l, a
-    ld    b, h
-    ld    c, a
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    add   hl, bc
-    add   hl, bc
-    add   hl, bc
-
-    ;; instead of shifting HL 4 bits right, shift 4 bits left, use H
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    ld    a, h
-
-00002$:
-    or    a
-    ret   z
-    ld    hl, #PROGRESS_BAR_BASE-1
-    add   a, l
-    ld    l, a
-    ld    (hl), #(PAPER(WHITE) + INK(WHITE) + BRIGHT)
-    ret
-
-  __endasm;
-}
-#endif /* SB_MINIMAL */

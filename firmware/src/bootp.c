@@ -194,9 +194,7 @@ title_str::
     .db   0
 bootp_str::
     .ascii "BOOTP"
-#ifdef SB_MINIMAL
     .ascii " TFTP"
-#endif
     .db   0
 
   __endasm;
@@ -295,8 +293,6 @@ bootp_receive_sname_done::
     call _tftp_read_request
     pop  hl
 
-#ifdef SB_MINIMAL
-
     ld    hl, #(ATTRS_BASE + 23 * 32)
     ld    bc, #0x0604    ;; 6 chars, green ink
 tftp_attr_lp1::
@@ -309,82 +305,6 @@ tftp_attr_lp2::
     ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
     inc   hl
     djnz  tftp_attr_lp2
-
-#else   /* SB_MINIMAL  */
-
-    ;; ------------------------------------------------------------------------
-    ;; print 'Local:' at (23,0); 'TFTP:' at (23,17)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #bootp_progress
-    push  hl
-    ld    bc, #0
-    push  bc                   ;; terminator (NUL)
-    inc   sp
-    ld    c, #23               ;; B==0 here
-    push  bc                   ;; coordinates (23,0)
-    call  _print_at
-    pop   bc
-    inc   sp
-    pop   hl
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for local IP address: white ink, black paper
-    ;; ------------------------------------------------------------------------
-
-    ld    c, #3              ;; B==0 here
-    push  bc
-    ld    hl, #ATTRS_BASE + 23 * 32 + 17     ;; (23,17)
-    push  hl
-    ld    a, #INK(WHITE) | PAPER(BLACK) | FLASH | BRIGHT
-    push  af
-    inc   sp
-    call  _set_attrs_impl
-    inc   sp
-    pop   hl
-    pop   bc
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for TFTP status: white ink, black paper, bright, flash
-    ;; ------------------------------------------------------------------------
-
-    ld    c, #15              ;; B==0 here
-    push  bc
-    ld    hl, #ATTRS_BASE + 23 * 32     ;; (23,0)
-    push  hl
-    ld    a, #INK(WHITE) | PAPER(BLACK)
-    push  af
-    inc   sp
-    call  _set_attrs_impl
-    inc   sp
-    pop   hl
-    pop   bc
-
-    ;; ------------------------------------------------------------------------
-    ;; print local IP address
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #LOCAL_IP_POS
-    push  hl
-    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    push  hl
-    call  _print_ip_addr
-    pop   hl
-    pop   hl
-
-    ;; ------------------------------------------------------------------------
-    ;; print TFTP server IP address
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #SERVER_IP_POS
-    push  hl
-    ld    hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    push  hl
-    call  _print_ip_addr
-    pop   hl
-    pop   hl
-
-#endif
 
     ret
 
@@ -445,18 +365,12 @@ bootp_receive_invalid_address::
     jp   _fail
 
 bootp_receive_default_file::
-#ifdef SB_MINIMAL
+#ifdef STAGE2_IN_RAM
     .ascii 'spboot.bin'
 #else
     .ascii 'snapshots.lst'
 #endif
     .db   0
-
-#ifndef SB_MINIMAL
-bootp_progress::
-    .ascii 'Local:           TFTP:'
-    .db   0
-#endif
 
   __endasm;
 }
