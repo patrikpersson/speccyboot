@@ -555,8 +555,6 @@ evacuate_pc::
 
 /* ------------------------------------------------------------------------- */
 
-#pragma codeseg STAGE2
-
 /*
  * If the number of bytes loaded reached an even kilobyte,
  * increase kilobyte counter and update status display
@@ -653,8 +651,6 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
-#pragma codeseg NONRESIDENT
-
 /*
  * State HEADER (initial):
  *
@@ -710,8 +706,6 @@ __naked
 
   __endasm;
 }
-
-#pragma codeseg STAGE2
 
 /* ------------------------------------------------------------------------- */
 
@@ -1080,6 +1074,7 @@ s_chunk_compressed_rept2::
 
   ld  hl, #_s_chunk_repetition
   ld  (_current_state), hl
+jp_hl_instr::          ;; convenient CALL target
   jp  (hl)
 
 s_chunk_compressed_no_opt::
@@ -1252,46 +1247,115 @@ static bool evacuating;
 
 static void
 receive_snapshot_data(void)
+__naked
 {
-  received_data        = TFTP_DATA_BUFFER;
-  received_data_length = ntohs(rx_frame.udp.header.length)
-                         - sizeof(struct udp_header_t)
-                         - sizeof(struct tftp_header_t);
+  __asm
 
-  // lazy initialization, to keep it out of stage 1
-  if (current_state == NULL) {
-    current_state = &s_header;
-  }
+    ;; ------------------------------------------------------------------------
+    ;; set up _received_data & _received_data_length
+    ;; ------------------------------------------------------------------------
 
-  while (received_data_length != 0) {
-    if ((LOBYTE(curr_write_pos) == 0)) {
-      if (HIBYTE(curr_write_pos) == HIBYTE(RUNTIME_DATA)) {
-        curr_write_pos = (uint8_t *) EVACUATION_TEMP_BUFFER;
-        evacuating     = true;
-      }
-      else if (evacuating
-               && (HIBYTE(curr_write_pos) ==
-                   HIBYTE(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)))
-      {
-        evacuate_data();
-        curr_write_pos = (uint8_t *) RUNTIME_DATA + RUNTIME_DATA_LENGTH;
-        evacuating     = false;
-      }
-    }
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld   (_received_data), hl
 
-    /* SDCC generates some silly stub for this code */
-#if 0
-    __asm
-      ld   hl, #99999$
-      push hl
-      ld   hl, (_current_state)
-      jp   (hl)
-99999$:
-    __endasm;
-#else
-    (*current_state)();
-#endif
-  }
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH)
+    ld   a, l      ;; byteswap: length is stored in network order in UDP header
+    ld   l, h
+    ld   h, a
+    ld   bc, #0x10000 - UDP_HEADER_SIZE - TFTP_HEADER_SIZE
+    add  hl, bc
+    ld   (_received_data_length), hl
+
+    ;; ========================================================================
+    ;; read bytes, evacuate when needed, call state functions
+    ;; ========================================================================
+
+receive_snapshot_byte_loop::
+
+    ;; ------------------------------------------------------------------------
+    ;; if received_data_length is zero, we are done
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_received_data_length)
+    ld    a, h
+    or    a, l
+    ret   z
+
+    ;; ------------------------------------------------------------------------
+    ;; check evacuation status only if low byte of _curr_write_pos is zero
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #_curr_write_pos
+    ld    a, (hl)
+    or    a, a
+    jr    nz, receive_snapshot_no_evacuation
+
+    ;; ------------------------------------------------------------------------
+    ;; reached RUNTIME_DATA (resident area)?
+    ;; ------------------------------------------------------------------------
+
+    ld    de, #_evacuating
+
+    inc   hl
+    ld    a, (hl)
+    cp    a, #>RUNTIME_DATA
+    jr    nz, receive_snapshot_not_entering_runtime_data
+
+    ;; ------------------------------------------------------------------------
+    ;; then store data in EVACUATION_TEMP_BUFFER instead,
+    ;; and set "evacuating" flag
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #>EVACUATION_TEMP_BUFFER
+    ld    (hl), a
+    ld    (de), a      ;; != 0, so fine here as a flag value
+
+    jr    receive_snapshot_no_evacuation
+
+receive_snapshot_not_entering_runtime_data::
+
+    ;; ------------------------------------------------------------------------
+    ;; is an evacuation about to be completed?
+    ;; ------------------------------------------------------------------------
+
+    cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
+    jr    nz, receive_snapshot_no_evacuation
+
+    ld    a, (de)
+    or    a, a
+    jr    z, receive_snapshot_no_evacuation
+
+    ;; ------------------------------------------------------------------------
+    ;; then set _curr_write_pos := RUNTIME_DATA + RUNTIME_DATA_LENGTH,
+    ;; and _evacuating := false
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
+    ld    (hl), a
+
+    xor   a, a
+    ld    (de), a
+
+    ;; ------------------------------------------------------------------------
+    ;; copy the evacuated data to ENC28J60 RAM,
+    ;; and make some preparations for context switch
+    ;; ------------------------------------------------------------------------
+
+    call  _evacuate_data
+
+receive_snapshot_no_evacuation::
+
+    ;; ------------------------------------------------------------------------
+    ;; call function pointed to by _current_state
+    ;; there is no "CALL (HL)" instruction, so CALL a JP (HL) instead
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_current_state)
+    call  jp_hl_instr
+
+    jr    receive_snapshot_byte_loop
+
+  __endasm;
 }
 
 /* ========================================================================= */
@@ -1305,8 +1369,11 @@ __naked
     ld   hl, #0x4000
     ld   (_curr_write_pos), hl
 
-    ld    hl, #_receive_snapshot_data
-    ld    (_tftp_receive_hook), hl
+    ld   hl, #_receive_snapshot_data
+    ld   (_tftp_receive_hook), hl
+
+    ld   hl, #_s_header
+    ld   (_current_state), hl
 
     ret
 
