@@ -249,7 +249,7 @@ print_done::
 /* ------------------------------------------------------------------------- */
 
 // only used while VRAM lines 2..20 are blacked out -> pick a location there
-static uint8_t __at(0x4020) bitcounter = 0;
+static uint8_t __at(0x4020) bitcounter;
 static uint8_t __at(0x4021) pixel_buffer[6];
 
 void
@@ -474,12 +474,12 @@ flush_not_needed::
 
 /* ------------------------------------------------------------------------- */
 
+static key_t previous_key;    // initially == KEY_NONE (0) */
+static bool first_repetition;
+
 key_t
 wait_key(void)
 {
-  static key_t previous_key = KEY_NONE;
-  static bool first_repetition;
-
   key_t key = poll_key();
   if (key != KEY_NONE && key == previous_key) {
     /*

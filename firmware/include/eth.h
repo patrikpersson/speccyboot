@@ -209,7 +209,7 @@ eth_init(void);
  *
  * destination:           destination MAC address, or eth_broadcast_address
  * ethertype:             value for length/type field
- * frame_class:           see comment for enum eth_frame_class_t above
+ * frame_class:           see comment for eth_frame_class_t above
  * ------------------------------------------------------------------------- */
 void
 eth_create(const struct mac_address_t *destination,

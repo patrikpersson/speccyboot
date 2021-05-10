@@ -50,7 +50,7 @@
 
 #define ADDR_OF_I           (0x73FB)
 #define ADDR_OF_F_AFTER_I   (0x73FA)
-  
+
 #define ADDR_OF_B           (0x73F9)
 #define ADDR_OF_C           (0x73F8)
 
@@ -106,7 +106,7 @@ static void check_value(uint8_t *ptr, uint8_t actual, uint8_t expected)
   else {
     memcpy(ptr, pass_attrs, sizeof(pass_attrs));
   }
-  
+
   for (i = 0; i < 8; i++) {
     *(ptr + 31 - i) = (actual & 0x01) ? 8 : 56;
     actual >>= 1;
@@ -117,12 +117,12 @@ static void check_value(uint8_t *ptr, uint8_t actual, uint8_t expected)
 
 void main(void)
 {
-  uint8_t  checksum = 0;    
+  uint8_t  checksum = 0;
   uint16_t addr;
   static __sfr __at(0xFE) border;     /* I/O address of ULA */
-  
+
   uint8_t *attr_ptr = (uint8_t *) 0x5840;   /* third line */
-  
+
   CHECK_REGISTER(A);
   CHECK_REGISTER(F);
 
@@ -140,12 +140,12 @@ void main(void)
   CHECK_REGISTER(E);
   CHECK_REGISTER(H);
   CHECK_REGISTER(L);
-  
+
   CHECK_REGISTER(IX_HI);
   CHECK_REGISTER(IX_LO);
   CHECK_REGISTER(IY_HI);
   CHECK_REGISTER(IY_LO);
-  
+
   CHECK_REGISTER(AP);
   CHECK_REGISTER(FP);
   CHECK_REGISTER(BP);
@@ -154,7 +154,7 @@ void main(void)
   CHECK_REGISTER(EP);
   CHECK_REGISTER(HP);
   CHECK_REGISTER(LP);
-  
+
   /*
    * Check RAM contents
    */
@@ -163,16 +163,21 @@ void main(void)
     checksum += *((const uint8_t *) addr);
     border = (checksum & 0x07);
   }
-  
-  if (checksum == EXPECTED_CHECKSUM)  {  
+
+  if (checksum == EXPECTED_CHECKSUM)  {
     border = 4;     /* green */
     __asm
       halt          ;; verify interrupts are disabled
     __endasm;
+    border = 6;     /* yellow */
+    __asm
+      di
+      halt          ;; yellow border means checksum matches, but interrupts are on
+    __endasm;
   }
-  
+
   border = 2;     /* red */
-  
+
   __asm
     di
     halt

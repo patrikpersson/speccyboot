@@ -99,10 +99,10 @@ static uint8_t rep_value;
 
 typedef void state_func_t(void);
 
-static state_func_t *current_state = &s_header;
+static state_func_t *current_state;
 
 // digits (BCD) for progress display while loading a snapshot
-static uint8_t digits = 0;
+static uint8_t digits;
 
 /*
  * Offset to the R register when stored, to compensate for the fact that R
@@ -1247,16 +1247,21 @@ __endasm;
 
 /* ------------------------------------------------------------------------- */
 
+/* Indicates an evacuation is ongoing (see below), initially false */
+static bool evacuating;
+
 static void
 receive_snapshot_data(void)
 {
-  /* Indicates an evacuation is ongoing (see below) */
-  static bool evacuating = false;
-
   received_data        = TFTP_DATA_BUFFER;
   received_data_length = ntohs(rx_frame.udp.header.length)
                          - sizeof(struct udp_header_t)
                          - sizeof(struct tftp_header_t);
+
+  // lazy initialization, to keep it out of stage 1
+  if (current_state == NULL) {
+    current_state = &s_header;
+  }
 
   while (received_data_length != 0) {
     if ((LOBYTE(curr_write_pos) == 0)) {
@@ -1274,7 +1279,18 @@ receive_snapshot_data(void)
       }
     }
 
+    /* SDCC generates some silly stub for this code */
+#if 0
+    __asm
+      ld   hl, #99999$
+      push hl
+      ld   hl, (_current_state)
+      jp   (hl)
+99999$:
+    __endasm;
+#else
     (*current_state)();
+#endif
   }
 }
 

@@ -71,7 +71,7 @@
  * during snapshot loading. When bytes destined for these addresses are
  * received, they are instead stored in the ENC28J60's on-chip SRAM:
  *
- * 0x1800 .. 0x1FFF   2kB   data destined for addresses 0x5800 .. 0x5FFF in
+ * 0x1400 .. 0x1FFF   3kB   data destined for addresses 0x5800 .. 0x63FF in
  *                          the Spectrum RAM (temporary storage during loading)
  * ------------------------------------------------------------------------- */
 
@@ -146,12 +146,7 @@
  * Buffer to write evacuated data into, before we write all off it to the
  * ENC28J60.
  */
-#define EVACUATION_TEMP_BUFFER        (0xF400)
-
-/*
- * When curr_write_pos passes beyond this address, we know evacuation is done
- */
-#define EVACUATION_DONE_ADDR          ((RUNTIME_DATA) + (RUNTIME_DATA_LENGTH))
+#define EVACUATION_TEMP_BUFFER        (0x6400)
 
 /* ------------------------------------------------------------------------- */
 

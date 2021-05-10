@@ -45,8 +45,6 @@
 /* Number of snapshot names displayed at a time */
 #define DISPLAY_LINES     (20)
 
-static const char menu_progress[] = "Local:           TFTP:";
-
 /* ------------------------------------------------------------------------- */
 
 void
@@ -56,6 +54,7 @@ run_menu(void)
   uint16_t nbr_snapshots = 0;
 
   print_at(23, 0, '\0', "Local:           TFTP:");
+  set_attrs(INK(BLACK) | PAPER(BLACK), 0, 16, 10);
   set_attrs(INK(WHITE) | PAPER(BLACK), 23, 0, 31);
   print_ip_addr( &ip_config.host_address, (uint8_t *) LOCAL_IP_POS);
   print_ip_addr( &ip_config.tftp_server_address, (uint8_t *) SERVER_IP_POS);

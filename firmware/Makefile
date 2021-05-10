@@ -13,7 +13,7 @@ MAKEBIN      = makebin
 ECHO         = @/bin/echo
 
 CFLAGS       = -mz80 --std-sdcc99 --Werror
-CFLAGS      += -I$(INCLUDEDIR) --opt-code-size
+CFLAGS      += -I$(INCLUDEDIR) --opt-code-size --fomit-frame-pointer
 
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS     += --code-loc 0x0044 --data-loc 0x5B60

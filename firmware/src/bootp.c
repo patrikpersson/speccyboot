@@ -76,27 +76,54 @@ __naked
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot x.y' at (0,0)
+    ;; print 'SpeccyBoot x.y  BOOTP TFTP' at (0,0)
     ;; ------------------------------------------------------------------------
 
     ld    hl, #title_str       ;; 'SpeccyBoot x.y'
     ld    de, #0x4000          ;; coordinates (0,0)
-    call  _print_str
 
-    ;; ------------------------------------------------------------------------
-    ;; print 'BOOTP TFTP' at (23,0)
-    ;; ------------------------------------------------------------------------
+bootp_print_str::
+    ld   a, (hl)
+    inc  hl
+    or   a, a
+    jr   z, bootp_print_done
+    ld   c, d
 
-    ;; HL already has the right value after call above
-    ld    de, #0x50E0          ;; coordinates (23, 0)
-    call  _print_str
+    exx
+
+    ;; use of alternate registers:
+    ;; HL=font data, BC=temp
+
+    ld   l, a
+    ld   h, #0
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   bc, #_font_data - 32 * 8
+    add  hl, bc
+
+    ld   b, #8
+bootp_print_loop::
+    ld   a, (hl)
+    exx
+    ld   (de), a
+    inc  d
+    exx
+    inc  hl
+    djnz bootp_print_loop
+
+    exx
+    ld   d, c
+    inc  e
+    jr   bootp_print_str
+bootp_print_done::
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'SpeccyBoot' heading: white ink, black paper, bright
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #ATTRS_BASE     ;; (0,0)
-    ld    b, #20
+    ld    hl, #ATTRS_BASE      ;; (0,0)
+    ld    b, #14
 bootp_attr_lp1::
     ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT)
     inc   hl
@@ -106,7 +133,7 @@ bootp_attr_lp1::
     ;; attributes for 'BOOTP' indicator: white ink, black paper, flash, bright
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #ATTRS_BASE + 23 * 32     ;; (23,0)
+    ld    hl, #ATTRS_BASE + 16     ;; (0,16)
     ld    b, #5
 bootp_attr_lp2::
     ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
@@ -191,10 +218,7 @@ bootrequest_xid::
 title_str::
     .ascii "SpeccyBoot "
     .ascii str(VERSION)
-    .db   0
-bootp_str::
-    .ascii "BOOTP"
-    .ascii " TFTP"
+    .ascii "  BOOTP TFTP"
     .db   0
 
   __endasm;
@@ -293,14 +317,14 @@ bootp_receive_sname_done::
     call _tftp_read_request
     pop  hl
 
-    ld    hl, #(ATTRS_BASE + 23 * 32)
-    ld    bc, #0x0604    ;; 6 chars, green ink
+    ld    hl, #(ATTRS_BASE + 16)
+    ld    bc, #0x0607    ;; 6 chars, white ink
 tftp_attr_lp1::
     ld    (hl), c
     inc   hl
     djnz  tftp_attr_lp1
 
-    ld    b, c      ;; 4 chars
+    ld    b, #4      ;; 4 chars
 tftp_attr_lp2::
     ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
     inc   hl

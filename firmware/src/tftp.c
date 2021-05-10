@@ -68,7 +68,8 @@
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t *curr_write_pos           = (uint8_t *)
+uint8_t *curr_write_pos
+  = (uint8_t *)
 #ifdef STAGE2_IN_RAM
 &stage2;
 #else
@@ -284,18 +285,18 @@ tftp_receive_blk_nbr_and_port_ok::
     ld  e, (hl)    ;; network order
     ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
     ld  de, #UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    xor a          ;; clear C flag; also A == 0 will be useful below
+    xor a          ;; clear C flag
     sbc hl, de
     ld  b, h
     ld  c, l       ;; BC is now payload length, 0..512
 
     ;; ------------------------------------------------------------------------
     ;; check if BC == 0x200; store result of comparison in alternate AF
+    ;; (BC should be exactly 0x200 for all DATA packets except the last one,
+    ;; so we are done if B != 2)
     ;; ------------------------------------------------------------------------
 
-    or  a, c       ;; is C zero?
-    jr  nz, 00001$
-    ld  a, #>0x0200
+    ld  a, #2
     cp  a, b
 00001$:
     ex  af, af'             ;; '
