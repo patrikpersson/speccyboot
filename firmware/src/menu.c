@@ -53,14 +53,16 @@ run_menu(void)
   unsigned char *src = &snapshot_list;
   uint16_t nbr_snapshots = 0;
 
-  print_at(23, 0, '\0', "Local:           TFTP:");
-  set_attrs(INK(BLACK) | PAPER(BLACK), 0, 16, 10);
-  set_attrs(INK(WHITE) | PAPER(BLACK), 23, 0, 31);
-  print_ip_addr( &ip_config.host_address, (uint8_t *) LOCAL_IP_POS);
-  print_ip_addr( &ip_config.tftp_server_address, (uint8_t *) SERVER_IP_POS);
-
 #ifdef STAGE2_IN_RAM
   if (curr_write_pos == &snapshot_list) {
+#endif
+    set_attrs(INK(BLACK) | PAPER(BLACK), 0, 16, 10);
+    print_at(23, 0, '\0', "Local:           TFTP:");
+    print_ip_addr( &ip_config.host_address, (uint8_t *) LOCAL_IP_POS);
+    print_ip_addr( &ip_config.tftp_server_address, (uint8_t *) SERVER_IP_POS);
+    set_attrs(INK(WHITE) | PAPER(BLACK), 23, 0, 31);
+
+#ifdef STAGE2_IN_RAM
     tftp_read_request("snapshots.lst");
     __asm
       jp   main_loop
