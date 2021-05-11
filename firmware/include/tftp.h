@@ -64,7 +64,7 @@ PACKED_STRUCT(tftp_header_t) {
 /* -------------------------------------------------------------------------
  * Position to write received TFTP data to
  * ------------------------------------------------------------------------- */
-extern uint8_t *curr_write_pos;
+extern uint8_t *tftp_write_pos;
 
 /* -------------------------------------------------------------------------
  * If non-NULL, this function is called for every received TFTP packet

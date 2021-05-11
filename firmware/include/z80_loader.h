@@ -35,11 +35,4 @@
 #ifndef SPECCYBOOT_Z80_LOADER_INCLUSION_GUARD
 #define SPECCYBOOT_Z80_LOADER_INCLUSION_GUARD
 
-/* -------------------------------------------------------------------------
- * Called from tftp.c to indicate that a .z80 snapshot is expected.
- * Installs a TFTP read hook to relay received data to Z80 snapshot parser.
- * ------------------------------------------------------------------------- */
-void
-expect_snapshot(void);
-
 #endif /* SPECCYBOOT_Z80_LOADER_INCLUSION_GUARD */

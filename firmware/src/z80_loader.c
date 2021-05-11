@@ -94,12 +94,12 @@ static uint8_t rep_value;
   ((LOBYTE(p)) == 0 && ((HIBYTE(p) & 0x03) == 0))
 
 /* Syntactic sugar for declaring and defining states */
-#define DECLARE_STATE(s)                static void s (void)
+#define DECLARE_STATE(s)                void s (void)
 #define DEFINE_STATE(s)                 DECLARE_STATE(s)
 
 typedef void state_func_t(void);
 
-static state_func_t *current_state;
+state_func_t *z80_loader_state;
 
 // digits (BCD) for progress display while loading a snapshot
 static uint8_t digits;
@@ -565,7 +565,7 @@ __naked
 {
   __asm
 
-    ld   hl, (_curr_write_pos)
+    ld   hl, (_tftp_write_pos)
 
     ;; check if HL is an integral number of kilobytes,
     ;; return early otherwise
@@ -673,11 +673,11 @@ DEFINE_STATE(s_header)
     }
     header_length += rx_frame.udp.app.tftp.data.z80.extended_length + 2;
 
-    current_state = &s_chunk_header;
+    z80_loader_state = &s_chunk_header;
   } else {
     chunk_bytes_remaining = 0xc000;
 
-    current_state = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
+    z80_loader_state = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
                      & SNAPSHOT_FLAGS_COMPRESSED_MASK)
                   ? &s_chunk_compressed : &s_chunk_uncompressed;
   }
@@ -700,7 +700,7 @@ __naked
     ld   (_chunk_bytes_remaining), a
 
     ld    hl, #_s_chunk_header2
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
@@ -719,7 +719,7 @@ __naked
     ld   (_chunk_bytes_remaining + 1), a
 
     ld    hl, #_s_chunk_header3
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
@@ -756,7 +756,7 @@ s_chunk_header3_incompatible::
     halt
 s_chunk_header3_compatible::
 
-    ;; Decide on a good value for curr_write_pos; store in HL.
+    ;; Decide on a good value for tftp_write_pos; store in HL.
 
     ld   b, a    ;; useful extra copy of A
 
@@ -798,7 +798,7 @@ s_chunk_header3_default_page::
 
 s_chunk_header3_set_page::
     ld   l, #0
-    ld   (_curr_write_pos), hl
+    ld   (_tftp_write_pos), hl
 
     ;; If chunk_bytes_remaining is 0xffff, length is 0x4000
 
@@ -812,14 +812,14 @@ s_chunk_header3_set_page::
     ld   (_chunk_bytes_remaining), hl
 
     ld    hl, #_s_chunk_uncompressed
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
 s_chunk_header3_compressed::
 
     ld    hl, #_s_chunk_compressed
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
@@ -835,19 +835,19 @@ __naked
 
   ;;
   ;; compute BC as minimum of
-  ;; - distance to next kilobyte for curr_write_pos
+  ;; - distance to next kilobyte for tftp_write_pos
   ;; - received_data_length
   ;; - chunk_bytes_remaining
   ;;
 
-  ld  hl, #_curr_write_pos + 1
+  ld  hl, #_tftp_write_pos + 1
   ld  a, (hl)
   add #4            ;; round up to next 512-bytes boundary
   and #0xfc         ;; clears C flag, so sbc below works fine
   ld  h, a
   xor a
   ld  l, a
-  ld  bc, (_curr_write_pos)
+  ld  bc, (_tftp_write_pos)
   sbc hl, bc
   ld  b, h
   ld  c, l
@@ -901,7 +901,7 @@ checked_chunk_length::
   jr  nz, no_new_state
 
   ld  de, #_s_chunk_header
-  ld  (_current_state), de
+  ld  (_z80_loader_state), de
 
 no_new_state::
   ld  (_chunk_bytes_remaining), hl
@@ -918,10 +918,10 @@ no_new_state::
   ;;
 
   ld  hl, (_received_data)
-  ld  de, (_curr_write_pos)
+  ld  de, (_tftp_write_pos)
   ldir
   ld  (_received_data), hl
-  ld  (_curr_write_pos), de
+  ld  (_tftp_write_pos), de
 
   ;;
   ;; update the status display, if needed
@@ -945,7 +945,7 @@ __naked
 
   ld  bc, (_chunk_bytes_remaining)
   ld  de, (_received_data_length)
-  ld  hl, (_curr_write_pos)
+  ld  hl, (_tftp_write_pos)
   ld  iy, (_received_data)
 
 s_chunk_compressed_loop::
@@ -999,7 +999,7 @@ s_chunk_compressed_loop::
 
   ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
-  ld  (_curr_write_pos), hl
+  ld  (_tftp_write_pos), hl
   ld  (_received_data), iy
 
   call _update_progress
@@ -1011,9 +1011,9 @@ s_chunk_compressed_loop::
 
 s_chunk_compressed_chunk_end::
   ld  a, #<_s_chunk_header
-  ld  (_current_state), a
+  ld  (_z80_loader_state), a
   ld  a, #>_s_chunk_header
-  ld  (_current_state+1), a
+  ld  (_z80_loader_state+1), a
   jr  s_chunk_compressed_write_back
 
   ;;
@@ -1069,11 +1069,11 @@ s_chunk_compressed_rept2::
 
   ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
-  ld  (_curr_write_pos), hl
+  ld  (_tftp_write_pos), hl
   ld  (_received_data), iy
 
   ld  hl, #_s_chunk_repetition
-  ld  (_current_state), hl
+  ld  (_z80_loader_state), hl
 jp_hl_instr::          ;; convenient CALL target
   jp  (hl)
 
@@ -1083,14 +1083,14 @@ s_chunk_compressed_no_opt::
   ;;
 
   ld  a, #<_s_chunk_compressed_escape
-  ld  (_current_state), a
+  ld  (_z80_loader_state), a
   ld  a, #>_s_chunk_compressed_escape
-  ld  (_current_state+1), a
+  ld  (_z80_loader_state+1), a
 
 s_chunk_compressed_write_back::
   ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
-  ld  (_curr_write_pos), hl
+  ld  (_tftp_write_pos), hl
   ld  (_received_data), iy
 
 s_chunk_compressed_done::
@@ -1114,7 +1114,7 @@ __naked
     jr    nz, 00001$
 
     ld    hl, #_s_chunk_repcount
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
@@ -1126,22 +1126,22 @@ __naked
 
     push  af
 
-    ld    hl, (_curr_write_pos)
+    ld    hl, (_tftp_write_pos)
     ld    (hl), #Z80_ESCAPE
     inc   hl
-    ld    (_curr_write_pos), hl
+    ld    (_tftp_write_pos), hl
     call  _update_progress
 
     pop   af
 
-    ld    hl, (_curr_write_pos)
+    ld    hl, (_tftp_write_pos)
     ld    (hl), a
     inc   hl
-    ld    (_curr_write_pos), hl
+    ld    (_tftp_write_pos), hl
     call  _update_progress
 
     ld    hl, #_s_chunk_compressed
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
@@ -1161,7 +1161,7 @@ __naked
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repvalue
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
@@ -1181,7 +1181,7 @@ __naked
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repetition
-    ld    (_current_state), hl
+    ld    (_z80_loader_state), hl
 
     ret
 
@@ -1197,7 +1197,7 @@ __naked
 
   ld  a, (_rep_count)
   ld  b, a                      ;; loop counter rep_count
-  ld  hl, (_curr_write_pos)
+  ld  hl, (_tftp_write_pos)
   ld  a, (_rep_value)
   ld  c, a
 
@@ -1224,16 +1224,16 @@ s_chunk_repetition_loop::
 
   ld  a, b
   ld  (_rep_count), a
-  ld  (_curr_write_pos), hl
+  ld  (_tftp_write_pos), hl
 
   jp  _update_progress
 
 s_chunk_repetition_write_back::
   ld  (_rep_count), a           ;; copied from b above
-  ld  (_curr_write_pos), hl
+  ld  (_tftp_write_pos), hl
 
   ld    hl, #_s_chunk_compressed
-  ld    (_current_state), hl
+  ld    (_z80_loader_state), hl
 
   ret
 
@@ -1245,8 +1245,8 @@ __endasm;
 /* Indicates an evacuation is ongoing (see below), initially false */
 static bool evacuating;
 
-static void
-receive_snapshot_data(void)
+void
+z80_loader_receive_hook(void)
 __naked
 {
   __asm
@@ -1282,10 +1282,10 @@ receive_snapshot_byte_loop::
     ret   z
 
     ;; ------------------------------------------------------------------------
-    ;; check evacuation status only if low byte of _curr_write_pos is zero
+    ;; check evacuation status only if low byte of _tftp_write_pos is zero
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #_curr_write_pos
+    ld    hl, #_tftp_write_pos
     ld    a, (hl)
     or    a, a
     jr    nz, receive_snapshot_no_evacuation
@@ -1326,7 +1326,7 @@ receive_snapshot_not_entering_runtime_data::
     jr    z, receive_snapshot_no_evacuation
 
     ;; ------------------------------------------------------------------------
-    ;; then set _curr_write_pos := RUNTIME_DATA + RUNTIME_DATA_LENGTH,
+    ;; then set _tftp_write_pos := RUNTIME_DATA + RUNTIME_DATA_LENGTH,
     ;; and _evacuating := false
     ;; ------------------------------------------------------------------------
 
@@ -1346,36 +1346,14 @@ receive_snapshot_not_entering_runtime_data::
 receive_snapshot_no_evacuation::
 
     ;; ------------------------------------------------------------------------
-    ;; call function pointed to by _current_state
+    ;; call function pointed to by _z80_loader_state
     ;; there is no "CALL (HL)" instruction, so CALL a JP (HL) instead
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_current_state)
+    ld    hl, (_z80_loader_state)
     call  jp_hl_instr
 
     jr    receive_snapshot_byte_loop
-
-  __endasm;
-}
-
-/* ========================================================================= */
-
-void
-expect_snapshot(void)
-__naked
-{
-  __asm
-
-    ld   hl, #0x4000
-    ld   (_curr_write_pos), hl
-
-    ld   hl, #_receive_snapshot_data
-    ld   (_tftp_receive_hook), hl
-
-    ld   hl, #_s_header
-    ld   (_current_state), hl
-
-    ret
 
   __endasm;
 }

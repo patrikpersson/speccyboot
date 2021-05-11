@@ -68,7 +68,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-uint8_t *curr_write_pos
+uint8_t *tftp_write_pos
   = (uint8_t *)
 #ifdef STAGE2_IN_RAM
 &stage2;
@@ -301,10 +301,10 @@ tftp_receive_blk_nbr_and_port_ok::
 00001$:
     ex  af, af'             ;; '
 
-    ld  de, (_curr_write_pos)
+    ld  de, (_tftp_write_pos)
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     ldir
-    ld  (_curr_write_pos), de
+    ld  (_tftp_write_pos), de
 
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
