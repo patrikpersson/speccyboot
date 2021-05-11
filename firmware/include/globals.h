@@ -53,6 +53,15 @@
 uint8_t __at(0x5b00 + STACK_SIZE) stack_top;
 
 /*
+ * Font data for digits 0..9. Six bytes per digit (as first scanline is
+ * always zero and need not be stored). Copied from font_data.
+ * Placed on an absolute address so we can be sure that it's all in a single
+ * 256b page. (Makes addressing simpler.)
+ */
+#define DIGIT_DATA_ADDR      (0x5b00 + STACK_SIZE)
+extern uint8_t  __at(DIGIT_DATA_ADDR) digit_data[60 * 10];
+
+/*
  * Buffer for font data (copied from 48K ROM by crt0.asm)
  *
  * The 3 is there for a reason: it allows us to quickly load BC with a sensible

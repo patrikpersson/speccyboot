@@ -71,6 +71,29 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
+static void
+copy_digit_font_data(void)
+__naked
+{
+  __asm
+
+    ld   hl, #_font_data + 16 * 8 + 1   ;; first non-zero scanline of "0"
+    ld   de, #DIGIT_DATA_ADDR
+    ld   a, #10
+copy_digit_font_data_loop::
+    ld   bc, #6
+    ldir
+    inc  hl
+    inc  hl
+    dec  a
+    jr   nz, copy_digit_font_data_loop
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
 void
 run_menu(void)
 {
@@ -93,6 +116,8 @@ run_menu(void)
     __endasm;
   }
 #endif
+
+  copy_digit_font_data();
 
   /* --------------------------------------------------------------------------
    * Scan through the loaded snapshot list, and build an array of pointers

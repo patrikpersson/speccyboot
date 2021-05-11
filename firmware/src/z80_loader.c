@@ -247,18 +247,20 @@ __naked
   __asm
 
     push  bc
-    ld    de, #_font_data + 8 * 16 + 1   ;; address of '0' bits
+    ld    de, #DIGIT_DATA_ADDR   ;; address of '0' bits
     and   a, #0xf
-    add   a, a
-    add   a, a
-    add   a, a
-    add   a, e
+    ld    b, a
+    add   a, a      ;; A x2
+    add   a, a      ;; A x4
+    add   a, b      ;; A x4 + A = A x5
+    add   a, b      ;; A x6
+    add   a, e      ;; because all digits are placed in a single 256b page
     ld    e, a
 
     ld    h, #>ATTR_DIGIT_ROW
 
 show_attr_digit_address_known::   ;; special jump target for init_progress_display
-    ;; NOTE: must have stacked BC+DE before jumping here
+    ;; NOTE: must have stacked BC before jumping here
 
     ld    c, #6
 00001$:
