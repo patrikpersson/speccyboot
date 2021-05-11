@@ -28,8 +28,8 @@ CFLAGS      += -DVERSION='$(VERSION)' --disable-warning 218
 # Run 'make DGBOOT=1' to build for Imrich Kolkol's DGBoot hardware design
 # instead of the default SpeccyBoot
 
-# Run 'make MINIMAL=1' for a minimal build (BOOTP instead of DHCP, no menu,
-# minimal UI, direct booting to snapshot indicated in BOOTP BOOTREPLY)
+# Run 'make STAGE2_IN_RAM=1' for a two-part build, with a 2K EPROM loader
+# which in turn loads a second-stage loader (spboot.bin) into RAM
 
 ifdef DGBOOT
 TARGETFLAGS  = -DHWTARGET_DGBOOT
@@ -53,14 +53,17 @@ CFLAGS      += $(TARGETFLAGS)
 
 # module = source + header
 MODULES      = util context_switch enc28j60 spi globals
-MODULES     += eth arp udp_ip bootp tftp bootui
+MODULES     += eth udp_ip bootp tftp bootui
 MODULES     += ui menu z80_loader
+
+ASMMODULES   = arp
 
 # -----------------------------------------------------------------------------
 
 CFILES       = $(MODULES:%=%.c)
 HFILES       = $(MODULES:%=%.h)
-OFILES       = crt0.rel $(CFILES:.c=.rel)
+ASMFILES     = $(ASMMODULES:%=%.asm)
+OFILES       = crt0.rel $(CFILES:.c=.rel) $(ASMFILES:.asm=.rel)
 
 # -----------------------------------------------------------------------------
 
@@ -138,10 +141,10 @@ COMBINED = $(OBJDIR)/combined.bin
 %.rel: %.c $(OBJDIR) $(HFILES)
 	$(CC) $(CFLAGS) -c -o $(OBJDIR)/$@ $<
 
-# run GCC preprocessor on crt0, exclude all hashed lines
-crt0.rel: crt0.asm $(OBJDIR)
-	gcc -E -xc-header -I$(INCLUDEDIR) $(TARGETFLAGS) $< | grep -v '^#'  > $(OBJDIR)/crt0_preprocessed.asm
-	$(AS) -o $(OBJDIR)/$@ $(OBJDIR)/crt0_preprocessed.asm
+# run GCC preprocessor on assembly files, exclude all hashed lines
+%.rel: %.asm $(OBJDIR)
+	gcc -E -xc-header -I$(INCLUDEDIR) $(TARGETFLAGS) $< | grep -v '^#'  > $(OBJDIR)/$(<:src/%.asm=%_preprocessed.asm)
+	$(AS) -o $(OBJDIR)/$@ $(OBJDIR)/$(<:src/%.asm=%_preprocessed.asm)
 
 $(OBJDIR):
 	mkdir -p $@

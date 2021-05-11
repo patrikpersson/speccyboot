@@ -1,56 +1,64 @@
-/*
- * Module arp:
- *
- * Address Resolution Protocol (ARP, RFC 826)
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;; Module arp:
+;;
+;; Address Resolution Protocol (ARP, RFC 826)
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2009-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include "arp.h"
+    .module arp
+    .optsdcc -mz80
 
-#include "udp_ip.h"
+    .globl _arp_receive
 
-/* ========================================================================= */
+    .include "include/eth.inc"
+    .include "include/enc28j60.inc"
+    .include "include/globals.inc"
+    .include "include/udp_ip.inc"
+    .include "include/util.inc"
 
-#define ARP_HEADER_SIZE         (8)
-#define ARP_OFFSET_SPA          (14)
-#define ARP_OFFSET_TPA          (24)
+;; ============================================================================
+;; ARP header constants
+;; ============================================================================
 
-/* Size of an ARP packet for an IP-Ethernet mapping */
-#define ARP_IP_ETH_PACKET_SIZE  (ARP_HEADER_SIZE + 20)
+ARP_HEADER_SIZE = 8         ;; ARP header size
+ARP_OFFSET_SPA = 14         ;; offset of SPA field in ARP header
+ARP_OFFSET_TPA = 24         ;; offset of TPA field in ARP header
+ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 
-/* ========================================================================= */
+    .area _CODE
 
-void
-arp_receive(void)
-__naked
-{
-  __asm
+;; ############################################################################
+;; arp_receive
+;;
+;; Called by eth.c when an Ethernet frame holding an ARP packet has been
+;; received.
+;; ############################################################################
+
+_arp_receive::
 
     ;; ------------------------------------------------------------------------
     ;; retrieve ARP payload
@@ -146,6 +154,3 @@ arp_receive_reply_template::
     .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
     .db  0, 2                  ;; OPER: reply, 16 bits, network order
-
-  __endasm;
-}
