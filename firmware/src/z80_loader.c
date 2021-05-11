@@ -95,7 +95,7 @@ static uint8_t rep_value;
 
 /* Syntactic sugar for declaring and defining states */
 #define DECLARE_STATE(s)                void s (void)
-#define DEFINE_STATE(s)                 DECLARE_STATE(s)
+#define DEFINE_STATE(s)                 DECLARE_STATE(s) __naked
 
 typedef void state_func_t(void);
 
@@ -662,30 +662,106 @@ __naked
  */
 DEFINE_STATE(s_header)
 {
-  uint16_t header_length = offsetof(struct z80_snapshot_header_t,
-                                    extended_length);
+  __asm
 
-  memcfg(DEFAULT_BANK);
+    ;; ------------------------------------------------------------------------
+    ;; set bank 0 for 128k memory config
+    ;; ------------------------------------------------------------------------
 
-  if (IS_EXTENDED_SNAPSHOT_HEADER(&rx_frame.udp.app.tftp.data.z80)) {
-    if (IS_128K_MACHINE(rx_frame.udp.app.tftp.data.z80.hw_type)) {
-      kilobytes_expected = 128;
-    }
-    header_length += rx_frame.udp.app.tftp.data.z80.extended_length + 2;
+    xor  a, a
+    ld   bc, #MEMCFG_ADDR
+    out  (c), a
 
-    z80_loader_state = &s_chunk_header;
-  } else {
-    chunk_bytes_remaining = 0xc000;
+    ;; ------------------------------------------------------------------------
+    ;; check snapshot header
+    ;; ------------------------------------------------------------------------
 
-    z80_loader_state = (rx_frame.udp.app.tftp.data.z80.snapshot_flags
-                     & SNAPSHOT_FLAGS_COMPRESSED_MASK)
-                  ? &s_chunk_compressed : &s_chunk_uncompressed;
-  }
+    ;; set DE to .z80 snapshot header size
+    ;; (initially the snapshot v1 size, modified later below)
 
-  evacuate_z80_header();
+    ld   de, #Z80_HEADER_OFFSET_EXT_LENGTH
 
-  received_data        += header_length;
-  received_data_length -= header_length;
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
+    ld   a, h
+    or   a, l
+    jr   z, s_header_ext_hdr               ;; extended header?
+
+    ;; ------------------------------------------------------------------------
+    ;; not an extended header: expect a single 48k chunk
+    ;; ------------------------------------------------------------------------
+
+    ld   a, #>0xc000
+    ld   (_chunk_bytes_remaining + 1), a       ;; low byte of is already zero
+
+    ;; ------------------------------------------------------------------------
+    ;; decide next state, depending on whether COMPRESSED flag is set
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_s_chunk_uncompressed
+    ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
+    and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
+    jr   z, s_header_set_state
+    ld   hl, #_s_chunk_compressed
+    jr   s_header_set_state
+
+s_header_ext_hdr::
+
+    ;; ------------------------------------------------------------------------
+    ;; extended header: adjust expected no. of kilobytes for a 128k snapshot
+    ;; ------------------------------------------------------------------------
+
+    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_HW_TYPE)
+    cp    a, #HW_TYPE_SPECTRUM_128K
+    jr    c, s_header_not_128k
+    ld    a, #128
+    ld    (_kilobytes_expected), a
+
+s_header_not_128k::
+
+    ;; ------------------------------------------------------------------------
+    ;; adjust header length
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
+    add   hl, de
+    inc   hl
+    inc   hl
+    ex    de, hl
+
+    ;; ------------------------------------------------------------------------
+    ;; a chunk is expected next
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_s_chunk_header
+
+s_header_set_state::
+    ld   (_z80_loader_state), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; adjust _received_data and _received_data_length for header size
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_received_data)
+    add  hl, de
+    ld   (_received_data), hl
+
+    ld   hl, (_received_data_length)
+    or   a, a            ;; clear C flag
+    sbc  hl, de
+    ld   (_received_data_length), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; keep .z80 header through loading and context switch
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld   de, #_snapshot_header
+    ld   bc, #Z80_HEADER_RESIDENT_SIZE
+    ldir
+
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */

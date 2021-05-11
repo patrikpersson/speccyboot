@@ -233,6 +233,9 @@ PACKED_STRUCT(z80_snapshot_header_t) {
 
 #define Z80_HEADER_OFFSET_HW_STATE_SND     39
 
+/* Number of bytes to keep in RAM, through loading and context switch */
+#define Z80_HEADER_RESIDENT_SIZE           55
+
 /* ------------------------------------------------------------------------ */
 
 /*
