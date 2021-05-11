@@ -65,19 +65,6 @@
 #define TFTP_SIZE_OF_ACK_PACKET      (4)
 #define TFTP_SIZE_OF_ERROR_PACKET    (5)
 
-
-/* ------------------------------------------------------------------------- */
-
-uint8_t *tftp_write_pos
-  = (uint8_t *)
-#ifdef STAGE2_IN_RAM
-&stage2;
-#else
-&snapshot_list;
-#endif
-
-void (*tftp_receive_hook)(void)   = NULL;
-
 /* ------------------------------------------------------------------------- */
 
 /* Next TFTP block we expect to receive */
@@ -85,8 +72,6 @@ static uint16_t expected_tftp_block_no;
 
 /* Source port currently used by server */
 static uint16_t server_port;
-
-/* ------------------------------------------------------------------------- */
 
 /* -------------------------------------------------------------------------
  * Create UDP reply to the sender of the received packet currently processed.

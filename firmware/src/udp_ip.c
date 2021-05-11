@@ -39,15 +39,6 @@
 
 /* ------------------------------------------------------------------------- */
 
-/* Global IP configuration: defaults are all zero */
-struct ip_config_t ip_config;
-
-/* Definitions for state exposed in header */
-PACKED_STRUCT(header_template_t) header_template;
-uint16_t tftp_client_port = htons(0xc000);
-
-/* ------------------------------------------------------------------------- */
-
 void
 ip_receive(void)
 __naked

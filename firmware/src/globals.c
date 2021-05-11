@@ -35,14 +35,53 @@
 
 /* ========================================================================= */
 
-union rx_frame_t  rx_frame;
-struct eth_adm_t  rx_eth_adm;
+union rx_frame_t  rx_frame;         /* buffer for received packet data */
+
+/* =========================================================================
+ * stuff for snapshot loading
+ * ========================================================================= */
+
+uint8_t snapshot_header[Z80_HEADER_RESIDENT_SIZE];
+
+/*
+ * For progress display while loading a snapshot.
+ *
+ * For 128k snapshots, 'kilobytes_expected' is set in s_header (z80_loader.c)
+ */
 
 uint8_t kilobytes_loaded   = 0;
 uint8_t kilobytes_expected = 48;
 
+/* =========================================================================
+ * Ethernet/IP/UDP stuff
+ * ========================================================================= */
+
+/* received Ethernet header, along with some administrative information */
+struct eth_adm_t rx_eth_adm;
+
+struct ip_config_t ip_config;
+
+/* header template for outgoing UDP packets */
+uint8_t header_template[IPV4_HEADER_SIZE + UDP_HEADER_SIZE];
+
+uint16_t tftp_client_port = htons(0xc000); /* client-side UDP port for TFTP */
+
 uint16_t ip_checksum;
 
-struct z80_snapshot_header_t  snapshot_header;
+/* =========================================================================
+ * TFTP stuff
+ * ========================================================================= */
 
-/* ------------------------------------------------------------------------- */
+uint8_t *tftp_write_pos
+  = (uint8_t *)
+#ifdef STAGE2_IN_RAM
+&stage2;
+#else
+&snapshot_list;
+#endif
+
+/* -------------------------------------------------------------------------
+ * If non-NULL, this function is called for every received TFTP packet
+ * (instead of regular raw data file handling)
+ * ------------------------------------------------------------------------- */
+void (*tftp_receive_hook)(void);

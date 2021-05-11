@@ -164,44 +164,6 @@
  *
  * https://worldofspectrum.org/faq/reference/z80format.htm
  */
-PACKED_STRUCT(z80_snapshot_header_t) {
-  uint8_t   a;
-  uint8_t   f;
-  uint16_t  bc;
-  uint16_t  hl;
-  uint16_t  pc;
-  uint16_t  sp;
-  uint8_t   i;
-  uint8_t   r;
-  uint8_t   snapshot_flags;
-  uint16_t  de;
-  uint16_t  bc_p;
-  uint16_t  de_p;
-  uint16_t  hl_p;
-  uint8_t   a_p;
-  uint8_t   f_p;
-  uint16_t  iy;
-  uint16_t  ix;
-  uint8_t   iff1;
-  uint8_t   iff2;
-  uint8_t   int_mode;       /* only bits 0-1, other are bits ignored */
-
-  /*
-   * Extended header (versions 2 and later)
-   */
-  uint16_t                     extended_length;
-  uint16_t                     extended_pc;
-  uint8_t                      hw_type;
-  uint8_t                      hw_state_7ffd;
-  uint8_t                      dummy_if1_timex;   /* not used */
-  uint8_t                      dummy_hw_mod;      /* not used */
-  uint8_t                      hw_state_fffd;
-  uint8_t                      hw_state_snd[16];
-
-  /*
-   * Remaining contents of this header are useless for a real Spectrum
-   */
-};
 
 /*
  * Offsets for use by assembly code  (should match header above)
@@ -237,32 +199,6 @@ PACKED_STRUCT(z80_snapshot_header_t) {
 #define Z80_HEADER_RESIDENT_SIZE           55
 
 /* ------------------------------------------------------------------------ */
-
-/*
- * True if 'p' points to an extended snapshot header, false otherwise
- */
-#define IS_EXTENDED_SNAPSHOT_HEADER(p)                                        \
-  (((const struct z80_snapshot_header_t *)(p))->pc == 0)
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * True if HW ID 'id' refers to a 128k machine
- *
- * (rather simplistic check, but it will only fail for rather esoteric
- * hardware configurations that I have no way of testing anyway)
- */
-#define IS_128K_MACHINE(p)            ((p) >= HW_TYPE_SPECTRUM_128K)
-
-/* ------------------------------------------------------------------------ */
-
-/*
- * Copy a .z80 header from the RX buffer to a separate memory area. The copied
- * header is used by evacuate_data() below at a later time.
- */
-#define evacuate_z80_header()       memcpy(&snapshot_header,                  \
-                                           &rx_frame.udp.app.tftp.data.z80,   \
-                                           sizeof(snapshot_header))
 
 /*
  * Restore application data from ENC28J60 SRAM, restore register values

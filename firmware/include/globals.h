@@ -37,6 +37,9 @@
 #include "tftp.h"
 #include "context_switch.h"
 
+#ifndef SPECCYBOOT_GLOBALS_INCLUSION_GUARD
+#define SPECCYBOOT_GLOBALS_INCLUSION_GUARD
+
 /* ------------------------------------------------------------------------- */
 
 /* Maximal number of snapshots we can list */
@@ -47,6 +50,19 @@
 /*
  * See context_switch.h about these addresses
  */
+
+/* ------------------------------------------------------------------------ */
+
+/* Important addresses, defined in crt0.asm */
+extern uint8_t stage2;        /* Beginning of second-stage loader */
+extern uint8_t snapshot_list;  /* First byte after second-stage loader */
+
+/* ========================================================================
+ * absolute address data:
+ * 0x5b00   stack        0x60 bytes
+ * 0x5b60   digit data   0x3C (decimal 60) bytes
+ * 0xFD03   font data    0x2FD bytes
+ * ======================================================================== */
 
 /* Stack address (defined here so crt0.asm can find it via linker) */
 #define STACK_SIZE   (0x60)
@@ -71,66 +87,22 @@ extern uint8_t  __at(DIGIT_DATA_ADDR) digit_data[60 * 10];
  * character (DEL) is not expected in UNIX filenames. */
 uint8_t __at(0xfd03) font_data[0x300];
 
-/*
- * Storage for Z80 snapshot header. Used while loading a snapshot.
- */
-extern struct z80_snapshot_header_t  snapshot_header;
+extern uint8_t *tftp_write_pos;   /* position to write received TFTP data to */
 
-/* ------------------------------------------------------------------------ */
-
-/*
- * For progress display while loading a snapshot.
- *
- * For 128k snapshots, 'kilobytes_expected' is set in s_header (z80_loader.c)
- */
-extern uint8_t kilobytes_loaded;
-extern uint8_t kilobytes_expected;
-
-/* Important addresses, defined in crt0.asm */
-extern uint8_t stage2;        /* Beginning of second-stage loader */
-extern uint8_t snapshot_list;  /* First byte after second-stage loader */
-
-/* Administrative Ethernet information, including Ethernet header */
-
-/* ------------------------------------------------------------------------ */
-
-extern uint16_t ip_checksum;
-
-/* ========================================================================= */
-
-/* Administrative Ethernet information, including Ethernet header */
-extern struct eth_adm_t                 rx_eth_adm;
+/* IP address configuration */
+extern struct ip_config_t {
+ ipv4_address_t host_address;
+ ipv4_address_t tftp_server_address;
+} ip_config;
 
 /* ------------------------------------------------------------------------- */
 
-/*
- * This union is NOT designed for reading an entire Ethernet frame in one go:
- * this is not practical since, for example, the IP header has variable size.
- *
- * Instead, the purpose of this union is to preserve static memory by allowing
- * buffers to overlap whenever possible (unions). It also facilitates absolute
- * addressing of received data (making for efficient generated code).
- */
+/* Buffer for received packet data */
 extern union rx_frame_t {
-  /* --------------------------------------------------------- Raw IP header */
-  struct ipv4_header_t                  ip;
-
-  /* ------------------------------------------------------------------- UDP */
-  PACKED_STRUCT() {
-    struct ipv4_header_t                ip_header;
-    struct udp_header_t                 header;
-
-    union {
-      PACKED_STRUCT() {
-        struct tftp_header_t            header;
-        union {
-          uint8_t                       raw_bytes[TFTP_DATA_MAXSIZE];
-          struct z80_snapshot_header_t  z80;
-        } data;
-      } tftp;
-    } app;
-  } udp;
-
+  /* -------------------------------------------------------------- Raw data */
+  uint8_t raw_bytes[IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + TFTP_DATA_MAXSIZE];
   /* --------------------------------------------------- Snapshot name array */
   const char *snapshot_names [MAX_SNAPSHOTS];
 } rx_frame;
+
+#endif /* SPECCYBOOT_GLOBALS_INCLUSION_GUARD */

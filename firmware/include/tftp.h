@@ -54,23 +54,7 @@
  * TFTP packets
  * ========================================================================= */
 
-PACKED_STRUCT(tftp_header_t) {
-  uint16_t        opcode;
-  uint16_t        block_no;
-};
-
 #define TFTP_HEADER_SIZE    (4)
-
-/* -------------------------------------------------------------------------
- * Position to write received TFTP data to
- * ------------------------------------------------------------------------- */
-extern uint8_t *tftp_write_pos;
-
-/* -------------------------------------------------------------------------
- * If non-NULL, this function is called for every received TFTP packet
- * (instead of regular raw data file handling)
- * ------------------------------------------------------------------------- */
-extern void (*tftp_receive_hook)(void);
 
 /* -------------------------------------------------------------------------
  * Called by UDP when a TFTP packet has been identified

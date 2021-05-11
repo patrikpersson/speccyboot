@@ -64,34 +64,6 @@ typedef uint32_t ipv4_address_t;
 
 /* ------------------------------------------------------------------------- */
 
-PACKED_STRUCT(udp_header_t) {                 /* UDP header */
-  uint16_t        src_port;
-  uint16_t        dst_port;
-  uint16_t        length;
-  uint16_t        checksum;
-};
-
-#define UDP_HEADER_SIZE                      (8)
-
-#define UDP_HEADER_OFFSETOF_SRC_PORT         (0)
-#define UDP_HEADER_OFFSETOF_DST_PORT         (2)
-#define UDP_HEADER_OFFSETOF_LENGTH           (4)
-#define UDP_HEADER_OFFSETOF_CHECKSUM         (6)
-
-/* ------------------------------------------------------------------------- */
-
-PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
-  uint8_t         version_and_header_length;
-  uint8_t         type_of_service;
-  uint16_t        total_length;
-  uint32_t        id_and_fraginfo;
-  uint8_t         time_to_live;
-  uint8_t         prot;
-  uint16_t        checksum;
-  ipv4_address_t  src_addr;
-  ipv4_address_t  dst_addr;
-};
-
 #define IPV4_HEADER_SIZE    (20)
 #define IPV4_ADDRESS_SIZE   (4)
 
@@ -102,30 +74,21 @@ PACKED_STRUCT(ipv4_header_t) {                /* IPv4 header (no options) */
 #define IPV4_HEADER_OFFSETOF_SRC_ADDR                 (12)
 #define IPV4_HEADER_OFFSETOF_DST_ADDR                 (16)
 
-/* ========================================================================= */
+/* ------------------------------------------------------------------------- */
 
-/* IP address configuration */
-extern struct ip_config_t {
-  ipv4_address_t host_address;
-  ipv4_address_t tftp_server_address;
-} ip_config;
+#define UDP_HEADER_SIZE                      (8)
+
+#define UDP_HEADER_OFFSETOF_SRC_PORT         (0)
+#define UDP_HEADER_OFFSETOF_DST_PORT         (2)
+#define UDP_HEADER_OFFSETOF_LENGTH           (4)
+#define UDP_HEADER_OFFSETOF_CHECKSUM         (6)
+
+/* ========================================================================= */
 
 #define IP_CONFIG_HOST_ADDRESS_OFFSET   (0)
 #define IP_CONFIG_TFTP_ADDRESS_OFFSET   (4)
 
 /* ========================================================================= */
-
-/* Header template, used by udp_create() & co below */
-extern PACKED_STRUCT(header_template_t) {
-  struct ipv4_header_t ip;
-  struct udp_header_t  udp;
-} header_template;
-
-/* -------------------------------------------------------------------------
- * Managing UDP port for TFTP client
- * ------------------------------------------------------------------------- */
-
-extern uint16_t tftp_client_port;
 
 /* -------------------------------------------------------------------------
  * Called by eth.c when an Ethernet frame holding an IP packet has been
