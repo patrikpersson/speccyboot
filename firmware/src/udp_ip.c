@@ -334,17 +334,10 @@ __naked
     ;; call eth_create(dst_hwaddr, htons(ETHERTYPE_IP), ENC28J60_TXBUF1_START)
     ;; ----------------------------------------------------------------------
 
-    ld    hl, #ENC28J60_TXBUF1_START
-    push  hl             ;; frame_class
-    ld    c, #0x08       ;; htons(ETHERTYPE_IP)    (B=0 here)
-    push  bc
     ld    l, 0(ix)
     ld    h, 1(ix)
-    push  hl             ;; dst_hwaddr
+    xor   a, a         ;; IP
     call  _eth_create
-    pop   hl
-    pop   bc
-    pop   hl
 
     ;; ----------------------------------------------------------------------
     ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));

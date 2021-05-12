@@ -104,16 +104,9 @@ _arp_receive::
     ;; create ARP response
     ;; ========================================================================
 
-    ld   hl, #ETH_FRAME_OPTIONAL
-    push hl
-    ld   hl, #0x0608           ;; ETHERTYPE_ARP, network order
-    push hl
     ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    push hl
+    ld   a, #6   ;; ETHERTYPE_ARP
     call _eth_create
-    pop  hl
-    pop  hl
-    pop  hl
 
     ;; ARP header
 

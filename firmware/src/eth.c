@@ -257,22 +257,14 @@ eth_init_registers_done::
 /* ------------------------------------------------------------------------- */
 
 void
-eth_create(const struct mac_address_t *destination,
-           uint16_t                    ethertype,
-           eth_frame_class_t           frame_class)
+eth_create(void)
 __naked
 {
-  (void) destination, ethertype, frame_class;
   __asm
 
-    push  ix
-    ld    ix, #4
-    add   ix, sp
-
-    ;; assume
-    ;; destination at 0(ix), 1(ix)
-    ;; ethertype   at 2(ix), 3(ix)
-    ;; frame_class at 4(ix), 5(ix)
+    push  hl
+    or    a, a
+    ex    af, af'     ;; ethertype in Z flag in F' (set for IP, clear for ARP)
 
     ;; ------------------------------------------------------------------------
     ;; select default bank for ENC28J60
@@ -281,13 +273,19 @@ __naked
     call  _enc28j60_select_bank0
 
     ;; ------------------------------------------------------------------------
-    ;; frame_class maps directly to a buffer;
-    ;; store it in _current_txbuf
+    ;; remember _current_txbuf depending on ethertype
+    ;; (TXBUF1 for IP, TXBUF2 for ARP)
     ;; ------------------------------------------------------------------------
 
-    ld    l, 4(ix)
-    ld    h, 5(ix)
+    ex    af, af'          ;; bring back ethertype from F'
+
+    ld    hl, #ENC28J60_TXBUF1_START
+    jr    z, eth_create_txbuf_set
+    ld    hl, #ENC28J60_TXBUF2_START
+eth_create_txbuf_set:
     ld    (_current_txbuf), hl
+
+    ex    af, af'          ;; keep ethertype in F'
 
     ;; ------------------------------------------------------------------------
     ;; set up EWRPT for writing packet data
@@ -313,8 +311,7 @@ __naked
     ;; ------------------------------------------------------------------------
 
     ld    e, #ETH_ADDRESS_SIZE           ;; D==0 here
-    ld    l, 0(ix)
-    ld    h, 1(ix)
+    pop   hl                             ;; bring back destination MAC address
     call  _enc28j60_write_memory_cont
 
     ;; ------------------------------------------------------------------------
@@ -330,18 +327,19 @@ __naked
     ;; ------------------------------------------------------------------------
 
     ld    e, #ETH_SIZEOF_ETHERTYPE           ;; D==0 here
-
-    push  ix
-    pop   hl
-    inc   hl
-    inc   hl   ;; points to ethertype on stack
-    call  _enc28j60_write_memory_cont
-
-    pop   ix
-    ret
+    ld    hl, #ethertype_ip
+    ex    af, af'          ;; bring back ethertype from F'
+    jr    z, eth_create_ethertype_set
+    ld    hl, #ethertype_arp
+eth_create_ethertype_set:
+    jp    _enc28j60_write_memory_cont
 
 eth_create_control_byte::
     .db   0x0E
+ethertype_ip::
+    .db   0x08, 0x00
+ethertype_arp::
+    .db   0x08, 0x06
 
   __endasm;
 }
