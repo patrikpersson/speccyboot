@@ -325,7 +325,7 @@ __naked
     ld     (hl), a
     inc    hl
 
-    xor    a
+    xor    a, a
     ld     (hl), a
     inc    hl
     ld     (hl), a
@@ -336,19 +336,17 @@ __naked
 
     ld    l, 0(ix)
     ld    h, 1(ix)
-    xor   a, a         ;; IP
-    call  _eth_create
+    call  _eth_create    ;; A is zero (means IP), after XOR A, A above
 
     ;; ----------------------------------------------------------------------
     ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
     ;; ----------------------------------------------------------------------
 
+    pop    ix
+
     ld     de, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
     ld     hl, #_header_template
-    call   _enc28j60_write_memory_cont
-
-    pop    ix
-    ret
+    jp     _enc28j60_write_memory_cont
 
     ;; ----------------------------------------------------------------------
     ;; IP header defaults

@@ -105,7 +105,7 @@ _arp_receive::
     ;; ========================================================================
 
     ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    ld   a, #6   ;; ETHERTYPE_ARP
+    cpl       ;; A was zero after _memory_compare, now 0xFF, non-zero means ARP
     call _eth_create
 
     ;; ARP header
@@ -116,9 +116,8 @@ _arp_receive::
 
     ;; SHA: local MAC address
 
-    ld   e, #ETH_ADDRESS_SIZE     ;; D==0 here
     ld   hl, #_eth_local_address
-    call _enc28j60_write_memory_cont
+    call _enc28j60_write_6b
 
     ;; SPA: local IPv4 address
 
@@ -128,9 +127,8 @@ _arp_receive::
 
     ;; THA: sender MAC address
 
-    ld   e, #ETH_ADDRESS_SIZE          ;; D==0 here
     ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    call _enc28j60_write_memory_cont
+    call _enc28j60_write_6b
 
     ;; TPA: sender IP address, taken from SPA field in request
 
@@ -143,6 +141,7 @@ _arp_receive::
 
 arp_receive_reply_template::
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
+ethertype_ip::
     .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
     .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)

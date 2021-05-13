@@ -315,13 +315,16 @@ tftp_receive_error::
 
     jp    _ip_send
 
-tftp_receive_ack_opcode::
-    .db   0, TFTP_OPCODE_ACK           ;; network order
+    ;; ------------------------------------------------------------------------
+    ;; ACK is two bytes: 0, 4
+    ;; ERROR is five bytes: 0, 5, 0, 4, 0
+    ;; ------------------------------------------------------------------------
 
 tftp_receive_error_packet::
     .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
-    .db   0, 4               ;; illegal TFTP operation, network order
-    .db   0                  ;; no particular message
+tftp_receive_ack_opcode::
+    .db   0, 4                        ;; illegal TFTP operation, network order
+    .db   0                           ;; no particular message
 
   __endasm;
 }

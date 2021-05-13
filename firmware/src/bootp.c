@@ -182,6 +182,7 @@ bootp_attr_lp2::
 
     ld   e, #BOOTP_PART2_SIZE       ;; D==0 here
     ld   hl, #0x4800
+    push hl
     call _enc28j60_write_memory_cont
 
     ;; ------------------------------------------------------------------------
@@ -196,8 +197,8 @@ bootp_attr_lp2::
     ;; use VRAM as source of 266 zero-valued bytes
     ;; ------------------------------------------------------------------------
 
-    ld   e, #BOOTP_PART4_SIZE    ;; D==0 here
-    ld   hl, #0x4800
+    ld   de, #BOOTP_PART4_SIZE
+    pop  hl                       ;; HL is now 0x4800, zeros in VRAM
     call _enc28j60_write_memory_cont
 
     jp   _ip_send
@@ -211,8 +212,9 @@ bootrequest_header_data::
     .db   1                  ;; htype (10mbps Ethernet)
     .db   6                  ;; hlen
     .db   0                  ;; hops
+
 bootrequest_xid::
-    .db   0x5a, 0x58, 0x38, 0x32  ;; 'ZX82'
+    ;; use first four bytes of title_str ("Spec") for XID
 
 title_str::
     .ascii "SpeccyBoot "
@@ -241,13 +243,8 @@ __naked
     ld   hl, #bootrequest_xid
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_XID
     ld   b, #4
-bootp_receive_check_xid_loop::
-    ld   a, (de)
-    cp   a, (hl)
+    call _memory_compare
     ret  nz
-    inc  hl
-    inc  de
-    djnz bootp_receive_check_xid_loop
 
     ;; ------------------------------------------------------------------------
     ;; Copy two IP addresses (8 bytes, local + server address) from packet to
