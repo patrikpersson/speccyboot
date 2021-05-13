@@ -31,61 +31,13 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "eth.h"
+// #include "eth.h"
 
-#include "arp.h"
-#include "bootp.h"
-#include "globals.h"
-#include "udp_ip.h"
+// #include "arp.h"
+// #include "bootp.h"
+// #include "globals.h"
+// #include "udp_ip.h"
 #include "ui.h"
-
-/* ========================================================================= */
-
-const struct mac_address_t eth_broadcast_address = {
-  { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
-};
-
-const struct mac_address_t eth_local_address = {
-  { MAC_ADDR_0, MAC_ADDR_1, MAC_ADDR_2, MAC_ADDR_3, MAC_ADDR_4, MAC_ADDR_5 }
-};
-
-/* Position of next frame to read from the ENC28J60 */
-static enc28j60_addr_t next_frame;
-
-/* =========================================================================
- * RE-TRANSMISSION HANDLING
- *
- * When ack_timer >= retransmission_timeout, and no acknowledgment received:
- *   retransmit
- *   double retransmission_timeout, up to 20.48s
- * When acknowledgment received:
- *   reset retransmission_timeout to 2.56s
- * ========================================================================= */
-
-static uint8_t retransmission_timeout;  /* high byte of time-out */
-
-/*
- * Special value for end_of_critical_frame to denote that no un-acknowledged
- * critical frame is in TXBUF1.
- */
-#define NO_FRAME_NEEDS_RETRANSMISSION         (0)
-
-/* Value to write to ETXND when a re-transmission is to be performed */
-static enc28j60_addr_t end_of_critical_frame;
-
-/* Timeouts for packet re-transmission, high byte only */
-#define RETRANSMISSION_TIMEOUT_MIN            (0x01)
-#define RETRANSMISSION_TIMEOUT_MAX            (0x08)
-
-/* ------------------------------------------------------------------------- */
-
-/* Points to start of the buffer for the frame currently being created */
-static enc28j60_addr_t current_txbuf;
-
-/* ========================================================================= */
-
-/* End of table below */
-#define END_OF_TABLE                         (ENC28J60_UNUSED_REG)
 
 /* ============================================================================
  * PUBLIC API
@@ -95,7 +47,44 @@ void
 eth_init(void)
 __naked
 {
+
   __asm
+
+    .include  "include/enc28j60.inc"
+    .include  "include/eth.inc"
+
+    .area _DATA
+
+_next_frame:
+    .ds 2        ;; position of next frame to read from the ENC28J60
+
+_current_txbuf:
+    .ds 2        ;; points to the frame currently being created
+
+;; ============================================================================
+;; RE-TRANSMISSION HANDLING
+;;
+;; When ack_timer >= retransmission_timeout, and no acknowledgment received:
+;;   retransmit
+;;   double retransmission_timeout, up to 20.48s
+;; When acknowledgment received:
+;;   reset retransmission_timeout to 2.56s
+;; ============================================================================
+
+;; Timeouts for packet re-transmission, high byte only
+
+RETRANSMISSION_TIMEOUT_MIN = 0x01
+RETRANSMISSION_TIMEOUT_MAX = 0x08
+
+_retransmission_timeout:
+    .ds 1                   ;; high byte of time-out
+
+_end_of_critical_frame:
+    .ds 2                   ;; written to ETXND for re-transmission
+
+END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
+
+    .area _CODE
 
     ;; ========================================================================
     ;; reset Ethernet controller
@@ -245,6 +234,22 @@ eth_register_defaults:
     .db   ECON1,    ECON1_RXEN
 
     .db   END_OF_TABLE
+
+_eth_broadcast_address:
+    .db   0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+
+#if 0
+MAC_ADDR_0 = 0xba
+MAC_ADDR_1 = 0xdb
+MAC_ADDR_2 = 0xad
+MAC_ADDR_3 = 0xc0
+MAC_ADDR_4 = 0xff
+MAC_ADDR_5 = 0xee
+#endif
+
+_eth_local_address:
+    .db   MAC_ADDR_0, MAC_ADDR_1, MAC_ADDR_2
+    .db   MAC_ADDR_3, MAC_ADDR_4, MAC_ADDR_5
 
   __endasm;
 }
