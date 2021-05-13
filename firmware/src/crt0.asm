@@ -27,9 +27,10 @@
   ;; OTHER DEALINGS IN THE SOFTWARE.
   ;; --------------------------------------------------------------------------
 
-#include "spi_asm.h"
-
   .module crt0
+  .optsdcc -mz80
+
+#include "spi_asm.h"
 
   .include "include/spi.inc"
   .include "include/enc28j60.inc"

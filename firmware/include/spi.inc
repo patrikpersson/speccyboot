@@ -2,6 +2,7 @@
 ;; Module spi:
 ;;
 ;; Definitions for bit-banged SPI access, common to C and assembly files.
+;; NOTE: requires "spi_asm.h" to be included by C preprocessor (for ifdefs).
 ;;
 ;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
@@ -31,46 +32,25 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 ;;/
 
-;; ----------------------------------------------------------------------------
-;; Port for SPI communication
-;; ----------------------------------------------------------------------------
+;; ============================================================================
+;; Masks for the individual bits (SPI_CS is also related, but set in spi_asm.h)
+;; ============================================================================
 
-;; Default SpeccyBoot configuration
-SPI_OUT = 0x9f
-SPI_IN  = SPI_OUT
-SPI_CS  = 0x08
-
-;; TODO: bring this back as a compile-time option
-;; Imrich Kolkol's DGBoot maps SPI IN and OUT to different registers
-;; SPI_OUT = 0x3f
-;; SPI_IN = 0x1f
-;; SPI_CS = 0x02
-
-;; ----------------------------------------------------------------------------
-;; Masks for the individual bits (also SPI_CS, conditionally selected above)
-;; ----------------------------------------------------------------------------
-
-SPI_SCK = 0x01
-SPI_RST = 0x40
+SPI_SCK  = 0x01
+SPI_RST  = 0x40
 SPI_MOSI = 0x80
 
-;; ----------------------------------------------------------------------------
-;; Strictly not an SPI bit, but seems to belong here anyway:
-;; mask for paging out SpeccyBoot (and thus paging in BASIC ROM)
-;; ----------------------------------------------------------------------------
+PAGE_OUT = 0x20          ;; mask for paging out SpeccyBoot, paging in BASIC ROM
 
-PAGE_OUT = 0x20
+SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 
 ;; ----------------------------------------------------------------------------
-;; SPI idle, MOSI=0, RST high, CS low, SCK low
+;; macro: read one bit from SPI to accumulator,
+;; requires C=0x9f (on SpeccyBoot), H=0x40. Destroys F, L.
 ;; ----------------------------------------------------------------------------
 
-SPI_IDLE = SPI_RST
-
-;; ----------------------------------------------------------------------------
-;; macro: read one bit from SPI to accumulator
-;; (variants for regular SpeccyBoot and Imrich Konkol's DGBoot)
-;; ----------------------------------------------------------------------------
+    ;; Optimized version for SpeccyBoot; assumes C=0x9f.
+    ;; Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states
 
     .macro  spi_read_bit_to_acc
     out   (c), h
@@ -81,6 +61,12 @@ SPI_IDLE = SPI_RST
     rr    a, l
     rla
     .endm
+
+    ;; ------------------------------------------------------------------------
+
+    ;; Imrich Kolkol's DGBoot maps SPI IN and OUT to different registers;
+    ;; for this reason, C is loaded explicitly each time, resulting in
+    ;; some slight CPU overhead per bit.
 
     .macro  spi_read_bit_to_acc_dgboot
     ld    c, #SPI_OUT           ;; added for DGBoot

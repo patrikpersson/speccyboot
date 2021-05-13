@@ -32,6 +32,8 @@
     .module enc28j60
     .optsdcc -mz80
 
+#include "spi_asm.h"
+
     .include "include/enc28j60.inc"
     .include "include/spi.inc"
     .include "include/udp_ip.inc"

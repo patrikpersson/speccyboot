@@ -78,44 +78,6 @@
   rra                                     \
   rl    a, REG
 
-/*
- * Read one bit to accumulator, requires C=0x9f (on SpeccyBoot), H=0x40.
- * Destroys F, L.
- */
-
-#ifdef HWTARGET_SPECCYBOOT
-/*
- * Optimized version for SpeccyBoot; assumes C=0x9f.
- * Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states
- */
-#define SPI_READ_BIT_TO_ACC               \
-  out   (c), h                            \
-  inc   h                                 \
-  out   (c), h                            \
-  dec   h                                 \
-  in    l, (c)                            \
-  rr    a, l                              \
-  rla
-#endif
-
-#ifdef HWTARGET_DGBOOT
-/*
- * Imrich Kolkol's DGBoot maps SPI IN and OUT to different registers;
- * for this reason, C is loaded explicitly each time, resulting in
- * some slight CPU overhead per bit.
- */
-#define SPI_READ_BIT_TO_ACC               \
-  ld    c, #SPI_OUT                       \
-  out   (c), h                            \
-  inc   h                                 \
-  out   (c), h                            \
-  dec   h                                 \
-  ld    c, #SPI_IN                        \
-  in    l, (c)                            \
-  rr    a, l                              \
-  rla
-#endif
-
 #pragma restore
 
 /* ========================================================================= */

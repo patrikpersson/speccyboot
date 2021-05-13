@@ -8,8 +8,8 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2012, Patrik Persson & Imrich Kolkol
- * 
+ * Copyright (c) 2012-  Patrik Persson & Imrich Kolkol
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -21,7 +21,7 @@
  *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -76,22 +76,14 @@
 
 /* ------------------------------------------------------------------------- */
 
-/*
- * Masks for the individual bits (also SPI_CS, conditionally selected above)
- */
+;; FIXME: these are better defined as variables in spi.inc
+
 #define SPI_SCK                         0x01
 #define SPI_RST                         0x40
 #define SPI_MOSI                        0x80
 
-/*
- * Strictly not an SPI bit, but seems to belong here anyway:
- * mask for paging out SpeccyBoot (and thus paging in BASIC ROM)
- */
 #define PAGE_OUT                        0x20
 
-/*
- * SPI idle, MOSI=0, RST high, CS low, SCK low
- */
 #define SPI_IDLE                        SPI_RST
 
 #endif /* SPECCYBOOT_SPI_ASM_INCLUSION_GUARD */
