@@ -87,73 +87,6 @@ static enc28j60_addr_t current_txbuf;
 /* End of table below */
 #define END_OF_TABLE                         (ENC28J60_UNUSED_REG)
 
-/* Initial ENC28J60 register values */
-static const uint8_t eth_register_values[] = {
-  /*
-   * ETH initialization
-   *
-   * Since the ENC28J60 doesn't support auto-negotiation, we will need to
-   * stick to half duplex. Not a problem, since Ethernet performance is not
-   * really a bottleneck on the Spectrum.
-   */
-  ERXSTL,   LOBYTE(ENC28J60_RXBUF_START),
-  ERXSTH,   HIBYTE(ENC28J60_RXBUF_START),
-
-  ERXNDL,   LOBYTE(ENC28J60_RXBUF_END),
-  ERXNDH,   HIBYTE(ENC28J60_RXBUF_END),
-
-  /* B5 errata, item 11: only odd values are allowed when writing ERXRDPT */
-  ERXRDPTL, LOBYTE(ENC28J60_RXBUF_END),
-  ERXRDPTH, HIBYTE(ENC28J60_RXBUF_END),
-
-  ERXFCON,  ERXFCON_CRCEN,
-
-  /*
-   * MAC initialization: half duplex
-   */
-  MACON1,   MACON1_MARXEN,
-
-  /* MACON3: set bits PADCFG0..2 to pad frames to at least 64B, append CRC */
-  MACON3,   (uint8_t) (0xE0 + MACON3_TXCRCEN),
-  MACON4,   MACON4_DEFER,
-
-  MAMXFLL,  LOBYTE(ETH_MAX_RX_FRAME_SIZE),
-  MAMXFLH,  HIBYTE(ETH_MAX_RX_FRAME_SIZE),
-
-  MABBIPG,  0x12,    /* as per datasheet section 6.5 */
-  MAIPGL,   0x12,    /* as per datasheet section 6.5 */
-  MAIPGH,   0x0C,    /* as per datasheet section 6.5 */
-
-  MAADR1,   MAC_ADDR_0,
-  MAADR2,   MAC_ADDR_1,
-  MAADR3,   MAC_ADDR_2,
-  MAADR4,   MAC_ADDR_3,
-  MAADR5,   MAC_ADDR_4,
-  MAADR6,   MAC_ADDR_5,
-
-  /*
-   * PHY initialization
-   */
-  MIREGADR, PHCON1,
-  MIWRL,    0x00,   /* PHCON1 := 0x0000 -- half duplex */
-  MIWRH,    0x00,
-
-  /*
-   * Set up PHY to automatically scan the PHSTAT2 every 10.24 us
-   * (the current value can then be read directly from MIRD)
-   */
-  MIREGADR, PHSTAT2,
-  MICMD,    MICMD_MIISCAN,
-
-  /* Enable reception and transmission */
-  EIE,      0x00,    /* disable all interrupts */
-  EIR,      0x00,    /* no pending interrupts */
-  ECON2,    ECON2_AUTOINC,
-  ECON1,    ECON1_RXEN,
-
-  END_OF_TABLE
-};
-
 /* ============================================================================
  * PUBLIC API
  * ========================================================================= */
@@ -201,7 +134,7 @@ __naked
     ;; set up initial register values for ENC28J60
     ;; ========================================================================
 
-    ld    hl, #_eth_register_values
+    ld    hl, #eth_register_defaults
 
 eth_init_registers_loop:
 
@@ -250,6 +183,68 @@ eth_init_registers_done::
     ld    hl, #ENC28J60_RXBUF_START
     ld    (_next_frame), hl
     ret
+
+    ;; ------------------------------------------------------------------------
+    ;; ETH register defaults for initialization
+    ;;
+    ;; Since the ENC28J60 does not support auto-negotiation, we will need to
+    ;; stick to half duplex. Not a problem, since Ethernet performance is not
+    ;; really a bottleneck on the Spectrum.
+    ;; ------------------------------------------------------------------------
+
+eth_register_defaults:
+    .db   ERXSTL,   <ENC28J60_RXBUF_START
+    .db   ERXSTH,   >ENC28J60_RXBUF_START
+
+    .db   ERXNDL,   <ENC28J60_RXBUF_END
+    .db   ERXNDH,   >ENC28J60_RXBUF_END
+
+    ;; B5 errata, item 11: only odd values are allowed when writing ERXRDPT
+    .db   ERXRDPTL, <ENC28J60_RXBUF_END
+    .db   ERXRDPTH, >ENC28J60_RXBUF_END
+
+    .db   ERXFCON,  ERXFCON_CRCEN
+
+    ;; MAC initialization: half duplex
+    .db   MACON1,   MACON1_MARXEN
+
+    ;; MACON3: set bits PADCFG0..2 to pad frames to at least 64B, append CRC
+    .db   MACON3,   0xE0 + MACON3_TXCRCEN
+    .db   MACON4,   MACON4_DEFER
+
+    .db   MAMXFLL,  <ETH_MAX_RX_FRAME_SIZE
+    .db   MAMXFLH,  >ETH_MAX_RX_FRAME_SIZE
+
+    .db   MABBIPG,  0x12    ;; as per datasheet section 6.5
+    .db   MAIPGL,   0x12    ;; as per datasheet section 6.5
+    .db   MAIPGH,   0x0C    ;; as per datasheet section 6.5
+
+    .db   MAADR1,   MAC_ADDR_0
+    .db   MAADR2,   MAC_ADDR_1
+    .db   MAADR3,   MAC_ADDR_2
+    .db   MAADR4,   MAC_ADDR_3
+    .db   MAADR5,   MAC_ADDR_4
+    .db   MAADR6,   MAC_ADDR_5
+
+    ;; PHY initialization
+
+    .db   MIREGADR, PHCON1
+    .db   MIWRL,    0x00     ;; PHCON1 := 0x0000 -- half duplex
+    .db   MIWRH,    0x00
+
+    ;; Set up PHY to automatically scan the PHSTAT2 every 10.24 us
+    ;; (the current value can then be read directly from MIRD)
+
+    .db   MIREGADR, PHSTAT2
+    .db   MICMD,    MICMD_MIISCAN
+
+    ;; Enable reception and transmission
+    .db   EIE,      0x00     ;; disable all interrupts
+    .db   EIR,      0x00     ;; no pending interrupts
+    .db   ECON2,    ECON2_AUTOINC
+    .db   ECON1,    ECON1_RXEN
+
+    .db   END_OF_TABLE
 
   __endasm;
 }
