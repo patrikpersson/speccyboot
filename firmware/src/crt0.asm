@@ -44,11 +44,6 @@
   .globl	_timer_tick_count
   .globl  _tftp_file_buffer
   .globl  _run_menu
-
-  .globl	l__INITIALIZER
-  .globl	s__INITIALIZED
-  .globl	s__INITIALIZER
-
   ;; --------------------------------------------------------------------------
 
   .area	_HEADER (ABS)
@@ -195,10 +190,18 @@ gsinit::
   out (0xFE), a
   ldir
 
-  ld bc, #l__INITIALIZER
-  ld de, #s__INITIALIZED
-  ld hl, #s__INITIALIZER
-  ldir
+  ;; initialize globals
+  ;; (this memory layout must be carefully matched to globals.asm)
+
+  ld    hl, #0x30C0  ;; TFTP client port := 0xC000, kilobytes_expected := 48
+  ld    (_tftp_client_port + 1), hl
+
+#ifdef STAGE2_IN_RAM
+  ld    hl, #_stage2
+#else
+  ld    hl, #_snapshot_list
+#endif
+  ld    (_tftp_write_pos), hl
 
   .area _GSFINAL
   ei
