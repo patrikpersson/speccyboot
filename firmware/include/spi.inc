@@ -8,7 +8,7 @@
 ;;
 ;; ----------------------------------------------------------------------------
 ;;
-;; Copyright (c) 2012-  Patrik Persson & Imrich Kolkol
+;; Copyright (c) 2012-  Patrik Persson & Imrich Konkol
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -74,7 +74,7 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 
     ;; ------------------------------------------------------------------------
 
-    ;; Imrich Kolkol's DGBoot maps SPI IN and OUT to different registers;
+    ;; Imrich Konkol's DGBoot maps SPI IN and OUT to different registers;
     ;; for this reason, C is loaded explicitly each time, resulting in
     ;; some slight CPU overhead per bit.
 

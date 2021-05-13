@@ -1,75 +1,80 @@
-/*
- * Module bootp:
- *
- * Boot Protocol (BOOTP, RFC 951)
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;; Module bootp:
+;;
+;; Boot Protocol (BOOTP, RFC 951)
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2021-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include "bootp.h"
+    .module bootp
+    .optsdcc -mz80
 
-#include "eth.h"
-#include "globals.h"
-#include "udp_ip.h"
-#include "tftp.h"
-#include "ui.h"
+    .include "include/bootp.inc"
 
-/* ========================================================================= */
+    .include "include/enc28j60.inc"
+    .include "include/eth.inc"
+    .include "include/globals.inc"
+    .include "include/tftp.inc"
+    .include "include/udp_ip.inc"
+    .include "include/ui.inc"
+    .include "include/util.inc"
 
-/* BOOTP operations */
-#define BOOTREQUEST         (1)
-#define BOOTREPLY           (2)
+;; ============================================================================
+;; BOOTP operations
+;; ============================================================================
 
-#define BOOTP_PART1_SIZE    (8)
-#define BOOTP_PART2_SIZE    (20)
-#define BOOTP_PART3_SIZE    (6)
-#define BOOTP_PART4_SIZE    (266)
+BOOTREQUEST            = 1
+BOOTREPLY              = 2
 
-#define BOOTP_PACKET_SIZE                                                    \
-  (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + BOOTP_PART4_SIZE)
+;; ============================================================================
+;; BOOTP packet structure
+;; ============================================================================
 
-#define BOOTP_OFFSETOF_OP       (0)
-#define BOOTP_OFFSETOF_XID      (4)
-#define BOOTP_OFFSETOF_YIADDR   (BOOTP_PART1_SIZE + 8)
+BOOTP_PART1_SIZE       = 8
+BOOTP_PART2_SIZE       = 20
+BOOTP_PART3_SIZE       = 6
+BOOTP_PART4_SIZE       = 266
 
-#define BOOTP_OFFSETOF_SNAME                                                 \
-  (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10)
+BOOTP_PACKET_SIZE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + BOOTP_PART4_SIZE)
 
-#define BOOTP_OFFSETOF_FILE                                                  \
-  (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10 + 64)
+BOOTP_OFFSETOF_OP      = 0
+BOOTP_OFFSETOF_XID     = 4
+BOOTP_OFFSETOF_YIADDR  = BOOTP_PART1_SIZE + 8
 
-/* ------------------------------------------------------------------------- */
+BOOTP_OFFSETOF_SNAME = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10)
 
-void
-bootp_init(void)
-__naked
-{
-  __asm
+BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10 + 64)
+
+    .area _CODE
+
+;; ############################################################################
+;; _bootp_init
+;; ############################################################################
+
+_bootp_init:
 
     ;; ========================================================================
     ;; Presentation
@@ -125,7 +130,7 @@ bootp_print_done::
     ld    hl, #ATTRS_BASE      ;; (0,0)
     ld    b, #14
 bootp_attr_lp1::
-    ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT)
+    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
     inc   hl
     djnz  bootp_attr_lp1
 
@@ -136,7 +141,7 @@ bootp_attr_lp1::
     ld    hl, #ATTRS_BASE + 16     ;; (0,16)
     ld    b, #5
 bootp_attr_lp2::
-    ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
+    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT | FLASH)
     inc   hl
     djnz  bootp_attr_lp2
 
@@ -216,22 +221,25 @@ bootrequest_header_data::
 bootrequest_xid::
     ;; use first four bytes of title_str ("Spec") for XID
 
+/*
+ * Stringification using C preprocessor, see e.g.,
+ * https://gcc.gnu.org/onlinedocs/gcc-4.8.5/cpp/Stringification.html
+ */
+
+#define str(s) str2(s)
+#define str2(s) #s
+
 title_str::
     .ascii "SpeccyBoot "
     .ascii str(VERSION)
     .ascii "  BOOTP TFTP"
     .db   0
 
-  __endasm;
-}
+;; ############################################################################
+;; _bootp_receive
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-bootp_receive(void)
-__naked
-{
-  __asm
+_bootp_receive:
 
     ;; ------------------------------------------------------------------------
     ;; only accept BOOTREPLY packets with correct XID
@@ -322,7 +330,7 @@ tftp_attr_lp1::
 
     ld    b, #4      ;; 4 chars
 tftp_attr_lp2::
-    ld    (hl), #(INK(WHITE) | PAPER(BLACK) | BRIGHT | FLASH)
+    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT | FLASH)
     inc   hl
     djnz  tftp_attr_lp2
 
@@ -391,6 +399,3 @@ bootp_receive_default_file::
     .ascii 'snapshots.lst'
 #endif
     .db   0
-
-  __endasm;
-}

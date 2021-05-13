@@ -19,7 +19,7 @@ LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS     += --code-loc 0x0056 --data-loc 0x5B9C
 
 # disable warnings about z80instructionSize(), don't matter
-CFLAGS      += -DVERSION='$(VERSION)' --disable-warning 218
+CFLAGS      += --disable-warning 218
 
 # =============================================================================
 # CONFIGURATION
@@ -31,10 +31,12 @@ CFLAGS      += -DVERSION='$(VERSION)' --disable-warning 218
 # Run 'make STAGE2_IN_RAM=1' for a two-part build, with a 2K EPROM loader
 # which in turn loads a second-stage loader (spboot.bin) into RAM
 
+TARGETFLAGS  = -DVERSION='$(VERSION)'
+
 ifdef DGBOOT
-TARGETFLAGS  = -DHWTARGET_DGBOOT
+TARGETFLAGS += -DHWTARGET_DGBOOT
 else
-TARGETFLAGS  = -DHWTARGET_SPECCYBOOT
+TARGETFLAGS += -DHWTARGET_SPECCYBOOT
 endif
 
 ifdef STAGE2_IN_RAM
@@ -53,12 +55,12 @@ CFLAGS      += $(TARGETFLAGS)
 
 # module = source + header
 MODULES      = context_switch
-MODULES     += bootp tftp bootui
+MODULES     += tftp bootui
 MODULES     += ui menu z80_loader
 
 # NOTE: eth must be first here, as it contains the main function, and
 # crt0 will continue executing right into it
-ASMMODULES   = eth arp enc28j60 globals spi udp_ip util
+ASMMODULES   = eth arp bootp enc28j60 globals spi udp_ip util
 
 # -----------------------------------------------------------------------------
 
