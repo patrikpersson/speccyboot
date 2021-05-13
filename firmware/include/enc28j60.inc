@@ -235,7 +235,8 @@ OPCODE_WBM             = 0x7A
 ;; Write a 16-bit register.
 ;;
 ;; Call with A set to a WCR opcode for the low half of the register,
-;; e.g., ENC_OPCODE_WCR(ERXRDPTL), and HL set to the 16-bit value to write.
+;; e.g., OPCODE_WCR + (ERXRDPTL & REG_MASK), and HL set to the 16-bit
+;; value to write.
 ;;
 ;; Destroys F, BC, DE.
 ;; ----------------------------------------------------------------------------
