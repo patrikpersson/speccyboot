@@ -29,39 +29,34 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
-MAC_ADDR_0 = 0xba
-MAC_ADDR_1 = 0xdb
-MAC_ADDR_2 = 0xad
-MAC_ADDR_3 = 0xc0
-MAC_ADDR_4 = 0xff
-MAC_ADDR_5 = 0xee
+    .module util
+    .optsdcc -mz80
 
-TICK_PER_SECOND   = 50
+    .include "include/util.inc"
+
+    .area _DATA
 
 ;; ----------------------------------------------------------------------------
-;; 128k memory bank configuration
+;; Tick count, increased by 2 (!) by the 50Hz timer ISR in crt0.asm.
+;; Means that the high byte is increased every 2.56 seconds.
 ;; ----------------------------------------------------------------------------
 
-MEMCFG_ADDR       = 0x7ffd
-MEMCFG_ROM_LO     = 0x10
-MEMCFG_LOCK       = 0x20
+_timer_tick_count:
+    .ds   2
 
-;; ----------------------------------------------------------------------------
-;; I/O addresses for sound registers (128k machines)
-;; ----------------------------------------------------------------------------
-SND_REG_SELECT    = 0xfffd
-SND_REG_VALUE     = 0xbffd
 
-    .globl _timer_tick_count
+;; ############################################################################
+;; _memory_compare
+;; ############################################################################
 
-;; ----------------------------------------------------------------------------
-;; Compare memory blocks pointed to by HL and DE. Register B indicates the
-;; number of bytes to compare (so, max 256).
-;;
-;; On return, Z is set if blocks are equal.
-;; On a successful compare, B is zero, and HL and DE point to the
-;; first byte after the compared blocks.
-;; A is destroyed.
-;; ----------------------------------------------------------------------------
+    .area _CODE
 
-    .globl _memory_compare
+_memory_compare:
+
+    ld   a, (de)
+    cp   a, (hl)
+    ret  nz
+    inc  de
+    inc  hl
+    djnz _memory_compare
+    ret

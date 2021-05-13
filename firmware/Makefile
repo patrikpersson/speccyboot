@@ -52,11 +52,11 @@ CFLAGS      += $(TARGETFLAGS)
 # =============================================================================
 
 # module = source + header
-MODULES      = util context_switch globals
+MODULES      = context_switch globals
 MODULES     += udp_ip bootp tftp bootui
 MODULES     += ui menu z80_loader
 
-ASMMODULES   = arp enc28j60 eth spi
+ASMMODULES   = arp enc28j60 eth spi util
 
 # -----------------------------------------------------------------------------
 
