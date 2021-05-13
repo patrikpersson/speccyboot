@@ -148,6 +148,29 @@ ram_trampoline::
   ei
   ret
 
+;; Decide on an address to clear memory to, then set _tftp_write_pos to the
+;; first byte after the cleared memory.
+
+#ifdef STAGE2_IN_RAM
+CLEAR_TO = _stage2
+#else
+CLEAR_TO = _snapshot_list
+#endif
+
+gsinit::
+  ;; clear RAM up to CLEAR_TO + 1; this also sets screen to PAPER+INK 0
+  ld    hl, #0x4000
+  ld    de, #0x4001
+  ld    bc, #CLEAR_TO - 0x4000
+  ld    (hl), a
+  out   (ULA_PORT), a
+  ldir
+
+  ld    (_tftp_write_pos), hl
+
+  ei
+  jp _main
+
   ;; --------------------------------------------------------------------------
   ;; Ordering of segments for the linker
   ;; --------------------------------------------------------------------------
@@ -175,33 +198,6 @@ ram_trampoline::
 
 end_of_data::
 _tftp_file_buffer::
-
-  .area _HEAP
-
-  .area _CODE
-  .area _GSINIT
-
-gsinit::
-  ;; clear RAM up to _font_data; this also sets screen to PAPER+INK 0
-  ld hl, #0x4000
-  ld de, #0x4001
-  ld bc, #_font_data - 0x4001
-  ld (hl), a
-  out (0xFE), a
-  ldir
-
-  ;; initialize globals
-
-#ifdef STAGE2_IN_RAM
-  ld    hl, #_stage2
-#else
-  ld    hl, #_snapshot_list
-#endif
-  ld    (_tftp_write_pos), hl
-
-  .area _GSFINAL
-  ei
-  jp _main
 
 end_of_code::
 

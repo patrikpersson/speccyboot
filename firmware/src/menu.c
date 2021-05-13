@@ -117,6 +117,8 @@ run_menu(void)
   }
 #endif
 
+  *((uint8_t *) tftp_write_pos) = 0;  // ensure menu data is NUL-terminated
+
   copy_digit_font_data();
 
   /* --------------------------------------------------------------------------
