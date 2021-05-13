@@ -54,12 +54,11 @@ CFLAGS      += $(TARGETFLAGS)
 # =============================================================================
 
 # module = source + header
-MODULES      = context_switch
-MODULES     += ui menu z80_loader
+MODULES      = ui menu z80_loader
 
 # NOTE: eth must be first here, as it contains the main function, and
 # crt0 will continue executing right into it
-ASMMODULES   = eth arp bootp enc28j60 globals spi tftp udp_ip util
+ASMMODULES   = eth arp bootp context_switch enc28j60 globals spi tftp udp_ip util
 
 # -----------------------------------------------------------------------------
 

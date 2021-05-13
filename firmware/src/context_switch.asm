@@ -1,55 +1,53 @@
-/*
- * Module context_switch:
- *
- * Protecting SpeccyBoot runtime data during snapshot loading, and switching to
- * the final Spectrum system state from header data.
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;;
+;; Module context_switch:
+;;
+;; Protecting SpeccyBoot runtime data during snapshot loading, and switching to
+;; the final Spectrum system state from header data.
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2009-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include "context_switch.h"
+    .module context_switch
+    .optsdcc -mz80
 
-#include "enc28j60.h"
-#include "globals.h"
-#include "ui.h"
+    .include "include/context_switch.inc"
 
-/* ========================================================================= */
+    .include "include/enc28j60.inc"
+    .include "include/eth.inc"
+    .include "include/globals.inc"
+    .include "include/spi.inc"
+    .include "include/ui.inc"
+    .include "include/util.inc"
 
-/* ------------------------------------------------------------------------ */
+;; ############################################################################
+;; _context_switch
+;; ############################################################################
 
-/*
- * Restore system state using VRAM trampoline.
- */
-void
-context_switch(void)
-__naked
-{
-  __asm
+_context_switch:
 
     di
 
@@ -58,7 +56,7 @@ __naked
     ;; ------------------------------------------------------------------------
 
     ld   hl, #ENC28J60_EVACUATED_DATA
-    ld   a, #ENC_OPCODE_WCR(ERDPTL)
+    ld   a, #OPCODE_WCR + (ERDPTL & REG_MASK)
     call _enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
@@ -139,9 +137,9 @@ context_switch_48k_snapshot::
     ;; restore application data temporarily stored in ENC28J60 RAM
     ;; ========================================================================
 
-    ld     bc, #0x0800 + ENC_OPCODE_RBM        ;; 8 bits, opcode RBM
+    ld     bc, #0x0800 + OPCODE_RBM        ;; 8 bits, opcode RBM
 context_switch_restore_rbm_loop::
-    SPI_WRITE_BIT_FROM(c)
+    spi_write_bit_from_c
     djnz  context_switch_restore_rbm_loop
 
     ;; ------------------------------------------------------------------------
@@ -153,7 +151,7 @@ context_switch_restore_bytes_loop::
 
     ld    b, #8                      ;; one byte
 context_switch_restore_bits_loop::
-    SPI_READ_BIT_TO(c)
+    spi_read_bit_to_c
     djnz  context_switch_restore_bits_loop
 
     ld    (hl), c
@@ -197,6 +195,3 @@ context_switch_restore_bits_loop::
     ld    a, #0x20      ;; page out SpeccyBoot, pull reset on ENC28J60 low
 
     jp    VRAM_TRAMPOLINE_START
-
-    __endasm;
-}
