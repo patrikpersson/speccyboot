@@ -44,6 +44,7 @@
   .globl	_timer_tick_count
   .globl  _tftp_file_buffer
   .globl  _run_menu
+
   ;; --------------------------------------------------------------------------
 
   .area	_HEADER (ABS)
@@ -130,7 +131,7 @@ ram_trampoline::
   xor   a           ;; page in SpeccyBoot, keep ETH in reset
   out   (SPI_OUT), a
 
-  jp    gsinit
+  jp    initialize_global_data
 
   ;; --------------------------------------------------------------------------
   ;; RST 0x38 (50HZ INTERRUPT) ENTRYPOINT
@@ -148,6 +149,10 @@ ram_trampoline::
   ei
   ret
 
+  ;; --------------------------------------------------------------------------
+  ;; initialization of (mostly just clearing) global data
+  ;; --------------------------------------------------------------------------
+
 ;; Decide on an address to clear memory to, then set _tftp_write_pos to the
 ;; first byte after the cleared memory.
 
@@ -157,7 +162,8 @@ CLEAR_TO = _stage2
 CLEAR_TO = _snapshot_list
 #endif
 
-gsinit::
+initialize_global_data:
+
   ;; clear RAM up to CLEAR_TO + 1; this also sets screen to PAPER+INK 0
   ld    hl, #0x4000
   ld    de, #0x4001
@@ -169,7 +175,6 @@ gsinit::
   ld    (_tftp_write_pos), hl
 
   ei
-  jp _main
 
   ;; --------------------------------------------------------------------------
   ;; Ordering of segments for the linker
@@ -196,14 +201,14 @@ gsinit::
 
   .area _SNAPSHOTLIST  ;; area for loaded snapshot
 
-end_of_data::
 _tftp_file_buffer::
 
-end_of_code::
-
   .area _STAGE2
+
 _stage2::
+
   jp  _run_menu
 
   .area _SNAPSHOTLIST
+
 _snapshot_list::

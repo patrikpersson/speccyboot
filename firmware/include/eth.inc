@@ -133,6 +133,18 @@ ETH_ADM_HEADER_SIZE = 20
 
 ETH_HEADER_SIZE = 14
 
+;; ----------------------------------------------------------------------------
+;; timeout handling
+;; ----------------------------------------------------------------------------
+
+;; Timeouts for packet re-transmission, high byte only
+
+RETRANSMISSION_TIMEOUT_MIN = 0x01
+RETRANSMISSION_TIMEOUT_MAX = 0x08
+
+    .globl _retransmission_timeout
+    .globl _end_of_critical_frame
+
 ;; ============================================================================
 ;; Initialize Ethernet layer
 ;; ============================================================================

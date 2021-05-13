@@ -16,7 +16,7 @@ CFLAGS       = -mz80 --std-sdcc99 --Werror
 CFLAGS      += -I$(INCLUDEDIR) --opt-code-size --fomit-frame-pointer
 
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
-LDFLAGS     += --code-loc 0x0244 --data-loc 0x5B9C
+LDFLAGS     += --code-loc 0x0056 --data-loc 0x5B9C
 
 # disable warnings about z80instructionSize(), don't matter
 CFLAGS      += -DVERSION='$(VERSION)' --disable-warning 218
@@ -56,14 +56,16 @@ MODULES      = context_switch
 MODULES     += udp_ip bootp tftp bootui
 MODULES     += ui menu z80_loader
 
-ASMMODULES   = arp enc28j60 eth globals spi util
+# NOTE: eth must be first here, as it contains the main function, and
+# crt0 continues executing right into it
+ASMMODULES   = eth arp enc28j60 globals spi util
 
 # -----------------------------------------------------------------------------
 
 CFILES       = $(MODULES:%=%.c)
 HFILES       = $(MODULES:%=%.h)
 ASMFILES     = $(ASMMODULES:%=%.asm)
-OFILES       = crt0.rel $(CFILES:.c=.rel) $(ASMFILES:.asm=.rel)
+OFILES       = crt0.rel $(ASMFILES:.asm=.rel) $(CFILES:.c=.rel)
 
 # -----------------------------------------------------------------------------
 
