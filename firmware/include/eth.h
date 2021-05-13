@@ -208,7 +208,7 @@ eth_init(void);
  * currently in transmission, block until that is done first.
  *
  * HL:           destination MAC address, or eth_broadcast_address
- * A:            high byte of ethertype: 0 for IP, 6 for ARP
+ * A:            0 for IP, non-zero for ARP
  * ------------------------------------------------------------------------- */
 void
 eth_create(void);

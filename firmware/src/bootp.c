@@ -188,9 +188,8 @@ bootp_attr_lp2::
     ;; part 3: 6 bytes of MAC address
     ;; ------------------------------------------------------------------------
 
-    ld   e, #BOOTP_PART3_SIZE    ;; D==0 here
     ld   hl, #_eth_local_address
-    call _enc28j60_write_memory_cont
+    call _enc28j60_write_6b
 
     ;; ------------------------------------------------------------------------
     ;; part 4: 266 bytes of zeros

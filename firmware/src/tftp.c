@@ -406,11 +406,10 @@ __naked
 
     call _enc28j60_write_memory_cont
 
-    ;; append option ("octet" mode)
+    ;; append option ("octet" mode), happens to be 6 bytes, like a MAC address
 
-    ld   de, #TFTP_SIZE_OF_RRQ_OPTION
     ld   hl, #tftp_rrq_option
-    call _enc28j60_write_memory_cont
+    call _enc28j60_write_6b
 
     jp   _ip_send
 

@@ -127,6 +127,21 @@ enc28j60_write_register16(void)
 /* ------------------------------------------------------------------------- */
 
 void
+enc28j60_write_6b(void)
+__naked
+{
+  __asm
+
+    ld    de, #6
+
+    ;; FALL THROUGH to enc28j60_write_memory_cont
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+void
 enc28j60_write_memory_cont(void)
 __naked
 {
@@ -370,10 +385,23 @@ odd_byte_loop::
 
     exx
     ld    (de), a
-    ld    b, #0
     ld    c, a
+
+;; ----------------------------------------------------------------------------
+;; these two instructions happen to be 0x08, 0x06, which is the ARP ethertype
+;; (used in eth.c)
+;; ----------------------------------------------------------------------------
+ethertype_arp::
     ex    af, af'   ;; '
+    ld    b, #0
+
     adc   hl, bc
+
+;; ----------------------------------------------------------------------------
+;; this instruction happens to be 0x0E, which is the ENC28J60H per-packet
+;; control byte (datasheet, section 7.1)
+;; ----------------------------------------------------------------------------
+eth_create_control_byte::
     ld    c, #0     ;; BC is now 0
 
 final::

@@ -319,6 +319,18 @@ enc28j60_add_checksum(void);
 /* ------------------------------------------------------------------------- */
 
 /*
+ * Write six bytes to on-chip SRAM, continuing after previous write.
+ *
+ * Call with HL=pointer to data. Destroys AF, BC, DE.
+ *
+ * On exit, DE==0, and HL points to the next byte after the written data.
+ */
+void
+enc28j60_write_6b(void);
+
+/* ------------------------------------------------------------------------- */
+
+/*
  * Write a number of bytes to on-chip SRAM, continuing after previous write.
  *
  * Call with HL=pointer to data, DE=length of data. Destroys AF, BC.

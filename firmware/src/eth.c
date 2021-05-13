@@ -310,17 +310,15 @@ eth_create_txbuf_set:
     ;; write destination (remote) MAC address
     ;; ------------------------------------------------------------------------
 
-    ld    e, #ETH_ADDRESS_SIZE           ;; D==0 here
     pop   hl                             ;; bring back destination MAC address
-    call  _enc28j60_write_memory_cont
+    call  _enc28j60_write_6b
 
     ;; ------------------------------------------------------------------------
     ;; write source (local) MAC address
     ;; ------------------------------------------------------------------------
 
-    ld    e, #ETH_ADDRESS_SIZE           ;; D==0 here
     ld    hl, #_eth_local_address
-    call  _enc28j60_write_memory_cont
+    call  _enc28j60_write_6b
 
     ;; ------------------------------------------------------------------------
     ;; write Ethertype
@@ -334,12 +332,8 @@ eth_create_txbuf_set:
 eth_create_ethertype_set:
     jp    _enc28j60_write_memory_cont
 
-eth_create_control_byte::
-    .db   0x0E
 ethertype_ip::
     .db   0x08, 0x00
-ethertype_arp::
-    .db   0x08, 0x06
 
   __endasm;
 }
