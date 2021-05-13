@@ -76,7 +76,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-;; FIXME: these are better defined as variables in spi.inc
+/* FIXME: these are better defined as variables in spi.inc */
 
 #define SPI_SCK                         0x01
 #define SPI_RST                         0x40

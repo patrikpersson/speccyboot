@@ -30,7 +30,17 @@
 ;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
-;;/
+;;
+
+;; ============================================================================
+;; I/O details for SPI
+;; FIXME: bring in DGBoot using conditional compilation, or something similar
+;; ============================================================================
+
+SPI_OUT  = 0x9f
+SPI_IN   = SPI_OUT
+
+SPI_CS   = 0x08
 
 ;; ============================================================================
 ;; Masks for the individual bits (SPI_CS is also related, but set in spi_asm.h)
@@ -45,7 +55,7 @@ PAGE_OUT = 0x20          ;; mask for paging out SpeccyBoot, paging in BASIC ROM
 SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 
 ;; ----------------------------------------------------------------------------
-;; macro: read one bit from SPI to accumulator,
+;; Macro: read one bit from SPI to accumulator,
 ;; requires C=0x9f (on SpeccyBoot), H=0x40. Destroys F, L.
 ;; ----------------------------------------------------------------------------
 
@@ -58,7 +68,7 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
     out   (c), h
     dec   h
     in    l, (c)
-    rr    a, l
+    rr    l
     rla
     .endm
 
@@ -76,8 +86,35 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
     dec   h
     ld    c, #SPI_IN            ;; added for DGBoot
     in    l, (c)
-    rr    a, l
+    rr    l
     rla
+    .endm
+
+;; ----------------------------------------------------------------------------
+;; Macro: write bit 7 from register C to SPI, then shift REG left one bit
+;; ----------------------------------------------------------------------------
+
+    .macro  spi_write_bit_from_c
+    ld    a, #SPI_IDLE+SPI_IDLE          ;; shifted back left below
+    rl    c
+    rra
+    out   (SPI_OUT), a
+    inc   a
+    out   (SPI_OUT), a
+    .endm
+
+;; ----------------------------------------------------------------------------
+;; Macro: shift register C left one bit, and shift in a bit from SPI to bit 0
+;; ----------------------------------------------------------------------------
+
+    .macro  spi_read_bit_to_c
+    ld    a, #SPI_IDLE
+    out   (SPI_OUT), a
+    inc   a
+    out   (SPI_OUT), a
+    in    a, (SPI_IN)
+    rra
+    rl    c
     .endm
 
 ;; ----------------------------------------------------------------------------
