@@ -33,7 +33,6 @@
 
 #include "eth.h"
 #include "udp_ip.h"
-#include "arp.h"
 #include "tftp.h"
 #include "context_switch.h"
 
