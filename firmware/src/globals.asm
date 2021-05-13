@@ -56,24 +56,13 @@ _snapshot_header:
     .ds   Z80_HEADER_RESIDENT_SIZE
 
 ;; ----------------------------------------------------------------------------
-
-_kilobytes_loaded:
-    .ds    1      ;; for progress display while loading a snapshot
-
+;; expected and currently loaded no. of kilobytes, for progress display
 ;; ----------------------------------------------------------------------------
-;; initialized variables: see initialization in crt0.asm
-;;
-;; For 128k snapshots, 'kilobytes_expected' is set in s_header (z80_loader)
-;; ----------------------------------------------------------------------------
-
-_tftp_client_port:
-     .ds   2       ;; client-side UDP port for TFTP
 
 _kilobytes_expected:
      .ds   1
-
-_tftp_write_pos:
-     .ds   2
+_kilobytes_loaded:
+    .ds    1
 
 ;; ============================================================================
 ;; Ethernet/IP/UDP/TFTP stuff
@@ -94,6 +83,12 @@ _header_template:   ;; header template for outgoing UDP packets
 
 _ip_checksum:
    .ds   2
+
+_tftp_client_port:
+   .ds   2       ;; client-side UDP port for TFTP
+
+_tftp_write_pos:
+   .ds   2       ;; initialized in crt0.asm
 
 ;; ----------------------------------------------------------------------------
 ;; If non-NULL, this function is called for every received TFTP packet

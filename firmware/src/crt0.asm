@@ -191,10 +191,6 @@ gsinit::
   ldir
 
   ;; initialize globals
-  ;; (this memory layout must be carefully matched to globals.asm)
-
-  ld    hl, #0x30C0  ;; TFTP client port := 0xC000, kilobytes_expected := 48
-  ld    (_tftp_client_port + 1), hl
 
 #ifdef STAGE2_IN_RAM
   ld    hl, #_stage2

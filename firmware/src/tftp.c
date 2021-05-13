@@ -354,8 +354,8 @@ __naked
 
     ld   hl, #UDP_PORT_TFTP_SERVER * 0x0100    ;; network order
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
-    ld   hl, (_tftp_client_port)
-    inc  hl
+    ld   a, r
+    ld   h, a
     ld   (_tftp_client_port), hl
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
