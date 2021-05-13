@@ -1,89 +1,95 @@
-/*
- * Module tftp:
- *
- * Trivial File Transfer Protocol (TFTP, RFC 1350)
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;; Module tftp:
+;;
+;; Trivial File Transfer Protocol (TFTP, RFC 1350)
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2009-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include "tftp.h"
+    .module tftp
+    .optsdcc -mz80
 
-#include "eth.h"
-#include "globals.h"
-#include "ui.h"
+    .include "include/tftp.inc"
 
-/* ------------------------------------------------------------------------- */
+    .include "include/enc28j60.inc"
+    .include "include/eth.inc"
+    .include "include/globals.inc"
+    .include "include/udp_ip.inc"
+    .include "include/ui.inc"
+    .include "include/util.inc"
 
-/*
- * TFTP opcodes
- */
-#define TFTP_OPCODE_RRQ              (1)
-#define TFTP_OPCODE_DATA             (3)
-#define TFTP_OPCODE_ACK              (4)
-#define TFTP_OPCODE_ERROR            (5)
+;; ============================================================================
+;; TFTP opcodes
+;; ============================================================================
 
-/*
- * Sizes and offsets of individual fields
- */
-#define TFTP_SIZE_OF_OPCODE          (2)
-#define TFTP_OFFSET_OF_OPCODE        (0)
+TFTP_OPCODE_RRQ           = 1
+TFTP_OPCODE_DATA          = 3
+TFTP_OPCODE_ACK           = 4
+TFTP_OPCODE_ERROR         = 5
 
-#define TFTP_OFFSET_OF_BLOCKNO       (2)
+;; ============================================================================
+;; Sizes and offsets of individual fields
+;; ============================================================================
 
-#define TFTP_SIZE_OF_RRQ_PREFIX      (13)
+TFTP_SIZE_OF_OPCODE       = 2
+TFTP_OFFSET_OF_OPCODE     = 0
 
-#define TFTP_SIZE_OF_RRQ_OPTION      (6)
+TFTP_OFFSET_OF_BLOCKNO    = 2
 
-/*
- * Packet sizes
- */
-#define TFTP_SIZE_OF_ACK_PACKET      (4)
-#define TFTP_SIZE_OF_ERROR_PACKET    (5)
+TFTP_SIZE_OF_RRQ_PREFIX   = 13
 
-/* ------------------------------------------------------------------------- */
+TFTP_SIZE_OF_RRQ_OPTION   = 6
 
-/* Next TFTP block we expect to receive */
-static uint16_t expected_tftp_block_no;
+;; ============================================================================
+;; Packet sizes
+;; ============================================================================
 
-/* Source port currently used by server */
-static uint16_t server_port;
+TFTP_SIZE_OF_ACK_PACKET   = 4
+TFTP_SIZE_OF_ERROR_PACKET = 5
 
-/* -------------------------------------------------------------------------
- * Create UDP reply to the sender of the received packet currently processed.
- * Source/destination ports are swapped. Frame class is ETH_FRAME_PRIORITY.
- *
- * Call with BC=number of bytes in payload
- * ------------------------------------------------------------------------- */
-void
-tftp_create_reply(void)
-__naked
-{
-  __asm
+;; ============================================================================
+
+    .area _DATA
+
+_expected_tftp_block_no:
+    .ds 2        ;; next TFTP block we expect to receive
+
+_server_port:
+    .ds 2        ;; source port currently used by server
+
+    .area _CODE
+
+;; ############################################################################
+;; Create UDP reply to the sender of the received packet currently processed.
+;; Source/destination ports are swapped.
+;;
+;; Call with BC=number of bytes in payload
+;; ############################################################################
+
+_tftp_create_reply:
 
     push bc
 
@@ -106,16 +112,11 @@ __naked
 
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; _tftp_receive
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-tftp_receive(void)
-__naked
-{
-  __asm
+_tftp_receive:
 
     ;; ------------------------------------------------------------------------
     ;; check destination port (should be _tftp_client_port)
@@ -326,18 +327,11 @@ tftp_receive_ack_opcode::
     .db   0, 4                        ;; illegal TFTP operation, network order
     .db   0                           ;; no particular message
 
-  __endasm;
-}
+;; ############################################################################
+;; _tftp_read_request
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-tftp_read_request(const char *filename)
-__naked
-{
-  (void) filename;
-
-  __asm
+_tftp_read_request:
 
     ;; ------------------------------------------------------------------------
     ;; reset _expected_tftp_block_no to 1
@@ -425,6 +419,3 @@ tftp_rrq_option::
 tftp_rrq_prefix::
     .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
     .ascii "speccyboot/"
-
-  __endasm;
-}
