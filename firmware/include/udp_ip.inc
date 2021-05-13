@@ -6,3 +6,4 @@ IPV4_ADDRESS_SIZE = 4
 
     .globl _ip_config
     .globl _ip_checksum
+    .globl _ip_receive

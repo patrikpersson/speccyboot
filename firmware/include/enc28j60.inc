@@ -206,6 +206,13 @@ OPCODE_RBM             = 0x3A
 OPCODE_WBM             = 0x7A
 
 ;; ----------------------------------------------------------------------------
+;; Useful constant-byte values (used by eth.asm)
+;; ----------------------------------------------------------------------------
+
+    .globl _ethertype_arp
+    .globl _eth_create_control_byte
+
+;; ----------------------------------------------------------------------------
 ;; Ensure that register bank 0 is paged in.
 ;;
 ;; Destroys AF, BC, E, HL.

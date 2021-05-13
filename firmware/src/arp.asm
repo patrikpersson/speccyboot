@@ -34,6 +34,8 @@
 
     .globl _arp_receive
 
+    .include "include/arp.inc"
+
     .include "include/eth.inc"
     .include "include/enc28j60.inc"
     .include "include/globals.inc"
@@ -141,7 +143,7 @@ _arp_receive::
 
 arp_receive_reply_template::
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
-ethertype_ip::
+_ethertype_ip::
     .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
     .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
