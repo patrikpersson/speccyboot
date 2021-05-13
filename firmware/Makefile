@@ -54,7 +54,7 @@ CFLAGS      += $(TARGETFLAGS)
 # =============================================================================
 
 # module = source + header
-MODULES      = context_switch bootui
+MODULES      = context_switch
 MODULES     += ui menu z80_loader
 
 # NOTE: eth must be first here, as it contains the main function, and
