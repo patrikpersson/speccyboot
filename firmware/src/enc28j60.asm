@@ -1,67 +1,66 @@
-/*
- * Module enc28j60:
- *
- * Access to the Microchip ENC28J60 Ethernet host.
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;; Module enc28j60:
+;;
+;; Access to the Microchip ENC28J60 Ethernet host.
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2009-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include "enc28j60.h"
+    .module enc28j60
+    .optsdcc -mz80
 
-#include "util.h"
-#include "ui.h"
+    .include "include/enc28j60.inc"
+    .include "include/spi.inc"
+    .include "include/udp_ip.inc"
+    .include "include/util.inc"
+    .include "include/ui.inc"
 
-/* ========================================================================= */
+    .area _CODE
 
-void
-enc28j60_select_bank0(void)
-__naked
-{
-  __asm
+;; ############################################################################
+;; _enc28j60_select_bank0
+;; ############################################################################
+
+_enc28j60_select_bank0:
 
     ld   e, #0
 
-    ;; fall-through to enc28j60_select_bank
+    ;; FALL THROUGH to enc28j60_select_bank
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_select_bank
+;; ############################################################################
 
-void
-enc28j60_select_bank(void)
-__naked
-{
-  __asm
+_enc28j60_select_bank:
 
     ;; ------------------------------------------------------------------------
     ;; clear bits 0 and 1 of register ECON1
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #0x0100 * 0x03 + ENC_OPCODE_BFC(ECON1)
+    ld   hl, #0x0100 * 0x03 + OPCODE_BFC + (ECON1 & REG_MASK)
     call _enc28j60_internal_write8plus8
 
     ;; ------------------------------------------------------------------------
@@ -69,20 +68,15 @@ __naked
     ;; ------------------------------------------------------------------------
 
     ld   h, e
-    ld   l, #ENC_OPCODE_BFS(ECON1)
+    ld   l, #OPCODE_BFS + (ECON1 & REG_MASK)
 
     ;; fall-through to enc28j60_internal_write8plus8
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_internal_write8plus8
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_internal_write8plus8(void)
-__naked
-{
-  __asm
+_enc28j60_internal_write8plus8:
 
     ;; ------------------------------------------------------------------------
     ;; start transaction
@@ -99,15 +93,11 @@ __naked
 
     jr    enc28j60_end_transaction_and_return
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_write_register16
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_write_register16(void)
-{
-  __asm
+_enc28j60_write_register16:
 
     ld     e, a
     inc    e
@@ -121,37 +111,27 @@ enc28j60_write_register16(void)
     ex     de, hl
     jr     _enc28j60_internal_write8plus8
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_write_6b
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_write_6b(void)
-__naked
-{
-  __asm
+_enc28j60_write_6b:
 
     ld    de, #6
 
     ;; FALL THROUGH to enc28j60_write_memory_cont
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_write_memory_cont
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_write_memory_cont(void)
-__naked
-{
-  __asm
+_enc28j60_write_memory_cont:
 
     ;; ------------------------------------------------------------------------
     ;; start transaction: WBM
     ;; ------------------------------------------------------------------------
 
-    ld    c, #ENC_OPCODE_WBM
+    ld    c, #OPCODE_WBM
     call  _spi_write_byte
 
     ;; ------------------------------------------------------------------------
@@ -175,16 +155,11 @@ __naked
 
     jr    enc28j60_end_transaction_and_return
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_read_register
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_read_register(void)
-__naked
-{
-  __asm
+_enc28j60_read_register:
 
     ;; ------------------------------------------------------------------------
     ;; start transaction: RCR
@@ -223,16 +198,11 @@ enc28j60_end_transaction_and_return:
 
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_poll_register
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_poll_register(void)
-__naked
-{
-  __asm
+_enc28j60_poll_register:
 
     ld     bc, #20000       ;; should give controller plenty of time to respond
 00001$:
@@ -253,16 +223,16 @@ __naked
     ld     a, #FATAL_INTERNAL_ERROR
     jp     _fail
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_read_memory_cont
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
+;; ----------------------------------------------------------------------------
+;; macro: read one bit from SPI to accumulator
+;; assumes C=SPI_IN=SPI_OUT    (on SpeccyBoot; set explicitly for DGBoot below)
+;; ----------------------------------------------------------------------------
 
-void
-enc28j60_read_memory_cont(void)
-__naked
-{
-  __asm
+_enc28j60_read_memory_cont:
 
     push  de         ;; nbr_bytes
     push  hl         ;; dst_addr
@@ -273,7 +243,7 @@ __naked
 
     ;; spi_start_transaction(ENC_OPCODE_RBM);
 
-    ld    c, #ENC_OPCODE_RBM
+    ld    c, #OPCODE_RBM
     call  _spi_write_byte
 
     ;;
@@ -336,7 +306,13 @@ word_loop:
 
     ld   b, #8                     ;; 7
 word_byte1::
-    SPI_READ_BIT_TO_ACC            ;; 448 (56*8)
+
+#ifdef HWTARGET_SPECCYBOOT
+    spi_read_bit_to_acc            ;; 448 (56*8)
+#endif
+#ifdef HWTARGET_DGBOOT
+    spi_read_bit_to_acc_dgboot
+#endif
     djnz word_byte1                ;; 112 (13*8+8)
 
     exx                            ;; 4
@@ -347,7 +323,12 @@ word_byte1::
 
     ld   b, #8                     ;; 7
 word_byte2::
-    SPI_READ_BIT_TO_ACC            ;; 448 (56*8)
+#ifdef HWTARGET_SPECCYBOOT
+    spi_read_bit_to_acc            ;; 448 (56*8)
+#endif
+#ifdef HWTARGET_DGBOOT
+    spi_read_bit_to_acc_dgboot
+#endif
     djnz word_byte2                ;; 112 (13*8+8)
 
     exx                            ;; 4
@@ -380,7 +361,12 @@ odd_byte::
 
     ld   b, #8
 odd_byte_loop::
-    SPI_READ_BIT_TO_ACC
+#ifdef HWTARGET_SPECCYBOOT
+    spi_read_bit_to_acc
+#endif
+#ifdef HWTARGET_DGBOOT
+    spi_read_bit_to_acc_dgboot
+#endif
     djnz odd_byte_loop
 
     exx
@@ -415,16 +401,11 @@ final::
 
     jp    enc28j60_end_transaction_and_return
 
-  __endasm;
-}
+;; ############################################################################
+;; _enc28j60_add_checksum
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-void
-enc28j60_add_checksum(void)
-__naked
-{
-  __asm
+_enc28j60_add_checksum:
 
     ;; ------------------------------------------------------------------------
     ;; Can't use the ENC28J60's checksum offload (errata, item #15)
@@ -460,6 +441,3 @@ checksum_words_done::
     ld    (_ip_checksum), hl
 
     ret
-
-  __endasm;
-}

@@ -67,6 +67,32 @@ PAGE_OUT = 0x20
 
 SPI_IDLE = SPI_RST
 
+;; ----------------------------------------------------------------------------
+;; macro: read one bit from SPI to accumulator
+;; (variants for regular SpeccyBoot and Imrich Konkol's DGBoot)
+;; ----------------------------------------------------------------------------
+
+    .macro  spi_read_bit_to_acc
+    out   (c), h
+    inc   h
+    out   (c), h
+    dec   h
+    in    l, (c)
+    rr    a, l
+    rla
+    .endm
+
+    .macro  spi_read_bit_to_acc_dgboot
+    ld    c, #SPI_OUT           ;; added for DGBoot
+    out   (c), h
+    inc   h
+    out   (c), h
+    dec   h
+    ld    c, #SPI_IN            ;; added for DGBoot
+    in    l, (c)
+    rr    a, l
+    rla
+    .endm
 
 ;; ----------------------------------------------------------------------------
 ;; Read 8 bits from SPI to register C.
