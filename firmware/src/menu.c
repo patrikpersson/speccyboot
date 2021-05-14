@@ -71,29 +71,6 @@ __naked
 
 /* ------------------------------------------------------------------------- */
 
-static void
-copy_digit_font_data(void)
-__naked
-{
-  __asm
-
-    ld   hl, #_font_data + 16 * 8 + 1   ;; first non-zero scanline of "0"
-    ld   de, #DIGIT_DATA_ADDR
-    ld   a, #10
-copy_digit_font_data_loop::
-    ld   bc, #6
-    ldir
-    inc  hl
-    inc  hl
-    dec  a
-    jr   nz, copy_digit_font_data_loop
-    ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
 /* --------------------------------------------------------------------------
  * Scan through the loaded snapshot list, and build an array of pointers
  * to NUL-terminated file names in rx_frame.
@@ -209,6 +186,7 @@ redraw_menu_loop:
     sub  a, d
     cp   a, c
     jr   c, redraw_menu_done
+    jr   z, redraw_menu_done   ;; TODO: do this better?
 
     push bc
     push de
@@ -304,11 +282,237 @@ find_snapshot_for_letter_found:
 
 /* ------------------------------------------------------------------------- */
 
+static void
+handle_menu(void)
+{
+  __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; copy digit font data
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_font_data + 16 * 8 + 1   ;; first non-zero scanline of "0"
+    ld   de, #DIGIT_DATA_ADDR
+    ld   a, #10
+copy_digit_font_data_loop:
+    ld   bc, #6
+    ldir
+    inc  hl
+    inc  hl
+    dec  a
+    jr   nz, copy_digit_font_data_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; ensure menu data is NUL-terminated
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_tftp_write_pos)
+    ld   (hl), a    ;; A is zero after loop above
+
+    ;; ------------------------------------------------------------------------
+    ;; set up menu colours
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x5840
+    ld   de, #0x5841
+    ld   bc, #DISPLAY_LINES * 32 - 1
+    ld   a, #BLUE + (WHITE << 3)
+    ld   (hl), a
+    ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; create index list, use _rx_frame for filename pointer array
+    ;; ------------------------------------------------------------------------
+
+    call _create_snapshot_list
+    ld   e, l
+
+    ;; C = currently highlighted entry (0..254)
+    ;; D = display offset (index of first displayed snapshot name)
+    ;; E = total number of snapshots (0..255)
+
+    ld   c, #0
+    ld   d, c
+
+menu_loop:
+
+    ld   a, #WHITE + (BLUE << 3) + BRIGHT
+    call menu_set_highlight
+
+    push bc
+    push de
+
+    call _redraw_menu
+
+    call _wait_key
+    ld   a, l
+
+    pop  de
+    pop  bc
+
+    cp   a, #KEY_ENTER
+    jr   z, menu_hit_enter
+
+    cp   a, #KEY_UP
+    jr   z, menu_hit_up
+
+    cp   a, #KEY_DOWN
+    jr   z, menu_hit_down
+
+    push bc
+    push de
+
+    ld   b, e
+    ld   c, a
+    push bc
+    call _find_snapshot_for_letter
+    pop  af
+
+    pop  de
+    pop  bc
+
+    call menu_erase_highlight
+
+    ld   c, l
+
+    jr   menu_adjust
+
+    ;; ------------------------------------------------------------------------
+    ;; user hit DOWN: highlight next entry
+    ;; ------------------------------------------------------------------------
+
+menu_hit_down:
+
+    ld   a, c
+    inc  a
+    cp   a, e
+    jr   nc, menu_loop
+
+    call menu_erase_highlight
+
+    inc  c
+
+    jr   menu_adjust
+
+    ;; ------------------------------------------------------------------------
+    ;; user hit UP: highlight previous entry
+    ;; ------------------------------------------------------------------------
+
+menu_hit_up:
+
+    ld   a, c
+    or   a, a
+    jr   z, menu_loop
+
+    call menu_erase_highlight
+
+    dec  c
+
+    ;; ------------------------------------------------------------------------
+    ;; possibly adjust display offset
+    ;; ------------------------------------------------------------------------
+
+menu_adjust:
+
+    ;; reached top of display?
+
+    ld   a, c
+    cp   a, d
+    jr   nc, menu_not_top
+
+    ld   d, c
+    jr   menu_loop
+
+menu_not_top:
+
+    ;; reached end of display?
+
+    ld   a, d
+    add  a, #DISPLAY_LINES - 1
+    cp   a, c
+    jr   nc, menu_loop
+
+    ld   a, c
+    sub  a, #DISPLAY_LINES - 1
+    ld   d, a
+
+    jr   menu_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; subroutine: remove highlight for current index
+    ;; ------------------------------------------------------------------------
+
+menu_erase_highlight:
+
+    ld   a, #BLUE + (WHITE << 3)
+
+    ;; FALL THROUGH to menu_set_highlight
+
+    ;; ------------------------------------------------------------------------
+    ;; subroutine: highlight current index to colour in register A
+    ;; ------------------------------------------------------------------------
+
+menu_set_highlight:
+
+    push hl
+    push bc
+    push af
+    ld   h, #0
+    ld   a, c
+    sub  a, d
+    ld   l, a   ;; H is now zero
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    ld   bc, #0x5840      ;; (2,0)
+    add  hl, bc
+    pop  af
+    pop  bc
+
+    ld   b, #32
+menu_highlight_loop:
+    ld   (hl), a
+    inc  hl
+    djnz menu_highlight_loop
+
+    pop hl
+
+    ret
+
+    ;; ------------------------------------------------------------------------
+    ;; user hit ENTER: load selected snapshot
+    ;; ------------------------------------------------------------------------
+
+menu_hit_enter:
+
+    ld   h, #0
+    ld   l, c
+    add  hl, hl
+    ld   de, #_rx_frame
+    add  hl, de
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
+
+    push de
+
+    call _init_progress_display
+    call _eth_init
+    call _expect_snapshot
+    call _tftp_read_request
+
+    jp   main_loop
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
 void
 run_menu(void)
 {
-  unsigned char *src = &snapshot_list;
-
 #ifdef STAGE2_IN_RAM
   if (tftp_write_pos == &snapshot_list) {
 #endif
@@ -326,91 +530,19 @@ run_menu(void)
   }
 #endif
 
-  *((uint8_t *) tftp_write_pos) = 0;  // ensure menu data is NUL-terminated
+  // *((uint8_t *) tftp_write_pos) = 0;  // ensure menu data is NUL-terminated
 
-  copy_digit_font_data();
+  // copy_digit_font_data();
 
   /* --------------------------------------------------------------------------
    * Scan through the loaded snapshot list, and build an array of pointers
    * to NUL-terminated file names in rx_frame.snapshot_names.
    * ----------------------------------------------------------------------- */
 
-  uint8_t nbr_snapshots = create_snapshot_list();
-
   /* --------------------------------------------------------------------------
    * Display menu
    * ----------------------------------------------------------------------- */
+   // set_attrs(INK(BLUE) | PAPER(WHITE), 2, 0, 32 * DISPLAY_LINES);
 
-  set_attrs(INK(BLUE) | PAPER(WHITE), 2, 0, 32 * DISPLAY_LINES);
-
-  /* --------------------------------------------------------------------------
-   * Run the menu, act on user input
-   * ----------------------------------------------------------------------- */
-  {
-    uint16_t idx            = 0;
-    uint16_t last_idx       = 1;    /* force update */
-
-    uint8_t display_offset = 0;
-    bool    needs_redraw    = true;
-
-    for (;;) {
-      key_t key;
-
-      if (idx != last_idx) {
-	      set_attrs(INK(BLUE) | PAPER(WHITE),
-		              2 + (last_idx - display_offset), 0, 32);
-
-      	if (nbr_snapshots > DISPLAY_LINES) {
-      	  if ((idx < display_offset)
-      	      || (idx >= (display_offset + DISPLAY_LINES)))
-                {
-      	    if (idx < (DISPLAY_LINES >> 1)) {
-      	      display_offset = 0;
-      	    }
-      	    else if (idx > (nbr_snapshots - (DISPLAY_LINES >> 1))) {
-      	      display_offset = nbr_snapshots - DISPLAY_LINES;
-      	    }
-      	    else {
-      	      display_offset = (idx - (DISPLAY_LINES >> 1));
-      	    }
-      	    needs_redraw = true;
-      	  }
-      	}
-
-      	set_attrs(INK(WHITE) | PAPER(BLUE) | BRIGHT,
-      		        2 + (idx - display_offset), 0, 32);
-
-        last_idx = idx;
-      }
-
-      if (needs_redraw) {
-        redraw_menu(nbr_snapshots, display_offset);
-
-      	needs_redraw = false;
-      }
-
-      key = wait_key();
-
-      switch(key) {
-      case KEY_ENTER:
-        init_progress_display();
-        eth_init();
-        expect_snapshot();
-        tftp_read_request(rx_frame.snapshot_names[idx]);
-        return;
-      case KEY_UP:
-        if (idx > 0) {
-          idx --;
-        }
-        break;
-      case KEY_DOWN:
-        if (idx < (nbr_snapshots - 1)) {
-          idx ++;
-        }
-        break;
-      default:
-       idx = find_snapshot_for_letter(key, nbr_snapshots);
-      }
-    }
-  }
+  handle_menu();
 }
