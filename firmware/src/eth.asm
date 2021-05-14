@@ -89,7 +89,7 @@ _main:
     ld    hl, #0x5b00
     ld    de, #0x5b01
     ld    bc, #(STACK_SIZE - 1)
-    ld    (hl), #STACK_MAGIC
+    ld    (hl), #0x48
     ldir
     ld    sp, #_stack_top
 #endif

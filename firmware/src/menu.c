@@ -97,12 +97,11 @@ copy_digit_font_data_loop::
 /* --------------------------------------------------------------------------
  * Scan through the loaded snapshot list, and build an array of pointers
  * to NUL-terminated file names in rx_frame.
- * Returns the number of snapshots in the list in HL.
+ * Returns the number of snapshots in the list in L.
+ * Destroys AF, C, DE, HL.
  * ----------------------------------------------------------------------- */
 
-#define   RX_FRAME_SIZE     20 + 8 + 4 + 512
-
-static uint16_t
+static uint8_t
 create_snapshot_list(void)
 __naked
 {
@@ -110,11 +109,12 @@ __naked
 
     ld   hl, #_snapshot_list
     ld   de, #_rx_frame
+    ld   c, #0            ;; number of snapshots, max 255
 
     ;; ------------------------------------------------------------------------
     ;; check if done:
     ;; - found a NUL byte? (interpreted as end of file)
-    ;; - filled RX buffer with filename pointers?
+    ;; - filled RX buffer with filename pointers? (max 255)
     ;; ------------------------------------------------------------------------
 
 create_snapshot_list_loop1:
@@ -123,12 +123,9 @@ create_snapshot_list_loop1:
     or   a, a
     jr   z, create_snapshot_list_finish
 
-    ld   a, d
-    cp   a, #>_rx_frame + RX_FRAME_SIZE - 1
-    jr   nz, create_snapshot_list_store_ptr
-    ld   a, e
-    cp   a, #<_rx_frame + RX_FRAME_SIZE - 1
-    jr   nc, create_snapshot_list_finish
+    ld   a, c
+    inc  a
+    jr   z, create_snapshot_list_finish
 
     ;; ------------------------------------------------------------------------
     ;; store a pointer to the current file name
@@ -142,6 +139,8 @@ create_snapshot_list_store_ptr:
     ld   a, h
     ld   (de), a
     inc  de
+
+    inc  c
 
     ;; ------------------------------------------------------------------------
     ;; ensure the current file name is NUL terminated, and advance HL to next
@@ -173,13 +172,131 @@ create_snapshot_list_find_next:
 
 create_snapshot_list_finish:
 
-    ex   de, hl
-    ld   de, #_rx_frame
-    or   a, a            ;; clear C flag
-    sbc  hl, de
-    rr   h
-    rr   l
+    ld   l, c
 
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+// E = total number of snapshots
+// D = display offset (index of first displayed snapshot name)
+
+static void
+redraw_menu(uint8_t total, uint8_t offset)
+__naked
+{
+  (void) total, offset;
+
+  __asm
+
+    pop  hl   ;; return adress
+    pop  de
+    push de
+    push hl
+
+    ld   c, #0
+
+redraw_menu_loop:
+
+    ld   a, c
+    cp   a, #DISPLAY_LINES
+    jr   nc, redraw_menu_done
+
+    ;; C + D < E => C < (E-D) => (E-D) > C
+    ld   a, e
+    sub  a, d
+    cp   a, c
+    jr   c, redraw_menu_done
+
+    push bc
+    push de
+
+    ld   a, c
+    add  a, d
+    ld   l, a
+    ld   h, #0
+    add  hl, hl
+    ld   de, #_rx_frame
+    add  hl, de
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
+
+    push de       ;; stack string
+
+    ld   a, #'.'
+    push af
+    inc  sp       ;; stack terminator
+
+    inc  c
+    inc  c
+    ld   b, #1
+    push bc
+
+    call _print_at
+
+    pop  bc
+    inc  sp
+    pop  hl
+
+    pop  de
+    pop  bc
+
+    inc  c
+    jr   redraw_menu_loop
+
+redraw_menu_done:
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
+static uint8_t
+find_snapshot_for_letter(char c, uint8_t nbr_snapshots)
+__naked
+{
+  (void) c, nbr_snapshots;
+  __asm
+
+    pop  hl
+    pop  bc   ;; C=pressed key, B=nbr_snapshots
+    push bc
+    push hl
+
+    ld   e, #0  ;; result
+
+    ld   a, b
+    or   a, a
+    jr   z, find_snapshot_for_letter_found
+
+    ld   hl, #_rx_frame
+find_snapshot_for_letter_lp:
+    push de
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
+    inc  hl
+    ld   a, (de)
+    pop  de
+    cp   a, #'a'
+    jr   c, find_snapshot_for_letter_no_lcase
+    cp   a, #'z' + 1
+    jr   nc, find_snapshot_for_letter_no_lcase
+    and  a, #0xDF     ;; upper case
+find_snapshot_for_letter_no_lcase:
+    cp   a, c
+    jr   nc, find_snapshot_for_letter_found
+
+    inc  e
+    djnz find_snapshot_for_letter_lp
+    dec  e   ;; choose the last snapshot if none found
+
+find_snapshot_for_letter_found:
+    ld   l, e
     ret
 
   __endasm;
@@ -218,7 +335,7 @@ run_menu(void)
    * to NUL-terminated file names in rx_frame.snapshot_names.
    * ----------------------------------------------------------------------- */
 
-   uint16_t nbr_snapshots = create_snapshot_list();
+  uint8_t nbr_snapshots = create_snapshot_list();
 
   /* --------------------------------------------------------------------------
    * Display menu
@@ -233,7 +350,7 @@ run_menu(void)
     uint16_t idx            = 0;
     uint16_t last_idx       = 1;    /* force update */
 
-    uint16_t display_offset = 0;
+    uint8_t display_offset = 0;
     bool    needs_redraw    = true;
 
     for (;;) {
@@ -267,13 +384,7 @@ run_menu(void)
       }
 
       if (needs_redraw) {
-      	uint8_t i;
-      	for (i = 0;
-      	     (i < DISPLAY_LINES) && ((i + display_offset) < nbr_snapshots);
-      	     i++)
-        {
-      	  print_at(i + 2, 1, '.', rx_frame.snapshot_names[i + display_offset]);
-      	}
+        redraw_menu(nbr_snapshots, display_offset);
 
       	needs_redraw = false;
       }
@@ -298,19 +409,7 @@ run_menu(void)
         }
         break;
       default:
-      {
-        uint8_t i;
-        for (i = 0; i < nbr_snapshots; i++) {
-          char ch = rx_frame.snapshot_names[i][0];
-          if (ch >= 'a' && ch <= 'z') {
-            ch &= 0xDF;     /* upper case */
-          }
-          if (ch >= (int) key) {
-            idx = i;
-            break;
-          }
-        }
-      }
+       idx = find_snapshot_for_letter(key, nbr_snapshots);
       }
     }
   }

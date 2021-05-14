@@ -74,7 +74,8 @@ FATAL_INTERNAL_ERROR      = WHITE
 ;; The displayed string is truncated or padded with spaces up to and
 ;; including column 31.
 ;;
-;; TODO: document args here
+;; stack args:
+;; (uint8_t row, uint8_t col, char terminator, char *s)
 ;; ----------------------------------------------------------------------------
     .globl _print_at
 
