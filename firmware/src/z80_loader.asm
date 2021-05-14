@@ -114,10 +114,21 @@ _evacuating:
     .area _NONRESIDENT
 
 ;; ############################################################################
-;; _init_progress_display
+;; _expect_snapshot
 ;; ############################################################################
 
-_init_progress_display:
+_expect_snapshot:
+
+    ld   hl, #0x4000
+    ld   (_tftp_write_pos), hl
+
+    ld   hl, #_z80_loader_receive_hook
+    ld   (_tftp_receive_hook), hl
+
+    ld   hl, #_s_header
+    ld   (_z80_loader_state), hl
+
+    ;; initialize progress display
 
     ld    hl, #0x5800
     ld    de, #0x5801
@@ -140,7 +151,6 @@ _init_progress_display:
     push  bc   ;; because the routine jumped to will pop that before ret:ing
     jp    show_attr_digit_address_known
 
-    
 ;; ============================================================================
 
     .area _STAGE2

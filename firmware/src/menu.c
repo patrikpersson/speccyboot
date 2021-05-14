@@ -44,33 +44,6 @@
 /* Number of snapshot names displayed at a time */
 #define DISPLAY_LINES     (20)
 
-/* -------------------------------------------------------------------------
- * Called to indicate that a .z80 snapshot is expected.
- * Installs a TFTP read hook to relay received data the Z80 snapshot parser.
- * ------------------------------------------------------------------------- */
-
-static void
-expect_snapshot(void)
-__naked
-{
-  __asm
-
-    ld   hl, #0x4000
-    ld   (_tftp_write_pos), hl
-
-    ld   hl, #_z80_loader_receive_hook
-    ld   (_tftp_receive_hook), hl
-
-    ld   hl, #_s_header
-    ld   (_z80_loader_state), hl
-
-    ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
 /* --------------------------------------------------------------------------
  * Scan through the loaded snapshot list, and build an array of pointers
  * to NUL-terminated file names in rx_frame.
@@ -498,7 +471,6 @@ menu_hit_enter:
 
     push de
 
-    call _init_progress_display
     call _eth_init
     call _expect_snapshot
     call _tftp_read_request

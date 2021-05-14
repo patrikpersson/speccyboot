@@ -31,8 +31,11 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
-    .globl _z80_loader_state
-    .globl _z80_loader_receive_hook
+;; ----------------------------------------------------------------------------
+;; Called to indicate that a .z80 snapshot is expected.
+;; Installs a TFTP read hook to relay received data the Z80 snapshot parser.
+;; Also initializes progress display:
+;; clear screen, display empty progress bar and '0 K'.
+;; ----------------------------------------------------------------------------
 
-    .globl _s_header
-    .globl _init_progress_display
+    .globl _expect_snapshot

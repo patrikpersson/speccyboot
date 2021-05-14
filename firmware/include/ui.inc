@@ -94,8 +94,3 @@ FATAL_INTERNAL_ERROR      = WHITE
 ;; stack args: (uint8_t attrs, uint8_t *attr_address, int len)
 ;; ----------------------------------------------------------------------------
     .globl _set_attrs_impl
-
-;; ----------------------------------------------------------------------------
-;; Clear screen, display empty progress bar and '0 K'
-;; ----------------------------------------------------------------------------
-    .globl _init_progress_display
