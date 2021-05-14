@@ -46,7 +46,7 @@
 ;; ----------------------------------------------------------------------------
 
 _rx_frame:
-    .ds   IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + TFTP_DATA_MAXSIZE
+    .ds   RX_FRAME_SIZE
 
 ;; ----------------------------------------------------------------------------
 ;; snapshot header, copied here while the snapshot is loading

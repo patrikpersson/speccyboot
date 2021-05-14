@@ -64,8 +64,9 @@ _first_repetition:
 
 ;; ############################################################################
 ;; _poll_key
-;; Poll keyboard: return currently pressed key, or KEY_NONE, in register A.
-;; The same value is also copied to register B.
+;;
+;; Return currently pressed key, or KEY_NONE, in register A and B.
+;; (The same value is returned in both A and B.)
 ;;
 ;; Destroys HL, BC, DE, AF.
 ;; ############################################################################

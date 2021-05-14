@@ -40,6 +40,16 @@ STACK_SIZE  = 0x60
 _stack_top  = 0x5b00 + STACK_SIZE
 
 ;; ----------------------------------------------------------------------------
+;; Size of receive buffer:
+;; IPV4_HEADER_SIZE
+;;  + UDP_HEADER_SIZE
+;;  + TFTP_HEADER_SIZE
+;;  + TFTP_DATA_MAXSIZE
+;; ----------------------------------------------------------------------------
+
+RX_FRAME_SIZE = 20 + 8 + 4 + 512
+
+;; ----------------------------------------------------------------------------
 ;; Font data for digits 0..9. Six bytes per digit (as first and last scanlines
 ;; are always zero and need not be stored). Copied from font_data.
 ;; Placed on an absolute address so we can be sure that it's all in a single

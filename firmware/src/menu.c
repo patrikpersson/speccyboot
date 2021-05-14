@@ -94,11 +94,103 @@ copy_digit_font_data_loop::
 
 /* ------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+ * Scan through the loaded snapshot list, and build an array of pointers
+ * to NUL-terminated file names in rx_frame.
+ * Returns the number of snapshots in the list in HL.
+ * ----------------------------------------------------------------------- */
+
+#define   RX_FRAME_SIZE     20 + 8 + 4 + 512
+
+static uint16_t
+create_snapshot_list(void)
+__naked
+{
+  __asm
+
+    ld   hl, #_snapshot_list
+    ld   de, #_rx_frame
+
+    ;; ------------------------------------------------------------------------
+    ;; check if done:
+    ;; - found a NUL byte? (interpreted as end of file)
+    ;; - filled RX buffer with filename pointers?
+    ;; ------------------------------------------------------------------------
+
+create_snapshot_list_loop1:
+
+    ld   a, (hl)
+    or   a, a
+    jr   z, create_snapshot_list_finish
+
+    ld   a, d
+    cp   a, #>_rx_frame + RX_FRAME_SIZE - 1
+    jr   nz, create_snapshot_list_store_ptr
+    ld   a, e
+    cp   a, #<_rx_frame + RX_FRAME_SIZE - 1
+    jr   nc, create_snapshot_list_finish
+
+    ;; ------------------------------------------------------------------------
+    ;; store a pointer to the current file name
+    ;; ------------------------------------------------------------------------
+
+create_snapshot_list_store_ptr:
+
+    ld   a, l
+    ld   (de), a
+    inc  de
+    ld   a, h
+    ld   (de), a
+    inc  de
+
+    ;; ------------------------------------------------------------------------
+    ;; ensure the current file name is NUL terminated, and advance HL to next
+    ;; ------------------------------------------------------------------------
+
+create_snapshot_list_loop2:
+    ld   a, (hl)
+    cp   a, #32        ;; end of file name (CR/LF/NUL)
+    jr   c, create_snapshot_list_found_nul
+    inc  hl
+    jr   create_snapshot_list_loop2
+
+create_snapshot_list_found_nul:
+    xor  a, a
+    ld   (hl), a
+
+    ;; ------------------------------------------------------------------------
+    ;; skip any other trailing CR/LF stuff
+    ;; ------------------------------------------------------------------------
+
+create_snapshot_list_find_next:
+    inc  hl
+    ld   a, (hl)
+    or   a, a
+    jr   z, create_snapshot_list_finish
+    cp   a, #32
+    jr   nc, create_snapshot_list_loop1
+    jr   create_snapshot_list_find_next
+
+create_snapshot_list_finish:
+
+    ex   de, hl
+    ld   de, #_rx_frame
+    or   a, a            ;; clear C flag
+    sbc  hl, de
+    rr   h
+    rr   l
+
+    ret
+
+  __endasm;
+}
+
+/* ------------------------------------------------------------------------- */
+
 void
 run_menu(void)
 {
   unsigned char *src = &snapshot_list;
-  uint16_t nbr_snapshots = 0;
 
 #ifdef STAGE2_IN_RAM
   if (tftp_write_pos == &snapshot_list) {
@@ -126,25 +218,7 @@ run_menu(void)
    * to NUL-terminated file names in rx_frame.snapshot_names.
    * ----------------------------------------------------------------------- */
 
-  while ((*src) && (nbr_snapshots < MAX_SNAPSHOTS)) {
-    unsigned char c;
-
-    rx_frame.snapshot_names[nbr_snapshots ++] = src;
-
-    /* Find end of file name */
-    while (c = *src) {
-      if ((int) c < ' ') {
-	      *src = '\0';
-        do {
-          src ++;
-        } while (*src && (*src < ' '));
-        break;
-      }
-      else {
-        src ++;
-      }
-    }
-  }
+   uint16_t nbr_snapshots = create_snapshot_list();
 
   /* --------------------------------------------------------------------------
    * Display menu
