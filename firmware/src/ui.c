@@ -94,9 +94,12 @@ static const uint8_t key_rows[] = {
 /* ------------------------------------------------------------------------- */
 
 /*
- * Poll keyboard: return currently pressed key, or KEY_NONE
+ * Poll keyboard: return currently pressed key, or KEY_NONE, in register A.
+ * The same value is also copied to register B.
+ *
+ * Destroys HL, BC, DE, AF.
  */
-static char
+static void
 poll_key(void)
 __naked
 {
@@ -104,12 +107,12 @@ __naked
 
     ld    hl, #_key_rows
     ld    bc, #0x7ffe
-poll_outer::
+poll_outer:
     in    d, (c)
 
     ld    e, #5       ;; number of keys in each row
 
-poll_inner::
+poll_inner:
     ld    a, (hl)
     inc   hl
     rr    d
@@ -117,7 +120,7 @@ poll_inner::
     or    a
     jr    nz, poll_done
 
-not_pressed::
+not_pressed:
     dec   e
     jr    nz, poll_inner
 
@@ -126,8 +129,8 @@ not_pressed::
 
     xor   a         ;; KEY_NONE == 0
 
-poll_done::
-    ld    l, a
+poll_done:
+    ld    b, a
 
     ret
 
@@ -479,33 +482,86 @@ static bool first_repetition;
 
 key_t
 wait_key(void)
+__naked
 {
-  key_t key = poll_key();
-  if (key != KEY_NONE && key == previous_key) {
-    /*
-     * The previous key is still being pressed. See if it remains
-     * pressed until the repetition timer expires.
-     */
-    while(poll_key() == previous_key) {
-      if ((first_repetition
-           && timer_value() >= REPEAT_FIRST_TIMEOUT)
-          || ((! first_repetition)
-              && timer_value() >= REPEAT_NEXT_TIMEOUT))
-      {
-        timer_reset();
-        first_repetition = false;
-        return previous_key;
-      }
-    }
-  }
-  do {
-    key = poll_key();
-  } while (key == KEY_NONE);
+  __asm
 
-  timer_reset();
-  previous_key = key;
-  first_repetition = true;
-  return key;
+    ;; ------------------------------------------------------------------------
+    ;; is the previous key still being pressed?
+    ;; ------------------------------------------------------------------------
+
+    call _poll_key
+
+    or   a, a
+    jr   z, wait_key_no_repetition
+    ld   a, (_previous_key)
+    cp   a, b
+    jr   nz, wait_key_no_repetition
+
+    ;; ------------------------------------------------------------------------
+    ;; yes, the previous key is still being pressed
+    ;; see if it remains pressed until the repetition timer expires
+    ;; ------------------------------------------------------------------------
+
+wait_key_repetition_loop:
+
+    call _poll_key
+    ld   a, (_previous_key)
+    cp   a, b
+    jr   nz, wait_key_no_repetition
+
+    ;; ------------------------------------------------------------------------
+    ;; decide on a timeout, depending on whether this is the first repetition
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_timer_tick_count + 1
+    ld   a, (hl)     ;; high byte of ticks
+    or   a, a        ;; non-zero? then definitely timeout
+    jr   nz, wait_key_repeat
+    ld   a, (_first_repetition)
+    or   a, a
+    ld   a, #REPEAT_FIRST_TIMEOUT
+    jr   nz, wait_key_check_repetition
+    ld   a, #REPEAT_NEXT_TIMEOUT
+wait_key_check_repetition:
+    dec  hl          ;; now points to low byte of ticks
+    cp   a, (hl)
+    jr   nc, wait_key_repetition_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; we have a repeat event, and this is no longer the first repetition
+    ;; ------------------------------------------------------------------------
+
+wait_key_repeat:
+    xor  a, a              ;; value for _first_repetition
+    jr   wait_key_finish
+
+    ;; ------------------------------------------------------------------------
+    ;; no repetition: instead wait for a key to become pressed
+    ;; ------------------------------------------------------------------------
+
+wait_key_no_repetition:
+
+    call _poll_key
+    or   a, a
+    jr   z, wait_key_no_repetition
+
+    ld   (_previous_key), a
+
+    ;; ------------------------------------------------------------------------
+    ;; Any repetition after this will be the first one, so A needs to be set
+    ;; to a non-zero value. And it is: it is the non-zero key value.
+    ;; ------------------------------------------------------------------------
+
+wait_key_finish:
+    ;; assume A holds value for _first_repetition, and B holds result
+    ld   hl, #0
+    ld   (_timer_tick_count), hl
+    ld   (_first_repetition), a
+    ld   l, b      ;; _poll_key returned same value in A and B
+    ret
+
+  __endasm;
 }
 
 /* ------------------------------------------------------------------------- */
