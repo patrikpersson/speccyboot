@@ -111,6 +111,38 @@ _evacuating:
 
 ;; ============================================================================
 
+    .area _NONRESIDENT
+
+;; ############################################################################
+;; _init_progress_display
+;; ############################################################################
+
+_init_progress_display:
+
+    ld    hl, #0x5800
+    ld    de, #0x5801
+    ld    bc, #0x2e0
+    xor   a
+    ld    (hl), a
+    ldir
+
+    ld    c, #0x1f
+    ld    a, #BLUE | (BLUE << 3)
+    ld    (hl), a
+    ldir
+
+    ld    l, #14
+    xor   a
+    call  _show_attr_digit
+
+    ld    l, #25
+    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
+    push  bc   ;; because the routine jumped to will pop that before ret:ing
+    jp    show_attr_digit_address_known
+
+    
+;; ============================================================================
+
     .area _STAGE2
 
 ;; ############################################################################

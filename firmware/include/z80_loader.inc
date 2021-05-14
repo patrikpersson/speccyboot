@@ -35,4 +35,4 @@
     .globl _z80_loader_receive_hook
 
     .globl _s_header
-    .globl _show_attr_digit
+    .globl _init_progress_display

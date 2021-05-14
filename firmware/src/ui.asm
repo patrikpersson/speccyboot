@@ -1,111 +1,78 @@
-/*
- * Module ui:
- *
- * Access to ZX Spectrum display, keyboard, and sound.
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;;
+;; Module ui:
+;;
+;; access to ZX Spectrum display and keyboard
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2009-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include "ui.h"
+    .module ui
+    .optsdcc -mz80
 
-#include "globals.h"
+    .include "include/ui.inc"
 
-#pragma codeseg NONRESIDENT
+    .include "include/globals.inc"
+    .include "include/util.inc"
 
-/* ----------------------------------------------------------------------------
- * Keyboard mapping (used by _poll_key below)
- *
- * ZX Spectrum BASIC Programming (Vickers), Chapter 23:
- *
- * IN 65278 reads the half row CAPS SHIFT to V
- * IN 65022 reads the half row A to G
- * IN 64510 reads the half row Q to T
- * IN 63486 reads the half row 1 to 5
- * IN 61438 reads the half row O to 6
- * IN 57342 reads the half row P to 7
- * IN 49150 reads the half row ENTER to H
- * IN 32766 reads the half row SPACE to B
- *
- * http://www.worldofspectrum.org/ZXBasicManual/index.html
- *
- * A '0' in the 'key_rows' table means that key is to be ignored. The rows
- * are ordered for the high byte in the row address to take values in the
- * following order:
- *
- * 01111111
- * 10111111
- * 11011111
- * 11101111
- * 11110111
- * 11111011
- * 11111101
- * 11111110
- *-------------------------------------------------------------------------- */
+;; ============================================================================
+;; Repeat time-outs: between the keypress and the first repetition, and for
+;; any subsequent repetitions
+;;
+;; (measured in double-ticks of 20ms)
+;; ============================================================================
 
-static const uint8_t key_rows[] = {
-  0x20, 0, 0x4d, 0x4e, 0x42,      /* 7FFE: space, shift, 'M', 'N', 'B' */
-  0x0d, 0x4c, 0x4b, 0x4a, 0x48,   /* BFFE: enter, 'L', 'K', 'J', 'H' */
-  0x50, 0x4f, 0x49, 0x55, 0x59,   /* DFFE: 'P', 'O', 'I', 'U', 'Y' */
-  0x30, 0x39, 0x38, 0x37, 0x36,   /* EFFE: '0', '9', '8', '7', '6' */
-  0x31, 0x32, 0x33, 0x34, 0x35,   /* F7FE: '1', '2', '3', '4', '5' */
-  0x51, 0x57, 0x45, 0x52, 0x54,   /* FBDE: 'Q', 'W', 'E', 'R', 'T' */
-  0x41, 0x53, 0x44, 0x46, 0x47,   /* FDFE: 'A', 'S', 'D', 'F', 'G' */
-  0, 0x5a, 0x58, 0x43, 0x56,      /* FEFE: shift, 'Z', 'X', 'C', 'V' */
-};
+REPEAT_FIRST_TIMEOUT = 40
+REPEAT_NEXT_TIMEOUT  = 10
 
-/* ------------------------------------------------------------------------- */
+;; ============================================================================
 
-/*
- * Repeat time-outs: between the keypress and the first repetition, and for
- * any subsequent repetitions
- *
- * (measured in double-ticks of 20ms)
- */
-#define REPEAT_FIRST_TIMEOUT    (40)
-#define REPEAT_NEXT_TIMEOUT     (10)
+    .area _DATA
 
-#define REPEAT_NEXT_TIMEOUT     (10)
+_previous_key:
+    .ds   1       ;; initially zero, for no key
 
-/* ------------------------------------------------------------------------- */
+_first_repetition:
+    .ds   1       ;; flag
 
-/*
- * Poll keyboard: return currently pressed key, or KEY_NONE, in register A.
- * The same value is also copied to register B.
- *
- * Destroys HL, BC, DE, AF.
- */
-static void
-poll_key(void)
-__naked
-{
-  __asm
+;; ============================================================================
 
-    ld    hl, #_key_rows
+    .area _NONRESIDENT
+
+;; ############################################################################
+;; _poll_key
+;; Poll keyboard: return currently pressed key, or KEY_NONE, in register A.
+;; The same value is also copied to register B.
+;;
+;; Destroys HL, BC, DE, AF.
+;; ############################################################################
+
+_poll_key:
+
+    ld    hl, #key_rows
     ld    bc, #0x7ffe
 poll_outer:
     in    d, (c)
@@ -134,23 +101,52 @@ poll_done:
 
     ret
 
-  __endasm;
-}
+;; ----------------------------------------------------------------------------
+;; Keyboard mapping (used by _poll_key above)
+;;
+;; ZX Spectrum BASIC Programming (Vickers), Chapter 23:
+;;
+;; IN 65278 reads the half row CAPS SHIFT to V
+;; IN 65022 reads the half row A to G
+;; IN 64510 reads the half row Q to T
+;; IN 63486 reads the half row 1 to 5
+;; IN 61438 reads the half row O to 6
+;; IN 57342 reads the half row P to 7
+;; IN 49150 reads the half row ENTER to H
+;; IN 32766 reads the half row SPACE to B
+;;
+;; http://www.worldofspectrum.org/ZXBasicManual/index.html
+;;
+;; A '0' in the 'key_rows' table means that key is to be ignored. The rows
+;; are ordered for the high byte in the row address to take values in the
+;; following order:
+;;
+;; 01111111
+;; 10111111
+;; 11011111
+;; 11101111
+;; 11110111
+;; 11111011
+;; 11111101
+;; 11111110
+;; ----------------------------------------------------------------------------
 
-/* -------------------------------------------------------------------------
- * Public API
- * ------------------------------------------------------------------------- */
+key_rows:
+    .db  0x20, 0, 0x4d, 0x4e, 0x42      ;; 7FFE: space, shift, 'M', 'N', 'B'
+    .db  0x0d, 0x4c, 0x4b, 0x4a, 0x48   ;; BFFE: enter, 'L', 'K', 'J', 'H'
+    .db  0x50, 0x4f, 0x49, 0x55, 0x59   ;; DFFE: 'P', 'O', 'I', 'U', 'Y'
+    .db  0x30, 0x39, 0x38, 0x37, 0x36   ;; EFFE: '0', '9', '8', '7', '6'
+    .db  0x31, 0x32, 0x33, 0x34, 0x35   ;; F7FE: '1', '2', '3', '4', '5'
+    .db  0x51, 0x57, 0x45, 0x52, 0x54   ;; FBDE: 'Q', 'W', 'E', 'R', 'T'
+    .db  0x41, 0x53, 0x44, 0x46, 0x47   ;; FDFE: 'A', 'S', 'D', 'F', 'G'
+    .db  0, 0x5a, 0x58, 0x43, 0x56      ;; FEFE: shift, 'Z', 'X', 'C', 'V'
 
-void
-print_at(uint8_t row,
-         uint8_t start_col,
-         char terminator,
-         const char *s)
-__naked
-{
-  (void) row, start_col, terminator, s;
 
-  __asm
+;; ############################################################################
+;; _print_at
+;; ############################################################################
+
+_print_at:
 
     ;; assume row             at (sp + 4)
     ;;        start_col       at (sp + 5)
@@ -246,22 +242,17 @@ print_done::
     pop   ix
     ret
 
-  __endasm;
-}
 
-/* ------------------------------------------------------------------------- */
+;; ############################################################################
+;; _print_ip_addr
+;; ############################################################################
 
-// only used while VRAM lines 2..20 are blacked out -> pick a location there
-static uint8_t __at(0x4020) bitcounter;
-static uint8_t __at(0x4021) pixel_buffer[6];
+;; only used while VRAM lines 2..20 are blacked out -> pick a location there
 
-void
-print_ip_addr(const ipv4_address_t *ip, uint8_t *p)
-__naked
-{
-  (void) ip, p;
+_bitcounter   = 0x4020;
+_pixel_buffer = 0x4021  ;; 6 bytes
 
-  __asm
+_print_ip_addr:
 
     push  ix
 
@@ -472,19 +463,11 @@ flush_not_needed::
     ld    (_bitcounter), a
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; _wait_key
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-static key_t previous_key;    // initially == KEY_NONE (0) */
-static bool first_repetition;
-
-key_t
-wait_key(void)
-__naked
-{
-  __asm
+_wait_key:
 
     ;; ------------------------------------------------------------------------
     ;; is the previous key still being pressed?
@@ -561,18 +544,12 @@ wait_key_finish:
     ld   l, b      ;; _poll_key returned same value in A and B
     ret
 
-  __endasm;
-}
 
-/* ------------------------------------------------------------------------- */
+;; ############################################################################
+;; _set_attrs_impl
+;; ############################################################################
 
-void
-set_attrs_impl(uint8_t attrs, uint8_t *attr_address, int len)
-__naked
-{
-  (void) attrs, attr_address, len;
-
-  __asm
+_set_attrs_impl:
 
     pop   de
     dec   sp
@@ -591,38 +568,3 @@ __naked
     ldir
 
     ret
-
-  __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-init_progress_display(void)
-__naked
-{
-  __asm
-
-    ld    hl, #0x5800
-    ld    de, #0x5801
-    ld    bc, #0x2e0
-    xor   a
-    ld    (hl), a
-    ldir
-
-    ld    c, #0x1f
-    ld    a, #(PAPER(BLUE) | INK(BLUE))
-    ld    (hl), a
-    ldir
-
-    ld    l, #14
-    xor   a
-    call  _show_attr_digit
-
-    ld    l, #25
-    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
-    push  bc   ;; because the routine jumped to will pop that before ret:ing
-    jp    show_attr_digit_address_known
-
-  __endasm;
-}
