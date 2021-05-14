@@ -1,150 +1,125 @@
-/*
- * Module z80_loader:
- *
- * Accepts a stream of bytes, unpacks it as a .z80 snapshot,
- * loads it into RAM, and executes it.
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;;
+;; Module z80_loader:
+;;
+;; Accepts a stream of bytes, unpacks it as a .z80 snapshot,
+;; loads it into RAM, and executes it.
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2009-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include <stddef.h>
+    .module z80_loader
+    .optsdcc -mz80
 
-#include "z80_loader.h"
+    .include "include/z80_loader.inc"
 
-#include "context_switch.h"
-#include "globals.h"
-#include "menu.h"
-#include "ui.h"
+    .include "include/context_switch.inc"
+    .include "include/enc28j60.inc"
+    .include "include/eth.inc"
+    .include "include/globals.inc"
+    .include "include/spi.inc"
+    .include "include/tftp.inc"
+    .include "include/udp_ip.inc"
+    .include "include/ui.inc"
+    .include "include/util.inc"
 
-#pragma codeseg STAGE2
+;; ============================================================================
 
-/* ------------------------------------------------------------------------- */
+Z80_ESCAPE         = 0xED     ;; escape byte in compressed chunks
+ATTR_DIGIT_ROW     = 0x5A00   ;; attribute VRAM address for kilobyte counter
 
-/* Size of a memory bank/page */
-#define PAGE_SIZE                       (0x4000)
+PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
-/* Special value for 'bytes_remaining' indicating no compression used */
-#define BANK_LENGTH_UNCOMPRESSED        (0xffff)
+;; ----------------------------------------------------------------------------
+;; Offset to the R register when stored, to compensate for the fact that R
+;; is affected by the execution of the trampoline.
+;;
+;; Calibrate this offset as follows:
+;;
+;; - Set it temporarily to 0, and run one of the test images
+;; - Assume E = expected value of R        (0x2e in test image),
+;;          N = actual value of R (as presented in binary by the test image)
+;; - Set REG_R_ADJUSTMENT := (E - N)
+;; ----------------------------------------------------------------------------
 
-/* Escape byte in compressed chunks */
-#define Z80_ESCAPE                      (0xED)
+REG_R_ADJUSTMENT   = 0xEF
 
-/* Attribute address for large digits (kilobyte counter) */
-#define ATTR_DIGIT_ROW  (0x5a00)
+;; ============================================================================
 
-/* ------------------------------------------------------------------------- */
+    .area _DATA
 
-/* Pointer to received TFTP data */
-static const uint8_t *received_data;
+_received_data:
+    .ds   2       ;; pointer to received TFTP data
 
-/* Number of valid bytes remaining in received_data */
-static uint16_t received_data_length;
+_received_data_length:
+    .ds   2       ;; number of valid bytes remaining in received_data
 
-/*
- * Bytes remaining to unpack in current chunk
- */
-static uint16_t chunk_bytes_remaining;
+_chunk_bytes_remaining:
+    .ds   2       ;; bytes remaining to unpack in current chunk
 
-/* State for a repetition sequence */
-/* set: chunk_compressed_repcount read: chunk_compressed_repetition */
-static uint8_t rep_count;
+_digits:
+    .ds   1       ;; digits (BCD) for progress display while loading a snapshot
 
-/* Byte value for repetition */
-static uint8_t rep_value;
+;; ----------------------------------------------------------------------------
+;; state for a repetition sequence
+;; ----------------------------------------------------------------------------
 
-/* ========================================================================= */
+_rep_count:        ;; set: chunk_compressed_repcount
+    .ds   1        ;; read: chunk_compressed_repetition
 
-/*
- * The Z80 snapshot state machine is implemented by one function for each
- * state. The function returns whenever one of the following happens:
- *
- * - all currently available data has been consumed (received_data_length == 0)
- * - a state transition is required
- * - the write pointer has reached an integral number of kilobytes
- *   (the outer loop then manages evacuation)
- */
+_rep_value:
+    .ds   1        ;; byte value for repetition
 
-/* True if p is an integral number of kilobytes */
-#define IS_KILOBYTE(p) \
-  ((LOBYTE(p)) == 0 && ((HIBYTE(p) & 0x03) == 0))
+;; ----------------------------------------------------------------------------
+;; The Z80 snapshot state machine is implemented by one routine for each
+;; state. The function returns whenever one of the following happens:
+;;
+;; - all currently available data has been consumed (received_data_length == 0)
+;; - a state transition is required
+;; - the write pointer has reached an integral number of kilobytes
+;;   (the outer loop then manages evacuation)
+;; ----------------------------------------------------------------------------
 
-/* Syntactic sugar for declaring and defining states */
-#define DECLARE_STATE(s)                void s (void)
-#define DEFINE_STATE(s)                 DECLARE_STATE(s) __naked
+_z80_loader_state:
+    .ds   2          ;; points to routine for current state
 
-typedef void state_func_t(void);
+_evacuating:
+    .ds   1
 
-state_func_t *z80_loader_state;
+;; ============================================================================
 
-// digits (BCD) for progress display while loading a snapshot
-static uint8_t digits;
+    .area _STAGE2
 
-/*
- * Offset to the R register when stored, to compensate for the fact that R
- * is affected by the execution of the trampoline.
- *
- * Calibrate this offset as follows:
- *
- * - Set it temporarily to 0, and run one of the test images
- * - Assume E = expected value of R        (0x2e in test image),
- *          N = actual value of R (as presented in binary by the test image)
- * - Set REG_R_ADJUSTMENT := (E - N)
- */
-#define REG_R_ADJUSTMENT                    (0xEF)
+;; ############################################################################
+;; _update_progress_display:
+;;
+;; uses AF, BC, HL
+;; ############################################################################
 
-/* ========================================================================= */
-
-/*
- * State functions
- */
-DECLARE_STATE(s_header);
-
-DECLARE_STATE(s_chunk_uncompressed);  /* uncompressed data */
-DECLARE_STATE(s_chunk_compressed);    /* compressed data */
-
-DECLARE_STATE(s_chunk_header);        /* first byte of chunk 3-byte header */
-DECLARE_STATE(s_chunk_header2);       /* second byte of chunk 3-byte header */
-DECLARE_STATE(s_chunk_header3);       /* third byte of chunk 3-byte header */
-
-DECLARE_STATE(s_chunk_compressed_escape); /* escape byte found */
-DECLARE_STATE(s_chunk_single_escape);     /* single escape, no repetition */
-DECLARE_STATE(s_chunk_repcount);          /* repetition length */
-DECLARE_STATE(s_chunk_repvalue);          /* repetition value */
-DECLARE_STATE(s_chunk_repetition);        /* write repeated value */
-
-/* ------------------------------------------------------------------------- */
-
-// uses AF, BC, HL
-static void
-update_progress_display(void)
-__naked
-{
-  __asm
+_update_progress_display:
 
     ld    bc, #_digits
     ld    a, (bc)
@@ -224,30 +199,23 @@ not_10k::
     ld    hl, #PROGRESS_BAR_BASE-1
     add   a, l
     ld    l, a
-    ld    (hl), #(PAPER(WHITE) + INK(WHITE) + BRIGHT)
+    ld    (hl), #(WHITE + (WHITE << 3) + BRIGHT)
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; _show_attr_digit
+;;
+;; subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
+;; L: column (0..31)
+;; A: digit (0..9), bits 4-7 are ignored
+;;
+;; Destroys DE, saves BC
+;; ############################################################################
 
-
-/* ------------------------------------------------------------------------- */
-
-/*
- * subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
- * L: column (0..31)
- * A: digit (0..9), bits 4-7 are ignored
- *
- * Destroys DE, saves BC
- */
-void
-show_attr_digit(void)
-__naked
-{
-  __asm
+_show_attr_digit:
 
     push  bc
-    ld    de, #DIGIT_DATA_ADDR   ;; address of '0' bits
+    ld    de, #_digit_data   ;; address of '0' bits
     and   a, #0xf
     ld    b, a
     add   a, a      ;; A x2
@@ -271,10 +239,10 @@ show_attr_digit_address_known::   ;; special jump target for init_progress_displ
 00002$:
     add   a, a
     jr    nc, 00003$
-    ld    (hl), #PAPER(WHITE) + INK(WHITE)
+    ld    (hl), #WHITE + (WHITE << 3)
     jr    00004$
 00003$:
-    ld    (hl), #PAPER(BLACK) + INK(BLACK)
+    ld    (hl), #BLACK + (BLACK << 3)
 00004$:
     inc   hl
     djnz  00002$
@@ -289,19 +257,15 @@ show_attr_digit_address_known::   ;; special jump target for init_progress_displ
     pop   bc
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; _evacuate_data
+;;
+;; Evacuate data from the temporary buffer to ENC28J60 SRAM. Examine the stored
+;; .z80 header, and prepare the context switch to use information
+;; (register state etc.) in it.
+;; ############################################################################
 
-/*
- * Evacuate data from the temporary buffer to ENC28J60 SRAM. Examine the stored
- * .z80 header, and prepare the context switch to use information
- * (register state etc.) in it.
- */
-static void
-evacuate_data(void)
-__naked
-{
-  __asm
+_evacuate_data:
 
     ;; ========================================================================
     ;; Clear out the top-left five character cells, by setting ink colour
@@ -507,10 +471,10 @@ evacuate_di::
     dec  c                              ;; version 3 snapshot: decrease HW_TYPE
 evacuate_pc_z80v2::
     ld   a, c
-    cp   a, #HW_TYPE_SPECTRUM_128K
+    cp   a, #3
     jr   nc, evacuate_pc                 ;; 128k snapshot: keep config as it is
 evacuate_pc_z80v1_or_48k::
-    ld   b, #MEMCFG_ROM_LO + MEMCFG_LOCK + DEFAULT_BANK
+    ld   b, #MEMCFG_ROM_LO + MEMCFG_LOCK
     xor  a
 evacuate_pc::
     ld   (VRAM_REGSTATE_PC), hl
@@ -544,7 +508,7 @@ evacuate_pc::
     ;; ========================================================================
 
     ld   hl, #ENC28J60_EVACUATED_DATA
-    ld   a, #ENC_OPCODE_WCR(EWRPTL)
+    ld   a, #OPCODE_WCR + (EWRPTL & REG_MASK)
     call _enc28j60_write_register16
 
     ld   de, #RUNTIME_DATA_LENGTH
@@ -552,20 +516,14 @@ evacuate_pc::
 
     jp   _enc28j60_write_memory_cont
 
-  __endasm;
-}
+;; ############################################################################
+;; _update_progress
+;;
+;; If the number of bytes loaded reached an even kilobyte,
+;; increase kilobyte counter and update status display
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * If the number of bytes loaded reached an even kilobyte,
- * increase kilobyte counter and update status display
- */
-static void
-update_progress(void)
-__naked
-{
-  __asm
+_update_progress:
 
     ld   hl, (_tftp_write_pos)
 
@@ -600,23 +558,17 @@ __naked
     jp    _context_switch
 #endif
 
-  __endasm;
-}
+;; ############################################################################
+;; _get_next_byte
+;;
+;; Returns *received_data++ in A
+;; also decreases received_data_length
+;;
+;; (reads byte from received_data, increases received_data, returns byte in A)
+;; Modifies HL (but not F)
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Returns *received_data++ in A
- * also decreases received_data_length
- *
- * (reads byte from received_data, increases received_data, returns byte in A)
- * Modifies HL (but not F)
- */
-static void
-get_next_byte(void)
-__naked
-{
-  __asm
+_get_next_byte:
 
     ld   hl, (_received_data)
     ld   a, (hl)
@@ -629,42 +581,30 @@ __naked
 
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; _dec_chunk_bytes
+;;
+;; Decreases chunk_bytes_remaining (byte counter in compressed chunk)
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Decreases chunk_bytes_remaining (byte counter in compressed chunk)
- */
-static void
-dec_chunk_bytes(void)
-__naked
-{
-  __asm
+_dec_chunk_bytes:
 
     ld   hl, (_chunk_bytes_remaining)
     dec  hl
     ld   (_chunk_bytes_remaining), hl
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; State HEADER (initial):
+;;
+;; Evacuates the header from the TFTP data block. Returns the length of the
+;; header (i.e., the offset of snapshot data within the TFTP data block)
+;;
+;; This function does some header parsing; it initializes compression_method
+;; and verifies compatibility.
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * State HEADER (initial):
- *
- * Evacuates the header from the TFTP data block. Returns the length of the
- * header (i.e., the offset of snapshot data within the TFTP data block)
- *
- * This function does some header parsing; it initializes compression_method
- * and verifies compatibility.
- */
-DEFINE_STATE(s_header)
-{
-  __asm
+_s_header:
 
     ;; ------------------------------------------------------------------------
     ;; set bank 0 for 128k memory config
@@ -720,7 +660,7 @@ s_header_ext_hdr::
     ;; ------------------------------------------------------------------------
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_HW_TYPE)
-    cp    a, #HW_TYPE_SPECTRUM_128K
+    cp    a, #3
     jr    c, s_header_not_128k
     ld    a, #128
     ld    (_kilobytes_expected), a
@@ -770,16 +710,14 @@ s_header_set_state::
 
     ret
 
-  __endasm;
-}
 
-/* ------------------------------------------------------------------------- */
+;; ############################################################################
+;; state CHUNK_HEADER:
+;;
+;; receive low byte of chunk length
+;; ############################################################################
 
-/* receive low byte of chunk length */
-DEFINE_STATE(s_chunk_header)
-__naked
-{
-  __asm
+_s_chunk_header:
 
     call _get_next_byte
     ld   (_chunk_bytes_remaining), a
@@ -789,16 +727,14 @@ __naked
 
     ret
 
-  __endasm;
-}
 
-/* ------------------------------------------------------------------------- */
+;; ############################################################################
+;; state CHUNK_HEADER2:
+;;
+;; receive high byte of chunk length
+;; ############################################################################
 
-/* Receive high byte of chunk length */
-DEFINE_STATE(s_chunk_header2)
-__naked
-{
-  __asm
+_s_chunk_header2:
 
     call _get_next_byte
     ld   (_chunk_bytes_remaining + 1), a
@@ -808,22 +744,17 @@ __naked
 
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; state CHUNK_HEADER3:
+;;
+;; receive ID of the page the chunk belongs to, range is 3..10
+;;
+;; See:
+;; https://www.worldofspectrum.org/faq/reference/z80format.htm
+;; https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-/*
- * Receive ID of the page the chunk belongs to, range is 3..10
- *
- * See:
- * https://www.worldofspectrum.org/faq/reference/z80format.htm
- * https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
- */
-DEFINE_STATE(s_chunk_header3)
-__naked
-{
-  __asm
+_s_chunk_header3:
 
     ld   a, (_kilobytes_expected)
     ld   c, a
@@ -834,12 +765,12 @@ __naked
     jr   c, s_chunk_header3_incompatible
     cp   a, #11
     jr   c, s_chunk_header3_compatible
-s_chunk_header3_incompatible::
+s_chunk_header3_incompatible:
     ld   a, #FATAL_INCOMPATIBLE
-    out  (0xfe), a
+    out  (ULA_PORT), a
     di
     halt
-s_chunk_header3_compatible::
+s_chunk_header3_compatible:
 
     ;; Decide on a good value for tftp_write_pos; store in HL.
 
@@ -908,15 +839,11 @@ s_chunk_header3_compressed::
 
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; state CHUNK_UNCOMPRESSED
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-DEFINE_STATE(s_chunk_uncompressed)
-__naked
-{
-  __asm
+_s_chunk_uncompressed:
 
   ;;
   ;; compute BC as minimum of
@@ -949,7 +876,7 @@ __naked
 
   ld  bc, (_received_data_length)
 
-checked_length::
+checked_length:
 
   ;;
   ;; is chunk_bytes_remaining less than BC?
@@ -963,7 +890,7 @@ checked_length::
 
   ld  bc, (_chunk_bytes_remaining)
 
-checked_chunk_length::
+checked_chunk_length:
 
   ;;
   ;; subtract BC from received_data_length and chunk_bytes_remaining
@@ -988,7 +915,7 @@ checked_chunk_length::
   ld  de, #_s_chunk_header
   ld  (_z80_loader_state), de
 
-no_new_state::
+no_new_state:
   ld  (_chunk_bytes_remaining), hl
 
   ;;
@@ -1014,26 +941,22 @@ no_new_state::
 
   call  _update_progress
 
-no_copy::
+no_copy:
 
   ret
 
-  __endasm;
-}
+;; ############################################################################
+;; state CHUNK_COMPRESSED
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-DEFINE_STATE(s_chunk_compressed)
-__naked
-{
-  __asm
+_s_chunk_compressed:
 
   ld  bc, (_chunk_bytes_remaining)
   ld  de, (_received_data_length)
   ld  hl, (_tftp_write_pos)
   ld  iy, (_received_data)
 
-s_chunk_compressed_loop::
+s_chunk_compressed_loop:
 
   ;;
   ;; if chunk_bytes_remaining is zero, terminate loop and switch state
@@ -1094,7 +1017,7 @@ s_chunk_compressed_loop::
   ;; reached end of chunk: switch state
   ;;
 
-s_chunk_compressed_chunk_end::
+s_chunk_compressed_chunk_end:
   ld  a, #<_s_chunk_header
   ld  (_z80_loader_state), a
   ld  a, #>_s_chunk_header
@@ -1105,7 +1028,7 @@ s_chunk_compressed_chunk_end::
   ;; found escape byte: switch state
   ;;
 
-s_chunk_compressed_found_escape::
+s_chunk_compressed_found_escape:
   ;;
   ;; optimization: if 3 bytes (or more) are available, and this is really
   ;; a repetition sequence, jump directly to s_chunk_repetition
@@ -1119,7 +1042,7 @@ s_chunk_compressed_found_escape::
   cp  #3
   jr  c, s_chunk_compressed_no_opt
 
-s_chunk_compressed_rept1::
+s_chunk_compressed_rept1:
   ;; if de < 3, goto s_chunk_compressed_no_opt
   ld  a, d
   or  a
@@ -1128,7 +1051,7 @@ s_chunk_compressed_rept1::
   cp  #3
   jr  c, s_chunk_compressed_no_opt
 
-s_chunk_compressed_rept2::
+s_chunk_compressed_rept2:
   ld  a, (iy)       ;; peek, do not change counts
   cp  #Z80_ESCAPE
   jr  nz, s_chunk_compressed_no_opt
@@ -1162,7 +1085,7 @@ s_chunk_compressed_rept2::
 jp_hl_instr::          ;; convenient CALL target
   jp  (hl)
 
-s_chunk_compressed_no_opt::
+s_chunk_compressed_no_opt:
   ;;
   ;; no direct jump to s_chunk_repetition was possible
   ;;
@@ -1172,25 +1095,22 @@ s_chunk_compressed_no_opt::
   ld  a, #>_s_chunk_compressed_escape
   ld  (_z80_loader_state+1), a
 
-s_chunk_compressed_write_back::
+s_chunk_compressed_write_back:
   ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
   ld  (_tftp_write_pos), hl
   ld  (_received_data), iy
 
-s_chunk_compressed_done::
+s_chunk_compressed_done:
 
   ret
 
-  __endasm;
-}
 
-/* ------------------------------------------------------------------------- */
+;; ############################################################################
+;; state CHUNK_COMPRESSED_ESCAPE
+;; ############################################################################
 
-DEFINE_STATE(s_chunk_compressed_escape)
-__naked
-{
-  __asm
+_s_chunk_compressed_escape:
 
     call  _get_next_byte
     call  _dec_chunk_bytes
@@ -1230,15 +1150,12 @@ __naked
 
     ret
 
-  __endasm;
-}
 
-/* ------------------------------------------------------------------------- */
+;; ############################################################################
+;; state CHUNK_REPCOUNT
+;; ############################################################################
 
-DEFINE_STATE(s_chunk_repcount)
-__naked
-{
-  __asm
+_s_chunk_repcount:
 
     call _get_next_byte
     ld   (_rep_count), a
@@ -1250,15 +1167,11 @@ __naked
 
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; state CHUNK_REPVALUE
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-DEFINE_STATE(s_chunk_repvalue)
-__naked
-{
-  __asm
+_s_chunk_repvalue:
 
     call _get_next_byte
     ld   (_rep_value), a
@@ -1270,15 +1183,11 @@ __naked
 
     ret
 
-  __endasm;
-}
+;; ############################################################################
+;; state CHUNK_REPETITION
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-DEFINE_STATE(s_chunk_repetition)
-__naked
-{
-  __asm
+_s_chunk_repetition:
 
   ld  a, (_rep_count)
   ld  b, a                      ;; loop counter rep_count
@@ -1322,19 +1231,11 @@ s_chunk_repetition_write_back::
 
   ret
 
-__endasm;
-}
+;; ############################################################################
+;; _z80_loader_receive_hook
+;; ############################################################################
 
-/* ------------------------------------------------------------------------- */
-
-/* Indicates an evacuation is ongoing (see below), initially false */
-static bool evacuating;
-
-void
-z80_loader_receive_hook(void)
-__naked
-{
-  __asm
+_z80_loader_receive_hook:
 
     ;; ------------------------------------------------------------------------
     ;; set up _received_data & _received_data_length
@@ -1355,7 +1256,7 @@ __naked
     ;; read bytes, evacuate when needed, call state functions
     ;; ========================================================================
 
-receive_snapshot_byte_loop::
+receive_snapshot_byte_loop:
 
     ;; ------------------------------------------------------------------------
     ;; if received_data_length is zero, we are done
@@ -1428,7 +1329,7 @@ receive_snapshot_not_entering_runtime_data::
 
     call  _evacuate_data
 
-receive_snapshot_no_evacuation::
+receive_snapshot_no_evacuation:
 
     ;; ------------------------------------------------------------------------
     ;; call function pointed to by _z80_loader_state
@@ -1439,6 +1340,3 @@ receive_snapshot_no_evacuation::
     call  jp_hl_instr
 
     jr    receive_snapshot_byte_loop
-
-  __endasm;
-}
