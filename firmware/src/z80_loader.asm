@@ -212,6 +212,8 @@ not_10k::
 ;; Destroys DE, saves BC
 ;; ############################################################################
 
+ROM_DIGITS = 0x3D00 + 16 * 8 + 1 ;; address of '0' bits, first actual scan line
+
 show_attr_digit_address_known:  ;; special jump target for menu (display ("K"))
     push  bc
     jr    _show_attr_digit2
@@ -219,17 +221,19 @@ show_attr_digit_address_known:  ;; special jump target for menu (display ("K"))
 _show_attr_digit:
 
     push  bc
-    ld    de, #_digit_data   ;; address of '0' bits
+    ld    de, #ROM_DIGITS
     and   a, #0xf
-    ld    b, a
-    add   a, a      ;; A x2
-    add   a, a      ;; A x4
-    add   a, b      ;; A x4 + A = A x5
-    add   a, b      ;; A x6
+    add   a, a
+    add   a, a
+    add   a, a
     add   a, e      ;; because all digits are placed in a single 256b page
     ld    e, a
 
     ld    h, #>ATTR_DIGIT_ROW
+
+    di    ;; SpeccyBoot is about to be paged out
+    ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT
+    out   (SPI_OUT), a
 
 _show_attr_digit2:
 
@@ -256,6 +260,10 @@ _show_attr_digit2:
 
     dec   c
     jr    nz, 00001$
+
+    ld    a, #SPI_IDLE+SPI_CS       ;; page SpeccyBoot back in
+    out   (SPI_OUT), a
+    ei
 
     pop   bc
     ret
@@ -470,7 +478,7 @@ evacuate_di::
     cp   a, #3
     jr   nc, evacuate_pc                 ;; 128k snapshot: keep config as it is
 evacuate_pc_z80v1_or_48k::
-    ld   bc, #(MEMCFG_ROM_LO + MEMCFG_LOCK) << 8
+    ld   bc, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8
 evacuate_pc::
     ld   (VRAM_REGSTATE_PC), hl
     ld   (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE), bc
@@ -601,10 +609,10 @@ _dec_chunk_bytes:
 _s_header:
 
     ;; ------------------------------------------------------------------------
-    ;; set bank 0 for 128k memory config
+    ;; set bank 0, ROM 1 (48K ROM) for 128k memory config while loading
     ;; ------------------------------------------------------------------------
 
-    xor  a, a
+    ld   a, #MEMCFG_ROM_48K
     ld   bc, #MEMCFG_ADDR
     out  (c), a
 
@@ -801,6 +809,7 @@ s_chunk_header3_default_page::
 
     ld   a, b
     sub  a, #3
+    or   a, #MEMCFG_ROM_48K    ;; needed for digits while loading
     ld   bc, #MEMCFG_ADDR
     out  (c), a
 

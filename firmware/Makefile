@@ -13,7 +13,7 @@ MAKEBIN      = makebin
 ECHO         = @/bin/echo
 
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
-LDFLAGS     += --code-loc 0x0056 --data-loc 0x5B9C
+LDFLAGS     += --code-loc 0x0056 --data-loc 0x5B30
 
 # =============================================================================
 # CONFIGURATION
@@ -83,17 +83,8 @@ vpath %.inc  $(INCLUDEDIR)
 
 all: bin
 
-ifdef STAGE2_IN_RAM
-
 MAKEBINFLAGS=-p
 bin: $(ROM) $(STAGE2BIN)
-
-else
-
-MAKEBINFLAGS=-s 8192
-bin: $(ROM)
-
-endif
 
 clean:
 	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)

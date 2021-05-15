@@ -36,7 +36,7 @@
 ;; Stack address (defined here so crt0.asm can find it via linker)
 ;; ----------------------------------------------------------------------------
 
-STACK_SIZE  = 0x60
+STACK_SIZE  = 0x30
 _stack_top  = 0x5b00 + STACK_SIZE
 
 ;; ----------------------------------------------------------------------------
