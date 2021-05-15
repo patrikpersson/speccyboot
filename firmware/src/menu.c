@@ -51,6 +51,7 @@
  * Destroys AF, C, DE, HL.
  * ----------------------------------------------------------------------- */
 
+
 /* ------------------------------------------------------------------------- */
 // E = total number of snapshots
 // D = display offset (index of first displayed snapshot name)
@@ -126,54 +127,6 @@ redraw_menu_done:
   __endasm;
 }
 
-/* ------------------------------------------------------------------------- */
-
-static uint8_t
-find_snapshot_for_letter(char c, uint8_t nbr_snapshots)
-__naked
-{
-  (void) c, nbr_snapshots;
-  __asm
-
-    pop  hl
-    pop  bc   ;; C=pressed key, B=nbr_snapshots
-    push bc
-    push hl
-
-    ld   e, #0  ;; result
-
-    ld   a, b
-    or   a, a
-    jr   z, find_snapshot_for_letter_found
-
-    ld   hl, #_rx_frame
-find_snapshot_for_letter_lp:
-    push de
-    ld   e, (hl)
-    inc  hl
-    ld   d, (hl)
-    inc  hl
-    ld   a, (de)
-    pop  de
-    cp   a, #'a'
-    jr   c, find_snapshot_for_letter_no_lcase
-    cp   a, #'z' + 1
-    jr   nc, find_snapshot_for_letter_no_lcase
-    and  a, #0xDF     ;; upper case
-find_snapshot_for_letter_no_lcase:
-    cp   a, c
-    jr   nc, find_snapshot_for_letter_found
-
-    inc  e
-    djnz find_snapshot_for_letter_lp
-    dec  e   ;; choose the last snapshot if none found
-
-find_snapshot_for_letter_found:
-    ld   l, e
-    ret
-
-  __endasm;
-}
 
 /* ------------------------------------------------------------------------- */
 
@@ -309,21 +262,21 @@ copy_digit_font_data_loop:
     ;; - filled RX buffer with filename pointers? (max 255)
     ;; ------------------------------------------------------------------------
 
-create_snapshot_list_loop1:
+menu_setup_loop1:
 
     ld   a, (hl)
     or   a, a
-    jr   z, create_snapshot_list_finish
+    jr   z, menu_setup_ready
 
     ld   a, c
     inc  a
-    jr   z, create_snapshot_list_finish
+    jr   z, menu_setup_ready
 
     ;; ------------------------------------------------------------------------
     ;; store a pointer to the current file name
     ;; ------------------------------------------------------------------------
 
-create_snapshot_list_store_ptr:
+menu_setup_store_ptr:
 
     ld   a, l
     ld   (de), a
@@ -338,14 +291,14 @@ create_snapshot_list_store_ptr:
     ;; ensure the current file name is NUL terminated, and advance HL to next
     ;; ------------------------------------------------------------------------
 
-create_snapshot_list_loop2:
+menu_setup_loop2:
     ld   a, (hl)
     cp   a, #32        ;; end of file name (CR/LF/NUL)
-    jr   c, create_snapshot_list_found_nul
+    jr   c, menu_setup_found_nul
     inc  hl
-    jr   create_snapshot_list_loop2
+    jr   menu_setup_loop2
 
-create_snapshot_list_found_nul:
+menu_setup_found_nul:
     xor  a, a
     ld   (hl), a
 
@@ -353,20 +306,24 @@ create_snapshot_list_found_nul:
     ;; skip any other trailing CR/LF stuff
     ;; ------------------------------------------------------------------------
 
-create_snapshot_list_find_next:
+menu_setup_find_next:
     inc  hl
     ld   a, (hl)
     or   a, a
-    jr   z, create_snapshot_list_finish
+    jr   z, menu_setup_ready
     cp   a, #32
-    jr   nc, create_snapshot_list_loop1
-    jr   create_snapshot_list_find_next
+    jr   nc, menu_setup_loop1
+    jr   menu_setup_find_next
 
-create_snapshot_list_finish:
+menu_setup_ready:
 
+    ;; ========================================================================
+    ;; main loop for the menu
+    ;;
     ;; C = currently highlighted entry (0..254)
-    ;; D = display offset (index of first displayed snapshot name)
+    ;; D = display offset (index of first displayed snapshot name, < E)
     ;; E = total number of snapshots (0..255)
+    ;; ========================================================================
 
     ld   e, c
     ld   c, #0
@@ -383,10 +340,14 @@ menu_loop:
     call _redraw_menu
 
     call _wait_key
-    ld   a, l
 
     pop  de
     pop  bc
+
+    ld   a, #BLUE + (WHITE << 3)    ;; erase highlight
+    call menu_set_highlight
+
+    ld   a, l       ;; return value from _wait_key
 
     cp   a, #KEY_ENTER
     jr   z, menu_hit_enter
@@ -397,27 +358,54 @@ menu_loop:
     cp   a, #KEY_DOWN
     jr   z, menu_hit_down
 
-    push bc
+    ;; ========================================================================
+    ;; user hit something else than ENTER/UP/DOWN:
+    ;; select the first snapshot with that initial letter
+    ;; ========================================================================
+
+    push de     ;; DE used for temporary data
+
+    ld   b, e   ;; loop counter
+    ld   c, a   ;; pressed key
+    ld   e, #0  ;; result (selected index)
+
+    ;; Only search through max-1 entries, and default to the last one if
+    ;; nothing is found. This also handles empty lists.
+
+    dec  b
+    jr   c, find_snapshot_for_letter_found
+
+    ld   hl, #_rx_frame
+find_snapshot_for_letter_lp:
     push de
-
-    ld   b, e
-    ld   c, a
-    push bc
-    call _find_snapshot_for_letter
-    pop  af
-
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
+    inc  hl
+    ld   a, (de)
     pop  de
-    pop  bc
+    cp   a, #'a'
+    jr   c, find_snapshot_for_letter_no_lcase
+    cp   a, #'z' + 1
+    jr   nc, find_snapshot_for_letter_no_lcase
+    and  a, #0xDF     ;; upper case
+find_snapshot_for_letter_no_lcase:
+    cp   a, c
+    jr   nc, find_snapshot_for_letter_found
 
-    call menu_erase_highlight
+    inc  e
+    djnz find_snapshot_for_letter_lp
 
-    ld   c, l
+find_snapshot_for_letter_found:
+    ld   c, e
+
+    pop  de        ;; restore E=number of snapshots, D=offset
 
     jr   menu_adjust
 
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
     ;; user hit DOWN: highlight next entry
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
 
 menu_hit_down:
 
@@ -426,23 +414,19 @@ menu_hit_down:
     cp   a, e
     jr   nc, menu_loop
 
-    call menu_erase_highlight
-
     inc  c
 
     jr   menu_adjust
 
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
     ;; user hit UP: highlight previous entry
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
 
 menu_hit_up:
 
     ld   a, c
     or   a, a
     jr   z, menu_loop
-
-    call menu_erase_highlight
 
     dec  c
 
@@ -476,19 +460,32 @@ menu_not_top:
 
     jr   menu_loop
 
-    ;; ------------------------------------------------------------------------
-    ;; subroutine: remove highlight for current index
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
+    ;; user hit ENTER: load selected snapshot
+    ;; ========================================================================
 
-menu_erase_highlight:
+menu_hit_enter:
 
-    ld   a, #BLUE + (WHITE << 3)
+    ld   h, #0
+    ld   l, c
+    add  hl, hl
+    ld   de, #_rx_frame
+    add  hl, de
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
 
-    ;; FALL THROUGH to menu_set_highlight
+    push de
 
-    ;; ------------------------------------------------------------------------
-    ;; subroutine: highlight current index to colour in register A
-    ;; ------------------------------------------------------------------------
+    call _eth_init
+    call _expect_snapshot
+    call _tftp_read_request
+
+    jp   main_loop
+
+    ;; ========================================================================
+    ;; subroutine: highlight current line to colour in register A
+    ;; ========================================================================
 
 menu_set_highlight:
 
@@ -518,29 +515,6 @@ menu_highlight_loop:
     pop hl
 
     ret
-
-    ;; ------------------------------------------------------------------------
-    ;; user hit ENTER: load selected snapshot
-    ;; ------------------------------------------------------------------------
-
-menu_hit_enter:
-
-    ld   h, #0
-    ld   l, c
-    add  hl, hl
-    ld   de, #_rx_frame
-    add  hl, de
-    ld   e, (hl)
-    inc  hl
-    ld   d, (hl)
-
-    push de
-
-    call _eth_init
-    call _expect_snapshot
-    call _tftp_read_request
-
-    jp   main_loop
 
 ip_address_str:
     .ascii "Local:           TFTP:"
