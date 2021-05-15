@@ -60,7 +60,7 @@ ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 ;; received.
 ;; ############################################################################
 
-_arp_receive::
+_arp_receive:
 
     ;; ------------------------------------------------------------------------
     ;; retrieve ARP payload
@@ -141,7 +141,7 @@ _arp_receive::
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
     jp   _eth_send
 
-arp_receive_reply_template::
+arp_receive_reply_template:
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
 _ethertype_ip::
     .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order

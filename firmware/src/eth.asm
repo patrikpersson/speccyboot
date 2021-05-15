@@ -103,7 +103,7 @@ _main:
     ;; At this point, eth_send() has already been called once for a PRIORITY
     ;; frame (BOOTP above), so the ACK timer does not need to be reset.
 
-main_loop::
+main_loop:
 
     ;; ------------------------------------------------------------------------
     ;; The menu (stage 2) JP:s here to load snapshots.lst.
@@ -123,7 +123,7 @@ main_loop::
     ld    e, #1       ;; bank 1 for EPKTCNT
     call  _enc28j60_select_bank
 
-main_spin_loop::
+main_spin_loop:
 
     ld    e, #EPKTCNT
     call  _enc28j60_read_register
@@ -187,7 +187,7 @@ main_spin_loop::
 
     jr    main_loop
 
-main_packet::
+main_packet:
 
     ;; ========================================================================
     ;; done spinning: a packet has been received, bring it into Spectrum RAM
@@ -250,10 +250,10 @@ main_packet::
     jr    nz, main_packet_done
     call  _arp_receive
     jr    main_packet_done
-main_packet_ip::
+main_packet_ip:
     call  _ip_receive
 
-main_packet_done::
+main_packet_done:
 
     ;; ------------------------------------------------------------------------
     ;; advance ERXRDPT
@@ -367,8 +367,7 @@ eth_init_registers_loop:
     pop   hl
     jr    eth_init_registers_loop
 
-
-eth_init_registers_done::
+eth_init_registers_done:
 
     ld    hl, #ENC28J60_RXBUF_START
     ld    (_next_frame), hl
@@ -585,7 +584,7 @@ _eth_send:
 ;; HL: address of the last byte in the frame
 ;; ############################################################################
 
-perform_transmission::
+perform_transmission:
 
       ;; ----------------------------------------------------------------------
       ;; set up registers:  ETXST := start_address, ETXND := end_address
