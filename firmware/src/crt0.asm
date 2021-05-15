@@ -35,15 +35,9 @@
   .include "include/spi.inc"
   .include "include/enc28j60.inc"
   .include "include/globals.inc"
+  .include "include/menu.inc"
   .include "include/udp_ip.inc"
   .include "include/util.inc"
-
-  .globl	_font_data
-  .globl	_main
-  .globl	_stack_top
-  .globl	_timer_tick_count
-  .globl  _tftp_file_buffer
-  .globl  _run_menu
 
   ;; --------------------------------------------------------------------------
 
@@ -207,7 +201,7 @@ _tftp_file_buffer::
 
 _stage2::
 
-  jp  _run_menu
+  jp  run_menu
 
   .area _SNAPSHOTLIST
 

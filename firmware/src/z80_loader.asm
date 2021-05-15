@@ -111,48 +111,6 @@ _evacuating:
 
 ;; ============================================================================
 
-    .area _NONRESIDENT
-
-;; ############################################################################
-;; _expect_snapshot
-;; ############################################################################
-
-_expect_snapshot:
-
-    ld   hl, #0x4000
-    ld   (_tftp_write_pos), hl
-
-    ld   hl, #_z80_loader_receive_hook
-    ld   (_tftp_receive_hook), hl
-
-    ld   hl, #_s_header
-    ld   (_z80_loader_state), hl
-
-    ;; initialize progress display
-
-    ld    hl, #0x5800
-    ld    de, #0x5801
-    ld    bc, #0x2e0
-    xor   a
-    ld    (hl), a
-    ldir
-
-    ld    c, #0x1f
-    ld    a, #BLUE | (BLUE << 3)
-    ld    (hl), a
-    ldir
-
-    ld    l, #14
-    xor   a
-    call  _show_attr_digit
-
-    ld    l, #25
-    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
-    push  bc   ;; because the routine jumped to will pop that before ret:ing
-    jp    show_attr_digit_address_known
-
-;; ============================================================================
-
     .area _STAGE2
 
 ;; ############################################################################
@@ -254,6 +212,10 @@ not_10k::
 ;; Destroys DE, saves BC
 ;; ############################################################################
 
+show_attr_digit_address_known:  ;; special jump target for menu (display ("K"))
+    push  bc
+    jr    _show_attr_digit2
+
 _show_attr_digit:
 
     push  bc
@@ -269,8 +231,7 @@ _show_attr_digit:
 
     ld    h, #>ATTR_DIGIT_ROW
 
-show_attr_digit_address_known::   ;; special jump target for init_progress_display
-    ;; NOTE: must have stacked BC before jumping here
+_show_attr_digit2:
 
     ld    c, #6
 00001$:

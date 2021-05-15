@@ -1,8 +1,7 @@
 ;;
-;; Module z80_loader:
+;; Module menu:
 ;;
-;; Accepts a stream of bytes, unpacks it as a .z80 snapshot,
-;; loads it into RAM, and executes it.
+;; Display a menu from the loaded snapshot file, and load selected snapshot.
 ;;
 ;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
@@ -31,13 +30,9 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
+
 ;; ----------------------------------------------------------------------------
-;; TFTP read hook to relay received data the Z80 snapshot parser.
-;; Installed by menu.
+;; Display a menu of snapshots. When the user selects a snapshot, load it.
 ;; ----------------------------------------------------------------------------
 
-    .globl _z80_loader_receive_hook
-    .globl _s_header
-    .globl _z80_loader_state
-    .globl _show_attr_digit
-    .globl show_attr_digit_address_known
+    .globl run_menu

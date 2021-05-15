@@ -12,14 +12,8 @@ AS           = sdasz80
 MAKEBIN      = makebin
 ECHO         = @/bin/echo
 
-CFLAGS       = -mz80 --std-sdcc99 --Werror
-CFLAGS      += -I$(INCLUDEDIR) --opt-code-size --fomit-frame-pointer
-
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS     += --code-loc 0x0056 --data-loc 0x5B9C
-
-# disable warnings about z80instructionSize(), don't matter
-CFLAGS      += --disable-warning 218
 
 # =============================================================================
 # CONFIGURATION
@@ -47,27 +41,19 @@ ifdef PAINT_STACK
 TARGETFLAGS += -DPAINT_STACK
 endif
 
-CFLAGS      += $(TARGETFLAGS)
-
 # =============================================================================
 # COMPONENTS
 # =============================================================================
-
-# module = source + header
-MODULES      = menu
 
 # NOTE: eth must be first here, as it contains the main function, and
 # crt0 will continue executing right into it
 ASMMODULES   = eth
 ASMMODULES  += arp bootp context_switch enc28j60 globals
-ASMMODULES  += spi tftp udp_ip ui util z80_loader
+ASMMODULES  += menu spi tftp udp_ip ui util z80_loader
 
 # -----------------------------------------------------------------------------
 
-CFILES       = $(MODULES:%=%.c)
-HFILES       = $(MODULES:%=%.h)
-ASMFILES     = $(ASMMODULES:%=%.asm)
-OFILES       = crt0.rel $(ASMFILES:.asm=.rel) $(CFILES:.c=.rel)
+OFILES       = crt0.rel $(ASMMODULES:%=%.rel)
 
 # -----------------------------------------------------------------------------
 
@@ -91,9 +77,8 @@ OBJDIR       = obj
 
 VPATH        = $(OBJDIR)
 
-vpath %.c    $(SRCDIR)
 vpath %.asm  $(SRCDIR)
-vpath %.h    $(INCLUDEDIR)
+vpath %.inc  $(INCLUDEDIR)
 
 
 # =============================================================================
@@ -125,25 +110,12 @@ install: $(ROM)
 .PHONY: clean
 
 # =============================================================================
-# CHECK CODE & DATA SIZES
-# =============================================================================
-
-PYTHON			= /usr/bin/env python
-CHECKER			= $(PYTHON) $(TOOLSDIR)/check_sizes.py
-
-check_sizes: bin
-	$(CHECKER) $(OBJDIR)/speccyboot.sym
-
-# =============================================================================
-# CROSS-COMPILATION TARGETS
+# BUILD TARGETS
 # =============================================================================
 
 # temporary result when building binary: both stages are built into a single
 # binary, then split
 COMBINED = $(OBJDIR)/combined.bin
-
-%.rel: %.c $(OBJDIR) $(HFILES)
-	$(CC) $(CFLAGS) -c -o $(OBJDIR)/$@ $<
 
 # run GCC preprocessor on assembly files, exclude all hashed lines
 %.rel: %.asm $(OBJDIR)

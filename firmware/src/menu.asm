@@ -1,60 +1,69 @@
-/*
- * Module menu:
- *
- * Display a menu from the loaded snapshot file, and load selected snapshot.
- *
- * Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
- *
- * ----------------------------------------------------------------------------
- *
- * Copyright (c) 2009-  Patrik Persson
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+;;
+;; Module menu:
+;;
+;; Display a menu from the loaded snapshot file, and load selected snapshot.
+;;
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
+;;
+;; ----------------------------------------------------------------------------
+;;
+;; Copyright (c) 2009-  Patrik Persson
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without
+;; restriction, including without limitation the rights to use,
+;; copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the
+;; Software is furnished to do so, subject to the following
+;; conditions:
+;;
+;; The above copyright notice and this permission notice shall be
+;; included in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+;; HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+;; OTHER DEALINGS IN THE SOFTWARE.
 
-#include "menu.h"
+    .module menu
+    .optsdcc -mz80
 
-#include "globals.h"
-#include "ui.h"
-#include "util.h"
+    .include "include/menu.inc"
 
-#pragma codeseg NONRESIDENT
+    .include "include/context_switch.inc"
+    .include "include/eth.inc"
+    .include "include/globals.inc"
+    .include "include/tftp.inc"
+    .include "include/udp_ip.inc"
+    .include "include/ui.inc"
+    .include "include/util.inc"
+    .include "include/z80_loader.inc"
 
-/* ------------------------------------------------------------------------- */
+    .area _NONRESIDENT
 
-/* Number of snapshot names displayed at a time */
-#define DISPLAY_LINES     (20)
+;; ============================================================================
 
-/* --------------------------------------------------------------------------
- * Scan through the loaded snapshot list, and build an array of pointers
- * to NUL-terminated file names in rx_frame.
- * Returns the number of snapshots in the list in C.
- * Destroys AF, C, DE, HL.
- * ----------------------------------------------------------------------- */
+DISPLAY_LINES = 20   ;; number of snapshot names displayed at a time
 
-void
-run_menu(void)
-{
-  __asm
+KEY_ENTER     = 13
+KEY_UP        = '7'
+KEY_DOWN      = '6'
+
+;; ----------------------------------------------------------------------------
+;; Location of local and server IP addresses (row 23, columns 6 and 22)
+;; ----------------------------------------------------------------------------
+
+LOCAL_IP_POS  = (BITMAP_BASE + 0x1000 + 15*32 + 6)
+SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 15*32 + 22)
+
+;; ============================================================================
+
+run_menu:
 
     ;; ========================================================================
     ;; In the two-stage loader, this function will be called twice:
@@ -148,7 +157,7 @@ menu_second_time:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_font_data + 16 * 8 + 1   ;; first non-zero scanline of "0"
-    ld   de, #DIGIT_DATA_ADDR
+    ld   de, #_digit_data
     ld   a, #10
 copy_digit_font_data_loop:
     ld   bc, #6
@@ -458,9 +467,49 @@ menu_hit_enter:
 
     push de     ;; push arg for _tftp_read_request below
 
+    ;; ------------------------------------------------------------------------
+    ;; prepare for receiving .z80 snapshot data
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x4000
+    ld   (_tftp_write_pos), hl
+
+    ld   hl, #_z80_loader_receive_hook
+    ld   (_tftp_receive_hook), hl
+
+    ld   hl, #_s_header
+    ld   (_z80_loader_state), hl
+
+    ld    hl, #0x5800      ;; clear attribute lines 0..22
+    ld    de, #0x5801
+    ld    bc, #0x2e0
+    xor   a
+    ld    (hl), a
+    ldir
+
+    ld    c, #0x1f         ;; set attribute 23 to BLUE
+    ld    a, #BLUE | (BLUE << 3)
+    ld    (hl), a
+    ldir
+
+    ld    l, #14
+    xor   a
+    call  _show_attr_digit
+
+    ld    l, #25
+    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
+    call  show_attr_digit_address_known
+
+    ;; ------------------------------------------------------------------------
+    ;; send a TFTP request for the snapshot
+    ;; ------------------------------------------------------------------------
+
     call _eth_init
-    call _expect_snapshot
     call _tftp_read_request
+
+    ;; ------------------------------------------------------------------------
+    ;; let the main loop handle the response
+    ;; ------------------------------------------------------------------------
 
     jp   main_loop
 
@@ -503,6 +552,3 @@ ip_address_str:
 snapshots_lst_str:
     .ascii "snapshots.lst"
     .db  0
-
-  __endasm;
-}

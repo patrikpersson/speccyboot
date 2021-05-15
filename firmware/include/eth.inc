@@ -179,6 +179,7 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
     .globl _ip_send
 
 ;; ============================================================================
-;; main function
+;; main function, and main loop
 ;; ============================================================================
     .globl _main
+    .globl main_loop
