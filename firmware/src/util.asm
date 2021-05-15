@@ -73,9 +73,66 @@ _fail:
     di
     halt
 
-
 ;; ############################################################################
-;; _print_digit
+;; print_ip_addr
+;; ############################################################################
+
+print_ip_addr:
+
+    ;; DE = VRAM pointer
+    ;; HL = IP address
+    ;; AF, BC = scratch
+
+    ld    b, #0       ;; loop counter AND octet index
+00001$:               ;; four octets
+
+    ld    a, (hl)
+    inc   hl
+    cp    a, #10
+    jr    c, 00004$    ;; < 10? print only single digit
+    cp    a, #100
+    jr    c, 00002$    ;; no hundreds? skip entirely, not even a zero
+    ld    c, #0
+00003$:   ;; loop to count hundreds
+    inc   c
+    sub   a, #100
+    cp    a, #100
+    jr    nc, 00003$
+
+    push  af
+    ld    a, c
+    call  print_digit      ;; X__
+    pop   af
+
+00002$:   ;; hundreds done
+    cp    a, #10
+    jr    c, 00004$
+    ld    c, #0
+00005$:   ;; loop to count tens
+    inc   c
+    sub   a, #10
+    cp    a, #10
+    jr    nc, 00005$
+
+    push  af
+    ld    a, c
+    call  print_digit      ;; X__
+    pop   af
+
+00004$:   ;; tens done
+
+    call  print_digit      ;; __X
+
+    ;; print period?
+    inc   b
+    ld    a, b
+    cp    a, #4            ;; last octet? no period
+    ret   z
+
+    ld    a, #'.'
+    call  print_char
+    jr    00001$           ;; next octet
+
 ;; ############################################################################
 
 print_digit:
@@ -92,6 +149,7 @@ print_digit:
 print_char:
 
     push hl
+    push bc
 
     ld   l, a
     ld   h, #0
@@ -111,6 +169,9 @@ _print_char_loop:
     djnz _print_char_loop
     ld   d, c
 
+    inc  e
+
+    pop  bc
     pop  hl
 
     ret

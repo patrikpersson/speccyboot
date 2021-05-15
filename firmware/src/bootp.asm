@@ -68,6 +68,13 @@ BOOTP_OFFSETOF_SNAME = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE +
 
 BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10 + 64)
 
+;; ----------------------------------------------------------------------------
+;; Location of local and server IP addresses (row 23, columns 6 and 22)
+;; ----------------------------------------------------------------------------
+
+LOCAL_IP_POS  = (BITMAP_BASE + 0x1000 + 7*32 + 1)
+SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 7*32 + 17)
+
     .area _CODE
 
 ;; ############################################################################
@@ -92,10 +99,7 @@ bootp_print_str:
     inc  hl
     or   a, a
     jr   z, bootp_print_done
-
     call print_char
-
-    inc  e
     jr   bootp_print_str
 bootp_print_done:
 
@@ -304,6 +308,25 @@ bootp_receive_sname_done::
 
     ld    hl, #ATTRS_BASE + 23 * 32           ;; (23, 0)
     ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for IP addresses indicator: white ink, black paper
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #LOCAL_IP_POS
+    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    call print_ip_addr
+
+    ld   de, #SERVER_IP_POS
+    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
+    call print_ip_addr
+
+    ld   hl, #0x5ae1       ;; (23, 1)
+    ld   b, #31
+_ip_attrs_loop:
+    ld   (hl), #WHITE + (BLACK << 3)
+    inc  hl
+    djnz _ip_attrs_loop
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'T' indicator: white ink, black paper, bright, flash

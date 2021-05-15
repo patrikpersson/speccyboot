@@ -79,12 +79,13 @@ SND_REG_VALUE     = 0xbffd
 
 
 ;; ----------------------------------------------------------------------------
-;; A holds digit to print (0..9) in bit 0..3.. Higher-order bits are masked out.
-;; DE points to VRAM location
-;; destroys BC, HL, F
+;; Prints IP address, four octets of 1-3 digits, with a period between.
+;; DE = VRAM pointer
+;; HL = pointer IP address
+;; AF, BC are destroyed.
 ;; ----------------------------------------------------------------------------
 
-    .globl print_digit
+    .globl print_ip_addr
 
 
 ;; ----------------------------------------------------------------------------
@@ -92,7 +93,7 @@ SND_REG_VALUE     = 0xbffd
 ;;
 ;; A holds character to print
 ;; DE points to VRAM location
-;; destroys BC, F; preserves DE, HL
+;; destroys F; preserves BC, DE, HL
 ;; ----------------------------------------------------------------------------
 
     .globl print_char

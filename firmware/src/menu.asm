@@ -54,13 +54,6 @@ KEY_ENTER     = 13
 KEY_UP        = '7'
 KEY_DOWN      = '6'
 
-;; ----------------------------------------------------------------------------
-;; Location of local and server IP addresses (row 23, columns 6 and 22)
-;; ----------------------------------------------------------------------------
-
-LOCAL_IP_POS  = (BITMAP_BASE + 0x1000 + 15*32 + 6)
-SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 15*32 + 22)
-
 ;; ============================================================================
 
 run_menu:
@@ -84,38 +77,12 @@ run_menu:
     ;; Initialize user interface
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #0x5ae1       ;; (23, 1)
-    ld   bc, #31
-    ld   a, #WHITE + (BLACK << 3)
-
-    call _set_attrs
-
     ;; ------------------------------------------------------------------------
     ;; attributes for 'T' indicator: white ink, black paper, bright
     ;; ------------------------------------------------------------------------
 
     ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
     ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
-
-    ld   hl, #LOCAL_IP_POS
-    push hl
-    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    push hl
-
-    call _print_ip_addr
-
-    pop  af
-    pop  af
-
-    ld   hl, #SERVER_IP_POS
-    push hl
-    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    push hl
-
-    call _print_ip_addr
-
-    pop  af
-    pop  af
 
     ;; ========================================================================
     ;; this is the first time the stage 2 loader was invoked:
