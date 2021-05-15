@@ -317,9 +317,7 @@ bootp_receive_sname_done::
     jr   nz, 00001$
     ld   hl, #bootp_receive_default_file
 00001$:
-    push hl
     call _tftp_read_request
-    pop  hl
 
     ld    hl, #(ATTRS_BASE + 16)
     ld    bc, #0x0607    ;; 6 chars, white ink

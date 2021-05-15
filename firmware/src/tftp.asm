@@ -333,6 +333,8 @@ tftp_receive_ack_opcode::
 
 _tftp_read_request:
 
+    ex   de, hl
+
     ;; ------------------------------------------------------------------------
     ;; reset _expected_tftp_block_no to 1
     ;; ------------------------------------------------------------------------
@@ -355,13 +357,8 @@ _tftp_read_request:
 
     ;; calculate length of filename
 
-    pop  bc
-    pop  hl        ;; HL now points to filename
-    push hl
-    push bc
-
-    ld   d, h
-    ld   e, l
+    ld   h, d
+    ld   l, e
 
     xor  a
     ld   b, a

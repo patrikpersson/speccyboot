@@ -52,6 +52,6 @@ TFTP_HEADER_SIZE     = 4
 ;; ----------------------------------------------------------------------------
 ;; Initiate a file transfer from server.
 ;;
-;; stack arg: (const char *filename)
+;; HL: pointer to NUL-terminated file name
 ;; ----------------------------------------------------------------------------
     .globl _tftp_read_request
