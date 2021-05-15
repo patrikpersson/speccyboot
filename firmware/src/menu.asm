@@ -66,21 +66,19 @@ SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 15*32 + 22)
 run_menu:
 
     ;; ========================================================================
-    ;; In the two-stage loader, this function will be called twice:
+    ;; This function will be called twice:
     ;; once to load the snapshot list, and then again once that list is loaded.
     ;; ========================================================================
 
     ld   hl, (_tftp_write_pos)
     ld   (hl), #0                   ;; ensure menu data is NUL-terminated
 
-#ifdef STAGE2_IN_RAM
     ld   a, h
     cp   a, #>_snapshot_list
     jr   nz, menu_second_time
     ld   a, l
     cp   a, #<_snapshot_list
     jr   nz, menu_second_time
-#endif
 
     ;; ------------------------------------------------------------------------
     ;; Initialize user interface
@@ -130,8 +128,6 @@ run_menu:
     pop  af
     pop  af
 
-#ifdef STAGE2_IN_RAM
-
     ;; ========================================================================
     ;; this is the first time the stage 2 loader was invoked:
     ;; load the snapshot list
@@ -142,8 +138,6 @@ run_menu:
     call _tftp_read_request
 
     jp   main_loop
-
-#endif
 
 menu_second_time:
 

@@ -393,9 +393,5 @@ bootp_receive_invalid_address::
     jp   _fail
 
 bootp_receive_default_file::
-#ifdef STAGE2_IN_RAM
     .ascii 'spboot.bin'
-#else
-    .ascii 'snapshots.lst'
-#endif
     .db   0

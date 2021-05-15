@@ -147,21 +147,12 @@ ram_trampoline::
   ;; initialization of (mostly just clearing) global data
   ;; --------------------------------------------------------------------------
 
-;; Decide on an address to clear memory to, then set _tftp_write_pos to the
-;; first byte after the cleared memory.
-
-#ifdef STAGE2_IN_RAM
-CLEAR_TO = _stage2
-#else
-CLEAR_TO = _snapshot_list
-#endif
-
 initialize_global_data:
 
-  ;; clear RAM up to CLEAR_TO + 1; this also sets screen to PAPER+INK 0
+  ;; clear RAM up to _stage2 + 1; this also sets screen to PAPER+INK 0
   ld    hl, #0x4000
   ld    de, #0x4001
-  ld    bc, #CLEAR_TO - 0x4000
+  ld    bc, #_stage2 - 0x4000
   ld    (hl), a
   out   (ULA_PORT), a
   ldir
@@ -176,10 +167,6 @@ initialize_global_data:
 
   .area	_HOME
   .area	_CODE
-#ifndef STAGE2_IN_RAM
-  .area _STAGE2        ;; this is where the stage 2 bootloader starts
-  .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
-#endif
   .area _INITIALIZER
   .area _GSINIT
   .area _GSFINAL
@@ -188,10 +175,8 @@ initialize_global_data:
   .area _INITIALIZED
   .area _BSS
 
-#ifdef STAGE2_IN_RAM
   .area _STAGE2        ;; this is where the stage 2 bootloader starts
   .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
-#endif
 
   .area _SNAPSHOTLIST  ;; area for loaded snapshot
 
