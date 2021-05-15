@@ -485,7 +485,7 @@ evacuate_di::
     ;;   MISC_FLAGS,    to a good border value (0..7)
     ;;   A_P, F_P,      switched to make a single POP possible
     ;;   HW_TYPE,       to be either 0 (48k) or non-zero (128k)
-    ;;   HW_STATE_7FFD, to a good default value also for 48k snapshots
+    ;;   HW_STATE_7FFD, to a good default for 48k snapshots on 128k machines
     ;; ========================================================================
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
@@ -502,25 +502,16 @@ evacuate_di::
     ld   bc, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
 
     ;; ------------------------------------------------------------------------
-    ;; The HW_TYPE field interpretation depends on the .z80 snaphost
-    ;; version (sigh). So if the length field is >= 24 (i.e., version 3),
-    ;; HW_TYPE needs to be decreased by one.
+    ;; Check HW_TYPE
     ;; ------------------------------------------------------------------------
 
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_EXT_LENGTH)   ;; low byte
-    cp   a, #24
-    jr   c, evacuate_pc_z80v2      ;; C set if version 2 snapshot: keep HW_TYPE
-    dec  c                              ;; version 3 snapshot: decrease HW_TYPE
-evacuate_pc_z80v2::
     ld   a, c
     cp   a, #3
     jr   nc, evacuate_pc                 ;; 128k snapshot: keep config as it is
 evacuate_pc_z80v1_or_48k::
-    ld   b, #MEMCFG_ROM_LO + MEMCFG_LOCK
-    xor  a
+    ld   bc, #(MEMCFG_ROM_LO + MEMCFG_LOCK) << 8
 evacuate_pc::
     ld   (VRAM_REGSTATE_PC), hl
-    ld   c, a
     ld   (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE), bc
 
     ;; ------------------------------------------------------------------------
@@ -530,7 +521,7 @@ evacuate_pc::
     ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
     ld   a, (hl)
     rra
-    and    a, #0x07
+    and  a, #0x07
     ld   (hl), a
 
     ;; ------------------------------------------------------------------------
@@ -809,9 +800,7 @@ _s_chunk_header3:
     jr   c, s_chunk_header3_compatible
 s_chunk_header3_incompatible:
     ld   a, #FATAL_INCOMPATIBLE
-    out  (ULA_PORT), a
-    di
-    halt
+    jp   _fail
 s_chunk_header3_compatible:
 
     ;; Decide on a good value for tftp_write_pos; store in HL.

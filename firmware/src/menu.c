@@ -47,87 +47,9 @@
 /* --------------------------------------------------------------------------
  * Scan through the loaded snapshot list, and build an array of pointers
  * to NUL-terminated file names in rx_frame.
- * Returns the number of snapshots in the list in L.
+ * Returns the number of snapshots in the list in C.
  * Destroys AF, C, DE, HL.
  * ----------------------------------------------------------------------- */
-
-static uint8_t
-create_snapshot_list(void)
-__naked
-{
-  __asm
-
-    ld   hl, #_snapshot_list
-    ld   de, #_rx_frame
-    ld   c, #0            ;; number of snapshots, max 255
-
-    ;; ------------------------------------------------------------------------
-    ;; check if done:
-    ;; - found a NUL byte? (interpreted as end of file)
-    ;; - filled RX buffer with filename pointers? (max 255)
-    ;; ------------------------------------------------------------------------
-
-create_snapshot_list_loop1:
-
-    ld   a, (hl)
-    or   a, a
-    jr   z, create_snapshot_list_finish
-
-    ld   a, c
-    inc  a
-    jr   z, create_snapshot_list_finish
-
-    ;; ------------------------------------------------------------------------
-    ;; store a pointer to the current file name
-    ;; ------------------------------------------------------------------------
-
-create_snapshot_list_store_ptr:
-
-    ld   a, l
-    ld   (de), a
-    inc  de
-    ld   a, h
-    ld   (de), a
-    inc  de
-
-    inc  c
-
-    ;; ------------------------------------------------------------------------
-    ;; ensure the current file name is NUL terminated, and advance HL to next
-    ;; ------------------------------------------------------------------------
-
-create_snapshot_list_loop2:
-    ld   a, (hl)
-    cp   a, #32        ;; end of file name (CR/LF/NUL)
-    jr   c, create_snapshot_list_found_nul
-    inc  hl
-    jr   create_snapshot_list_loop2
-
-create_snapshot_list_found_nul:
-    xor  a, a
-    ld   (hl), a
-
-    ;; ------------------------------------------------------------------------
-    ;; skip any other trailing CR/LF stuff
-    ;; ------------------------------------------------------------------------
-
-create_snapshot_list_find_next:
-    inc  hl
-    ld   a, (hl)
-    or   a, a
-    jr   z, create_snapshot_list_finish
-    cp   a, #32
-    jr   nc, create_snapshot_list_loop1
-    jr   create_snapshot_list_find_next
-
-create_snapshot_list_finish:
-
-    ld   l, c
-
-    ret
-
-  __endasm;
-}
 
 /* ------------------------------------------------------------------------- */
 // E = total number of snapshots
@@ -373,17 +295,80 @@ copy_digit_font_data_loop:
     ld   (hl), a
     ldir
 
+    ;; ========================================================================
+    ;; create snapshot index list, use _rx_frame for filename pointer array
+    ;; ========================================================================
+
+    ld   hl, #_snapshot_list
+    ld   de, #_rx_frame
+    ld   c, #0            ;; number of snapshots, max 255
+
     ;; ------------------------------------------------------------------------
-    ;; create index list, use _rx_frame for filename pointer array
+    ;; check if done:
+    ;; - found a NUL byte? (interpreted as end of file)
+    ;; - filled RX buffer with filename pointers? (max 255)
     ;; ------------------------------------------------------------------------
 
-    call _create_snapshot_list
-    ld   e, l
+create_snapshot_list_loop1:
+
+    ld   a, (hl)
+    or   a, a
+    jr   z, create_snapshot_list_finish
+
+    ld   a, c
+    inc  a
+    jr   z, create_snapshot_list_finish
+
+    ;; ------------------------------------------------------------------------
+    ;; store a pointer to the current file name
+    ;; ------------------------------------------------------------------------
+
+create_snapshot_list_store_ptr:
+
+    ld   a, l
+    ld   (de), a
+    inc  de
+    ld   a, h
+    ld   (de), a
+    inc  de
+
+    inc  c
+
+    ;; ------------------------------------------------------------------------
+    ;; ensure the current file name is NUL terminated, and advance HL to next
+    ;; ------------------------------------------------------------------------
+
+create_snapshot_list_loop2:
+    ld   a, (hl)
+    cp   a, #32        ;; end of file name (CR/LF/NUL)
+    jr   c, create_snapshot_list_found_nul
+    inc  hl
+    jr   create_snapshot_list_loop2
+
+create_snapshot_list_found_nul:
+    xor  a, a
+    ld   (hl), a
+
+    ;; ------------------------------------------------------------------------
+    ;; skip any other trailing CR/LF stuff
+    ;; ------------------------------------------------------------------------
+
+create_snapshot_list_find_next:
+    inc  hl
+    ld   a, (hl)
+    or   a, a
+    jr   z, create_snapshot_list_finish
+    cp   a, #32
+    jr   nc, create_snapshot_list_loop1
+    jr   create_snapshot_list_find_next
+
+create_snapshot_list_finish:
 
     ;; C = currently highlighted entry (0..254)
     ;; D = display offset (index of first displayed snapshot name)
     ;; E = total number of snapshots (0..255)
 
+    ld   e, c
     ld   c, #0
     ld   d, c
 

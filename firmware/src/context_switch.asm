@@ -66,9 +66,9 @@ _context_switch:
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
     ld   bc, #MEMCFG_ADDR
-    out  (c), h
+    out  (c), h               ;; next byte after HW_TYPE: 128k memory config
 
-    ld   a, l
+    ld   a, l                 ;; HW_TYPE
     or   a, a
     jr   z, context_switch_48k_snapshot
 
@@ -78,7 +78,7 @@ _context_switch:
 
     ld   de, #16   ;; D := 0; E := 16
     ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
-context_switch_snd_reg_loop::
+context_switch_snd_reg_loop:
     ld   b, #>SND_REG_SELECT
     out  (c), d
     ld   b, #>SND_REG_VALUE
@@ -93,7 +93,7 @@ context_switch_snd_reg_loop::
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
     out  (c), a
 
-context_switch_48k_snapshot::
+context_switch_48k_snapshot:
 
     ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
 
