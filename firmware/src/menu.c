@@ -255,10 +255,103 @@ find_snapshot_for_letter_found:
 
 /* ------------------------------------------------------------------------- */
 
-static void
-handle_menu(void)
+void
+run_menu(void)
 {
   __asm
+
+    ;; ------------------------------------------------------------------------
+    ;; In the two-stage loader, this function will be called twice:
+    ;; once to load the snapshot list, and then again once that list is loaded.
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_tftp_write_pos)
+
+#ifdef STAGE2_IN_RAM
+    ld   a, h
+    cp   a, #>_snapshot_list
+    jr   nz, menu_second_time
+    ld   a, l
+    cp   a, #<_snapshot_list
+    jr   nz, menu_second_time
+#endif
+
+    ;; ------------------------------------------------------------------------
+    ;; ensure menu data is NUL-terminated
+    ;; ------------------------------------------------------------------------
+
+    ld   (hl), #0
+
+    ;; ------------------------------------------------------------------------
+    ;; Initialize user interface
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #ip_address_str
+    push hl
+    xor  a, a
+    push af
+    inc  sp
+    ld   hl, #0x0017       ;; (23, 0)
+    push hl
+    call _print_at
+    pop  af
+    inc  sp
+    pop  af
+
+    ld   hl, #0x5810      ;; (0, 16)
+    ld   bc, #9
+    xor  a, a
+
+    call _set_attrs
+
+    ld   hl, #0x5ae0       ;; (23, 0)
+    ld   c, #32            ;; B is zero here
+    ld   a, #WHITE + (BLACK << 3)
+
+    call _set_attrs
+
+    ld   hl, #LOCAL_IP_POS
+    push hl
+    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    push hl
+
+    call _print_ip_addr
+
+    pop  af
+    pop  af
+
+    ld   hl, #SERVER_IP_POS
+    push hl
+    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
+    push hl
+
+    call _print_ip_addr
+
+    pop  af
+    pop  af
+
+#ifdef STAGE2_IN_RAM
+
+    ;; ------------------------------------------------------------------------
+    ;; this is the first time the stage 2 loader was invoked:
+    ;; load the snapshot list
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #snapshots_lst_str
+    push hl
+    call _tftp_read_request
+
+    jp   main_loop
+
+#endif
+
+menu_second_time:
+
+    ;; ------------------------------------------------------------------------
+    ;; this is the second time the stage 2 loader was invoked:
+    ;; run the menu interface
+    ;; ------------------------------------------------------------------------
+
 
     ;; ------------------------------------------------------------------------
     ;; copy digit font data
@@ -274,13 +367,6 @@ copy_digit_font_data_loop:
     inc  hl
     dec  a
     jr   nz, copy_digit_font_data_loop
-
-    ;; ------------------------------------------------------------------------
-    ;; ensure menu data is NUL-terminated
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, (_tftp_write_pos)
-    ld   (hl), a    ;; A is zero after loop above
 
     ;; ------------------------------------------------------------------------
     ;; set up menu colours
@@ -477,44 +563,12 @@ menu_hit_enter:
 
     jp   main_loop
 
+ip_address_str:
+    .ascii "Local:           TFTP:"
+    .db  0
+snapshots_lst_str:
+    .ascii "snapshots.lst"
+    .db  0
+
   __endasm;
-}
-
-/* ------------------------------------------------------------------------- */
-
-void
-run_menu(void)
-{
-#ifdef STAGE2_IN_RAM
-  if (tftp_write_pos == &snapshot_list) {
-#endif
-    set_attrs(INK(BLACK) | PAPER(BLACK), 0, 16, 10);
-    print_at(23, 0, '\0', "Local:           TFTP:");
-    print_ip_addr( &ip_config.host_address, (uint8_t *) LOCAL_IP_POS);
-    print_ip_addr( &ip_config.tftp_server_address, (uint8_t *) SERVER_IP_POS);
-    set_attrs(INK(WHITE) | PAPER(BLACK), 23, 0, 31);
-
-#ifdef STAGE2_IN_RAM
-    tftp_read_request("snapshots.lst");
-    __asm
-      jp   main_loop
-    __endasm;
-  }
-#endif
-
-  // *((uint8_t *) tftp_write_pos) = 0;  // ensure menu data is NUL-terminated
-
-  // copy_digit_font_data();
-
-  /* --------------------------------------------------------------------------
-   * Scan through the loaded snapshot list, and build an array of pointers
-   * to NUL-terminated file names in rx_frame.snapshot_names.
-   * ----------------------------------------------------------------------- */
-
-  /* --------------------------------------------------------------------------
-   * Display menu
-   * ----------------------------------------------------------------------- */
-   // set_attrs(INK(BLUE) | PAPER(WHITE), 2, 0, 32 * DISPLAY_LINES);
-
-  handle_menu();
 }

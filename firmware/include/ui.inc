@@ -90,7 +90,7 @@ FATAL_INTERNAL_ERROR      = WHITE
     .globl _wait_key
 
 ;; ----------------------------------------------------------------------------
-;; Set attributes for n elements, starting at (row, col).
-;; stack args: (uint8_t attrs, uint8_t *attr_address, int len)
+;; Set attributes to A for BC elements, starting at VRAM address HL.
+;; Destroys DE. BC is zero on exit.
 ;; ----------------------------------------------------------------------------
-    .globl _set_attrs_impl
+    .globl _set_attrs

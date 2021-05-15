@@ -547,20 +547,10 @@ wait_key_finish:
 
 
 ;; ############################################################################
-;; _set_attrs_impl
+;; _set_attrs
 ;; ############################################################################
 
-_set_attrs_impl:
-
-    pop   de
-    dec   sp
-    pop   af
-    pop   hl
-    pop   bc
-    push  bc
-    push  hl
-    dec   sp
-    push  de
+_set_attrs:
 
     ld    e, l
     ld    d, h
