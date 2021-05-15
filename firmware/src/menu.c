@@ -51,85 +51,6 @@
  * Destroys AF, C, DE, HL.
  * ----------------------------------------------------------------------- */
 
-
-/* ------------------------------------------------------------------------- */
-// E = total number of snapshots
-// D = display offset (index of first displayed snapshot name)
-
-static void
-redraw_menu(uint8_t total, uint8_t offset)
-__naked
-{
-  (void) total, offset;
-
-  __asm
-
-    pop  hl   ;; return adress
-    pop  de
-    push de
-    push hl
-
-    ld   c, #0
-
-redraw_menu_loop:
-
-    ld   a, c
-    cp   a, #DISPLAY_LINES
-    jr   nc, redraw_menu_done
-
-    ;; C + D < E => C < (E-D) => (E-D) > C
-    ld   a, e
-    sub  a, d
-    cp   a, c
-    jr   c, redraw_menu_done
-    jr   z, redraw_menu_done   ;; TODO: do this better?
-
-    push bc
-    push de
-
-    ld   a, c
-    add  a, d
-    ld   l, a
-    ld   h, #0
-    add  hl, hl
-    ld   de, #_rx_frame
-    add  hl, de
-    ld   e, (hl)
-    inc  hl
-    ld   d, (hl)
-
-    push de       ;; stack string
-
-    ld   a, #'.'
-    push af
-    inc  sp       ;; stack terminator
-
-    inc  c
-    inc  c
-    ld   b, #1
-    push bc
-
-    call _print_at
-
-    pop  bc
-    inc  sp
-    pop  hl
-
-    pop  de
-    pop  bc
-
-    inc  c
-    jr   redraw_menu_loop
-
-redraw_menu_done:
-    ret
-
-  __endasm;
-}
-
-
-/* ------------------------------------------------------------------------- */
-
 void
 run_menu(void)
 {
@@ -249,7 +170,9 @@ copy_digit_font_data_loop:
     ldir
 
     ;; ========================================================================
-    ;; create snapshot index list, use _rx_frame for filename pointer array
+    ;; Scan through the loaded snapshot list, and build an array of pointers
+    ;; to NUL-terminated file names in rx_frame.
+    ;; The resulting number of snapshots in the list is stored in C.
     ;; ========================================================================
 
     ld   hl, #_snapshot_list
@@ -293,7 +216,7 @@ menu_setup_store_ptr:
 
 menu_setup_loop2:
     ld   a, (hl)
-    cp   a, #32        ;; end of file name (CR/LF/NUL)
+    cp   a, #' '        ;; less than 32 means end of file name (CR/LF/NUL)
     jr   c, menu_setup_found_nul
     inc  hl
     jr   menu_setup_loop2
@@ -311,7 +234,7 @@ menu_setup_find_next:
     ld   a, (hl)
     or   a, a
     jr   z, menu_setup_ready
-    cp   a, #32
+    cp   a, #' '
     jr   nc, menu_setup_loop1
     jr   menu_setup_find_next
 
@@ -334,10 +257,67 @@ menu_loop:
     ld   a, #WHITE + (BLUE << 3) + BRIGHT
     call menu_set_highlight
 
+    ;; ========================================================================
+    ;; redraw menu contents
+    ;; ========================================================================
+
     push bc
     push de
 
-    call _redraw_menu
+    ld   c, #0     ;; loop index
+
+redraw_menu_loop:
+
+    ld   a, c
+    cp   a, #DISPLAY_LINES
+    jr   nc, redraw_menu_done
+
+    ;; break the loop if C + D >= E
+
+    add  a, d
+    cp   a, e
+    jr   nc, redraw_menu_done
+
+    push bc
+    push de
+
+    ld   l, a
+    ld   h, #0
+    add  hl, hl
+    ld   de, #_rx_frame
+    add  hl, de
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
+
+    push de       ;; stack string
+
+    ld   a, #'.'
+    push af
+    inc  sp       ;; stack terminator
+
+    inc  c
+    inc  c
+    ld   b, #1
+    push bc
+
+    call _print_at
+
+    pop  bc
+    inc  sp
+    pop  hl
+
+    pop  de
+    pop  bc
+
+    inc  c
+    jr   redraw_menu_loop
+
+redraw_menu_done:
+
+    ;; ========================================================================
+    ;; handle user input
+    ;; ========================================================================
 
     call _wait_key
 
@@ -347,7 +327,7 @@ menu_loop:
     ld   a, #BLUE + (WHITE << 3)    ;; erase highlight
     call menu_set_highlight
 
-    ld   a, l       ;; return value from _wait_key
+    ld   a, l       ;; return value from _wait_key above
 
     cp   a, #KEY_ENTER
     jr   z, menu_hit_enter
@@ -443,7 +423,7 @@ menu_adjust:
     jr   nc, menu_not_top
 
     ld   d, c
-    jr   menu_loop
+    jr   menu_loop_alternative
 
 menu_not_top:
 
@@ -452,13 +432,14 @@ menu_not_top:
     ld   a, d
     add  a, #DISPLAY_LINES - 1
     cp   a, c
-    jr   nc, menu_loop
+    jr   nc, menu_loop_alternative
 
     ld   a, c
     sub  a, #DISPLAY_LINES - 1
     ld   d, a
 
-    jr   menu_loop
+menu_loop_alternative:     ;; TODO: check this when code is tighter
+    jp   menu_loop
 
     ;; ========================================================================
     ;; user hit ENTER: load selected snapshot
@@ -475,7 +456,7 @@ menu_hit_enter:
     inc  hl
     ld   d, (hl)
 
-    push de
+    push de     ;; push arg for _tftp_read_request below
 
     call _eth_init
     call _expect_snapshot
