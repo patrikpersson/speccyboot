@@ -35,6 +35,7 @@
 ;; TFTP DATA packets have a maximal size of 512 bytes, unless options are set
 ;; by the client (and this client won't)
 ;; ----------------------------------------------------------------------------
+
 TFTP_DATA_MAXSIZE    = 512
 
 ;; ----------------------------------------------------------------------------
@@ -42,6 +43,12 @@ TFTP_DATA_MAXSIZE    = 512
 ;; ----------------------------------------------------------------------------
 
 TFTP_HEADER_SIZE     = 4
+
+;; ----------------------------------------------------------------------------
+;; NUL-terminated efault filename for stage 2 loader ('spboot.bin')
+;; ----------------------------------------------------------------------------
+
+    .globl tftp_default_file
 
 ;; ----------------------------------------------------------------------------
 ;; Called by UDP when a TFTP packet has been identified

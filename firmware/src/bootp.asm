@@ -109,7 +109,7 @@ bootp_print_done:
 
     ld    hl, #ATTRS_BASE      ;; (0,0)
     ld    b, #14
-bootp_attr_lp1::
+bootp_attr_lp1:
     ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
     inc   hl
     djnz  bootp_attr_lp1
@@ -294,49 +294,49 @@ bootp_receive_sname_done::
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
     or   a, (hl)      ;; we know A is zero here
     jr   nz, 00001$
-    ld   hl, #bootp_receive_default_file
+    ld   hl, #tftp_default_file
 00001$:
     call _tftp_read_request
 
+    ld   de, #LOCAL_IP_POS
+    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    call print_ip_addr
+
+    ;; HL and D both have the right values
+    ;; (TFTP address follow directly after local address)
+    ld   e, #<SERVER_IP_POS
+    call print_ip_addr
+
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'L' indicator: white ink, black paper, bright
+    ;; attributes for 'L' indicator: cyan ink, black paper, bright
     ;; ------------------------------------------------------------------------
 
     ld    a, #'L'
     ld    de, #BITMAP_BASE + 0x1000 + 7 *32   ;; (23, 0)
     call  print_char
 
-    ld    hl, #ATTRS_BASE + 23 * 32           ;; (23, 0)
-    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
+    ld    a, #'S'
+    ld    e, #<BITMAP_BASE + 0x1000 + 7 * 32 + 16  ;; (23, 16)
+    call  print_char
+
+    ld    hl, #ATTRS_BASE + 23 * 32                ;; (23, 0)
+    ld    (hl), #(CYAN | (BLACK << 3) | BRIGHT)
 
     ;; ------------------------------------------------------------------------
     ;; attributes for IP addresses indicator: white ink, black paper
     ;; ------------------------------------------------------------------------
 
-    ld   de, #LOCAL_IP_POS
-    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    call print_ip_addr
-
-    ld   de, #SERVER_IP_POS
-    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    call print_ip_addr
-
-    ld   hl, #0x5ae1       ;; (23, 1)
-    ld   b, #31
+    ld    b, #31
 _ip_attrs_loop:
-    ld   (hl), #WHITE + (BLACK << 3)
-    inc  hl
-    djnz _ip_attrs_loop
+    inc   hl
+    ld    (hl), #WHITE + (BLACK << 3)
+    djnz  _ip_attrs_loop
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'T' indicator: white ink, black paper, bright, flash
+    ;; attributes for 'S' indicator: white ink, black paper, bright, flash
     ;; ------------------------------------------------------------------------
 
-    ld    a, #'T'
-    ld    de, #BITMAP_BASE + 0x1000 + 7 * 32 + 16  ;; (23, 16)
-    call  print_char
-
-    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ld    l, #<ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
     ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT | FLASH)
 
     ret
@@ -396,7 +396,3 @@ bootp_receive_invalid_address::
 
     ld   a, #FATAL_INVALID_BOOT_SERVER
     jp   _fail
-
-bootp_receive_default_file::
-    .ascii 'spboot.bin'
-    .db   0

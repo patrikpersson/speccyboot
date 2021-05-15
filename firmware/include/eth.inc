@@ -154,16 +154,8 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
 ;; Create an Ethernet frame for transmission. If a previous frame is
 ;; currently in transmission, block until that is done first.
 ;;
-;;    void
-;;    eth_create(const struct mac_address_t *destination,
-;;               uint16_t                    ethertype,
-;;               eth_frame_class_t           frame_class);
-;;
-;; on stack:
-;;
-;; destination:           destination MAC address, or eth_broadcast_address
-;; ethertype:             value for length/type field
-;; frame_class:           see comment for eth_frame_class_t above
+;; HL = destination MAC address
+;; A = Ethertype flag (zero for IP, non-zero for ARP)
 ;; ============================================================================
     .globl _eth_create
 

@@ -321,6 +321,8 @@ tftp_receive_error::
     ;; ERROR is five bytes: 0, 5, 0, 4, 0
     ;; ------------------------------------------------------------------------
 
+tftp_default_file:
+    .ascii 'spboot.bin'           ;; trailing NUL pinched from following packet
 tftp_receive_error_packet::
     .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
 tftp_receive_ack_opcode::
