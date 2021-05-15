@@ -351,7 +351,7 @@ _tftp_read_request:
     ld   hl, #UDP_PORT_TFTP_SERVER * 0x0100    ;; network order
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
     ld   a, r
-    ld   h, a
+    ld   l, a  ;; H is still UDP_PORT_TFTP_SERVER, so port number will not be zero
     ld   (_tftp_client_port), hl
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
