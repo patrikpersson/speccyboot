@@ -83,36 +83,6 @@ _server_port:
     .area _CODE
 
 ;; ############################################################################
-;; Create UDP reply to the sender of the received packet currently processed.
-;; Source/destination ports are swapped.
-;;
-;; Call with BC=number of bytes in payload
-;; ############################################################################
-
-_tftp_create_reply:
-
-    push bc
-
-    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    push bc
-
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
-    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
-    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
-
-    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    push hl
-
-    call _udp_create_impl
-
-    pop  af
-    pop  af
-    pop  af
-
-    ret
-
-;; ############################################################################
 ;; _tftp_receive
 ;; ############################################################################
 
@@ -140,11 +110,11 @@ _tftp_receive:
     ld   a, (hl)
     cp   a, #TFTP_OPCODE_DATA
 
-tftp_receive_bad_reply::
+tftp_receive_bad_reply:
     ld   a, #FATAL_FILE_NOT_FOUND
     jp   nz, _fail
 
-tftp_receive_got_data::
+tftp_receive_got_data:
 
     ;; ========================================================================
     ;; check block number: acceptable cases are
@@ -186,7 +156,7 @@ tftp_receive_got_data::
     ld    (_server_port), bc
     jr    tftp_receive_blk_nbr_and_port_ok
 
-tftp_receive_check_blk_nbr::
+tftp_receive_check_blk_nbr:
 
     ;; ------------------------------------------------------------------------
     ;; received == expected ?
@@ -205,7 +175,7 @@ tftp_receive_check_blk_nbr::
     or    a, l
     jr    nz, tftp_receive_error
 
-tftp_receive_blk_nbr_ok::
+tftp_receive_blk_nbr_ok:
 
     ;; ------------------------------------------------------------------------
     ;; check server port number:
@@ -218,14 +188,14 @@ tftp_receive_blk_nbr_ok::
     sbc   hl, bc
     jr    nz, tftp_receive_error
 
-tftp_receive_blk_nbr_and_port_ok::
+tftp_receive_blk_nbr_and_port_ok:
 
     ;; ========================================================================
     ;; reply with ACK packet
     ;; ========================================================================
 
-    ld    bc, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
-    call    _tftp_create_reply
+    ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
+    call  udp_reply
 
     ld    de, #TFTP_SIZE_OF_OPCODE
     ld    hl, #tftp_receive_ack_opcode
@@ -305,10 +275,10 @@ tftp_receive_blk_nbr_and_port_ok::
 
     jp  _stage2
 
-tftp_receive_error::
+tftp_receive_error:
 
-    ld    bc, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
-    call  _tftp_create_reply
+    ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
+    call  udp_reply
 
     ld    de, #TFTP_SIZE_OF_ERROR_PACKET
     ld    hl, #tftp_receive_error_packet
@@ -323,9 +293,9 @@ tftp_receive_error::
 
 tftp_default_file:
     .ascii 'spboot.bin'           ;; trailing NUL pinched from following packet
-tftp_receive_error_packet::
+tftp_receive_error_packet:
     .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
-tftp_receive_ack_opcode::
+tftp_receive_ack_opcode:
     .db   0, 4                        ;; illegal TFTP operation, network order
     .db   0                           ;; no particular message
 
@@ -376,18 +346,11 @@ _tftp_read_request:
 
     ld   hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
     add  hl, bc
+    ex   de, hl    ;; DE = UDP length
 
-    ;; stack arguments and call
-
-    push hl
-    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    push hl
+    ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     ld   hl, #_eth_broadcast_address    ;; all we know at this point
-    push hl
-    call _udp_create_impl
-    pop  hl
-    pop  hl
-    pop  hl
+    call udp_create
 
     ;; append 16-bit TFTP opcode
 
@@ -413,8 +376,8 @@ _tftp_read_request:
     ;; constant data for outgoing TFTP packets
     ;; ------------------------------------------------------------------------
 
-tftp_rrq_option::
+tftp_rrq_option:
     .ascii "octet"             ;; trailing NUL pinched from following packet
-tftp_rrq_prefix::
+tftp_rrq_prefix:
     .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
     .ascii "speccyboot/"       ;; no NUL necessary here

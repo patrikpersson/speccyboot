@@ -83,14 +83,18 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 ;; ----------------------------------------------------------------------------
 ;; Create UDP packet (IP + UDP headers).
 ;;
-;; Stack arguments:
-;; udp_create_impl(const struct mac_address_t  *dst_hwaddr,
-;;                 const ipv4_address_t        *dst_ipaddr,
-;;                 uint16_t                     udp_length);
-;;
-;; NOTE:
-;;  - Source and destination ports are passed in network endian order.
-;;  - The 'udp_length' argument must include UDP_HEADER_SIZE.
+;; HL: points to destination MAC address
+;; BC: points to destination IP address
+;; DE: UDP length, including UDP_HEADER_SIZE
 ;; ----------------------------------------------------------------------------
 
-    .globl _udp_create_impl
+    .globl udp_create
+
+;; ----------------------------------------------------------------------------
+;; Create UDP reply to the sender of the received packet currently processed.
+;; Source/destination ports are swapped.
+;;
+;; Call with DE=number of bytes in payload
+;; ----------------------------------------------------------------------------
+
+    .globl udp_reply

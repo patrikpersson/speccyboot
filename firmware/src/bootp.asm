@@ -142,15 +142,12 @@ bootp_attr_lp1:
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
     ld   h, #UDP_PORT_BOOTP_SERVER
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
-    ld   hl, #UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
-    push hl
-    ld   hl, #_eth_broadcast_address   ;; works for IP broadcast too
-    push hl
-    push hl
-    call _udp_create_impl
-    pop  af
-    pop  af
-    pop  af
+
+    ld   de, #UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
+    ld   hl, #_eth_broadcast_address
+    ld   b, h     ;; works for IP broadcast too (4 x 0xff)
+    ld   c, l
+    call udp_create
 
     ;; ------------------------------------------------------------------------
     ;; part 1: 8 bytes of header (constants)

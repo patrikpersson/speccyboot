@@ -230,16 +230,33 @@ ip_receive_check_checksum::
     pop  af   ;; pop return address within ip_receive
     ret       ;; return to _caller_ of ip_receive
 
+
 ;; ############################################################################
-;; _udp_create_impl
+;; Create UDP reply to the sender of the received packet currently processed.
+;; Source/destination ports are swapped.
+;;
+;; Call with DE=number of bytes in payload
 ;; ############################################################################
 
-_udp_create_impl:
+udp_reply:
 
-    push  ix
+    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
 
-    ld    ix, #4
-    add   ix, sp
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+
+    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+
+    ;; FALL THROUGH to udp_create
+
+
+;; ############################################################################
+;; _udp_create
+;; ############################################################################
+
+udp_create:
 
     ;; assume
     ;; dst_hwaddr  at (ix + 0)
@@ -250,23 +267,26 @@ _udp_create_impl:
     ;; set up a header template, to be filled in with proper data below
     ;; ----------------------------------------------------------------------
 
+    exx
     ld    hl, #ip_header_defaults
     ld    de, #_header_template
     ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
     ldir
+    exx
 
     ;; current_packet_length = udp_length + sizeof(struct ipv4_header_t);
 
-    ld    l, 4(ix)
-    ld    h, 5(ix)
-    ld    c, #IPV4_HEADER_SIZE        ;; B is zero after LDIR above
-    add   hl, bc
+    push  hl
+    push  de
+
+    ld    hl, #IPV4_HEADER_SIZE
+    add   hl, de
+    ex    de, hl                ;; DE is now total length, including IP header
 
     ;; ----------------------------------------------------------------------
     ;; prepare IP header in _header_template
     ;; ----------------------------------------------------------------------
 
-    ex    de, hl
     ld    hl, #_header_template + 2    ;; total length
     ld    (hl), d       ;; total_length  (network order)
     inc   hl
@@ -274,16 +294,19 @@ _udp_create_impl:
 
     ;; copy source IP address
 
+    exx
     ld    de, #_header_template + 12   ;; source IP address
     ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    ld    c, #4   ;; B is zero after LDIR/add above
+    ld    c, #4         ;; B is zero after LDIR above
     ldir
+    exx
 
     ;; copy destination IP address
 
-    ld    l, 2(ix)
-    ld    h, 3(ix)
-    ld    c, #4
+    ld    l, c
+    ld    h, b
+    ld    de, #_header_template + 16   ;; destination IP address; FIXME: right after DE' above
+    ld    bc, #4
     ldir
 
     ;; ----------------------------------------------------------------------
@@ -313,12 +336,12 @@ _udp_create_impl:
     ;; set UDP length (network order) and clear UDP checksum
     ;; ----------------------------------------------------------------------
 
+    pop    de       ;; UDP length
+
     ld     hl, #_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    ld     a, 5(ix)
-    ld     (hl), a
+    ld     (hl), d
     inc    hl
-    ld     a, 4(ix)
-    ld     (hl), a
+    ld     (hl), e
     inc    hl
 
     xor    a, a
@@ -327,18 +350,16 @@ _udp_create_impl:
     ld     (hl), a
 
     ;; ----------------------------------------------------------------------
-    ;; call eth_create(dst_hwaddr, htons(ETHERTYPE_IP), ENC28J60_TXBUF1_START)
+    ;; create IP packet
     ;; ----------------------------------------------------------------------
 
-    ld    l, 0(ix)
-    ld    h, 1(ix)
-    call  _eth_create    ;; A is zero (means IP), after XOR A, A above
+    pop    hl             ;; destination MAC address
+
+    call   _eth_create    ;; A is zero (means IP), after XOR A, A above
 
     ;; ----------------------------------------------------------------------
     ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
     ;; ----------------------------------------------------------------------
-
-    pop    ix
 
     ld     de, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
     ld     hl, #_header_template
