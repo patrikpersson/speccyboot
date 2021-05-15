@@ -84,29 +84,18 @@ run_menu:
     ;; Initialize user interface
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #ip_address_str
-    push hl
-    xor  a, a
-    push af
-    inc  sp
-    ld   hl, #0x0017       ;; (23, 0)
-    push hl
-    call _print_at
-    pop  af
-    inc  sp
-    pop  af
-
-    ld   hl, #0x5810      ;; (0, 16)
-    ld   bc, #9
-    xor  a, a
-
-    call _set_attrs
-
-    ld   hl, #0x5ae0       ;; (23, 0)
-    ld   c, #32            ;; B is zero here
+    ld   hl, #0x5ae1       ;; (23, 1)
+    ld   bc, #31
     ld   a, #WHITE + (BLACK << 3)
 
     call _set_attrs
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'T' indicator: white ink, black paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
 
     ld   hl, #LOCAL_IP_POS
     push hl

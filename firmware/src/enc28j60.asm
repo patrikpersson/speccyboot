@@ -324,7 +324,7 @@ word_byte1::
     exx                            ;; 4
 
     ld   b, #8                     ;; 7
-word_byte2::
+word_byte2:
 #ifdef HWTARGET_SPECCYBOOT
     spi_read_bit_to_acc            ;; 448 (56*8)
 #endif
@@ -344,7 +344,7 @@ word_byte2::
 
     jr    word_loop                ;; 12
 
-word_loop_end::
+word_loop_end:
 
     ;; If there is a single odd byte remaining, handle it
 
@@ -359,10 +359,10 @@ word_loop_end::
     ex    af, af'   ;; '
     jr    final
 
-odd_byte::
+odd_byte:
 
     ld   b, #8
-odd_byte_loop::
+odd_byte_loop:
 #ifdef HWTARGET_SPECCYBOOT
     spi_read_bit_to_acc
 #endif
@@ -379,7 +379,7 @@ odd_byte_loop::
 ;; these two instructions happen to be 0x08, 0x06, which is the ARP ethertype
 ;; (used in eth.c)
 ;; ----------------------------------------------------------------------------
-_ethertype_arp::
+_ethertype_arp:
     ex    af, af'   ;; '
     ld    b, #0
 
@@ -389,10 +389,10 @@ _ethertype_arp::
 ;; this instruction happens to be 0x0E, which is the ENC28J60H per-packet
 ;; control byte (datasheet, section 7.1)
 ;; ----------------------------------------------------------------------------
-_eth_create_control_byte::
+_eth_create_control_byte:
     ld    c, #0     ;; BC is now 0
 
-final::
+final:
     adc   hl, bc    ;; add final carry
     ld    (_ip_checksum), hl
 
@@ -417,7 +417,7 @@ _enc28j60_add_checksum:
 
     xor   a         ;; clear addition carry
 
-checksum_loop::
+checksum_loop:
     ex    af, af'   ;; ' store addition carry
 
     ld    a, b
@@ -435,7 +435,7 @@ checksum_loop::
 
     jr    checksum_loop
 
-checksum_words_done::
+checksum_words_done:
 
     ex    af, af'   ;; ' load addition carry
     adc   hl, bc    ;;  final carry (BC is zero here)

@@ -57,6 +57,7 @@ SND_REG_VALUE     = 0xbffd
 
     .globl _timer_tick_count
 
+
 ;; ----------------------------------------------------------------------------
 ;; Compare memory blocks pointed to by HL and DE. Register B indicates the
 ;; number of bytes to compare (so, max 256).
@@ -69,8 +70,29 @@ SND_REG_VALUE     = 0xbffd
 
     .globl _memory_compare
 
+
 ;; ----------------------------------------------------------------------------
 ;; Set border to the value of register A, and halt the machine (DI+HALT)
 ;; ----------------------------------------------------------------------------
 
     .globl _fail
+
+
+;; ----------------------------------------------------------------------------
+;; A holds digit to print (0..9) in bit 0..3.. Higher-order bits are masked out.
+;; DE points to VRAM location
+;; destroys BC, HL, F
+;; ----------------------------------------------------------------------------
+
+    .globl print_digit
+
+
+;; ----------------------------------------------------------------------------
+;; print_char
+;;
+;; A holds character to print
+;; DE points to VRAM location
+;; destroys BC, F; preserves DE, HL
+;; ----------------------------------------------------------------------------
+
+    .globl print_char
