@@ -415,4 +415,4 @@ tftp_rrq_option::
     .ascii "octet"             ;; trailing NUL pinched from following packet
 tftp_rrq_prefix::
     .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
-    .ascii "speccyboot/"
+    .ascii "speccyboot/"       ;; no NUL necessary here

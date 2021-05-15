@@ -83,55 +83,57 @@ print_ip_addr:
     ;; HL = IP address
     ;; AF, BC = scratch
 
-    ld    b, #0       ;; loop counter AND octet index
-00001$:               ;; four octets
+    ld    b, #4       ;; loop counter, four octets
+00001$:
+    push  bc
 
     ld    a, (hl)
     inc   hl
+
     cp    a, #10
-    jr    c, 00004$    ;; < 10? print only single digit
-    cp    a, #100
-    jr    c, 00002$    ;; no hundreds? skip entirely, not even a zero
-    ld    c, #0
-00003$:   ;; loop to count hundreds
-    inc   c
-    sub   a, #100
-    cp    a, #100
-    jr    nc, 00003$
+    jr    c, 00002$        ;; < 10? print only single digit
 
-    push  af
-    ld    a, c
-    call  print_digit      ;; X__
-    pop   af
+    ld    b, #100
+    cp    a, b
+    call  nc, print_div    ;; no hundreds? skip entirely, not even a zero
 
-00002$:   ;; hundreds done
-    cp    a, #10
-    jr    c, 00004$
-    ld    c, #0
-00005$:   ;; loop to count tens
-    inc   c
-    sub   a, #10
-    cp    a, #10
-    jr    nc, 00005$
+    ld    b, #10
+    call  print_div
 
-    push  af
-    ld    a, c
-    call  print_digit      ;; X__
-    pop   af
+00002$:   ;; tens done
 
-00004$:   ;; tens done
+    call  print_digit
 
-    call  print_digit      ;; __X
+    pop   bc
 
     ;; print period?
-    inc   b
-    ld    a, b
-    cp    a, #4            ;; last octet? no period
+    dec   b
     ret   z
 
     ld    a, #'.'
     call  print_char
     jr    00001$           ;; next octet
+
+;; ----------------------------------------------------------------------------
+;; Divides A by B, and prints as one digit. Returns remainder in A.
+;; ----------------------------------------------------------------------------
+
+print_div:
+    ld    c, #0
+00001$:
+    cp    a, b
+    jr    c, 00002$
+    inc   c
+    sub   a, b
+    jr    00001$
+
+00002$:
+    push  af
+    ld    a, c
+    call  print_digit
+    pop   af
+    ret
+
 
 ;; ############################################################################
 
