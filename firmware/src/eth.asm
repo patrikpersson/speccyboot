@@ -91,7 +91,6 @@ _main:
     ld    bc, #(STACK_SIZE - 1)
     ld    (hl), #0x48
     ldir
-    ld    sp, #_stack_top
 #endif
 
     call  _eth_init
@@ -105,6 +104,13 @@ _main:
     ;; frame (BOOTP above), so the ACK timer does not need to be reset.
 
 main_loop::
+
+    ;; ------------------------------------------------------------------------
+    ;; The menu (stage 2) JP:s here to load snapshots.lst.
+    ;; Save a few bytes of stack.
+    ;; ------------------------------------------------------------------------
+
+    ld    sp, #_stack_top
 
     ;; ------------------------------------------------------------------------
     ;; Spin here until at least one frame is received. Do this by
