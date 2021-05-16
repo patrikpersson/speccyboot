@@ -189,26 +189,20 @@ bootp_attr_lp1:
     ;; data for the first 8 bytes of the BOOTREQUEST
     ;; ========================================================================
 
-bootrequest_header_data::
+bootrequest_header_data:
     .db   BOOTREQUEST        ;; op
     .db   1                  ;; htype (10mbps Ethernet)
     .db   6                  ;; hlen
     .db   0                  ;; hops
 
-bootrequest_xid::
+bootrequest_xid:
     ;; use first four bytes of title_str ("Spec") for XID
 
-/*
- * Stringification using C preprocessor, see e.g.,
- * https://gcc.gnu.org/onlinedocs/gcc-4.8.5/cpp/Stringification.html
- */
-
-#define str(s) str2(s)
-#define str2(s) #s
-
-title_str::
+title_str:
     .ascii "SpeccyBoot "
-    .ascii str(VERSION)
+    .db   VERSION_MAJOR + '0'
+    .db   '.'
+    .db   VERSION_MINOR + '0'
     .db   0
 
 ;; ############################################################################

@@ -80,6 +80,9 @@ _expected_tftp_block_no:
 _server_port:
     .ds 2        ;; source port currently used by server
 
+stage2_saved_entrypoint:
+    .ds 2        ;; verified and saved entry point for stage 2 loader
+
     .area _CODE
 
 ;; ############################################################################
@@ -254,7 +257,7 @@ tftp_receive_blk_nbr_and_port_ok:
     ld  a, #2
     cp  a, b
 00001$:
-    ex  af, af'
+    ex  af, af'               ;; '
 
     ld  de, (_tftp_write_pos)
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
@@ -265,14 +268,64 @@ tftp_receive_blk_nbr_and_port_ok:
     ;; If a full TFTP packet was loaded, return.
     ;; ------------------------------------------------------------------------
 
-    ex  af, af'
+    ex  af, af'               ;; '
     ret z
 
+    ;; ========================================================================
+    ;; This was the last packet, of either the stage 2 binary or snapshots.lst.
+    ;; Execute the stage 2 loader.
+    ;; ========================================================================
+
     ;; ------------------------------------------------------------------------
-    ;; This was the last packet: execute the loaded binary.
+    ;; We will reach this point twice:
+    ;;   1. when the stage 2 loader has been loaded
+    ;;   2. when snaphots.lst has been loaded
+    ;;
+    ;; In phase 1:
+    ;;   - check the version magic of the loaded binary
+    ;;   - load entry point, store it in stage2_saved_entrypoint
+    ;;   - jump to entry point
+    ;;
+    ;; In phase 2:
+    ;;   - load entry point from stage2_saved_entrypoint
+    ;;   - jump to entry point (again)
     ;; ------------------------------------------------------------------------
 
-    jp  _stage2
+    ld  hl, (stage2_saved_entrypoint)
+    ld  a, h
+    or  a, l
+    jr  nz, _jp_hl   ;; entry point saved? then we are in phase 2, just jump
+
+    ;; ------------------------------------------------------------------------
+    ;; Phase 1: check integrity (16-bit VERSION_MAGIC)
+    ;; ------------------------------------------------------------------------
+
+    ex  de, hl
+    dec hl
+    ld  a, (hl)
+    cp  a, #>VERSION_MAGIC
+    jr  nz, version_mismatch
+    dec hl
+    ld  a, (hl)
+    cp  a, #<VERSION_MAGIC
+    jr  nz, version_mismatch
+
+    ;; ------------------------------------------------------------------------
+    ;; Phase 1: VERSION_MAGIC checked out, store entry point and jump
+    ;; ------------------------------------------------------------------------
+
+    dec hl
+    ld  d, (hl)
+    dec hl
+    ld  e, (hl)
+    ex  de, hl
+    ld  (stage2_saved_entrypoint), hl
+_jp_hl:
+    jp  (hl)
+
+version_mismatch:
+    ld  a, #FATAL_VERSION_MISMATCH
+    jp  _fail
 
 tftp_receive_error:
 

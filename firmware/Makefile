@@ -5,8 +5,6 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-VERSION      = 1d9
-
 CC           = sdcc
 AS           = sdasz80
 MAKEBIN      = makebin
@@ -25,7 +23,7 @@ LDFLAGS     += --code-loc 0x0056 --data-loc 0x5B30
 # Run 'make STAGE2_IN_RAM=1' for a two-part build, with a 2K EPROM loader
 # which in turn loads a second-stage loader (spboot.bin) into RAM
 
-TARGETFLAGS  = -DVERSION='$(VERSION)'
+TARGETFLAGS  =
 
 ifdef DGBOOT
 TARGETFLAGS += -DHWTARGET_DGBOOT

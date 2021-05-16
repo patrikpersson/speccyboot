@@ -56,6 +56,7 @@ ROW_LENGTH  = 32
 ;; codes for fatal_error() displayed as border colours
 ;; ----------------------------------------------------------------------------
 
+FATAL_VERSION_MISMATCH    = BLUE
 FATAL_NO_RESPONSE         = RED
 FATAL_FILE_NOT_FOUND      = YELLOW
 FATAL_INCOMPATIBLE        = CYAN

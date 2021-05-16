@@ -149,10 +149,10 @@ ram_trampoline::
 
 initialize_global_data:
 
-  ;; clear RAM up to _stage2 + 1; this also sets screen to PAPER+INK 0
+  ;; clear RAM up to stage2_start + 1; this also sets screen to PAPER+INK 0
   ld    hl, #0x4000
   ld    de, #0x4001
-  ld    bc, #_stage2 - 0x4000
+  ld    bc, #stage2_start - 0x4000
   ld    (hl), a
   out   (ULA_PORT), a
   ldir
@@ -175,19 +175,28 @@ initialize_global_data:
   .area _INITIALIZED
   .area _BSS
 
-  .area _STAGE2        ;; this is where the stage 2 bootloader starts
+  .area _STAGE2        ;; this is where the stage 2 bootloader starts (RAM)
   .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
-
-  .area _SNAPSHOTLIST  ;; area for loaded snapshot
+  .area _MAGIC         ;; area for magic number (integrity check)
+  .area _SNAPSHOTLIST  ;; area for loaded snapshot list (snapshots.lst)
 
 _tftp_file_buffer::
 
   .area _STAGE2
 
-_stage2::
+stage2_start:
 
-  jp  run_menu
+  ;; --------------------------------------------------------------------------
+  ;; Special mark for integrity check, as last three bytes in loaded binary:
+  ;; entry point (2 bytes)
+  ;; VERSION_MAGIC (magic number depending on version, 2 bytes)
+  ;; --------------------------------------------------------------------------
+
+  .area _MAGIC
+
+  .dw   run_menu
+  .dw   VERSION_MAGIC
 
   .area _SNAPSHOTLIST
 
-_snapshot_list::
+_snapshot_list:

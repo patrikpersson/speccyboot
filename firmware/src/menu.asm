@@ -61,6 +61,7 @@ run_menu:
     ;; ========================================================================
     ;; This function will be called twice:
     ;; once to load the snapshot list, and then again once that list is loaded.
+    ;; (see tftp_receive in tftp.asm)
     ;; ========================================================================
 
     ld   hl, (_tftp_write_pos)

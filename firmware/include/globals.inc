@@ -32,6 +32,15 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
+;; ============================================================================
+;; Version information
+;; ============================================================================
+
+VERSION_MAJOR = 2
+VERSION_MINOR = 0
+
+VERSION_MAGIC = 0x5B | VERSION_MAJOR << 4 | VERSION_MINOR
+
 ;; ----------------------------------------------------------------------------
 ;; Stack address (defined here so crt0.asm can find it via linker)
 ;; ----------------------------------------------------------------------------
@@ -73,5 +82,4 @@ _font_data  = 0xfd03     ;; full font, but overwritten by snapshot
     .globl _header_template
     .globl _ip_checksum
     .globl _tftp_receive_hook
-    .globl _stage2
     .globl _snapshot_list
