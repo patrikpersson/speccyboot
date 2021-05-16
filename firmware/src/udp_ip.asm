@@ -258,26 +258,22 @@ udp_reply:
 
 udp_create:
 
-    ;; assume
-    ;; dst_hwaddr  at (ix + 0)
-    ;; dst_ipaddr  at (ix + 2)
-    ;; udp_length  at (ix + 4)
+    push  hl
+    push  de
+    push  bc
 
     ;; ----------------------------------------------------------------------
     ;; set up a header template, to be filled in with proper data below
     ;; ----------------------------------------------------------------------
 
-    exx
+    exx        ;; need DE below
     ld    hl, #ip_header_defaults
     ld    de, #_header_template
     ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
     ldir
     exx
 
-    ;; current_packet_length = udp_length + sizeof(struct ipv4_header_t);
-
-    push  hl
-    push  de
+    ;; current_packet_length = udp_length + IPV4_HEADER_SIZE
 
     ld    hl, #IPV4_HEADER_SIZE
     add   hl, de
@@ -294,19 +290,16 @@ udp_create:
 
     ;; copy source IP address
 
-    exx
     ld    de, #_header_template + 12   ;; source IP address
     ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    ld    c, #4         ;; B is zero after LDIR above
+    ld    bc, #4
     ldir
-    exx
 
     ;; copy destination IP address
 
-    ld    l, c
-    ld    h, b
-    ld    de, #_header_template + 16   ;; destination IP address; FIXME: right after DE' above
+    pop   hl
     ld    bc, #4
+    ;; keep DE from above: destination address follows immediately after source
     ldir
 
     ;; ----------------------------------------------------------------------

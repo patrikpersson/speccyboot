@@ -162,7 +162,7 @@ tftp_receive_check_blk_nbr:
     ;; received == expected ?
     ;; ------------------------------------------------------------------------
 
-    xor   a
+    or    a, a   ;; clear C flag
     sbc   hl, de
     jr    z, tftp_receive_blk_nbr_ok
 
@@ -184,7 +184,7 @@ tftp_receive_blk_nbr_ok:
 
     ld    hl, (_server_port)
     ;; BC was loaded above, early on; holds server-side port nbr from packet
-    xor   a
+    or    a, a     ;; clear C flag
     sbc   hl, bc
     jr    nz, tftp_receive_error
 
@@ -217,7 +217,7 @@ tftp_receive_blk_nbr_and_port_ok:
 
     push  ix
     pop   bc
-    xor   a
+    or   a, a       ;; clear C flag
     sbc   hl, bc
     ret   nz
 
@@ -240,11 +240,10 @@ tftp_receive_blk_nbr_and_port_ok:
     inc hl
     ld  e, (hl)    ;; network order
     ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
-    ld  de, #UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    xor a          ;; clear C flag
-    sbc hl, de
+    ld  de, #0x10000 - UDP_HEADER_SIZE - TFTP_HEADER_SIZE
+    add hl, de
     ld  b, h
-    ld  c, l       ;; BC is now payload length, 0..512
+    ld  c, l       ;; BC is now payload length excluding headers, 0..512
 
     ;; ------------------------------------------------------------------------
     ;; check if BC == 0x200; store result of comparison in alternate AF
@@ -255,7 +254,7 @@ tftp_receive_blk_nbr_and_port_ok:
     ld  a, #2
     cp  a, b
 00001$:
-    ex  af, af'             ;; '
+    ex  af, af'
 
     ld  de, (_tftp_write_pos)
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
@@ -266,7 +265,7 @@ tftp_receive_blk_nbr_and_port_ok:
     ;; If a full TFTP packet was loaded, return.
     ;; ------------------------------------------------------------------------
 
-    ex  af, af'             ;; '
+    ex  af, af'
     ret z
 
     ;; ------------------------------------------------------------------------
