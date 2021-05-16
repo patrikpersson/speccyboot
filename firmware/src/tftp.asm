@@ -86,10 +86,10 @@ stage2_saved_entrypoint:
     .area _CODE
 
 ;; ############################################################################
-;; _tftp_receive
+;; tftp_receive
 ;; ############################################################################
 
-_tftp_receive:
+tftp_receive:
 
     ;; ------------------------------------------------------------------------
     ;; check destination port (should be _tftp_client_port)
@@ -98,7 +98,7 @@ _tftp_receive:
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT
     ld   de, #_tftp_client_port
     ld   b, #2
-    call _memory_compare
+    call memory_compare
     ret  nz
 
     ;; ------------------------------------------------------------------------
@@ -115,7 +115,7 @@ _tftp_receive:
 
 tftp_receive_bad_reply:
     ld   a, #FATAL_FILE_NOT_FOUND
-    jp   nz, _fail
+    jp   nz, fail
 
 tftp_receive_got_data:
 
@@ -202,11 +202,11 @@ tftp_receive_blk_nbr_and_port_ok:
 
     ld    de, #TFTP_SIZE_OF_OPCODE
     ld    hl, #tftp_receive_ack_opcode
-    call    _enc28j60_write_memory_cont
+    call    enc28j60_write_memory
 
     ld    e, #TFTP_SIZE_OF_OPCODE    ;; D==0 here
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
-    call    _enc28j60_write_memory_cont
+    call    enc28j60_write_memory
 
     call  ip_send
 
@@ -325,7 +325,7 @@ _jp_hl:
 
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
-    jp  _fail
+    jp  fail
 
 tftp_receive_error:
 
@@ -334,7 +334,7 @@ tftp_receive_error:
 
     ld    de, #TFTP_SIZE_OF_ERROR_PACKET
     ld    hl, #tftp_receive_error_packet
-    call  _enc28j60_write_memory_cont
+    call  enc28j60_write_memory
 
     jp    ip_send
 
@@ -352,10 +352,10 @@ tftp_receive_ack_opcode:
     .db   0                           ;; no particular message
 
 ;; ############################################################################
-;; _tftp_read_request
+;; tftp_read_request
 ;; ############################################################################
 
-_tftp_read_request:
+tftp_read_request:
 
     ex   de, hl
 
@@ -408,19 +408,19 @@ _tftp_read_request:
 
     ld   de, #TFTP_SIZE_OF_RRQ_PREFIX
     ld   hl, #tftp_rrq_prefix
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     ;; filename and length already stacked above
 
     pop  hl
     pop  de
 
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     ;; append option ("octet" mode), happens to be 6 bytes, like a MAC address
 
     ld   hl, #tftp_rrq_option
-    call _enc28j60_write_6b
+    call enc28j60_write_memory_6_bytes
 
     jp   ip_send
 

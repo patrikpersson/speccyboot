@@ -91,7 +91,7 @@ run_menu:
     ;; ========================================================================
 
     ld   hl, #snapshots_lst_str
-    call _tftp_read_request
+    call tftp_read_request
 
     jp   main_loop
 
@@ -400,7 +400,7 @@ menu_hit_enter:
     inc  hl
     ld   d, (hl)
 
-    push de     ;; push arg for _tftp_read_request below
+    push de     ;; push arg for tftp_read_request below
 
     ;; ------------------------------------------------------------------------
     ;; prepare for receiving .z80 snapshot data
@@ -409,11 +409,11 @@ menu_hit_enter:
     ld   hl, #0x4000
     ld   (_tftp_write_pos), hl
 
-    ld   hl, #_z80_loader_receive_hook
+    ld   hl, #z80_loader_receive_hook
     ld   (_tftp_receive_hook), hl
 
-    ld   hl, #_s_header
-    ld   (_z80_loader_state), hl
+    ld   hl, #s_header
+    ld   (z80_loader_state), hl
 
     ld    hl, #0x5800      ;; clear attribute lines 0..22
     ld    de, #0x5801
@@ -429,7 +429,7 @@ menu_hit_enter:
 
     ld    l, #14
     xor   a
-    call  _show_attr_digit
+    call  show_attr_digit
 
     ld    l, #25
     ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
@@ -442,7 +442,7 @@ menu_hit_enter:
     call eth_init
 
     pop  hl
-    call _tftp_read_request
+    call tftp_read_request
 
     ;; ------------------------------------------------------------------------
     ;; let the main loop handle the response

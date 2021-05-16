@@ -155,7 +155,7 @@ bootp_attr_lp1:
 
     ld   de, #BOOTP_PART1_SIZE
     ld   hl, #bootrequest_header_data
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     ;; ------------------------------------------------------------------------
     ;; part 2: 20 bytes of zeros
@@ -165,14 +165,14 @@ bootp_attr_lp1:
     ld   e, #BOOTP_PART2_SIZE       ;; D==0 here
     ld   hl, #0x4800
     push hl
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     ;; ------------------------------------------------------------------------
     ;; part 3: 6 bytes of MAC address
     ;; ------------------------------------------------------------------------
 
     ld   hl, #eth_local_address
-    call _enc28j60_write_6b
+    call enc28j60_write_memory_6_bytes
 
     ;; ------------------------------------------------------------------------
     ;; part 4: 266 bytes of zeros
@@ -181,7 +181,7 @@ bootp_attr_lp1:
 
     ld   de, #BOOTP_PART4_SIZE
     pop  hl                       ;; HL is now 0x4800, zeros in VRAM
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     jp   ip_send
 
@@ -221,7 +221,7 @@ bootp_receive:
     ld   hl, #bootrequest_xid
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_XID
     ld   b, #4
-    call _memory_compare
+    call memory_compare
     ret  nz
 
     ;; ------------------------------------------------------------------------
@@ -287,7 +287,7 @@ bootp_receive_sname_done:
     jr   nz, 00001$
     ld   hl, #tftp_default_file
 00001$:
-    call _tftp_read_request
+    call tftp_read_request
 
     ld   de, #LOCAL_IP_POS
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
@@ -386,4 +386,4 @@ bootp_receive_invalid_address:
     ;; ERROR: boot server name is not a dotted-decimal IP address
 
     ld   a, #FATAL_INVALID_BOOT_SERVER
-    jp   _fail
+    jp   fail

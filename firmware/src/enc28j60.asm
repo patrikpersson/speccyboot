@@ -43,27 +43,27 @@
     .area _CODE
 
 ;; ############################################################################
-;; _enc28j60_select_bank0
+;; enc28j60_select_bank_0
 ;; ############################################################################
 
-_enc28j60_select_bank0:
+enc28j60_select_bank_0:
 
     ld   e, #0
 
     ;; FALL THROUGH to enc28j60_select_bank
 
 ;; ############################################################################
-;; _enc28j60_select_bank
+;; enc28j60_select_bank
 ;; ############################################################################
 
-_enc28j60_select_bank:
+enc28j60_select_bank:
 
     ;; ------------------------------------------------------------------------
     ;; clear bits 0 and 1 of register ECON1
     ;; ------------------------------------------------------------------------
 
     ld   hl, #0x0100 * 0x03 + OPCODE_BFC + (ECON1 & REG_MASK)
-    call _enc28j60_internal_write8plus8
+    call enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
     ;; mask in "bank" in bits 0 and 1 of register ECON1
@@ -72,22 +72,22 @@ _enc28j60_select_bank:
     ld   h, e
     ld   l, #OPCODE_BFS + (ECON1 & REG_MASK)
 
-    ;; fall-through to enc28j60_internal_write8plus8
+    ;; fall-through to enc28j60_write8plus8
 
 ;; ############################################################################
-;; _enc28j60_internal_write8plus8
+;; enc28j60_write8plus8
 ;; ############################################################################
 
-_enc28j60_internal_write8plus8:
+enc28j60_write8plus8:
 
     ;; ------------------------------------------------------------------------
     ;; start transaction
     ;; ------------------------------------------------------------------------
 
     ld    c, l
-    call  _spi_write_byte         ;; preserves HL+DE
+    call  spi_write_byte         ;; preserves HL+DE
     ld    c, h
-    call  _spi_write_byte
+    call  spi_write_byte
 
     ;; ------------------------------------------------------------------------
     ;; end transaction
@@ -96,10 +96,10 @@ _enc28j60_internal_write8plus8:
     jr    enc28j60_end_transaction_and_return
 
 ;; ############################################################################
-;; _enc28j60_write_register16
+;; enc28j60_write_register16
 ;; ############################################################################
 
-_enc28j60_write_register16:
+enc28j60_write_register16:
 
     ld     e, a
     inc    e
@@ -108,33 +108,33 @@ _enc28j60_write_register16:
     ld     h, l
     ld     l, a
 
-    call   _enc28j60_internal_write8plus8
+    call   enc28j60_write8plus8
 
     ex     de, hl
-    jr     _enc28j60_internal_write8plus8
+    jr     enc28j60_write8plus8
 
 ;; ############################################################################
-;; _enc28j60_write_6b
+;; enc28j60_write_memory_6_bytes
 ;; ############################################################################
 
-_enc28j60_write_6b:
+enc28j60_write_memory_6_bytes:
 
     ld    de, #6
 
     ;; FALL THROUGH to enc28j60_write_memory_cont
 
 ;; ############################################################################
-;; _enc28j60_write_memory_cont
+;; enc28j60_write_memory
 ;; ############################################################################
 
-_enc28j60_write_memory_cont:
+enc28j60_write_memory:
 
     ;; ------------------------------------------------------------------------
     ;; start transaction: WBM
     ;; ------------------------------------------------------------------------
 
     ld    c, #OPCODE_WBM
-    call  _spi_write_byte
+    call  spi_write_byte
 
     ;; ------------------------------------------------------------------------
     ;; write DE bytes, starting at HL
@@ -144,7 +144,7 @@ _enc28j60_write_memory_cont:
     ld    c, (hl)  ;; read byte from data
     inc   hl
 
-    call  _spi_write_byte   ;; preserves HL+DE, destroys AF+BC
+    call  spi_write_byte   ;; preserves HL+DE, destroys AF+BC
 
     dec   de
     ld    a, d
@@ -158,10 +158,10 @@ _enc28j60_write_memory_cont:
     jr    enc28j60_end_transaction_and_return
 
 ;; ############################################################################
-;; _enc28j60_read_register
+;; enc28j60_read_register
 ;; ############################################################################
 
-_enc28j60_read_register:
+enc28j60_read_register:
 
     ;; ------------------------------------------------------------------------
     ;; start transaction: RCR
@@ -170,7 +170,7 @@ _enc28j60_read_register:
     ld    a, e
     and   a, #0x1f       ;; opcode RCR = 0x00
     ld    c, a
-    call  _spi_write_byte
+    call  spi_write_byte
 
     ;; ------------------------------------------------------------------------
     ;; for MAC and MII registers, read and ignore a dummy byte
@@ -179,13 +179,13 @@ _enc28j60_read_register:
     ld    a, e
     add   a, a   ;; bit 7 in descriptor set? then this is a MAC or MII register
 
-    call  c, _spi_read_byte
+    call  c, spi_read_byte
 
     ;; ------------------------------------------------------------------------
     ;; now read the actual register value
     ;; ------------------------------------------------------------------------
 
-    call  _spi_read_byte
+    call  spi_read_byte
 
     ;; ------------------------------------------------------------------------
     ;; end transaction
@@ -201,15 +201,15 @@ enc28j60_end_transaction_and_return:
     ret
 
 ;; ############################################################################
-;; _enc28j60_poll_register
+;; enc28j60_poll_register
 ;; ############################################################################
 
-_enc28j60_poll_register:
+enc28j60_poll_register:
 
     ld     bc, #20000       ;; should give controller plenty of time to respond
 00001$:
     push   bc
-    call   _enc28j60_read_register
+    call   enc28j60_read_register
     ld     a, c
     pop    bc
 
@@ -223,10 +223,10 @@ _enc28j60_poll_register:
     jr     nz, 00001$
 
     ld     a, #FATAL_INTERNAL_ERROR
-    jp     _fail
+    jp     fail
 
 ;; ############################################################################
-;; _enc28j60_read_memory_cont
+;; enc28j60_read_memory
 ;; ############################################################################
 
 ;; ----------------------------------------------------------------------------
@@ -234,7 +234,7 @@ _enc28j60_poll_register:
 ;; assumes C=SPI_IN=SPI_OUT    (on SpeccyBoot; set explicitly for DGBoot below)
 ;; ----------------------------------------------------------------------------
 
-_enc28j60_read_memory_cont:
+enc28j60_read_memory:
 
     push  de         ;; nbr_bytes
     push  hl         ;; dst_addr
@@ -246,7 +246,7 @@ _enc28j60_read_memory_cont:
     ;; spi_start_transaction(ENC_OPCODE_RBM);
 
     ld    c, #OPCODE_RBM
-    call  _spi_write_byte
+    call  spi_write_byte
 
     ;;
     ;; assume dst_addr    at (IX + 0)
@@ -307,7 +307,7 @@ word_loop:
     dec  de                        ;; 6
 
     ld   b, #8                     ;; 7
-word_byte1::
+word_byte1:
 
 #ifdef HWTARGET_SPECCYBOOT
     spi_read_bit_to_acc            ;; 448 (56*8)
@@ -389,7 +389,7 @@ ethertype_arp:
 ;; this instruction happens to be 0x0E, which is the ENC28J60H per-packet
 ;; control byte (datasheet, section 7.1)
 ;; ----------------------------------------------------------------------------
-_eth_create_control_byte:
+eth_control_byte:
     ld    c, #0     ;; BC is now 0
 
 final:
@@ -404,10 +404,10 @@ final:
     jp    enc28j60_end_transaction_and_return
 
 ;; ############################################################################
-;; _enc28j60_add_checksum
+;; enc28j60_add_to_checksum
 ;; ############################################################################
 
-_enc28j60_add_checksum:
+enc28j60_add_to_checksum:
 
     ;; ------------------------------------------------------------------------
     ;; Can't use the ENC28J60's checksum offload (errata, item #15)

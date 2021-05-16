@@ -48,27 +48,27 @@ _timer_tick_count:
 
 
 ;; ############################################################################
-;; _memory_compare
+;; memory_compare
 ;; ############################################################################
 
     .area _CODE
 
-_memory_compare:
+memory_compare:
 
     ld   a, (de)
     cp   a, (hl)
     ret  nz
     inc  de
     inc  hl
-    djnz _memory_compare
+    djnz memory_compare
     ret
 
 
 ;; ############################################################################
-;; _fail
+;; fail
 ;; ############################################################################
 
-_fail:
+fail:
     out  (ULA_PORT), a
     di
     halt

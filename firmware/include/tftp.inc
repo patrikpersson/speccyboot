@@ -54,11 +54,11 @@ TFTP_HEADER_SIZE     = 4
 ;; Called by UDP when a TFTP packet has been identified
 ;; ----------------------------------------------------------------------------
 
-    .globl _tftp_receive
+    .globl tftp_receive
 
 ;; ----------------------------------------------------------------------------
 ;; Initiate a file transfer from server.
 ;;
 ;; HL: pointer to NUL-terminated file name
 ;; ----------------------------------------------------------------------------
-    .globl _tftp_read_request
+    .globl tftp_read_request

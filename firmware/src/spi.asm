@@ -29,7 +29,7 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
-    .module enc28j60
+    .module spi
     .optsdcc -mz80
 
 #include "spi_asm.h"
@@ -39,10 +39,10 @@
     .area _CODE
 
 ;; ############################################################################
-;; _spi_read_byte
+;; spi_read_byte
 ;; ############################################################################
 
-_spi_read_byte:
+spi_read_byte:
 
     ld   b, #8
 00001$:
@@ -52,10 +52,10 @@ _spi_read_byte:
     ret
 
 ;; ############################################################################
-;; _spi_write_byte
+;; spi_write_byte
 ;; ############################################################################
 
-_spi_write_byte:
+spi_write_byte:
 
     ld    b, #8
 00001$:

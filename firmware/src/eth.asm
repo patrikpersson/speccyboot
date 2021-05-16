@@ -121,12 +121,12 @@ main_loop:
     ;; ------------------------------------------------------------------------
 
     ld    e, #1       ;; bank 1 for EPKTCNT
-    call  _enc28j60_select_bank
+    call  enc28j60_select_bank
 
 main_spin_loop:
 
     ld    e, #EPKTCNT
-    call  _enc28j60_read_register
+    call  enc28j60_read_register
 
     ld    a, c
     or    a, a
@@ -168,7 +168,7 @@ main_spin_loop:
     ld    a, b
     cp    a, #RETRANSMISSION_TIMEOUT_MAX
     ld    a, #FATAL_NO_RESPONSE
-    jp    nc, _fail
+    jp    nc, fail
 
     ;; ------------------------------------------------------------------------
     ;; double _retransmission_timeout
@@ -197,15 +197,15 @@ main_packet:
     ;; set ERDPT to _next_frame
     ;; ------------------------------------------------------------------------
 
-    call  _enc28j60_select_bank0
+    call  enc28j60_select_bank_0
 
     ld    hl, (_next_frame)
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
-    call  _enc28j60_write_register16
+    call  enc28j60_write_register16
 
     ld    de, #ETH_ADM_HEADER_SIZE
     ld    hl, #_rx_eth_adm
-    call  _enc28j60_read_memory_cont
+    call  enc28j60_read_memory
 
     ;; ------------------------------------------------------------------------
     ;; update _next_frame
@@ -220,7 +220,7 @@ main_packet:
     ;; ------------------------------------------------------------------------
 
     ld    hl, #0x0100 * ECON2_PKTDEC + OPCODE_BFS + (ECON2 & REG_MASK)
-    call  _enc28j60_internal_write8plus8
+    call  enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
     ;; ignore broadcasts from this host (duh)
@@ -229,7 +229,7 @@ main_packet:
     ld    hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
     ld    de, #eth_local_address
     ld    b, #ETH_ADDRESS_SIZE
-    call  _memory_compare
+    call  memory_compare
     jr    z, main_packet_done
 
     ;; ------------------------------------------------------------------------
@@ -251,7 +251,7 @@ main_packet:
     call  arp_receive
     jr    main_packet_done
 main_packet_ip:
-    call  _ip_receive
+    call  ip_receive
 
 main_packet_done:
 
@@ -259,7 +259,7 @@ main_packet_done:
     ;; advance ERXRDPT
     ;; ------------------------------------------------------------------------
 
-    call  _enc28j60_select_bank0     ;; bank of ERXRDPT
+    call  enc28j60_select_bank_0     ;; bank of ERXRDPT
 
     ;; errata B5, item 11:  EXRDPT must always be written with an odd value
 
@@ -268,7 +268,7 @@ main_packet_done:
     set   0, l
 
     ld    a, #OPCODE_WCR + (ERXRDPTL & REG_MASK)
-    call  _enc28j60_write_register16
+    call  enc28j60_write_register16
 
     jp    main_loop
 
@@ -318,7 +318,7 @@ eth_init:
 
     ld    e, #ESTAT
     ld    hl, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
-    call  _enc28j60_poll_register
+    call  enc28j60_poll_register
 
     ;; ========================================================================
     ;; set up initial register values for ENC28J60
@@ -345,7 +345,7 @@ eth_init_registers_loop:
     rlca
     and   a, #3
     ld    e, a
-    call  _enc28j60_select_bank
+    call  enc28j60_select_bank
 
     ;; ------------------------------------------------------------------------
     ;; write register value
@@ -363,7 +363,7 @@ eth_init_registers_loop:
     push  hl         ;; remember position in table
     push  bc         ;; move args
     pop   hl         ;; into HL
-    call  _enc28j60_internal_write8plus8
+    call  enc28j60_write8plus8
     pop   hl
     jr    eth_init_registers_loop
 
@@ -449,7 +449,7 @@ eth_create:
     ;; select default bank for ENC28J60
     ;; ------------------------------------------------------------------------
 
-    call  _enc28j60_select_bank0
+    call  enc28j60_select_bank_0
 
     ;; ------------------------------------------------------------------------
     ;; remember _current_txbuf depending on ethertype
@@ -471,7 +471,7 @@ eth_create_txbuf_set:
     ;; ------------------------------------------------------------------------
 
     ld    a, #OPCODE_WCR + (EWRPTL & REG_MASK)
-    call  _enc28j60_write_register16
+    call  enc28j60_write_register16
 
     ;; ========================================================================
     ;; write Ethernet header, including administrative control byte
@@ -482,22 +482,22 @@ eth_create_txbuf_set:
     ;; ------------------------------------------------------------------------
 
     ld    de, #1
-    ld    hl, #_eth_create_control_byte
-    call  _enc28j60_write_memory_cont
+    ld    hl, #eth_control_byte
+    call  enc28j60_write_memory
 
     ;; ------------------------------------------------------------------------
     ;; write destination (remote) MAC address
     ;; ------------------------------------------------------------------------
 
     pop   hl                             ;; bring back destination MAC address
-    call  _enc28j60_write_6b
+    call  enc28j60_write_memory_6_bytes
 
     ;; ------------------------------------------------------------------------
     ;; write source (local) MAC address
     ;; ------------------------------------------------------------------------
 
     ld    hl, #eth_local_address
-    call  _enc28j60_write_6b
+    call  enc28j60_write_memory_6_bytes
 
     ;; ------------------------------------------------------------------------
     ;; write Ethertype
@@ -509,7 +509,7 @@ eth_create_txbuf_set:
     jr    z, eth_create_ethertype_set
     ld    hl, #ethertype_arp
 eth_create_ethertype_set:
-    jp    _enc28j60_write_memory_cont
+    jp    enc28j60_write_memory
 
 ;; ############################################################################
 ;; ip_send
@@ -593,17 +593,17 @@ perform_transmission:
       push  hl   ;; remember HL=end_address
       push  de
 
-      call  _enc28j60_select_bank0     ;; bank of ETXST and ETXND
+      call  enc28j60_select_bank_0     ;; bank of ETXST and ETXND
 
       pop   hl
       ;; keep end_address on stack
 
       ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
-      call  _enc28j60_write_register16
+      call  enc28j60_write_register16
 
       ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
       pop   hl   ;; end_address pushed above
-      call  _enc28j60_write_register16
+      call  enc28j60_write_register16
 
       ;; ----------------------------------------------------------------------
       ;; Poll for link to come up (if it has not already)
@@ -613,13 +613,13 @@ perform_transmission:
       ;; ----------------------------------------------------------------------
 
       ld    e, #2             ;; bank 2 for MIRDH
-      call  _enc28j60_select_bank
+      call  enc28j60_select_bank
 
       ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
 
       ld    e, #MIRDH
       ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
-      call  _enc28j60_poll_register
+      call  enc28j60_poll_register
 
       ;; ----------------------------------------------------------------------
       ;; Errata, item 10:
@@ -628,36 +628,36 @@ perform_transmission:
       ;; set bit TXRST in ECON1, then clear it
       ;; ----------------------------------------------------------------------
 
-      call  _enc28j60_select_bank0    ;; bank of ECON1
+      call  enc28j60_select_bank_0    ;; bank of ECON1
 
       ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
-      call  _enc28j60_internal_write8plus8
+      call  enc28j60_write8plus8
 
       ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFC + (ECON1 & REG_MASK)
-      call  _enc28j60_internal_write8plus8
+      call  enc28j60_write8plus8
 
       ;; ----------------------------------------------------------------------
       ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
       ;; ----------------------------------------------------------------------
 
       ld    hl, #0x0100 * EIE_TXIE + OPCODE_BFC + (EIE & REG_MASK)
-      call  _enc28j60_internal_write8plus8
+      call  enc28j60_write8plus8
 
       ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + OPCODE_BFC + (EIR & REG_MASK)
-      call  _enc28j60_internal_write8plus8
+      call  enc28j60_write8plus8
 
       ld    hl, #0x0100 * (ESTAT_TXABRT) + OPCODE_BFC + (ESTAT & REG_MASK)
-      call  _enc28j60_internal_write8plus8
+      call  enc28j60_write8plus8
 
       ;; ----------------------------------------------------------------------
       ;; set ECON1.TXRTS, and poll it until it clears
       ;; ----------------------------------------------------------------------
 
       ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
-      call  _enc28j60_internal_write8plus8
+      call  enc28j60_write8plus8
 
       ld    e, #ECON1
       ;; H=ECON1_TXRTS from above, B=0 from _spi_write_byte
       ld    l, b
 
-      jp    _enc28j60_poll_register
+      jp    enc28j60_poll_register

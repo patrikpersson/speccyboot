@@ -45,10 +45,10 @@
     .area _CODE
 
 ;; ############################################################################
-;; _ip_receive
+;; ip_receive
 ;; ############################################################################
 
-_ip_receive:
+ip_receive:
 
     ;; clear IP checksum
 
@@ -59,7 +59,7 @@ _ip_receive:
 
     ld   de, #IPV4_HEADER_SIZE
     ld   hl, #_rx_frame
-    call _enc28j60_read_memory_cont
+    call enc28j60_read_memory
 
     ;; ------------------------------------------------------------
     ;; Check the IP destination address
@@ -80,9 +80,9 @@ _ip_receive:
 
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_DST_ADDR
     ld   b, #4
-    call _memory_compare
+    call memory_compare
 
-ip_receive_address_checked::
+ip_receive_address_checked:
 
     ;; ------------------------------------------------------------
     ;; Check for UDP (everything else will be ignored)
@@ -113,9 +113,9 @@ ip_receive_address_checked::
     ld   d, #0
     ld   e, a
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
-    call _enc28j60_read_memory_cont
+    call enc28j60_read_memory
 
-ip_receive_options_done::
+ip_receive_options_done:
 
     pop  bc    ;; B now holds IP header size
 
@@ -149,7 +149,7 @@ ip_receive_options_done::
 
     ex   de, hl
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
-    call _enc28j60_read_memory_cont
+    call enc28j60_read_memory
 
     ;; ------------------------------------------------------------
     ;; Check UDP checksum
@@ -166,15 +166,15 @@ ip_receive_options_done::
 
     ld   bc, #IPV4_ADDRESS_SIZE ;; BC is number of words (4)
     ld   iy, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    call _enc28j60_add_checksum
+    call enc28j60_add_to_checksum
 
     ld   c, #1 ;; one word, B==0 here
     ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    call _enc28j60_add_checksum
+    call enc28j60_add_to_checksum
 
     call ip_receive_check_checksum
 
-ip_receive_udp_checksum_done::
+ip_receive_udp_checksum_done:
 
     ;; ------------------------------------------------------------
     ;; Pass on to BOOTP/TFTP
@@ -197,9 +197,9 @@ ip_receive_udp_checksum_done::
 
     ld   a, (_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET)
     or   a  ;; a non-zero first octet
-    jp   nz, _tftp_receive
+    jp   nz, tftp_receive
 
-ip_receive_not_tftp::
+ip_receive_not_tftp:
 
     ;; BOOTP response?
 
@@ -220,7 +220,7 @@ ip_receive_not_tftp::
 ;; Destroys AF, HL if OK; more if not.
 ;; -----------------------------------------------------------------------
 
-ip_receive_check_checksum::
+ip_receive_check_checksum:
     ld   hl, (_ip_checksum)
     ld   a, h
     and  a, l
@@ -312,7 +312,7 @@ udp_create:
 
     ld     c, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10); B=0 here
     ld     iy, #_header_template
-    call   _enc28j60_add_checksum
+    call   enc28j60_add_to_checksum
 
     ld     hl, #_ip_checksum
     ld     de, #_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
@@ -356,14 +356,14 @@ udp_create:
 
     ld     de, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
     ld     hl, #_header_template
-    jp     _enc28j60_write_memory_cont
+    jp     enc28j60_write_memory
 
 ;; ============================================================================
 ;; IP header defaults
 ;; https://en.wikipedia.org/wiki/IPv4#Header
 ;; ============================================================================
 
-ip_header_defaults::
+ip_header_defaults:
     .db   0x45, 0            ;; version, IHL, DSCP, EN
     .dw   0xffff             ;; total length (to be replaced)
     .dw   0                  ;; identification

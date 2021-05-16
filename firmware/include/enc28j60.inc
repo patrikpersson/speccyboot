@@ -203,7 +203,7 @@ OPCODE_WBM             = 0x7A
 ;; ----------------------------------------------------------------------------
 
     .globl ethertype_arp
-    .globl _eth_create_control_byte
+    .globl eth_control_byte
 
 ;; ----------------------------------------------------------------------------
 ;; Ensure that register bank 0 is paged in.
@@ -211,7 +211,7 @@ OPCODE_WBM             = 0x7A
 ;; Destroys AF, BC, E, HL.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_select_bank0
+    .globl enc28j60_select_bank_0
 
 ;; ----------------------------------------------------------------------------
 ;; Ensure that the bank in register E (0..3) is paged in. Page 0 is
@@ -220,7 +220,7 @@ OPCODE_WBM             = 0x7A
 ;; Destroys AF, BC, HL.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_select_bank
+    .globl enc28j60_select_bank
 
 ;; ----------------------------------------------------------------------------
 ;; Write an 8-bit opcode plus another 8-bit value.
@@ -229,7 +229,7 @@ OPCODE_WBM             = 0x7A
 ;; Destroys BC, AF.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_internal_write8plus8
+    .globl enc28j60_write8plus8
 
 ;; ----------------------------------------------------------------------------
 ;; Write a 16-bit register.
@@ -241,7 +241,7 @@ OPCODE_WBM             = 0x7A
 ;; Destroys F, BC, DE.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_write_register16
+    .globl enc28j60_write_register16
 
 ;; ----------------------------------------------------------------------------
 ;; Read value of indicated ETH/MAC/MII register.
@@ -251,7 +251,7 @@ OPCODE_WBM             = 0x7A
 ;; Destroys AF, B. B will be zero on exit.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_read_register
+    .globl enc28j60_read_register
 
 ;; ----------------------------------------------------------------------------
 ;; Poll indicated ETH/MAC/MII register R until
@@ -270,7 +270,7 @@ OPCODE_WBM             = 0x7A
 ;; Destroys AF, BC
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_poll_register
+    .globl enc28j60_poll_register
 
 ;; ----------------------------------------------------------------------------
 ;; Read a number of bytes from on-chip SRAM, continuing from previous read.
@@ -283,7 +283,7 @@ OPCODE_WBM             = 0x7A
 ;; Destroys all registers, including alternate ones, except IX/IY.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_read_memory_cont
+    .globl enc28j60_read_memory
 
 ;; ----------------------------------------------------------------------------
 ;; Add a number of 16-bit words to the IP-style checksum.
@@ -297,7 +297,7 @@ OPCODE_WBM             = 0x7A
 ;;   IY points to next byte after checksummed data
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_add_checksum
+    .globl enc28j60_add_to_checksum
 
 ;; ----------------------------------------------------------------------------
 ;; Write six bytes to on-chip SRAM, continuing after previous write.
@@ -307,7 +307,7 @@ OPCODE_WBM             = 0x7A
 ;; On exit, DE==0, and HL points to the next byte after the written data.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_write_6b
+    .globl enc28j60_write_memory_6_bytes
 
 ;; ----------------------------------------------------------------------------
 ;; Write a number of bytes to on-chip SRAM, continuing after previous write.
@@ -317,4 +317,4 @@ OPCODE_WBM             = 0x7A
 ;; On exit, DE==0, and HL points to the next byte after the written data.
 ;; ----------------------------------------------------------------------------
 
-    .globl _enc28j60_write_memory_cont
+    .globl enc28j60_write_memory

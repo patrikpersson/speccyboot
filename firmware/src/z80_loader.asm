@@ -103,7 +103,7 @@ _rep_value:
 ;;   (the outer loop then manages evacuation)
 ;; ----------------------------------------------------------------------------
 
-_z80_loader_state:
+z80_loader_state:
     .ds   2          ;; points to routine for current state
 
 _evacuating:
@@ -135,10 +135,10 @@ _update_progress_display:
 
     ld    l, a   ;; L is now 0
     inc   a      ;; A is now 1
-    call  _show_attr_digit
+    call  show_attr_digit
     ld    a, (bc)
 
-not_100k::
+not_100k:
     pop   hl             ;; recall flags, old F is now in L
     bit   #4, l          ;; was H flag set? Then the tens have increased
     jr    z, not_10k
@@ -150,14 +150,14 @@ not_100k::
     rra
     rra
     ld    l, #7
-    call  _show_attr_digit
+    call  show_attr_digit
 
-not_10k::
+not_10k:
     ;; Print single-number digit (__x)
 
     ld    a, (bc)
     ld    l, #14
-    call  _show_attr_digit
+    call  show_attr_digit
 
     ;; ************************************************************************
     ;; update progress bar
@@ -203,7 +203,7 @@ not_10k::
     ret
 
 ;; ############################################################################
-;; _show_attr_digit
+;; show_attr_digit
 ;;
 ;; subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
 ;; L: column (0..31)
@@ -218,7 +218,7 @@ show_attr_digit_address_known:  ;; special jump target for menu (display ("K"))
     push  bc
     jr    _show_attr_digit2
 
-_show_attr_digit:
+show_attr_digit:
 
     push  bc
     ld    de, #ROM_DIGITS
@@ -291,21 +291,21 @@ _evacuate_data:
     ld   hl, #BITMAP_BASE
 
     ld   d, #5
-evacuate_data_loop1::  ;;  loop over character cells
+evacuate_data_loop1:   ;;  loop over character cells
       ld   e, #0       ;;  accumulated bit weight
       push bc
 
       ld   c, #8
-evacuate_data_loop2::  ;;  loop over pixel rows in cell
+evacuate_data_loop2:   ;;  loop over pixel rows in cell
         ld   a, (hl)
         inc  h
 
         ld   b, #8
-evacuate_data_loop3::  ;;  loop over pixels in cell
+evacuate_data_loop3:   ;;  loop over pixels in cell
           rra
           jr   nc, pixel_not_set
           inc  e
-pixel_not_set::
+pixel_not_set:
         djnz evacuate_data_loop3
 
         dec  c
@@ -327,7 +327,7 @@ pixel_not_set::
       rra
       rra
 
-evac_use_fg::  ;; many pixels set -- use foreground color
+evac_use_fg:  ;; many pixels set -- use foreground color
 
       and  #7
 
@@ -337,7 +337,7 @@ evac_use_fg::  ;; many pixels set -- use foreground color
       add  a, a
       or   a, e
 
-evac_colour_set::
+evac_colour_set:
       ld   (bc), a
       inc  bc
       dec  d
@@ -349,7 +349,7 @@ evac_colour_set::
 
     ld   h, #0x40
     ld   b, #6
-write_trampoline_loop::
+write_trampoline_loop:
       ld   l, #2
       ld   (hl), #0xc3        ;; JP nn
       inc  hl
@@ -407,7 +407,7 @@ write_trampoline_loop::
     dec  a
     jr   z, im_set
     ld   b, #0x5E                           ;; second byte of IM2
-im_set::
+im_set:
     ld   (hl), b
 
     ;; ------------------------------------------------------------------------
@@ -419,7 +419,7 @@ im_set::
     or   a, a
     jr   z, evacuate_di     ;; flag byte is zero, which also happens to be NOP
     ld   a, #0xFB           ;; EI
-evacuate_di::
+evacuate_di:
     ld   (hl), a
 
     ;; ------------------------------------------------------------------------
@@ -477,9 +477,9 @@ evacuate_di::
     ld   a, c
     cp   a, #3
     jr   nc, evacuate_pc                 ;; 128k snapshot: keep config as it is
-evacuate_pc_z80v1_or_48k::
+evacuate_pc_z80v1_or_48k:
     ld   bc, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8
-evacuate_pc::
+evacuate_pc:
     ld   (VRAM_REGSTATE_PC), hl
     ld   (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE), bc
 
@@ -511,12 +511,12 @@ evacuate_pc::
 
     ld   hl, #ENC28J60_EVACUATED_DATA
     ld   a, #OPCODE_WCR + (EWRPTL & REG_MASK)
-    call _enc28j60_write_register16
+    call enc28j60_write_register16
 
     ld   de, #RUNTIME_DATA_LENGTH
     ld   hl, #EVACUATION_TEMP_BUFFER
 
-    jp   _enc28j60_write_memory_cont
+    jp   enc28j60_write_memory
 
 ;; ############################################################################
 ;; _update_progress
@@ -606,7 +606,7 @@ _dec_chunk_bytes:
 ;; and verifies compatibility.
 ;; ############################################################################
 
-_s_header:
+s_header:
 
     ;; ------------------------------------------------------------------------
     ;; set bank 0, ROM 1 (48K ROM) for 128k memory config while loading
@@ -655,7 +655,7 @@ _s_header:
     ld   hl, #_s_chunk_compressed
     jr   s_header_set_state
 
-s_header_ext_hdr::
+s_header_ext_hdr:
 
     ;; ------------------------------------------------------------------------
     ;; extended header: adjust expected no. of kilobytes for a 128k snapshot
@@ -667,7 +667,7 @@ s_header_ext_hdr::
     ld    a, #128
     ld    (_kilobytes_expected), a
 
-s_header_not_128k::
+s_header_not_128k:
 
     ;; ------------------------------------------------------------------------
     ;; adjust header length
@@ -685,8 +685,8 @@ s_header_not_128k::
 
     ld   hl, #_s_chunk_header
 
-s_header_set_state::
-    ld   (_z80_loader_state), hl
+s_header_set_state:
+    ld   (z80_loader_state), hl
 
     ;; ------------------------------------------------------------------------
     ;; adjust _received_data and _received_data_length for header size
@@ -725,7 +725,7 @@ _s_chunk_header:
     ld   (_chunk_bytes_remaining), a
 
     ld    hl, #_s_chunk_header2
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
@@ -742,7 +742,7 @@ _s_chunk_header2:
     ld   (_chunk_bytes_remaining + 1), a
 
     ld    hl, #_s_chunk_header3
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
@@ -769,7 +769,7 @@ _s_chunk_header3:
     jr   c, s_chunk_header3_compatible
 s_chunk_header3_incompatible:
     ld   a, #FATAL_INCOMPATIBLE
-    jp   _fail
+    jp   fail
 s_chunk_header3_compatible:
 
     ;; Decide on a good value for tftp_write_pos; store in HL.
@@ -798,7 +798,7 @@ s_chunk_header3_compatible:
     cp   a, c    ;; 128k snapshot?
     jr   nz, s_chunk_header3_set_page
 
-s_chunk_header3_default_page::
+s_chunk_header3_default_page:
 
     ld   h, #0xc0
     ld   a, #128
@@ -813,7 +813,7 @@ s_chunk_header3_default_page::
     ld   bc, #MEMCFG_ADDR
     out  (c), a
 
-s_chunk_header3_set_page::
+s_chunk_header3_set_page:
     ld   l, #0
     ld   (_tftp_write_pos), hl
 
@@ -829,14 +829,14 @@ s_chunk_header3_set_page::
     ld   (_chunk_bytes_remaining), hl
 
     ld    hl, #_s_chunk_uncompressed
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
-s_chunk_header3_compressed::
+s_chunk_header3_compressed:
 
     ld    hl, #_s_chunk_compressed
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
@@ -914,7 +914,7 @@ checked_chunk_length:
   jr  nz, no_new_state
 
   ld  de, #_s_chunk_header
-  ld  (_z80_loader_state), de
+  ld  (z80_loader_state), de
 
 no_new_state:
   ld  (_chunk_bytes_remaining), hl
@@ -1020,9 +1020,9 @@ s_chunk_compressed_loop:
 
 s_chunk_compressed_chunk_end:
   ld  a, #<_s_chunk_header
-  ld  (_z80_loader_state), a
+  ld  (z80_loader_state), a
   ld  a, #>_s_chunk_header
-  ld  (_z80_loader_state+1), a
+  ld  (z80_loader_state+1), a
   jr  s_chunk_compressed_write_back
 
   ;;
@@ -1082,8 +1082,8 @@ s_chunk_compressed_rept2:
   ld  (_received_data), iy
 
   ld  hl, #_s_chunk_repetition
-  ld  (_z80_loader_state), hl
-jp_hl_instr::          ;; convenient CALL target
+  ld  (z80_loader_state), hl
+jp_hl_instr:          ;; convenient CALL target
   jp  (hl)
 
 s_chunk_compressed_no_opt:
@@ -1092,9 +1092,9 @@ s_chunk_compressed_no_opt:
   ;;
 
   ld  a, #<_s_chunk_compressed_escape
-  ld  (_z80_loader_state), a
+  ld  (z80_loader_state), a
   ld  a, #>_s_chunk_compressed_escape
-  ld  (_z80_loader_state+1), a
+  ld  (z80_loader_state+1), a
 
 s_chunk_compressed_write_back:
   ld  (_chunk_bytes_remaining), bc
@@ -1120,7 +1120,7 @@ _s_chunk_compressed_escape:
     jr    nz, 00001$
 
     ld    hl, #_s_chunk_repcount
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
@@ -1147,7 +1147,7 @@ _s_chunk_compressed_escape:
     call  _update_progress
 
     ld    hl, #_s_chunk_compressed
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
@@ -1164,7 +1164,7 @@ _s_chunk_repcount:
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repvalue
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
@@ -1180,7 +1180,7 @@ _s_chunk_repvalue:
     call _dec_chunk_bytes
 
     ld    hl, #_s_chunk_repetition
-    ld    (_z80_loader_state), hl
+    ld    (z80_loader_state), hl
 
     ret
 
@@ -1196,7 +1196,7 @@ _s_chunk_repetition:
   ld  a, (_rep_value)
   ld  c, a
 
-s_chunk_repetition_loop::
+s_chunk_repetition_loop:
   ld  a, b
   or  a
   jr  z, s_chunk_repetition_write_back
@@ -1223,20 +1223,20 @@ s_chunk_repetition_loop::
 
   jp  _update_progress
 
-s_chunk_repetition_write_back::
+s_chunk_repetition_write_back:
   ld  (_rep_count), a           ;; copied from b above
   ld  (_tftp_write_pos), hl
 
   ld    hl, #_s_chunk_compressed
-  ld    (_z80_loader_state), hl
+  ld    (z80_loader_state), hl
 
   ret
 
 ;; ############################################################################
-;; _z80_loader_receive_hook
+;; z80_loader_receive_hook
 ;; ############################################################################
 
-_z80_loader_receive_hook:
+z80_loader_receive_hook:
 
     ;; ------------------------------------------------------------------------
     ;; set up _received_data & _received_data_length
@@ -1299,7 +1299,7 @@ receive_snapshot_byte_loop:
 
     jr    receive_snapshot_no_evacuation
 
-receive_snapshot_not_entering_runtime_data::
+receive_snapshot_not_entering_runtime_data:
 
     ;; ------------------------------------------------------------------------
     ;; is an evacuation about to be completed?
@@ -1333,11 +1333,11 @@ receive_snapshot_not_entering_runtime_data::
 receive_snapshot_no_evacuation:
 
     ;; ------------------------------------------------------------------------
-    ;; call function pointed to by _z80_loader_state
+    ;; call function pointed to by z80_loader_state
     ;; there is no "CALL (HL)" instruction, so CALL a JP (HL) instead
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_z80_loader_state)
+    ld    hl, (z80_loader_state)
     call  jp_hl_instr
 
     jr    receive_snapshot_byte_loop

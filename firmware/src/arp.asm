@@ -66,7 +66,7 @@ arp_receive:
 
     ld   de, #ARP_IP_ETH_PACKET_SIZE
     ld   hl, #_rx_frame
-    call _enc28j60_read_memory_cont
+    call enc28j60_read_memory
 
     ;; ------------------------------------------------------------------------
     ;; check header against template
@@ -77,7 +77,7 @@ arp_receive:
 
     ld   de, #arp_receive_reply_template
     ld   b, #(ARP_HEADER_SIZE - 1)
-    call _memory_compare
+    call memory_compare
     ret  nz   ;; if the receive packet does not match the expected header, return
 
     ;; HL now points to the low-order OPER byte, expected to be 1 (REQUEST)
@@ -97,7 +97,7 @@ arp_receive:
 
     ld   de , #_rx_frame + ARP_OFFSET_TPA
     ld   b, #IPV4_ADDRESS_SIZE
-    call _memory_compare
+    call memory_compare
     ret  nz   ;; if the packet is not for the local IP address, return
 
     ;; ========================================================================
@@ -105,36 +105,36 @@ arp_receive:
     ;; ========================================================================
 
     ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    cpl       ;; A was zero after _memory_compare, now 0xFF, non-zero means ARP
+    cpl       ;; A was zero after memory_compare, now 0xFF, non-zero means ARP
     call eth_create
 
     ;; ARP header
 
     ld   de, #ARP_HEADER_SIZE
     ld   hl, #arp_receive_reply_template
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     ;; SHA: local MAC address
 
     ld   hl, #eth_local_address
-    call _enc28j60_write_6b
+    call enc28j60_write_memory_6_bytes
 
     ;; SPA: local IPv4 address
 
     ld   e, #IPV4_ADDRESS_SIZE         ;; D==0 here
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     ;; THA: sender MAC address
 
     ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    call _enc28j60_write_6b
+    call enc28j60_write_memory_6_bytes
 
     ;; TPA: sender IP address, taken from SPA field in request
 
     ld   e, #IPV4_ADDRESS_SIZE         ;; D==0 here
     ld   hl, #_rx_frame + ARP_OFFSET_SPA
-    call _enc28j60_write_memory_cont
+    call enc28j60_write_memory
 
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
     jp   eth_send

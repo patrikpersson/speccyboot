@@ -64,11 +64,6 @@ FATAL_INVALID_BOOT_SERVER = MAGENTA
 FATAL_INTERNAL_ERROR      = WHITE
 
 ;; ----------------------------------------------------------------------------
-;; Set border to the value of register A, and halt the machine (DI+HALT)
-;; ----------------------------------------------------------------------------
-    .globl _fail
-
-;; ----------------------------------------------------------------------------
 ;; Display a string at given coordinates, in 8x8 font. The string is
 ;; terminated by the character 'terminator.'
 ;;

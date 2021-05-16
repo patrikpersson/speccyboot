@@ -78,7 +78,7 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 ;; received.
 ;; ----------------------------------------------------------------------------
 
-    .globl _ip_receive
+    .globl ip_receive
 
 ;; ----------------------------------------------------------------------------
 ;; Create UDP packet (IP + UDP headers).

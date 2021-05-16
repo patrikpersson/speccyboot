@@ -57,7 +57,7 @@ context_switch:
 
     ld   hl, #ENC28J60_EVACUATED_DATA
     ld   a, #OPCODE_WCR + (ERDPTL & REG_MASK)
-    call _enc28j60_write_register16
+    call enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
     ;; set up 128k memory configuration,

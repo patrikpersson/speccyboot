@@ -36,8 +36,8 @@
 ;; Installed by menu.
 ;; ----------------------------------------------------------------------------
 
-    .globl _z80_loader_receive_hook
-    .globl _s_header
-    .globl _z80_loader_state
-    .globl _show_attr_digit
+    .globl z80_loader_receive_hook
+    .globl s_header
+    .globl z80_loader_state
+    .globl show_attr_digit
     .globl show_attr_digit_address_known
