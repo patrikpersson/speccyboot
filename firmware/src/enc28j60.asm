@@ -379,7 +379,7 @@ odd_byte_loop:
 ;; these two instructions happen to be 0x08, 0x06, which is the ARP ethertype
 ;; (used in eth.c)
 ;; ----------------------------------------------------------------------------
-_ethertype_arp:
+ethertype_arp:
     ex    af, af'   ;; '
     ld    b, #0
 

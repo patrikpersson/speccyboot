@@ -32,11 +32,11 @@
 ;; useful constant value for eth
 ;; ----------------------------------------------------------------------------
 
-    .globl _ethertype_ip
+    .globl ethertype_ip
 
 ;; ----------------------------------------------------------------------------
 ;; Called by eth.c when an Ethernet frame holding an ARP packet has been
 ;; received.
 ;; ----------------------------------------------------------------------------
 
-    .globl _arp_receive
+    .globl arp_receive

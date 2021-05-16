@@ -49,13 +49,6 @@ MAC_MII        = 0x80
 REG_MASK       = 0x1f
 BANK_MASK      = 0x60
 
-;; REGISTER_TUPLE_MAC_MII(bank, reg)  (((bank) * 0x20) | (0x80) | (reg))
-;; REGISTER_TUPLE_ETH(bank, reg)      (((bank) * 0x20) | (reg))
-
-;; IS_MAC_OR_MII(tuple)    ((tuple) & 0x80)
-;; BANK(tuple)             (((tuple) & 0x60) >> 5)
-;; REG(tuple)              ((tuple) & 0x1f)
-
 ;; ----------------------------------------------------------------------------
 ;; register definitions
 ;; ----------------------------------------------------------------------------
@@ -209,7 +202,7 @@ OPCODE_WBM             = 0x7A
 ;; Useful constant-byte values (used by eth.asm)
 ;; ----------------------------------------------------------------------------
 
-    .globl _ethertype_arp
+    .globl ethertype_arp
     .globl _eth_create_control_byte
 
 ;; ----------------------------------------------------------------------------

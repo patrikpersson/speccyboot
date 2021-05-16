@@ -248,7 +248,7 @@ main_packet:
     jr    z, main_packet_ip
     cp    a, #6
     jr    nz, main_packet_done
-    call  _arp_receive
+    call  arp_receive
     jr    main_packet_done
 main_packet_ip:
     call  _ip_receive
@@ -504,10 +504,10 @@ eth_create_txbuf_set:
     ;; ------------------------------------------------------------------------
 
     ld    e, #ETH_SIZEOF_ETHERTYPE           ;; D==0 here
-    ld    hl, #_ethertype_ip
+    ld    hl, #ethertype_ip
     ex    af, af'          ;; bring back ethertype from AF'
     jr    z, eth_create_ethertype_set
-    ld    hl, #_ethertype_arp
+    ld    hl, #ethertype_arp
 eth_create_ethertype_set:
     jp    _enc28j60_write_memory_cont
 
