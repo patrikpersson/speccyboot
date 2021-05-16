@@ -108,7 +108,7 @@ _arp_receive:
 
     ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
     cpl       ;; A was zero after _memory_compare, now 0xFF, non-zero means ARP
-    call _eth_create
+    call eth_create
 
     ;; ARP header
 
@@ -118,7 +118,7 @@ _arp_receive:
 
     ;; SHA: local MAC address
 
-    ld   hl, #_eth_local_address
+    ld   hl, #eth_local_address
     call _enc28j60_write_6b
 
     ;; SPA: local IPv4 address
@@ -139,7 +139,7 @@ _arp_receive:
     call _enc28j60_write_memory_cont
 
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
-    jp   _eth_send
+    jp   eth_send
 
 arp_receive_reply_template:
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order

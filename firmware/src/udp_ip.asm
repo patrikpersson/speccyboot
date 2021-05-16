@@ -348,7 +348,7 @@ udp_create:
 
     pop    hl             ;; destination MAC address
 
-    call   _eth_create    ;; A is zero (means IP), after XOR A, A above
+    call   eth_create     ;; A is zero (means IP), after XOR A, A above
 
     ;; ----------------------------------------------------------------------
     ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));

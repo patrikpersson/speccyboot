@@ -114,8 +114,8 @@ ETH_FRAME_OPTIONAL = ENC28J60_TXBUF2_START
 ;; Ethernet addresses
 ;; ----------------------------------------------------------------------------
 
-    .globl _eth_broadcast_address
-    .globl _eth_local_address
+    .globl eth_broadcast_address
+    .globl eth_local_address
 
 ETH_ADDRESS_SIZE = 6
 
@@ -148,7 +148,7 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
 ;; ============================================================================
 ;; Initialize Ethernet layer
 ;; ============================================================================
-    .globl _eth_init
+    .globl eth_init
 
 ;; ============================================================================
 ;; Create an Ethernet frame for transmission. If a previous frame is
@@ -157,21 +157,20 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
 ;; HL = destination MAC address
 ;; A = Ethertype flag (zero for IP, non-zero for ARP)
 ;; ============================================================================
-    .globl _eth_create
+    .globl eth_create
 
 ;; ============================================================================
 ;; Send an Ethernet frame, previously created with eth_create().
 ;; HL:  number of bytes in payload (that is, excluding Ethernet header)
 ;; ============================================================================
-    .globl _eth_send
+    .globl eth_send
 
 ;; ============================================================================
 ;; Send a completed IP packet (packet length determined by IP header)
 ;; ============================================================================
-    .globl _ip_send
+    .globl ip_send
 
 ;; ============================================================================
-;; main function, and main loop
+;; main loop
 ;; ============================================================================
-    .globl _main
     .globl main_loop

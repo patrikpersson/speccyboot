@@ -93,7 +93,7 @@ _main:
     ldir
 #endif
 
-    call  _eth_init
+    call  eth_init
     call  _bootp_init
 
     ;; ========================================================================
@@ -227,7 +227,7 @@ main_packet:
     ;; ------------------------------------------------------------------------
 
     ld    hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
-    ld    de, #_eth_local_address
+    ld    de, #eth_local_address
     ld    b, #ETH_ADDRESS_SIZE
     call  _memory_compare
     jr    z, main_packet_done
@@ -274,18 +274,18 @@ main_packet_done:
 
 ;; ----------------------------------------------------------------------------
 
-_eth_broadcast_address:
+eth_broadcast_address:
     .db   0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 
-_eth_local_address:
+eth_local_address:
     .db   MAC_ADDR_0, MAC_ADDR_1, MAC_ADDR_2
     .db   MAC_ADDR_3, MAC_ADDR_4, MAC_ADDR_5
 
 ;; ############################################################################
-;; _eth_init
+;; eth_init
 ;; ############################################################################
 
-_eth_init:
+eth_init:
 
     ;; ========================================================================
     ;; reset Ethernet controller
@@ -436,10 +436,10 @@ eth_register_defaults:
     .db   END_OF_TABLE
 
 ;; ############################################################################
-;; _eth_create
+;; eth_create
 ;; ############################################################################
 
-_eth_create:
+eth_create:
 
     push  hl
     or    a, a
@@ -496,7 +496,7 @@ eth_create_txbuf_set:
     ;; write source (local) MAC address
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #_eth_local_address
+    ld    hl, #eth_local_address
     call  _enc28j60_write_6b
 
     ;; ------------------------------------------------------------------------
@@ -512,10 +512,10 @@ eth_create_ethertype_set:
     jp    _enc28j60_write_memory_cont
 
 ;; ############################################################################
-;; _ip_send
+;; ip_send
 ;; ############################################################################
 
-_ip_send:
+ip_send:
 
     ld   hl, (_header_template + 2)   ;; IP length
     ld   a, l  ;; swap byte order in HL
@@ -525,10 +525,10 @@ _ip_send:
     ;; FALL THROUGH to eth_send
 
 ;; ############################################################################
-;; _eth_send
+;; eth_send
 ;; ############################################################################
 
-_eth_send:
+eth_send:
 
     ;; ------------------------------------------------------------------------
     ;; set DE = start address of frame in transmission buffer,

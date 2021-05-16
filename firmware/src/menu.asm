@@ -439,7 +439,7 @@ menu_hit_enter:
     ;; send a TFTP request for the snapshot
     ;; ------------------------------------------------------------------------
 
-    call _eth_init
+    call eth_init
 
     pop  hl
     call _tftp_read_request

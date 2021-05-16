@@ -144,7 +144,7 @@ bootp_attr_lp1:
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
 
     ld   de, #UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
-    ld   hl, #_eth_broadcast_address
+    ld   hl, #eth_broadcast_address
     ld   b, h     ;; works for IP broadcast too (4 x 0xff)
     ld   c, l
     call udp_create
@@ -171,7 +171,7 @@ bootp_attr_lp1:
     ;; part 3: 6 bytes of MAC address
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_eth_local_address
+    ld   hl, #eth_local_address
     call _enc28j60_write_6b
 
     ;; ------------------------------------------------------------------------
@@ -183,7 +183,7 @@ bootp_attr_lp1:
     pop  hl                       ;; HL is now 0x4800, zeros in VRAM
     call _enc28j60_write_memory_cont
 
-    jp   _ip_send
+    jp   ip_send
 
     ;; ========================================================================
     ;; data for the first 8 bytes of the BOOTREQUEST
