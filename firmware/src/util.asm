@@ -138,7 +138,6 @@ print_div:
 ;; ############################################################################
 
 print_digit:
-    and  a, #0x0f
     add  a, #'0'
 
     ;; FALL THROUGH to print_char
