@@ -34,11 +34,11 @@
 ;; If a BOOTREPLY with an IP address is found, call tftp_read_request().
 ;; ----------------------------------------------------------------------------
 
-    .globl  _bootp_receive
+    .globl  bootp_receive
 
 ;; ----------------------------------------------------------------------------
 ;; Send a BOOTREQUEST for client configuration
 ;; (IP address, boot file name, TFTP server address)
 ;; ----------------------------------------------------------------------------
 
-    .globl  _bootp_init
+    .globl  bootp_init

@@ -182,4 +182,4 @@ Z80_HEADER_OFFSET_HW_STATE_SND   = 39
 ;; Restore application data from ENC28J60 SRAM, restore register values
 ;; and system state from the stored .z80 header, and execute the application.
 ;; ----------------------------------------------------------------------------
-    .globl _context_switch
+    .globl context_switch

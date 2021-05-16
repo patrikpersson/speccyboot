@@ -94,7 +94,7 @@ _main:
 #endif
 
     call  eth_init
-    call  _bootp_init
+    call  bootp_init
 
     ;; ========================================================================
     ;; main loop: receive packets and act on them

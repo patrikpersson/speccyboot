@@ -78,10 +78,10 @@ SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 7*32 + 17)
     .area _CODE
 
 ;; ############################################################################
-;; _bootp_init
+;; bootp_init
 ;; ############################################################################
 
-_bootp_init:
+bootp_init:
 
     ;; ========================================================================
     ;; Presentation
@@ -206,10 +206,10 @@ title_str:
     .db   0
 
 ;; ############################################################################
-;; _bootp_receive
+;; bootp_receive
 ;; ############################################################################
 
-_bootp_receive:
+bootp_receive:
 
     ;; ------------------------------------------------------------------------
     ;; only accept BOOTREPLY packets with correct XID
@@ -275,7 +275,7 @@ bootp_receive_more_octets:
     ;; If we got here, the last octet was apparently followed by a period.
     ;; This is technically wrong, but accepted.
 
-bootp_receive_sname_done::
+bootp_receive_sname_done:
 
     ;; ------------------------------------------------------------------------
     ;; Send TFTP read request for filename in FILE field, or, if none given,
@@ -332,7 +332,7 @@ _ip_attrs_loop:
 
     ret
 
-bootp_receive_parse_octet::
+bootp_receive_parse_octet:
 
     ;; ========================================================================
     ;; Subroutine:
@@ -381,7 +381,7 @@ bootp_receive_parse_octet::
     ;; If we got here, it means we had three digits followed by something else
     ;; than '.' or NUL. Fall through to error routine below.
 
-bootp_receive_invalid_address::
+bootp_receive_invalid_address:
 
     ;; ERROR: boot server name is not a dotted-decimal IP address
 

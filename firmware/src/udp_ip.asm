@@ -208,7 +208,7 @@ ip_receive_not_tftp::
     ret  nz
     ld   a, d
     cp   a, #UDP_PORT_BOOTP_CLIENT
-    jp   z, _bootp_receive
+    jp   z, bootp_receive
     ret
 
 ;; -----------------------------------------------------------------------

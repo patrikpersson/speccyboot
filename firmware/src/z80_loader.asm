@@ -557,7 +557,7 @@ _update_progress:
     di
     halt
 #else
-    jp    _context_switch
+    jp    context_switch
 #endif
 
 ;; ############################################################################

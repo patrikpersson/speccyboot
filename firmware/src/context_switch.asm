@@ -44,10 +44,10 @@
     .include "include/util.inc"
 
 ;; ############################################################################
-;; _context_switch
+;; context_switch
 ;; ############################################################################
 
-_context_switch:
+context_switch:
 
     di
 
@@ -138,7 +138,7 @@ context_switch_48k_snapshot:
     ;; ========================================================================
 
     ld     bc, #0x0800 + OPCODE_RBM        ;; 8 bits, opcode RBM
-context_switch_restore_rbm_loop::
+context_switch_restore_rbm_loop:
     spi_write_bit_from_c
     djnz  context_switch_restore_rbm_loop
 
@@ -147,10 +147,10 @@ context_switch_restore_rbm_loop::
     ;; ------------------------------------------------------------------------
 
     ld    hl, #(RUNTIME_DATA)
-context_switch_restore_bytes_loop::
+context_switch_restore_bytes_loop:
 
     ld    b, #8                      ;; one byte
-context_switch_restore_bits_loop::
+context_switch_restore_bits_loop:
     spi_read_bit_to_c
     djnz  context_switch_restore_bits_loop
 
