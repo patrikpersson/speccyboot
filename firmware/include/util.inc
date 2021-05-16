@@ -77,6 +77,12 @@ SND_REG_VALUE     = 0xbffd
 
     .globl fail
 
+;; ----------------------------------------------------------------------------
+;; Divides A by B. Returns result in C and remainder in A.
+;; C flag is always set. Z flag is always cleared.
+;; ----------------------------------------------------------------------------
+
+    .globl a_div_b
 
 ;; ----------------------------------------------------------------------------
 ;; Prints IP address, four octets of 1-3 digits, with a period between.

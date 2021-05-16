@@ -164,37 +164,21 @@ not_10k:
     ;; ************************************************************************
 
     ld    a, (_kilobytes_expected)
-    sub   a, #48     ;; 48k snapshot?
-    ld    h, a       ;; if it is, store zero in H (useful later)
+    cp    a, #48     ;; 48k snapshot?
     ld    a, (_kilobytes_loaded)
-    jr    z, 00003$
-    srl   a          ;; 128k snapshot => progress = kilobytes / 4
+    jr    z, 00003$  ;; 128k snapshot => progress = kilobytes / 4
+    rra              ;; C is clear after CP above
     srl   a
     jr    00002$
 
-00003$:   ;; 48k snapshot, multiply A by approximately 2/3
-          ;; approximated here as (A-1)*11/16
-
-    dec   a
-    ld    l, a
-    ld    b, h
-    ld    c, a
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    add   hl, bc
-    add   hl, bc
-    add   hl, bc
-
-    ;; instead of shifting HL 4 bits right, shift 4 bits left, use H
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    add   hl, hl
-    ld    a, h
+00003$:              ;; 48k snapshot => progress = kilobytes * 2 / 3
+    add   a, a
+    ld    b, #3
+    call  a_div_b
+    ld    a, c
 
 00002$:
-    or    a
+    or    a, a       ;; zero progress?
     ret   z
     ld    hl, #PROGRESS_BAR_BASE-1
     add   a, l
@@ -267,6 +251,7 @@ _show_attr_digit2:
 
     pop   bc
     ret
+
 
 ;; ############################################################################
 ;; _evacuate_data
@@ -517,6 +502,7 @@ evacuate_pc:
     ld   hl, #EVACUATION_TEMP_BUFFER
 
     jp   enc28j60_write_memory
+
 
 ;; ############################################################################
 ;; _update_progress
