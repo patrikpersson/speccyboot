@@ -118,6 +118,15 @@ z80_loader_state:
 _evacuating:
     .ds   1
 
+;; ----------------------------------------------------------------------------
+;; expected and currently loaded no. of kilobytes, for progress display
+;; ----------------------------------------------------------------------------
+
+_kilobytes_expected:
+     .ds   1
+_kilobytes_loaded:
+    .ds    1
+
 ;; ============================================================================
 
     .area _STAGE2
@@ -633,11 +642,11 @@ s_header:
     ;; decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_s_chunk_uncompressed
+    ld   ix, #_s_chunk_uncompressed
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
     jr   z, s_header_set_state
-    ld   hl, #_s_chunk_compressed
+    ld   ix, #_s_chunk_compressed
     jr   s_header_set_state
 
 s_header_ext_hdr:
@@ -668,10 +677,9 @@ s_header_not_128k:
     ;; a chunk is expected next
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_s_chunk_header
+    ld   ix, #_s_chunk_header
 
 s_header_set_state:
-    ld   (z80_loader_state), hl
 
     ;; ------------------------------------------------------------------------
     ;; adjust _received_data and _received_data_length for header size
@@ -709,8 +717,7 @@ _s_chunk_header:
     call _get_next_byte
     ld   (_chunk_bytes_remaining), a
 
-    ld    hl, #_s_chunk_header2
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_header2
 
     ret
 
@@ -726,8 +733,7 @@ _s_chunk_header2:
     call _get_next_byte
     ld   (_chunk_bytes_remaining + 1), a
 
-    ld    hl, #_s_chunk_header3
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_header3
 
     ret
 
@@ -813,15 +819,13 @@ s_chunk_header3_set_page:
     ld   h, #0x40    ;; HL is now 0x4000
     ld   (_chunk_bytes_remaining), hl
 
-    ld    hl, #_s_chunk_uncompressed
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_uncompressed
 
     ret
 
 s_chunk_header3_compressed:
 
-    ld    hl, #_s_chunk_compressed
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_compressed
 
     ret
 
@@ -898,8 +902,7 @@ checked_chunk_length:
   or  l
   jr  nz, no_new_state
 
-  ld  de, #_s_chunk_header
-  ld  (z80_loader_state), de
+  ld  ix, #_s_chunk_header
 
 no_new_state:
   ld  (_chunk_bytes_remaining), hl
@@ -1001,10 +1004,7 @@ s_chunk_compressed_loop:
   ;;
 
 s_chunk_compressed_chunk_end:
-  ld  a, #<_s_chunk_header
-  ld  (z80_loader_state), a
-  ld  a, #>_s_chunk_header
-  ld  (z80_loader_state+1), a
+  ld  ix, #_s_chunk_header
   jr  s_chunk_compressed_write_back
 
   ;;
@@ -1063,20 +1063,17 @@ s_chunk_compressed_rept2:
   ld  (_tftp_write_pos), hl
   ld  (_received_data), iy
 
-  ld  hl, #_s_chunk_repetition
-  ld  (z80_loader_state), hl
-jp_hl_instr:          ;; convenient CALL target
-  jp  (hl)
+  ld  ix, #_s_chunk_repetition
+
+jp_ix_instr:         ;; convenient CALL target
+  jp  (ix)
 
 s_chunk_compressed_no_opt:
   ;;
   ;; no direct jump to s_chunk_repetition was possible
   ;;
 
-  ld  a, #<_s_chunk_compressed_escape
-  ld  (z80_loader_state), a
-  ld  a, #>_s_chunk_compressed_escape
-  ld  (z80_loader_state+1), a
+  ld  ix, #_s_chunk_compressed_escape
 
 s_chunk_compressed_write_back:
   ld  (_chunk_bytes_remaining), bc
@@ -1101,8 +1098,7 @@ _s_chunk_compressed_escape:
     cp    a, #Z80_ESCAPE
     jr    nz, 00001$
 
-    ld    hl, #_s_chunk_repcount
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_repcount
 
     ret
 
@@ -1128,8 +1124,7 @@ _s_chunk_compressed_escape:
     ld    (_tftp_write_pos), hl
     call  update_progress
 
-    ld    hl, #_s_chunk_compressed
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_compressed
 
     ret
 
@@ -1145,8 +1140,7 @@ _s_chunk_repcount:
 
     call _dec_chunk_bytes
 
-    ld    hl, #_s_chunk_repvalue
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_repvalue
 
     ret
 
@@ -1161,8 +1155,7 @@ _s_chunk_repvalue:
 
     call _dec_chunk_bytes
 
-    ld    hl, #_s_chunk_repetition
-    ld    (z80_loader_state), hl
+    ld    ix, #_s_chunk_repetition
 
     ret
 
@@ -1209,8 +1202,7 @@ s_chunk_repetition_write_back:
   ld  (_rep_count), a           ;; copied from b above
   ld  (_tftp_write_pos), hl
 
-  ld    hl, #_s_chunk_compressed
-  ld    (z80_loader_state), hl
+  ld    ix, #_s_chunk_compressed
 
   ret
 
@@ -1239,7 +1231,11 @@ z80_loader_receive_hook:
     ;; read bytes, evacuate when needed, call state functions
     ;; ========================================================================
 
+    ld   ix, (z80_loader_state)
+
 receive_snapshot_byte_loop:
+
+    ld   (z80_loader_state), ix
 
     ;; ------------------------------------------------------------------------
     ;; if received_data_length is zero, we are done
@@ -1316,10 +1312,9 @@ receive_snapshot_no_evacuation:
 
     ;; ------------------------------------------------------------------------
     ;; call function pointed to by z80_loader_state
-    ;; there is no "CALL (HL)" instruction, so CALL a JP (HL) instead
+    ;; there is no "CALL (IX)" instruction, so CALL a JP (IX) instead
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (z80_loader_state)
-    call  jp_hl_instr
+    call  jp_ix_instr
 
     jr    receive_snapshot_byte_loop
