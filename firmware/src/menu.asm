@@ -422,7 +422,7 @@ menu_hit_enter:
     ld    (hl), a
     ldir
 
-    ld    c, #0x1f         ;; set attribute 23 to BLUE
+    ld    c, #0x1f         ;; set attribute line 23 to BLUE
     ld    a, #BLUE | (BLUE << 3)
     ld    (hl), a
     ldir
@@ -433,7 +433,7 @@ menu_hit_enter:
 
     ld    l, #25
     ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
-    call  show_attr_digit_address_known
+    call  show_attr_char_address_known
 
     ;; ------------------------------------------------------------------------
     ;; send a TFTP request for the snapshot

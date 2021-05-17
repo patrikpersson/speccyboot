@@ -120,33 +120,33 @@ _evacuating:
 ;; L: column (0..31)
 ;; A: digit (0..9), bits 4-7 are ignored
 ;;
-;; Destroys DE, saves BC
+;; Destroys AF, DE, H; saves BC
 ;; ############################################################################
 
 ROM_DIGITS = 0x3D00 + 16 * 8 + 1 ;; address of '0' bits, first actual scan line
 
-show_attr_digit_address_known:  ;; special jump target for menu (display ("K"))
-    push  bc
-    jr    _show_attr_digit2
-
 show_attr_digit:
 
-    push  bc
+    add   a, a
+    add   a, a
+    add   a, a
+
+show_attr_digit_already_shifted:  ;; special target for below
+
+    and   a, #0x78           ;; binary 01111000
     ld    de, #ROM_DIGITS
-    and   a, #0xf
-    add   a, a
-    add   a, a
-    add   a, a
     add   a, e      ;; because all digits are placed in a single 256b page
     ld    e, a
 
     ld    h, #>ATTR_DIGIT_ROW
 
     di    ;; SpeccyBoot is about to be paged out
+
     ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT
     out   (SPI_OUT), a
 
-_show_attr_digit2:
+show_attr_char_address_known:
+    push  bc
 
     ld    c, #6
 00001$:
@@ -456,12 +456,6 @@ update_progress:
     ;; update the progress display
     ;; ========================================================================
 
-    ld    hl, #_kilobytes_loaded
-    inc   (hl)
-    ld    d, (hl)
-
-    push  de
-
     ld    bc, #_digits
     ld    a, (bc)
     inc   a
@@ -487,11 +481,8 @@ not_100k:
     ;; Print tens (_x_)
 
     rra
-    rra
-    rra
-    rra
     ld    l, #7
-    call  show_attr_digit
+    call  show_attr_digit_already_shifted
 
 not_10k:
     ;; Print single-number digit (__x)
@@ -500,16 +491,16 @@ not_10k:
     ld    l, #14
     call  show_attr_digit
 
-    pop   de
-
     ;; ************************************************************************
     ;; update progress bar
     ;; ************************************************************************
 
+    ld    hl, #_kilobytes_loaded
+    inc   (hl)
     ld    a, (_kilobytes_expected)
-    ld    e, a
+    ld    d, a
     cp    a, #48     ;; 48k snapshot?
-    ld    a, (_kilobytes_loaded)
+    ld    a, (hl)
     jr    z, 00003$  ;; 128k snapshot => progress = kilobytes / 4
     rra              ;; C is clear after CP above
     srl   a
@@ -524,17 +515,18 @@ not_10k:
 00002$:
     or    a, a       ;; zero progress?
     ret   z
-    ld    hl, #PROGRESS_BAR_BASE-1
-    add   a, l
-    ld    l, a
-    ld    (hl), #(WHITE + (WHITE << 3) + BRIGHT)
+    ld    bc, #PROGRESS_BAR_BASE-1
+    add   a, c
+    ld    c, a
+    ld    a, #(WHITE + (WHITE << 3) + BRIGHT)
+    ld    (bc), a
 
     ;; ========================================================================
     ;; if all data has been loaded, perform the context switch
     ;; ========================================================================
 
     ld    a, d
-    cp    a, e
+    cp    a, (hl)
     ret   nz
 
 #ifdef PAINT_STACK
