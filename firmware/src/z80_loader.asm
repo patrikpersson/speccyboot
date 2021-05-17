@@ -114,79 +114,6 @@ _evacuating:
     .area _STAGE2
 
 ;; ############################################################################
-;; _update_progress_display:
-;;
-;; uses AF, BC, HL
-;; ############################################################################
-
-_update_progress_display:
-
-    ld    bc, #_digits
-    ld    a, (bc)
-    inc   a
-    daa
-    push  af             ;; remember flags
-    ld    (bc), a
-    jr    nz, not_100k   ;; turned from 99->100?
-
-    ;; Number of kilobytes became zero in BCD:
-    ;; means it just turned from 99 to 100.
-    ;; Print the digit '1' for hundreds.
-
-    ld    l, a   ;; L is now 0
-    inc   a      ;; A is now 1
-    call  show_attr_digit
-    ld    a, (bc)
-
-not_100k:
-    pop   hl             ;; recall flags, old F is now in L
-    bit   #4, l          ;; was H flag set? Then the tens have increased
-    jr    z, not_10k
-
-    ;; Print tens (_x_)
-
-    rra
-    rra
-    rra
-    rra
-    ld    l, #7
-    call  show_attr_digit
-
-not_10k:
-    ;; Print single-number digit (__x)
-
-    ld    a, (bc)
-    ld    l, #14
-    call  show_attr_digit
-
-    ;; ************************************************************************
-    ;; update progress bar
-    ;; ************************************************************************
-
-    ld    a, (_kilobytes_expected)
-    cp    a, #48     ;; 48k snapshot?
-    ld    a, (_kilobytes_loaded)
-    jr    z, 00003$  ;; 128k snapshot => progress = kilobytes / 4
-    rra              ;; C is clear after CP above
-    srl   a
-    jr    00002$
-
-00003$:              ;; 48k snapshot => progress = kilobytes * 2 / 3
-    add   a, a
-    ld    b, #3
-    call  a_div_b
-    ld    a, c
-
-00002$:
-    or    a, a       ;; zero progress?
-    ret   z
-    ld    hl, #PROGRESS_BAR_BASE-1
-    add   a, l
-    ld    l, a
-    ld    (hl), #(WHITE + (WHITE << 3) + BRIGHT)
-    ret
-
-;; ############################################################################
 ;; show_attr_digit
 ;;
 ;; subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
@@ -505,13 +432,13 @@ evacuate_pc:
 
 
 ;; ############################################################################
-;; _update_progress
+;; update_progress
 ;;
 ;; If the number of bytes loaded reached an even kilobyte,
 ;; increase kilobyte counter and update status display
 ;; ############################################################################
 
-_update_progress:
+update_progress:
 
     ld   hl, (_tftp_write_pos)
 
@@ -525,25 +452,96 @@ _update_progress:
     and  #0x03
     ret  nz
 
-    ;; update the status display
+    ;; ========================================================================
+    ;; update the progress display
+    ;; ========================================================================
 
     ld    hl, #_kilobytes_loaded
     inc   (hl)
-    push  hl
-    call  _update_progress_display
-    pop   hl
+    ld    d, (hl)
 
-    ;; if all data has been loaded, perform the context switch
+    push  de
+
+    ld    bc, #_digits
+    ld    a, (bc)
+    inc   a
+    daa
+    push  af             ;; remember flags
+    ld    (bc), a
+    jr    nz, not_100k   ;; turned from 99->100?
+
+    ;; Number of kilobytes became zero in BCD:
+    ;; means it just turned from 99 to 100.
+    ;; Print the digit '1' for hundreds.
+
+    ld    l, a   ;; L is now 0
+    inc   a      ;; A is now 1
+    call  show_attr_digit
+    ld    a, (bc)
+
+not_100k:
+    pop   hl             ;; recall flags, old F is now in L
+    bit   #4, l          ;; was H flag set? Then the tens have increased
+    jr    z, not_10k
+
+    ;; Print tens (_x_)
+
+    rra
+    rra
+    rra
+    rra
+    ld    l, #7
+    call  show_attr_digit
+
+not_10k:
+    ;; Print single-number digit (__x)
+
+    ld    a, (bc)
+    ld    l, #14
+    call  show_attr_digit
+
+    pop   de
+
+    ;; ************************************************************************
+    ;; update progress bar
+    ;; ************************************************************************
 
     ld    a, (_kilobytes_expected)
-    cp    a, (hl)
+    ld    e, a
+    cp    a, #48     ;; 48k snapshot?
+    ld    a, (_kilobytes_loaded)
+    jr    z, 00003$  ;; 128k snapshot => progress = kilobytes / 4
+    rra              ;; C is clear after CP above
+    srl   a
+    jr    00002$
+
+00003$:              ;; 48k snapshot => progress = kilobytes * 2 / 3
+    add   a, a
+    ld    b, #3
+    call  a_div_b
+    ld    a, c
+
+00002$:
+    or    a, a       ;; zero progress?
+    ret   z
+    ld    hl, #PROGRESS_BAR_BASE-1
+    add   a, l
+    ld    l, a
+    ld    (hl), #(WHITE + (WHITE << 3) + BRIGHT)
+
+    ;; ========================================================================
+    ;; if all data has been loaded, perform the context switch
+    ;; ========================================================================
+
+    ld    a, d
+    cp    a, e
     ret   nz
 
 #ifdef PAINT_STACK
     di
     halt
 #else
-    jp    context_switch
+    jp    context_switch             ;; in stage 1 loader (ROM)
 #endif
 
 ;; ############################################################################
@@ -910,7 +908,7 @@ no_new_state:
   ;;
   ld  a, b
   or  c
-  jr  z, no_copy
+  ret z
 
   ;;
   ;; Copy the required amount of data
@@ -926,11 +924,8 @@ no_new_state:
   ;; update the status display, if needed
   ;;
 
-  call  _update_progress
+  jp   update_progress
 
-no_copy:
-
-  ret
 
 ;; ############################################################################
 ;; state CHUNK_COMPRESSED
@@ -997,7 +992,7 @@ s_chunk_compressed_loop:
   ld  (_tftp_write_pos), hl
   ld  (_received_data), iy
 
-  call _update_progress
+  call update_progress
   jr  s_chunk_compressed_done
 
   ;;
@@ -1122,7 +1117,7 @@ _s_chunk_compressed_escape:
     ld    (hl), #Z80_ESCAPE
     inc   hl
     ld    (_tftp_write_pos), hl
-    call  _update_progress
+    call  update_progress
 
     pop   af
 
@@ -1130,7 +1125,7 @@ _s_chunk_compressed_escape:
     ld    (hl), a
     inc   hl
     ld    (_tftp_write_pos), hl
-    call  _update_progress
+    call  update_progress
 
     ld    hl, #_s_chunk_compressed
     ld    (z80_loader_state), hl
@@ -1207,7 +1202,7 @@ s_chunk_repetition_loop:
   ld  (_rep_count), a
   ld  (_tftp_write_pos), hl
 
-  jp  _update_progress
+  jp  update_progress
 
 s_chunk_repetition_write_back:
   ld  (_rep_count), a           ;; copied from b above

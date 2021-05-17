@@ -299,7 +299,7 @@ bootp_receive_sname_done:
     call print_ip_addr
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'L' indicator: cyan ink, black paper, bright
+    ;; attributes for 'L' indicator: white ink, black paper, bright
     ;; ------------------------------------------------------------------------
 
     ld    a, #'L'
@@ -311,7 +311,7 @@ bootp_receive_sname_done:
     call  print_char
 
     ld    hl, #ATTRS_BASE + 23 * 32                ;; (23, 0)
-    ld    (hl), #(CYAN | (BLACK << 3) | BRIGHT)
+    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
 
     ;; ------------------------------------------------------------------------
     ;; attributes for IP addresses indicator: white ink, black paper
