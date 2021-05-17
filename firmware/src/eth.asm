@@ -52,6 +52,9 @@ _next_frame:
 _current_txbuf:
     .ds 2        ;; points to the frame currently being created
 
+eth_sender_address:
+    .ds ETH_ADDRESS_SIZE
+
 ;; ============================================================================
 ;; RE-TRANSMISSION HANDLING
 ;;
@@ -203,15 +206,21 @@ main_packet:
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
     call  enc28j60_write_register16
 
+    ;; ------------------------------------------------------------------------
+    ;; Read the administrative Ethernet header (including some ENC28J60
+    ;; details) into the RX buffer. The source MAC address will be saved
+    ;; separately (below) before the RX buffer is used for IP/ARP data.
+    ;; ------------------------------------------------------------------------
+
     ld    de, #ETH_ADM_HEADER_SIZE
-    ld    hl, #_rx_eth_adm
+    ld    hl, #_rx_frame
     call  enc28j60_read_memory
 
     ;; ------------------------------------------------------------------------
     ;; update _next_frame
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_rx_eth_adm + ETH_ADM_OFFSETOF_NEXT_PTR)
+    ld    hl, (_rx_frame + ETH_ADM_OFFSETOF_NEXT_PTR)
     ld    (_next_frame), hl
 
     ;; ------------------------------------------------------------------------
@@ -226,11 +235,21 @@ main_packet:
     ;; ignore broadcasts from this host (duh)
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    ld    hl, #_rx_frame + ETH_ADM_OFFSETOF_SRC_ADDR
+    push  hl
     ld    de, #eth_local_address
     ld    b, #ETH_ADDRESS_SIZE
     call  memory_compare
+    pop   hl
     jr    z, main_packet_done
+
+    ;; ------------------------------------------------------------------------
+    ;; remember sender's MAC address
+    ;; ------------------------------------------------------------------------
+
+    ld    de, #eth_sender_address
+    ld    bc, #ETH_ADDRESS_SIZE
+    ldir
 
     ;; ------------------------------------------------------------------------
     ;; pass packet to IP or ARP, if ethertype matches
@@ -238,12 +257,13 @@ main_packet:
     ;; 0x0008 -> ARP
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_rx_eth_adm + ETH_ADM_OFFSETOF_ETHERTYPE)
-    ld    a, l
+    ;; HL points to Ethertype after LDIR above
+
+    ld    a, (hl)
     cp    a, #8
     jr    nz, main_packet_done   ;; neither IP nor ARP -- ignore
-
-    ld    a, h
+    inc   hl
+    ld    a, (hl)
     or    a, a
     jr    z, main_packet_ip
     cp    a, #6

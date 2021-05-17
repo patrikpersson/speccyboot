@@ -77,7 +77,6 @@ _font_data  = 0xfd03     ;; full font, but overwritten by snapshot
     .globl _tftp_client_port
     .globl _kilobytes_expected
     .globl _tftp_write_pos
-    .globl _rx_eth_adm
     .globl _ip_config
     .globl _header_template
     .globl _ip_checksum

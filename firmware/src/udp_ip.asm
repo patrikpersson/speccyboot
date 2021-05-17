@@ -247,7 +247,7 @@ udp_reply:
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
     ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
-    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    ld   hl, #eth_sender_address
 
     ;; FALL THROUGH to udp_create
 

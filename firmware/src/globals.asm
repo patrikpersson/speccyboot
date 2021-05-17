@@ -65,15 +65,8 @@ _kilobytes_loaded:
     .ds    1
 
 ;; ============================================================================
-;; Ethernet/IP/UDP/TFTP stuff
+;; IP/UDP/TFTP stuff
 ;; ============================================================================
-
-;; ----------------------------------------------------------------------------
-;; received Ethernet header, along with some administrative information
-;; ----------------------------------------------------------------------------
-
-_rx_eth_adm:
-   .ds    ETH_ADM_HEADER_SIZE
 
 _ip_config:
    .ds    4 * 2     ;; IP v4 addressed for this host + TFTP server

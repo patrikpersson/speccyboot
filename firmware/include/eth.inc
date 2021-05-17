@@ -114,16 +114,15 @@ ETH_FRAME_OPTIONAL = ENC28J60_TXBUF2_START
 ;; Ethernet addresses
 ;; ----------------------------------------------------------------------------
 
-    .globl eth_broadcast_address
-    .globl eth_local_address
+    .globl eth_broadcast_address         ;; ff:ff:ff:ff:ff:ff
+    .globl eth_local_address             ;; local MAC address
+    .globl eth_sender_address            ;; MAC address of last received frame
 
 ETH_ADDRESS_SIZE = 6
 
 ;; ----------------------------------------------------------------------------
-;; ENC28J60 administrative header
+;; ENC28J60 administrative header; temporarily loaded to rx_frame
 ;; ----------------------------------------------------------------------------
-
-    .globl _rx_eth_adm
 
 ETH_ADM_OFFSETOF_NEXT_PTR = 0
 ETH_ADM_OFFSETOF_SRC_ADDR = 12

@@ -104,7 +104,7 @@ arp_receive:
     ;; create ARP response
     ;; ========================================================================
 
-    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    ld   hl, #eth_sender_address
     cpl       ;; A was zero after memory_compare, now 0xFF, non-zero means ARP
     call eth_create
 
@@ -127,7 +127,7 @@ arp_receive:
 
     ;; THA: sender MAC address
 
-    ld   hl, #_rx_eth_adm + ETH_ADM_OFFSETOF_SRC_ADDR
+    ld   hl, #eth_sender_address
     call enc28j60_write_memory_6_bytes
 
     ;; TPA: sender IP address, taken from SPA field in request
