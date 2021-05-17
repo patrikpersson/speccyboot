@@ -67,6 +67,15 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
 REG_R_ADJUSTMENT   = 0xEF
 
+;; ----------------------------------------------------------------------------
+;; Value for Z80_HEADER_OFFSET_HW_TYPE, indicating a 128k machine.
+;; Any value >= 3 is considered here to mean 128k, although some versions of
+;; the .z80 format use the value 3 to denote a 48k machine with M.G.T.:
+;; https://worldofspectrum.org/faq/reference/z80format.htm
+;; ----------------------------------------------------------------------------
+
+SNAPSHOT_128K      = 3
+
 ;; ============================================================================
 
     .area _DATA
@@ -638,7 +647,7 @@ s_header_ext_hdr:
     ;; ------------------------------------------------------------------------
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_HW_TYPE)
-    cp    a, #3
+    cp    a, #SNAPSHOT_128K
     jr    c, s_header_not_128k
     ld    a, #128
     ld    (_kilobytes_expected), a
@@ -734,7 +743,7 @@ _s_chunk_header2:
 
 _s_chunk_header3:
 
-    ld   a, (_kilobytes_expected)
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
     ld   c, a
 
     call _get_next_byte
@@ -770,16 +779,16 @@ s_chunk_header3_compatible:
     cp   a, #4                       ;; means page 1 (0x8000..0xbfff)
     jr   nz, s_chunk_header3_default_page
 
-    ld   a, #128
-    cp   a, c    ;; 128k snapshot?
-    jr   nz, s_chunk_header3_set_page
+    ld   a, c
+    cp   a, #SNAPSHOT_128K    ;; 128k snapshot?
+    jr   c, s_chunk_header3_set_page
 
 s_chunk_header3_default_page:
 
     ld   h, #0xc0
-    ld   a, #128
-    cp   a, c
-    jr   nz, s_chunk_header3_set_page
+    ld   a, c
+    cp   a, #SNAPSHOT_128K
+    jr   c, s_chunk_header3_set_page
 
     ;; If this is a 128k snapshot, switch memory bank
 
