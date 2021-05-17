@@ -810,22 +810,18 @@ s_chunk_header3_set_page:
 
     ;; If chunk_bytes_remaining is 0xffff, length is 0x4000
 
+    ld    ix, #_s_chunk_compressed        ;; tentative next state
+
     ld   hl, (_chunk_bytes_remaining)
     inc  h
-    jr   nz, s_chunk_header3_compressed
+    ret  nz
     inc  l
-    jr   nz, s_chunk_header3_compressed
+    ret  nz
 
     ld   h, #0x40    ;; HL is now 0x4000
     ld   (_chunk_bytes_remaining), hl
 
     ld    ix, #_s_chunk_uncompressed
-
-    ret
-
-s_chunk_header3_compressed:
-
-    ld    ix, #_s_chunk_compressed
 
     ret
 
@@ -991,13 +987,9 @@ s_chunk_compressed_loop:
   and #0x03
   jr  nz, s_chunk_compressed_loop
 
-  ld  (_chunk_bytes_remaining), bc
-  ld  (_received_data_length), de
-  ld  (_tftp_write_pos), hl
-  ld  (_received_data), iy
+  call s_chunk_compressed_write_back
 
-  call update_progress
-  jr  s_chunk_compressed_done
+  jp  update_progress
 
   ;;
   ;; reached end of chunk: switch state
@@ -1058,10 +1050,7 @@ s_chunk_compressed_rept2:
   dec de
   dec de
 
-  ld  (_chunk_bytes_remaining), bc
-  ld  (_received_data_length), de
-  ld  (_tftp_write_pos), hl
-  ld  (_received_data), iy
+  call s_chunk_compressed_write_back
 
   ld  ix, #_s_chunk_repetition
 
@@ -1081,8 +1070,6 @@ s_chunk_compressed_write_back:
   ld  (_tftp_write_pos), hl
   ld  (_received_data), iy
 
-s_chunk_compressed_done:
-
   ret
 
 
@@ -1095,17 +1082,14 @@ _s_chunk_compressed_escape:
     call  _get_next_byte
     call  _dec_chunk_bytes
 
+    ld    ix, #_s_chunk_repcount        ;; tentative next state
+
     cp    a, #Z80_ESCAPE
-    jr    nz, 00001$
+    ret   z
 
-    ld    ix, #_s_chunk_repcount
-
-    ret
-
-00001$:
     ;;
     ;; False alarm: the escape byte was followed by a non-escape byte,
-    ;;              so this is not a compressed sequence
+    ;;              so this is not an escape sequence
     ;;
 
     push  af
