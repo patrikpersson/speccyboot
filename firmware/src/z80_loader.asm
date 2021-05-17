@@ -754,11 +754,11 @@ s_chunk_header3_compatible:
 
     ;;
     ;; Need to handle page 5 separately -- if we do not use the address range
-    ;; 0x4000..0x7fff, the evacuation stuff in z80_parser will not work.
+    ;; 0x4000..0x7fff, the evacuation stuff will not work.
     ;;
 
     ld   h, #0x40
-    cp   a, #8
+    cp   a, #8                       ;; means page 5 (0x4000..0x7fff)
     jr   z, s_chunk_header3_set_page
 
     ;;
@@ -767,7 +767,7 @@ s_chunk_header3_compatible:
     ;;
 
     ld   h, #0x80
-    cp   a, #4
+    cp   a, #4                       ;; means page 1 (0x8000..0xbfff)
     jr   nz, s_chunk_header3_default_page
 
     ld   a, #128
