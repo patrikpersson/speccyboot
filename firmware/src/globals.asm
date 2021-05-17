@@ -49,10 +49,13 @@ _rx_frame:
     .ds   RX_FRAME_SIZE
 
 ;; ----------------------------------------------------------------------------
-;; snapshot header, copied here while the snapshot is loading
+;; Snapshot header, copied here while the snapshot is loading.
+;; The saved entrypoint (for invoking stage 2 of the loader) is stored here
+;; too, since that is only used before snapshot loading starts.
 ;; ----------------------------------------------------------------------------
 
 _snapshot_header:
+stage2_saved_entrypoint:
     .ds   Z80_HEADER_RESIDENT_SIZE
 
 ;; ============================================================================

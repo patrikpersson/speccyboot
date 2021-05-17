@@ -80,9 +80,6 @@ _expected_tftp_block_no:
 _server_port:
     .ds 2        ;; source port currently used by server
 
-stage2_saved_entrypoint:
-    .ds 2        ;; verified and saved entry point for stage 2 loader
-
     .area _CODE
 
 ;; ############################################################################

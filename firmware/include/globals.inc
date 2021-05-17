@@ -81,3 +81,4 @@ _font_data  = 0xfd03     ;; full font, but overwritten by snapshot
     .globl _ip_checksum
     .globl _tftp_receive_hook
     .globl _snapshot_list
+    .globl stage2_saved_entrypoint
