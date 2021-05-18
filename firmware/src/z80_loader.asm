@@ -90,9 +90,6 @@ _rep_count:        ;; set: chunk_compressed_repcount
 _rep_value:
     .ds   1        ;; byte value for repetition
 
-_evacuating:
-    .ds   1
-
 ;; ----------------------------------------------------------------------------
 ;; expected and currently loaded no. of kilobytes, for progress display
 ;; ----------------------------------------------------------------------------
@@ -1289,7 +1286,7 @@ receive_snapshot_byte_loop:
     ;; reached RUNTIME_DATA (resident area)?
     ;; ------------------------------------------------------------------------
 
-    ld    de, #_evacuating
+    ld    de, #evacuation_activation_instr
 
     inc   hl
     ld    a, (hl)
@@ -1298,12 +1295,13 @@ receive_snapshot_byte_loop:
 
     ;; ------------------------------------------------------------------------
     ;; then store data in EVACUATION_TEMP_BUFFER instead,
-    ;; and set "evacuating" flag
+    ;; and enable evacuation
     ;; ------------------------------------------------------------------------
 
     ld    a, #>EVACUATION_TEMP_BUFFER
     ld    (hl), a
-    ld    (de), a      ;; != 0, so fine here as a flag value
+    ld    a, #0x20   ;; JR NZ means evacuation is now activated
+    ld    (de), a
 
     jr    receive_snapshot_no_evacuation
 
@@ -1314,21 +1312,19 @@ receive_snapshot_not_entering_runtime_data:
     ;; ------------------------------------------------------------------------
 
     cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
-    jr    nz, receive_snapshot_no_evacuation
-
-    ld    a, (de)
-    or    a, a
-    jr    z, receive_snapshot_no_evacuation
+evacuation_activation_instr:
+    jr    receive_snapshot_no_evacuation  ;; patched to JR NZ while evacuating
 
     ;; ------------------------------------------------------------------------
     ;; then set _tftp_write_pos := RUNTIME_DATA + RUNTIME_DATA_LENGTH,
-    ;; and _evacuating := false
+    ;; and disable evacuation
     ;; ------------------------------------------------------------------------
 
     ld    a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
     ld    (hl), a
 
-    xor   a, a
+    ;; evacuation (soon) done: change JR above to skip evacuation next time
+    ld    a, #0x18            ;; unconditional JR
     ld    (de), a
 
     ;; ------------------------------------------------------------------------
