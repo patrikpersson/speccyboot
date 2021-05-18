@@ -179,6 +179,26 @@ Z80_HEADER_OFFSET_HW_STATE_FFFD  = 38
 Z80_HEADER_OFFSET_HW_STATE_SND   = 39
 
 ;; ----------------------------------------------------------------------------
+;; Value for Z80_HEADER_OFFSET_HW_TYPE, indicating a 128k machine.
+;; Any value >= 3 is considered here to mean 128k, although some versions of
+;; the .z80 format use the value 3 to denote a 48k machine with M.G.T.:
+;; https://worldofspectrum.org/faq/reference/z80format.htm
+;; ----------------------------------------------------------------------------
+
+SNAPSHOT_128K                    = 3
+
+;; ----------------------------------------------------------------------------
+;; context data
+;; ----------------------------------------------------------------------------
+
+    .globl context_128k_flag
+    .globl context_7ffd
+    .globl context_snd_regs
+    .globl context_fffd
+    .globl context_border
+    .globl context_registers
+
+;; ----------------------------------------------------------------------------
 ;; Restore application data from ENC28J60 SRAM, restore register values
 ;; and system state from the stored .z80 header, and execute the application.
 ;; ----------------------------------------------------------------------------

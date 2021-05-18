@@ -67,15 +67,6 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
 REG_R_ADJUSTMENT   = 0xEF
 
-;; ----------------------------------------------------------------------------
-;; Value for Z80_HEADER_OFFSET_HW_TYPE, indicating a 128k machine.
-;; Any value >= 3 is considered here to mean 128k, although some versions of
-;; the .z80 format use the value 3 to denote a 48k machine with M.G.T.:
-;; https://worldofspectrum.org/faq/reference/z80format.htm
-;; ----------------------------------------------------------------------------
-
-SNAPSHOT_128K      = 3
-
 ;; ============================================================================
 
     .area _DATA
@@ -379,61 +370,22 @@ evacuate_di:
     ld   (VRAM_REGSTATE_SP), hl
 
     ;; ========================================================================
-    ;; set PC value in VRAM trampoline, and clean up the values of
-    ;; these fields in header:
-    ;;   MISC_FLAGS,    to a good border value (0..7)
-    ;;   A_P, F_P,      switched to make a single POP possible
-    ;;   HW_TYPE,       to be either 0 (48k) or non-zero (128k)
-    ;;   HW_STATE_7FFD, to a good default for 48k snapshots on 128k machines
+    ;; set PC value in VRAM trampoline
     ;; ========================================================================
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
     ld   a, h
     or   a, l      ;; extended snapshot (version 2+) ?
-    jr   nz, evacuate_pc_z80v1_or_48k
+    jr   nz, evacuate_pc
 
     ;; ------------------------------------------------------------------------
     ;; snapshot version 2+: use PC value from extended snapshot header,
-    ;; load HW_TYPE into C, and memory config into B
     ;; ------------------------------------------------------------------------
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_EXT_PC)
-    ld   bc, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
 
-    ;; ------------------------------------------------------------------------
-    ;; Check HW_TYPE
-    ;; ------------------------------------------------------------------------
-
-    ld   a, c
-    cp   a, #3
-    jr   nc, evacuate_pc                 ;; 128k snapshot: keep config as it is
-evacuate_pc_z80v1_or_48k:
-    ld   bc, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8
 evacuate_pc:
     ld   (VRAM_REGSTATE_PC), hl
-    ld   (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE), bc
-
-    ;; ------------------------------------------------------------------------
-    ;; clean up MISC_FLAGS, turn it into a value ready for OUT (0xFE), A
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
-    ld   a, (hl)
-    rra
-    and  a, #0x07
-    ld   (hl), a
-
-    ;; ------------------------------------------------------------------------
-    ;; swap A_P and F_P (to make simple POP in context switch possible)
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_A_P
-    ld   a, (hl)
-    inc  hl
-    ld   b, (hl)
-    ld   (hl), a
-    dec  hl
-    ld   (hl), b
 
     ;; ========================================================================
     ;; write evacuated data to ENC28J60 RAM
@@ -600,6 +552,9 @@ _dec_chunk_bytes:
 ;; and verifies compatibility.
 ;; ############################################################################
 
+
+    .area _NONRESIDENT
+
 s_header:
 
     ;; ------------------------------------------------------------------------
@@ -695,7 +650,7 @@ s_header_set_state:
     ld   (_received_data_length), hl
 
     ;; ------------------------------------------------------------------------
-    ;; keep .z80 header through loading and context switch
+    ;; keep .z80 header until evacuate_data is called
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
@@ -703,8 +658,97 @@ s_header_set_state:
     ld   bc, #Z80_HEADER_RESIDENT_SIZE
     ldir
 
+    ;; ========================================================================
+    ;; copy some of the context data immediately
+    ;; (48k/128k flag, 128k memory + sound configuration, border colour,
+    ;; registers DE, alternate AF+BC+DE+HL, IX, IY)
+    ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; check snapshot version (is PC == 0?)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
+    ld   a, h
+    or   a, l      ;; extended snapshot (version 2+) ?
+    jr   nz, prepare_context_48k     ;; non-zero PC means version 1, always 48k
+
+    ;; ------------------------------------------------------------------------
+    ;; snapshot version 2+:
+    ;; load HW_TYPE into L, and memory config into H
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+
+    ;; ------------------------------------------------------------------------
+    ;; Check HW_TYPE: only use 128k memory config from snapshot if this is
+    ;; actually a 128k snapshot
+    ;; ------------------------------------------------------------------------
+
+    ld   a, l
+    cp   a, #SNAPSHOT_128K
+    jr   nc, prepare_context_set_bank
+prepare_context_48k:
+    ld   hl, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
+prepare_context_set_bank:
+    ld   (context_128k_flag), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; copy sound register data (may be invalid for a 48k snapshot,
+    ;; but then it will not be used in the actual context switch)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
+    ld   de, #context_snd_regs
+    ld   bc, #16               ;; 16 sound registers
+    ldir
+
+    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
+    ld   (de), a
+    inc  de                    ;; DE now points to context_border
+
+    ;; ------------------------------------------------------------------------
+    ;; clean up MISC_FLAGS, turn it into a value ready for OUT (0xFE), A
+    ;; ------------------------------------------------------------------------
+
+    ld   l, #<_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+    ld   a, (hl)
+    rra
+    and  a, #0x07
+    ld   (de), a
+    inc  de
+
+    ;; ------------------------------------------------------------------------
+    ;; copy DE, alternate BC+DE+HL
+    ;; ------------------------------------------------------------------------
+
+    inc  hl    ;; now points to Z80_HEADER_OFFSET_DE
+    ld   de, #context_registers
+    ld   bc, #2*4  ;; DE, alternate BC+DE+HL
+    ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; swap A_P and F_P (to make simple POP in context switch possible)
+    ;; ------------------------------------------------------------------------
+
+    ld   c, #5    ;; B==0 here; need BC==4 after LDI, for LDIR below
+
+    ld   a, (hl)
+    inc  hl
+    ldi
+    ld   (de), a
+    inc  de
+
+    ;; ------------------------------------------------------------------------
+    ;; copy IX, IY
+    ;; ------------------------------------------------------------------------
+
+    ldir
+
     ret
 
+
+    .area _STAGE2
 
 ;; ############################################################################
 ;; state CHUNK_HEADER:

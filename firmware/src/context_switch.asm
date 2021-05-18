@@ -43,6 +43,32 @@
     .include "include/ui.inc"
     .include "include/util.inc"
 
+;; ============================================================================
+
+    .area _DATA
+
+context_128k_flag:   ;; zero means 48k, non-zero means 128k
+    .ds   1
+
+context_7ffd:        ;; 128k memory config (I/O 0x7ffd)
+    .ds   1
+
+context_snd_regs:    ;; 16 bytes of sound register values (128k snapshots only)
+    .ds   16
+
+context_fffd:        ;; value for I/O 0xfffd  (sound register select)
+    .ds   1
+
+context_border:      ;; value for I/O 0xfe (border)
+    .ds   1
+
+context_registers:   ;; registers DE, BC', DE', HL', AF', IX, IY
+    .ds   14
+
+;; ============================================================================
+
+    .area _CODE
+
 ;; ############################################################################
 ;; context_switch
 ;; ############################################################################
@@ -64,7 +90,7 @@ context_switch:
     ;; and check whether this is a 48k or 128k snapshot
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+    ld   hl, (context_128k_flag)
     ld   bc, #MEMCFG_ADDR
     out  (c), h               ;; next byte after HW_TYPE: 128k memory config
 
@@ -77,7 +103,7 @@ context_switch:
     ;; ------------------------------------------------------------------------
 
     ld   de, #16   ;; D := 0; E := 16
-    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
+    ld   hl, #context_snd_regs
 context_switch_snd_reg_loop:
     ld   b, #>SND_REG_SELECT
     out  (c), d
@@ -90,21 +116,19 @@ context_switch_snd_reg_loop:
     jr   nz, context_switch_snd_reg_loop
 
     ld   b, #>SND_REG_SELECT
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
+    ld   a, (hl)
     out  (c), a
 
 context_switch_48k_snapshot:
 
-    ld     hl, #_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+    ld     hl, #context_border
 
     ;; ------------------------------------------------------------------------
-    ;; Restore border:
-    ;; the value at MISC_FLAGS has been pre-processed in _evacuate_data
+    ;; Restore border
     ;; ------------------------------------------------------------------------
 
     ld     a, (hl)
     out    (ULA_PORT), a
-    inc    a
 
     ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
@@ -123,12 +147,8 @@ context_switch_48k_snapshot:
     pop    hl
     exx
 
-    ;; the values for A and F are swapped in _evacuate_data,
-    ;; so these registers can be restored with a simple POP
-    ;; (otherwise some tedious stack juggling would be required)
-
     pop    af
-    ex     af, af'     ;; ' apostrophe for syntax
+    ex     af, af'               ;;'
 
     pop     iy
     pop     ix

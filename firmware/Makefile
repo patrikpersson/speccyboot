@@ -20,9 +20,6 @@ LDFLAGS     += --code-loc 0x0056 --data-loc 0x5B30
 # Run 'make DGBOOT=1' to build for Imrich Kolkol's DGBoot hardware design
 # instead of the default SpeccyBoot
 
-# Run 'make STAGE2_IN_RAM=1' for a two-part build, with a 2K EPROM loader
-# which in turn loads a second-stage loader (spboot.bin) into RAM
-
 TARGETFLAGS  =
 
 ifdef DGBOOT
@@ -40,7 +37,7 @@ endif
 # =============================================================================
 
 # NOTE: eth must be first here, as it contains the main function, and
-# crt0 will continue executing right into it
+# crt0 will continue executing right into it (saves one JP)
 ASMMODULES   = eth
 ASMMODULES  += arp bootp context_switch enc28j60 globals
 ASMMODULES  += menu spi tftp udp_ip ui util z80_loader

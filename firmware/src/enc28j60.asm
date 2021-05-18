@@ -239,8 +239,7 @@ enc28j60_read_memory:
     push  de         ;; nbr_bytes
     push  hl         ;; dst_addr
 
-    push  ix
-    ld    ix, #2     ;; IX on stack
+    ld    ix, #0
     add   ix, sp
 
     ;; spi_start_transaction(ENC_OPCODE_RBM);
@@ -395,8 +394,6 @@ eth_control_byte:
 final:
     adc   hl, bc    ;; add final carry
     ld    (_ip_checksum), hl
-
-    pop   ix
 
     pop   hl
     pop   de
