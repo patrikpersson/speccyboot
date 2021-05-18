@@ -80,9 +80,6 @@ _received_data_length:
 _chunk_bytes_remaining:
     .ds   2       ;; bytes remaining to unpack in current chunk
 
-_digits:
-    .ds   1       ;; digits (BCD) for progress display while loading a snapshot
-
 ;; ----------------------------------------------------------------------------
 ;; state for a repetition sequence
 ;; ----------------------------------------------------------------------------
@@ -190,14 +187,14 @@ show_attr_char_address_known:
 
 
 ;; ############################################################################
-;; _evacuate_data
+;; evacuate_data
 ;;
 ;; Evacuate data from the temporary buffer to ENC28J60 SRAM. Examine the stored
 ;; .z80 header, and prepare the context switch to use information
 ;; (register state etc.) in it.
 ;; ############################################################################
 
-_evacuate_data:
+evacuate_data:
 
     ;; ========================================================================
     ;; Clear out the top-left five character cells, by setting ink colour
@@ -426,12 +423,18 @@ update_progress:
     ;; update the progress display
     ;; ========================================================================
 
-    ld    bc, #_digits
-    ld    a, (bc)
+    ;; This instruction is patched with different values at runtime.
+    ;; It is LD A, #n.
+
+    .db   0x3e           ;; LD A, #n
+_digits:
+    .db   0      ;; digits (BCD) for progress display while loading a snapshot
+
     inc   a
     daa
     push  af             ;; remember flags
-    ld    (bc), a
+    ld    (_digits), a
+    ld    c, a
     jr    nz, not_100k   ;; turned from 99->100?
 
     ;; Number of kilobytes became zero in BCD:
@@ -441,7 +444,7 @@ update_progress:
     ld    l, a   ;; L is now 0
     inc   a      ;; A is now 1
     call  show_attr_digit
-    ld    a, (bc)
+    ld    a, c
 
 not_100k:
     pop   hl             ;; recall flags, old F is now in L
@@ -457,7 +460,7 @@ not_100k:
 not_10k:
     ;; Print single-number digit (__x)
 
-    ld    a, (bc)
+    ld    a, c
     ld    l, #14
     call  show_attr_digit
 
@@ -1334,7 +1337,7 @@ receive_snapshot_not_entering_runtime_data:
     ;; and make some preparations for context switch
     ;; ------------------------------------------------------------------------
 
-    call  _evacuate_data
+    call  evacuate_data
 
 receive_snapshot_no_evacuation:
 
