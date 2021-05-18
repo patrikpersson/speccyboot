@@ -412,9 +412,6 @@ menu_hit_enter:
     ld   hl, #z80_loader_receive_hook
     ld   (_tftp_receive_hook), hl
 
-    ld   hl, #s_header
-    ld   (z80_loader_state), hl
-
     ld    hl, #0x5800      ;; clear attribute lines 0..22
     ld    de, #0x5801
     ld    bc, #0x2e0

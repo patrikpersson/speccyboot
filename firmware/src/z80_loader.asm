@@ -90,19 +90,6 @@ _rep_count:        ;; set: chunk_compressed_repcount
 _rep_value:
     .ds   1        ;; byte value for repetition
 
-;; ----------------------------------------------------------------------------
-;; The Z80 snapshot state machine is implemented by one routine for each
-;; state. The function returns whenever one of the following happens:
-;;
-;; - all currently available data has been consumed (received_data_length == 0)
-;; - a state transition is required
-;; - the write pointer has reached an integral number of kilobytes
-;;   (the outer loop then manages evacuation)
-;; ----------------------------------------------------------------------------
-
-z80_loader_state:
-    .ds   2          ;; points to routine for current state
-
 _evacuating:
     .ds   1
 
@@ -116,6 +103,16 @@ _kilobytes_loaded:
     .ds    1
 
 ;; ============================================================================
+
+;; ----------------------------------------------------------------------------
+;; The Z80 snapshot state machine is implemented by one routine for each
+;; state. The function returns whenever one of the following happens:
+;;
+;; - all currently available data has been consumed (received_data_length == 0)
+;; - a state transition is required
+;; - the write pointer has reached an integral number of kilobytes
+;;   (the outer loop then manages evacuation)
+;; ----------------------------------------------------------------------------
 
     .area _STAGE2
 
@@ -1262,7 +1259,9 @@ z80_loader_receive_hook:
     ;; read bytes, evacuate when needed, call state functions
     ;; ========================================================================
 
-    ld   ix, (z80_loader_state)
+    .db  0xdd, 0x21          ;; LD IX, #NN
+z80_loader_state:
+    .dw  s_header            ;; initial state
 
 receive_snapshot_byte_loop:
 

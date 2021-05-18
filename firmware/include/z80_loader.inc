@@ -37,7 +37,5 @@
 ;; ----------------------------------------------------------------------------
 
     .globl z80_loader_receive_hook
-    .globl s_header
-    .globl z80_loader_state
     .globl show_attr_digit
     .globl show_attr_char_address_known
