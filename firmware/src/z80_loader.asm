@@ -112,7 +112,7 @@ _kilobytes_loaded:
 ;; L: column (0..31)
 ;; A: digit (0..9), bits 4-7 are ignored
 ;;
-;; Destroys AF, DE, H; saves BC
+;; Destroys AF, B, DE, HL. Returns with L increased by 7.
 ;; ############################################################################
 
 ROM_DIGITS = 0x3D00 + 16 * 8 + 1 ;; address of '0' bits, first actual scan line
@@ -138,22 +138,20 @@ show_attr_digit_already_shifted:  ;; special target for below
     out   (SPI_OUT), a
 
 show_attr_char_address_known:
-    push  bc
-
-    ld    c, #6
 00001$:
+
     ld    a, (de)
-    add   a, a
     inc   de
+    add   a, a
     ld    b, #6
 00002$:
     add   a, a
-    jr    nc, 00003$
-    ld    (hl), #WHITE + (WHITE << 3)
-    jr    00004$
-00003$:
+    jr    c, 00004$
     ld    (hl), #BLACK + (BLACK << 3)
+    jr    00003$
 00004$:
+    ld    (hl), #WHITE + (WHITE << 3)
+00003$:
     inc   hl
     djnz  00002$
 
@@ -161,14 +159,14 @@ show_attr_char_address_known:
     add   a, l
     ld    l, a
 
-    dec   c
-    jr    nz, 00001$
+    ld    a, #ROW_LENGTH * 6
+    cp    a, l
+    jr    nc, 00001$
 
     ld    a, #SPI_IDLE+SPI_CS       ;; page SpeccyBoot back in
     out   (SPI_OUT), a
     ei
 
-    pop   bc
     ret
 
 
@@ -188,12 +186,12 @@ update_progress:
     ;; check if HL is an integral number of kilobytes,
     ;; return early otherwise
 
-    xor  a, a
-    or   a, l
-    ret  nz
-    ld   a, h
-    and  #0x03
-    ret  nz
+    ld    a, l
+    or    a, l
+    ret   nz
+    ld    a, h
+    and   a, #0x03
+    ret   nz
 
     ;; ========================================================================
     ;; update the progress display
@@ -216,14 +214,18 @@ _digits:
     ;; means it just turned from 99 to 100.
     ;; Print the digit '1' for hundreds.
 
-    ld    l, a   ;; L is now 0
+    ;; L appropriately happens to be zero after LD HL above
+
     inc   a      ;; A is now 1
     call  show_attr_digit
     ld    a, c
 
+    di
+    halt
+
 not_100k:
-    pop   hl             ;; recall flags, old F is now in L
-    bit   #4, l          ;; was H flag set? Then the tens have increased
+    pop   de             ;; recall flags, old F is now in E
+    bit   #4, e          ;; was H flag set? Then the tens have increased
     jr    z, not_10k
 
     ;; Print tens (_x_)
