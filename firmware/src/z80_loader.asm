@@ -51,8 +51,6 @@
 Z80_ESCAPE         = 0xED     ;; escape byte in compressed chunks
 ATTR_DIGIT_ROW     = 0x5A00   ;; attribute VRAM address for kilobyte counter
 
-VRAM_FIRST_KILOBYTE_LOADED = 0x4800
-
 PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
 ;; ----------------------------------------------------------------------------
@@ -175,29 +173,7 @@ show_attr_char_address_known:
     ret
 
 
-;; ############################################################################
-;; evacuate_data
-;;
-;; Evacuate data from the temporary buffer to ENC28J60 SRAM. Examine the stored
-;; .z80 header, and prepare the context switch to use information
-;; (register state etc.) in it.
-;; ############################################################################
-
-evacuate_data:
-
-    ;; ========================================================================
-    ;; write evacuated data to ENC28J60 RAM
-    ;; ========================================================================
-
-    ld   hl, #ENC28J60_EVACUATED_DATA
-    ld   a, #OPCODE_WCR + (EWRPTL & REG_MASK)
-    call enc28j60_write_register16
-
-    ld   de, #RUNTIME_DATA_LENGTH
-    ld   hl, #EVACUATION_TEMP_BUFFER
-
-    jp   enc28j60_write_memory
-
+        .area _STAGE2
 
 ;; ############################################################################
 ;; update_progress
@@ -205,6 +181,8 @@ evacuate_data:
 ;; If the number of bytes loaded reached an even kilobyte,
 ;; increase kilobyte counter and update status display
 ;; ############################################################################
+
+    .area _STAGE2
 
 update_progress:
 
@@ -320,6 +298,8 @@ not_10k:
 ;; Modifies HL (but not F)
 ;; ############################################################################
 
+    .area _STAGE2
+
 _get_next_byte:
 
     ld   hl, (_received_data)
@@ -339,6 +319,8 @@ _get_next_byte:
 ;; Decreases chunk_bytes_remaining (byte counter in compressed chunk)
 ;; ############################################################################
 
+    .area _STAGE2
+
 _dec_chunk_bytes:
 
     ld   hl, (_chunk_bytes_remaining)
@@ -355,7 +337,6 @@ _dec_chunk_bytes:
 ;; This function does some header parsing; it initializes compression_method
 ;; and verifies compatibility.
 ;; ############################################################################
-
 
     .area _NONRESIDENT
 
@@ -454,7 +435,7 @@ s_header_set_state:
     ld   (_received_data_length), hl
 
     ;; ------------------------------------------------------------------------
-    ;; keep .z80 header until evacuate_data is called
+    ;; keep .z80 header until prepare_context is called
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
@@ -465,13 +446,13 @@ s_header_set_state:
     ret
 
 
-    .area _STAGE2
-
 ;; ############################################################################
 ;; state CHUNK_HEADER:
 ;;
 ;; receive low byte of chunk length
 ;; ############################################################################
+
+    .area _STAGE2
 
 _s_chunk_header:
 
@@ -488,6 +469,8 @@ _s_chunk_header:
 ;;
 ;; receive high byte of chunk length
 ;; ############################################################################
+
+    .area _STAGE2
 
 _s_chunk_header2:
 
@@ -507,6 +490,8 @@ _s_chunk_header2:
 ;; https://www.worldofspectrum.org/faq/reference/z80format.htm
 ;; https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
 ;; ############################################################################
+
+    .area _STAGE2
 
 _s_chunk_header3:
 
@@ -589,6 +574,8 @@ s_chunk_header3_set_page:
 ;; ############################################################################
 ;; state CHUNK_UNCOMPRESSED
 ;; ############################################################################
+
+    .area _STAGE2
 
 _s_chunk_uncompressed:
 
@@ -691,6 +678,8 @@ no_new_state:
 ;; ############################################################################
 ;; state CHUNK_COMPRESSED
 ;; ############################################################################
+
+    .area _STAGE2
 
 _s_chunk_compressed:
 
@@ -838,6 +827,8 @@ s_chunk_compressed_write_back:
 ;; state CHUNK_COMPRESSED_ESCAPE
 ;; ############################################################################
 
+    .area _STAGE2
+
 _s_chunk_compressed_escape:
 
     call  _get_next_byte
@@ -878,6 +869,8 @@ _s_chunk_compressed_escape:
 ;; state CHUNK_REPCOUNT
 ;; ############################################################################
 
+    .area _STAGE2
+
 _s_chunk_repcount:
 
     call _get_next_byte
@@ -893,6 +886,8 @@ _s_chunk_repcount:
 ;; state CHUNK_REPVALUE
 ;; ############################################################################
 
+    .area _STAGE2
+
 _s_chunk_repvalue:
 
     call _get_next_byte
@@ -907,6 +902,8 @@ _s_chunk_repvalue:
 ;; ############################################################################
 ;; state CHUNK_REPETITION
 ;; ############################################################################
+
+    .area _STAGE2
 
 _s_chunk_repetition:
 
@@ -1006,20 +1003,6 @@ receive_snapshot_byte_loop:
     ld    a, (hl)        ;; A is now high byte of tftp_write_pos
 
     ;; ------------------------------------------------------------------------
-    ;; first kilobyte of VRAM loaded?
-    ;; ------------------------------------------------------------------------
-
-    cp    a, #>VRAM_FIRST_KILOBYTE_LOADED
-ctx_prep_branch:
-    jr    nz, no_ctx_prep
-
-    call  prepare_context
-
-    jr    receive_snapshot_no_evacuation
-
-no_ctx_prep:
-
-    ;; ------------------------------------------------------------------------
     ;; reached RUNTIME_DATA (resident area)?
     ;; ------------------------------------------------------------------------
 
@@ -1063,11 +1046,10 @@ evacuation_activation_instr:
     ld    (de), a
 
     ;; ------------------------------------------------------------------------
-    ;; copy the evacuated data to ENC28J60 RAM,
-    ;; and make some preparations for context switch
+    ;; prepare context switch and copy the evacuated data to ENC28J60 RAM
     ;; ------------------------------------------------------------------------
 
-    call  evacuate_data
+    call  prepare_context
 
 receive_snapshot_no_evacuation:
 

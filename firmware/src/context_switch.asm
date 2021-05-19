@@ -187,7 +187,6 @@ prepare_context_set_bank:
     ;; below.)
     ;; ========================================================================
 
-#if 0
     ld   bc, #EVACUATION_TEMP_BUFFER
     ld   hl, #BITMAP_BASE
 
@@ -243,7 +242,6 @@ evac_colour_set:
       inc  bc
       dec  d
     jr   nz, evacuate_data_loop1
-#endif
 
     ;; ------------------------------------------------------------------------
     ;; write JP nn instructions to VRAM trampoline, at positions 0x40X2
@@ -368,7 +366,18 @@ evacuate_di:
 evacuate_pc:
     ld   (VRAM_REGSTATE_PC), hl
 
-    ret
+    ;; ========================================================================
+    ;; write evacuated data to ENC28J60 RAM
+    ;; ========================================================================
+
+    ld   hl, #ENC28J60_EVACUATED_DATA
+    ld   a, #OPCODE_WCR + (EWRPTL & REG_MASK)
+    call enc28j60_write_register16
+
+    ld   de, #RUNTIME_DATA_LENGTH
+    ld   hl, #EVACUATION_TEMP_BUFFER
+
+    jp   enc28j60_write_memory
 
 ;; ============================================================================
 
