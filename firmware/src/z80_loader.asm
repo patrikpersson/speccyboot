@@ -61,13 +61,12 @@ JR_UNCONDITIONAL   = 0x18      ;; JR offset
 JR_NZ              = 0x20      ;; JR NZ, offset
 LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
+LD_IX_NN           = 0x21DD    ;; LD IX, #nn
+
 
 ;; ============================================================================
 
     .area _DATA
-
-_received_data:
-    .ds   2       ;; pointer to received TFTP data
 
 _received_data_length:
     .ds   2       ;; number of valid bytes remaining in received_data
@@ -297,7 +296,7 @@ kilobytes_expected:
 ;; Returns *received_data++ in A
 ;; also decreases received_data_length
 ;;
-;; (reads byte from received_data, increases received_data, returns byte in A)
+;; (reads byte from (IY), increases received_data, returns byte in A)
 ;; Modifies HL (but not F)
 ;; ############################################################################
 
@@ -305,10 +304,8 @@ kilobytes_expected:
 
 _get_next_byte:
 
-    ld   hl, (_received_data)
-    ld   a, (hl)
-    inc  hl
-    ld   (_received_data), hl
+    ld   a, (iy)
+    inc  iy
 
     ld   hl, (_received_data_length)
     dec  hl
@@ -425,13 +422,10 @@ s_header_set_state:
     ;; adjust _received_data and _received_data_length for header size
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_received_data)
-    add  hl, de
-    ld   (_received_data), hl
+    add  iy, de
 
     ld   hl, (_received_data_length)
-    or   a, a            ;; clear C flag
-    sbc  hl, de
+    sbc  hl, de                      ;; C flag should be clear from ADD above
     ld   (_received_data_length), hl
 
     ;; ------------------------------------------------------------------------
@@ -649,23 +643,25 @@ checked_chunk_length:
   ld  ix, #_s_chunk_header
 
 no_new_state:
-  ld  (_chunk_bytes_remaining), hl
+  ld   (_chunk_bytes_remaining), hl
 
   ;;
   ;; if BC is zero, skip copying and status display update
   ;;
-  ld  a, b
-  or  c
-  ret z
+  ld   a, b
+  or   a, c
+  ret  z
 
   ;;
   ;; Copy the required amount of data
   ;;
 
-  ld  hl, (_received_data)
-  ld  de, (_tftp_write_pos)
+  push iy
+  pop  hl
+  ld   de, (_tftp_write_pos)
   ldir
-  ld  (_received_data), hl
+  push hl
+  pop  iy
   ld  (_tftp_write_pos), de
 
   ;;
@@ -686,7 +682,6 @@ _s_chunk_compressed:
   ld  bc, (_chunk_bytes_remaining)
   ld  de, (_received_data_length)
   ld  hl, (_tftp_write_pos)
-  ld  iy, (_received_data)
 
 s_chunk_compressed_loop:
 
@@ -818,7 +813,6 @@ s_chunk_compressed_write_back:
   ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), de
   ld  (_tftp_write_pos), hl
-  ld  (_received_data), iy
 
   ret
 
@@ -955,11 +949,20 @@ s_chunk_repetition_write_back:
 z80_loader_receive_hook:
 
     ;; ------------------------------------------------------------------------
-    ;; set up _received_data & _received_data_length
+    ;; register allocation (shared in all states):
+    ;; IX: current state (pointer to function)
+    ;; IY: read pointer (pointer to somewhere in rx_frame)
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ld   (_received_data), hl
+    .dw  LD_IX_NN            ;; LD IX, #nn
+z80_loader_state:
+    .dw  s_header            ;; initial state
+
+    ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+
+    ;; ------------------------------------------------------------------------
+    ;; set up _received_data_length
+    ;; ------------------------------------------------------------------------
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH)
     ld   a, l      ;; byteswap: length is stored in network order in UDP header
@@ -972,10 +975,6 @@ z80_loader_receive_hook:
     ;; ========================================================================
     ;; read bytes, evacuate when needed, call state functions
     ;; ========================================================================
-
-    .db  0xdd, 0x21          ;; LD IX, #NN
-z80_loader_state:
-    .dw  s_header            ;; initial state
 
 receive_snapshot_byte_loop:
 
