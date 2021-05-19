@@ -54,11 +54,13 @@ ATTR_DIGIT_ROW     = 0x5A00   ;; attribute VRAM address for kilobyte counter
 PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
 ;; ----------------------------------------------------------------------------
-;; opcodes for patching branches
+;; opcodes for patching code at runtime
 ;; ----------------------------------------------------------------------------
 
-JR_UNCONDITIONAL   = 0x18
-JR_NZ              = 0x20
+JR_UNCONDITIONAL   = 0x18      ;; JR offset
+JR_NZ              = 0x20      ;; JR NZ, offset
+LD_A_N             = 0x3e      ;; LD A, #n
+LD_B_N             = 0x06      ;; LD B, #n
 
 ;; ============================================================================
 
@@ -87,8 +89,6 @@ _rep_value:
 ;; expected and currently loaded no. of kilobytes, for progress display
 ;; ----------------------------------------------------------------------------
 
-_kilobytes_expected:
-     .ds   1
 _kilobytes_loaded:
     .ds    1
 
@@ -127,8 +127,8 @@ show_attr_digit:
 show_attr_digit_already_shifted:  ;; special target for below
 
     and   a, #0x78           ;; binary 01111000
-    ld    de, #ROM_DIGITS
-    add   a, e      ;; because all digits are placed in a single 256b page
+    add   a, #<ROM_DIGITS    ;; all digits in a single 256b page
+    ld    d, #>ROM_DIGITS
     ld    e, a
 
     ld    h, #>ATTR_DIGIT_ROW
@@ -173,8 +173,6 @@ show_attr_char_address_known:
     ret
 
 
-        .area _STAGE2
-
 ;; ############################################################################
 ;; update_progress
 ;;
@@ -191,8 +189,8 @@ update_progress:
     ;; check if HL is an integral number of kilobytes,
     ;; return early otherwise
 
-    xor  a
-    or   l
+    xor  a, a
+    or   a, l
     ret  nz
     ld   a, h
     and  #0x03
@@ -203,9 +201,8 @@ update_progress:
     ;; ========================================================================
 
     ;; This instruction is patched with different values at runtime.
-    ;; It is LD A, #n.
 
-    .db   0x3e           ;; LD A, #n
+    .db   LD_A_N
 _digits:
     .db   0      ;; digits (BCD) for progress display while loading a snapshot
 
@@ -249,18 +246,21 @@ not_10k:
 
     ld    hl, #_kilobytes_loaded
     inc   (hl)
-    ld    a, (_kilobytes_expected)
-    ld    d, a
-    cp    a, #48     ;; 48k snapshot?
     ld    a, (hl)
-    jr    z, 00003$  ;; 128k snapshot => progress = kilobytes / 4
-    rra              ;; C is clear after CP above
-    srl   a
-    jr    00002$
 
-00003$:              ;; 48k snapshot => progress = kilobytes * 2 / 3
-    add   a, a
-    ld    b, #3
+    ;; ------------------------------------------------------------------------
+    ;; Scale loaded number of kilobytes to a value 0..32. By default, 48k
+    ;; snapshots are scaled * 2 / 3. For 128k snapshots, the add below is
+    ;; patched to a NOP, and the immediate constant for LD_B_N to 4.
+    ;; ------------------------------------------------------------------------
+
+progress_add_instr:
+    add   a, a       ;; patched to NOP for 128k snapshots
+
+    .db   LD_B_N
+progress_ratio:
+    .db   3          ;; patched to 4 for 128k snapshots
+
     call  a_div_b
     ld    a, c
 
@@ -277,7 +277,10 @@ not_10k:
     ;; if all data has been loaded, perform the context switch
     ;; ========================================================================
 
-    ld    a, d
+    .db   LD_A_N
+kilobytes_expected:
+    .db   48         ;; initial assumption, possibly patched to 128 in s_header
+
     cp    a, (hl)
     ret   nz
 
@@ -351,13 +354,6 @@ s_header:
     out  (c), a
 
     ;; ------------------------------------------------------------------------
-    ;; assume 48k snapshot, until more details are known
-    ;; ------------------------------------------------------------------------
-
-    ld   a, #48
-    ld   (_kilobytes_expected), a
-
-    ;; ------------------------------------------------------------------------
     ;; check snapshot header
     ;; ------------------------------------------------------------------------
 
@@ -399,7 +395,11 @@ s_header_ext_hdr:
     cp    a, #SNAPSHOT_128K
     jr    c, s_header_not_128k
     ld    a, #128
-    ld    (_kilobytes_expected), a
+    ld    (kilobytes_expected), a
+    xor   a, a
+    ld    (progress_add_instr), a
+    ld    a, #4
+    ld    (progress_ratio), a
 
 s_header_not_128k:
 
