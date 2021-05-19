@@ -58,19 +58,12 @@ _stack_top  = 0x5b00 + STACK_SIZE
 
 RX_FRAME_SIZE = 20 + 8 + 4 + 512
 
-;; ----------------------------------------------------------------------------
-;; Font data for digits 0..9. Six bytes per digit (as first and last scanlines
-;; are always zero and need not be stored). Copied from font_data.
-;; Placed on an absolute address so we can be sure that it's all in a single
-;; 256b page. (Makes addressing simpler.)
-;; ----------------------------------------------------------------------------
-
 _font_data  = 0xfd03                  ;; full font, but overwritten by snapshot
 
 ;; ----------------------------------------------------------------------------
 ;; Snapshot header, copied here while the snapshot is loading.
 ;; This is only used while the bank 0x4000..0x7fff is loading.
-;; Kept on a single RAM page; simplified adressing.
+;; Kept in a single RAM page; simplifies adressing.
 ;; ----------------------------------------------------------------------------
 
 _snapshot_header = 0x7f00             ;; snapshot header, temporary storage

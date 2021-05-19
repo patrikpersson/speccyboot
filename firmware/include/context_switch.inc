@@ -188,15 +188,9 @@ Z80_HEADER_OFFSET_HW_STATE_SND   = 39
 SNAPSHOT_128K                    = 3
 
 ;; ----------------------------------------------------------------------------
-;; context data
+;; Prepare context data + VRAM trampoline
 ;; ----------------------------------------------------------------------------
-
-    .globl context_128k_flag
-    .globl context_7ffd
-    .globl context_snd_regs
-    .globl context_fffd
-    .globl context_border
-    .globl context_registers
+    .globl prepare_context
 
 ;; ----------------------------------------------------------------------------
 ;; Restore application data from ENC28J60 SRAM, restore register values
