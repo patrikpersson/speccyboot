@@ -220,9 +220,6 @@ _digits:
     call  show_attr_digit
     ld    a, c
 
-    di
-    halt
-
 not_100k:
     pop   de             ;; recall flags, old F is now in E
     bit   #4, e          ;; was H flag set? Then the tens have increased
