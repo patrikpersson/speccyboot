@@ -39,7 +39,7 @@
     <p>In general, network booting works as follows:</p>
 
     <ul>
-      <li>The machine boots and uses DHCP to get an IP
+      <li>The machine boots and uses BOOTP to get an IP
         address.</li>
       <li>The machine then loads an executable file over TFTP from a
         server.</li>
@@ -65,24 +65,19 @@
     <ol>
       <li>If Caps Shift is being pressed during start, the machine will
         boot into BASIC, and not continue with the steps below.</li>
-      <li>Otherwise, an IP address is obtained using DHCP.
-        The DHCP server can optionally also provide a snapshot file name
-      (field <code>file</code> or option 67)
+      <li>Otherwise, an IP address is obtained using BOOTP.
+        The BOOTP server can optionally also provide a snapshot file name
+      (field <code>file</code>)
       and/or
-        a TFTP server (field <code>sname</code> or options 66/150).
-      <p style="margin-top:0.5rem;margin-bottom:0">If the DHCP response includes a TFTP
+        a TFTP server (field <code>sname</code>).
+      <p style="margin-top:0.5rem;margin-bottom:0">If the BOOTP response includes a TFTP
     server address, that address is used for TFTP;
-    otherwise, the machine that responded to DHCP will be contacted
+    otherwise, the machine that responded to BOOTP will be contacted
     over TFTP too.</p>
-      <li>If the DHCP response includes a snapshot file name, that
-        file is loaded and executed immediately.
-        Otherwise the text file <code>snapshots.lst</code> is loaded using TFTP and displayed as a
-          menu. When a snapshot is selected, it is loaded using TFTP, and then
-          executed.
-        <p style="margin-top:0.5rem">
-          (If <code>snapshots.lst</code> only contains one single file name, that file
-          is loaded immediately, without asking the user.)
-        </p>
+      <li>The file <code>spboot.bin</code> is loaded from the TFTP server, and executed.
+        This binary presents a menu and handles snapshot loading.
+        (If the BOOTP response includes a snapshot file name, that
+        file is loaded and executed in place of <code>spboot.bin</code>.)
       </li>
     </ol>
 
@@ -90,8 +85,8 @@
 
     <ul>
       <li>Manual (static) assignment of IP address is not supported
-        &mdash; only dynamic (DHCP).
-        (The DHCP server can still use a fixed mapping, of course.)</li>
+        &mdash; only dynamic (BOOTP).
+        (The BOOTP server can still use a fixed mapping, of course.)</li>
       <li>More than one SpeccyBoot on the same local network is not
           supported &mdash; the MAC address is fixed.
         (If you are fortunate enough to have multiple networked SpeccyBoots,
@@ -110,7 +105,7 @@
       controller is connected to the Spectrum using a simple
       <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
       host. The device also
-      contains an 8kB EEPROM for firmware, with a dedicated stack for the protocols
+      contains an 2kB EEPROM for firmware, with a dedicated stack for the protocols
       involved.</p>
 
     <p align=center>
@@ -148,12 +143,9 @@
       <tr><td><a href="http://www.ietf.org/rfc/rfc0768.txt">RFC 768</a></td><td>UDP (User Datagram Protocol)</td><td>August 1980</td></tr>
       <tr><td><a href="http://www.ietf.org/rfc/rfc791.txt">RFC 791</a></td><td>IP (Internet Protocol)</td><td>September 1981</td></tr>
       <tr><td><a href="http://www.ietf.org/rfc/rfc826.txt">RFC 826</a></td><td>ARP (Address Resolution Protocol)</td><td>November 1982</td></tr>
-      <tr><td><a href="http://tools.ietf.org/html/rfc906">RFC 906</a></td><td>Bootstrap Loading using TFTP</td><td>June 1984</td></tr>
-      <tr><td><a href="http://tools.ietf.org/html/rfc1350">RFC 1350</a></td><td>TFTP (Trivial File Transfer Protocol)</td><td>July 1992</td></tr>
-      <tr><td><a href="http://www.ietf.org/rfc/rfc2131.txt">RFC 2131</a>,
-              <a href="http://www.ietf.org/rfc/rfc2132.txt">RFC 2132</a>,
-              <a href="http://www.ietf.org/rfc/rfc5859.txt">RFC 5859</a></td><td>DHCP (Dynamic Host Configuration Protocol)</td><td>March 1997, June 2010</td></tr>
-      <tr><td><a href="http://www.ietf.org/rfc/rfc3164.txt">RFC 3164</a></td><td>BSD Syslog Protocol</td><td>August 2001</td></tr>
+      <tr><td><a href="http://www.ietf.org/html/rfc906">RFC 906</a></td><td>Bootstrap Loading using TFTP</td><td>June 1984</td></tr>
+      <tr><td><a href="http://www.ietf.org/rfc/rfc951.txt">RFC 951</a></td><td>BOOTP (Bootstrap Protocol)</td><td>September 1985</td></tr>
+      <tr><td><a href="http://www.ietf.org/html/rfc1350">RFC 1350</a></td><td>TFTP (Trivial File Transfer Protocol)</td><td>July 1992</td></tr>
     </table>
 
     <p>Although these protocols are as old as (in some cases, even older

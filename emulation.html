@@ -36,7 +36,7 @@
       network for the emulated Spectrum. Your Linux machine will
       get another (virtual) network interface, and this interface
       is connected to the emulated Spectrum. Your Linux machine
-      will then need to take on the role of providing DHCP and
+      will then need to take on the role of providing BOOTP and
       TFTP services to this Spectrum machine.</p>
 
       <ol>
@@ -85,23 +85,23 @@ WantedBy=multi-user.target</pre>
       <code>tap0</code> interface to use the 192.168.82.*
       subnet. If this is not possible for you (e.g., if you are
       already using this subnet for other purposes), you will need
-      to modify both this configuration and the DHCP configuration
+      to modify both this configuration and the BOOTP configuration
       below.</p>
 
-      <h2>Configuring DHCP &amp; TFTP for your local TAP network</h2>
+      <h2>Configuring BOOTP &amp; TFTP for your local TAP network</h2>
 
       <p>
         This is done much the same way you would
-        <a href="usage.html">configure DHCP &amp; TFTP
+        <a href="usage.html">configure BOOTP &amp; TFTP
         for a physical machine</a>.
-        Ensure your DHCP server does not respond to requests from
+        Ensure your BOOTP server does not respond to requests from
         other machines in the network. (The linked <code>dnsmasq.conf</code>
         configures <code>dnsmasq</code> to only respond to the SpeccyBoot's
         MAC address, so that should be fine.)
       </p>
 
       <p>The TAP interface configuration, as well as the TFTP and
-      DHCP configurations, take effect upon boot. Hence, you need
+      BOOTP configurations, take effect upon boot. Hence, you need
       to <b>reboot your Linux machine</b> at this point.</p>
 
       <h2>Running Fuse with SpeccyBoot emulation</h2>
