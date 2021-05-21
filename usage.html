@@ -132,14 +132,50 @@ cp ~/git/speccyboot/firmware/spboot.bin $SNAPDIR</pre>
     <p>If the SpeccyBoot seems stuck, the border colour should give a hint as to
     what went wrong:</p>
 
-    <table>
-      <tr><th style="padding-right:1rem">Border&nbsp;colour</th><th>Failure</th></tr>
-      <tr><td style="padding:6px"><div style="background-color:#f00;text-align:center;padding:2px;color:#fff">red</div></td><td>Timed out: no response was received from the server (despite several attempts to contact it).</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#00f;text-align:center;padding:2px;color:#fff">blue</div></td><td>Version check failed: the stage 2 boot loader is incompatible with the SpeccyBoot ROM.</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#ff0;text-align:center;padding:2px">yellow</div></td><td>The TFTP server responded with <code>ERROR</code>. (This usually means the requested file could  not be found on the server.)</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#0ff;text-align:center;padding:2px">cyan</div></td><td>The selected snapshot is not compatible with this hardware.</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#f0f;text-align:center;padding:2px">magenta</div></td><td>The server's BOOTREPLY response included a symbolic hostname for the TFTP server. (The <code>sname</code> field must be an IP address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal (quad-dotted) notation</a>, on form w.x.y.z.)</td></tr>
-      <tr><td style="padding:6px"><div style="background-color:#eee;text-align:center;padding:2px">white</div></td><td>Hardware failure: the ENC28J60 controller does not respond.</td></tr>
+    <table id="errortable">
+      <tr>
+        <th>Border&nbsp;colour</th><th>Error</th><th>Explanation</th>
+      </tr>
+      <tr>
+        <td><div style="background-color:#00f;color:#fff">blue</div></td>
+        <td>wrong version for stage 2 loader</td>
+        <td>The stage 2 boot loader (usually <code style="padding:0">spboot.bin</code>) is incompatible with the SpeccyBoot firmware version.</td>
+      </tr>
+      <tr>
+        <td><div style="background-color:#f00;color:#fff">red</div></td>
+        <td>server not responding</td>
+        <td>
+          <p>No response was received from the server (despite several attempts to contact it).</p>
+          <p>If this error occurs and <b>no IP address is displayed</b>, it means the BOOTP server is not responding.</p>
+          <p>If this error occurs when <b>IP addresses are displayed</b>, it means the TFTP server is not responding.</p>
+        </td>
+      </tr>
+      <tr>
+        <td><div style="background-color:#f0f;color:#fff">magenta</div></td>
+        <td>invalid hostname</td>
+        <td>
+          <p>The BOOTP reply included a symbolic hostname for the TFTP server.</p>
+          <p>(The <code>sname</code> field must be an IP address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal (quad-dotted) notation</a>, on form w.x.y.z.)</p>
+        </td>
+      </tr>
+      <tr>
+        <td><div style="background-color:#0ff">cyan</div></td>
+        <td>incompatible snapshot</td>
+        <td>
+          <p>The selected snapshot is incompatible with SpeccyBoot.</p>
+          <p>Snapshots for standard Spectrum 48k and 128k machines are supported, but snapshots made specifically for +2A/+2B/+3 machines or clones are not.</p>
+        </td>
+      </tr>
+      <tr>
+        <td><div style="background-color:#ff0">yellow</div></td>
+        <td>file not found</td>
+        <td>The TFTP server responded with a <code style="padding:0">TFTP</code> <code style="padding:0">ERROR</code>. This usually means the requested file could not be found on the server.</td>
+      </tr>
+      <tr>
+        <td><div style="background-color:#eee">white</div></td>
+        <td>hardware failure</td>
+        <td>The ENC28J60 controller does not seem to respond to SPI communication.</td>
+      </tr>
     </table>
 
     <h3>Demo video</h3>
@@ -150,50 +186,9 @@ cp ~/git/speccyboot/firmware/spboot.bin $SNAPDIR</pre>
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
     </iframe>
 
-  <!--
-    <hr>
-
-    <a name="syslog"><h2>Syslog daemon configuration</h2></a>
-
-    <p>This step is optional. The syslog feature will not affect
-    your retro-gaming experience in any way. If you don't know
-    what it is, you don't want it. If you do know what it is,
-    you likely <i>still</i> don't want it. It can be rather
-    useful for debugging, though.</p>
-
-    <p>SpeccyBoot uses (a liberal interpretation of) the
-    <a href="http://www.ietf.org/rfc/rfc3164.txt">BSD syslog
-    protocol</a> to display status information. Those messages can be
-    viewed using a suitably configured machine in your local network.
-    The syslog output is primarily useful for debugging.</p>
-
-    <p>Just like TFTP, the syslog protocol is supported by virtually all
-    UNIX and UNIX-like operating systems. Most UNIX syslog daemons are
-    capable of receiving syslog output from other machines in the
-    network. However, most syslog daemons also disable this behavior by
-    default, so you will likely have to explicitly enable it to see
-    SpeccyBoot's messages.</p>
-
-    <p>In <b>Ubuntu 20.04</b>, edit <span class="code">/etc/rsyslog.conf</span> and make
-    sure the following two lines are there:</p>
-
-    <pre class="code">module(load="imudp")
-  input(type="imudp" port="514")
-  </pre>
-
-    <p>Here's how SpeccyBoot syslog output appears in Ubuntu's log viewer:</p>
-
-    <img src="syslog.png" />
-
-    <p>Another way of viewing the syslog output is <a
-    href="http://www.wireshark.org/">Wireshark</a>. Wireshark interprets
-    syslog messages correctly, and displays it along with the rest of the
-    communication.</p>
-
-  -->
-
-    <hr>
-    <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
+    <div class="footer">
+      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
+    </div>
   </div>
   </body>
 </html>

@@ -20,9 +20,9 @@
 
     <p>SpeccyBoot is a device for booting a ZX Spectrum over an Ethernet
       network. Network booting was used for diskless workstation a few
-      years back, and these days it's often used for configuring and
-      booting VoIP phones. It's also popular for booting embedded development
-      boards.</p>
+      years back, and is still often used for configuring and
+      booting VoIP phones. The same procedure can also be useful
+      for booting embedded development boards.</p>
 
     <h3>Contents</h3>
 
@@ -62,36 +62,57 @@
     <p>When you switch on a SpeccyBoot-equipped Spectrum, it will do the
       following:</p>
 
-    <ol>
-      <li>If Caps Shift is being pressed during start, the machine will
-        boot into BASIC, and not continue with the steps below.</li>
-      <li>Otherwise, an IP address is obtained using BOOTP.
-        The BOOTP server can optionally also provide a snapshot file name
-      (field <code>file</code>)
-      and/or
-        a TFTP server (field <code>sname</code>).
-      <p style="margin-top:0.5rem;margin-bottom:0">If the BOOTP response includes a TFTP
-    server address, that address is used for TFTP;
-    otherwise, the machine that responded to BOOTP will be contacted
-    over TFTP too.</p>
-      <li>The file <code>spboot.bin</code> is loaded from the TFTP server, and executed.
-        This binary presents a menu and handles snapshot loading.
-        (If the BOOTP response includes a snapshot file name, that
-        file is loaded and executed in place of <code>spboot.bin</code>.)
+    <ol class="steps" start="0">
+
+      <li>
+        If Caps Shift is being pressed when the machine starts,
+        SpeccyBoot is bypassed:
+        the machine will then boot into the regular Spectrum ROM,
+        and not continue with the steps below.
+      </li>
+
+      <li>
+        Otherwise, an IP address is obtained using BOOTP.
+        SpeccyBoot broadcasts a BOOTP request,
+        and expects a BOOTP reply from the BOOTP server.
+      </li>
+
+      <li>
+        A small binary file, <code style="padding:0">spboot.bin</code>, is loaded over TFTP.
+        This binary is the stage 2 loader, a part of SpeccyBoot.
+
+        <ul style="list-style-type:disc">
+          <li>
+            By default,
+            the machine that responded to BOOTP will be contacted for TFTP too.
+            If the BOOTP reply (step 1) included a TFTP server address
+            (field <code style="padding:0">sname</code>),
+            then that address is used for TFTP instead.
+            The TFTP server address must then be specified as a quad-dotted decimal address, such as <code style="padding:0">192.168.48.103</code>.
+          </li>
+          <li>
+            If the BOOTP reply (step 1) included a file name,
+            (field <code style="padding:0">file</code>),
+            then that file name will be used instead of <code>spboot.bin</code>
+            for the stage 2 loader.
+            However, the stage 2 loader depends closely on the SpeccyBoot firmware,
+            and must match the firmware version exactly.
+          </li>
+        </ul>
+      </li>
+
+      <li>
+        The stage 2 loader loads the snapshot list (<code style="padding:0">snapshots.lst</code>)
+        and presents a menu.
+        When the user selects a snapshot, that snapshot is loaded
+        into the Spectrum and executed. Game on!
+
+        <p>
+          (The <code>snapshots.lst</code> file and the snapshot are both loaded
+          from the TFTP server selected in step 2.)
+        </p>
       </li>
     </ol>
-
-    <p>Configuration of the SpeccyBoot itself is neither necessary nor supported:</p>
-
-    <ul>
-      <li>Manual (static) assignment of IP address is not supported
-        &mdash; only dynamic (BOOTP).
-        (The BOOTP server can still use a fixed mapping, of course.)</li>
-      <li>More than one SpeccyBoot on the same local network is not
-          supported &mdash; the MAC address is fixed.
-        (If you are fortunate enough to have multiple networked SpeccyBoots,
-        you'll have to change the MAC address in the SpeccyBoot firmware.)</li>
-    </ul>
 
     <hr>
 
@@ -140,24 +161,26 @@
       standard IETF network protocols:</p>
 
     <table>
-      <tr><td><a href="http://www.ietf.org/rfc/rfc0768.txt">RFC 768</a></td><td>UDP (User Datagram Protocol)</td><td>August 1980</td></tr>
-      <tr><td><a href="http://www.ietf.org/rfc/rfc791.txt">RFC 791</a></td><td>IP (Internet Protocol)</td><td>September 1981</td></tr>
-      <tr><td><a href="http://www.ietf.org/rfc/rfc826.txt">RFC 826</a></td><td>ARP (Address Resolution Protocol)</td><td>November 1982</td></tr>
-      <tr><td><a href="http://www.ietf.org/html/rfc906">RFC 906</a></td><td>Bootstrap Loading using TFTP</td><td>June 1984</td></tr>
-      <tr><td><a href="http://www.ietf.org/rfc/rfc951.txt">RFC 951</a></td><td>BOOTP (Bootstrap Protocol)</td><td>September 1985</td></tr>
-      <tr><td><a href="http://www.ietf.org/html/rfc1350">RFC 1350</a></td><td>TFTP (Trivial File Transfer Protocol)</td><td>July 1992</td></tr>
+      <tr><td><a href="https://www.ietf.org/rfc/rfc0768.txt">RFC 768</a></td><td>UDP (User Datagram Protocol)</td><td>August 1980</td></tr>
+      <tr><td><a href="https://www.ietf.org/rfc/rfc791.txt">RFC 791</a></td><td>IP (Internet Protocol)</td><td>September 1981</td></tr>
+      <tr><td><a href="https://www.ietf.org/rfc/rfc826.txt">RFC 826</a></td><td>ARP (Address Resolution Protocol)</td><td>November 1982</td></tr>
+      <tr><td><a href="https://tools.ietf.org/html/rfc906">RFC 906</a></td><td>Bootstrap Loading using TFTP</td><td>June 1984</td></tr>
+      <tr><td><a href="https://www.ietf.org/rfc/rfc951.txt">RFC 951</a></td><td>BOOTP (Bootstrap Protocol)</td><td>September 1985</td></tr>
+      <tr><td><a href="https://tools.ietf.org/html/rfc1350">RFC 1350</a></td><td>TFTP (Trivial File Transfer Protocol)</td><td>July 1992</td></tr>
     </table>
 
-    <p>Although these protocols are as old as (in some cases, even older
-    than) the Spectrum, these IP-family protocols are
-    supported by personal computers since the mid 1990s.</p>
+    <p>
+      Although these protocols are as old as (in some cases, even older than) the Spectrum,
+      these IP-family protocols are supported by personal computers since the mid 1990s.
+    </p>
 
-    <p>SpeccyBoot also includes a <a href="https://en.wikipedia.org/wiki/Bit_banging">bit-banged</a>
-    <a href="http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus">SPI</a>
-    stack (capable of a transfer bandwidth of about 45kbit/s), a menu
-    selection facility, and support for loading and executing
-    <a href="http://www.worldofspectrum.org/faq/reference/z80format.htm">.z80
-      snapshots</a>.</p>
+    <p>
+      SpeccyBoot also includes a <a href="https://en.wikipedia.org/wiki/Bit_banging">bit-banged</a>
+      <a href="https://en.wikipedia.org/wiki/Serial_Peripheral_Interface">SPI</a>
+      stack (capable of a transfer bandwidth of about 45kbit/s), a menu
+      selection facility, and support for loading and executing
+      <a href="https://worldofspectrum.org/faq/reference/z80format.htm">.z80 snapshots</a>.
+    </p>
 
     <p>The code is on
       <a href="https://github.com/patrikpersson/speccyboot">GitHub</a>.</p>
@@ -166,17 +189,21 @@
 
     <a name="compatibility"><h2>Compatibility</h2></a>
 
-    <p>I'm using the SpeccyBoot with a Spectrum 128. It should work equally well
+    <p>I'm using the SpeccyBoot with a Spectrum 128 (&quot;toastrack&quot;). It should work equally well
     with a 48k machine, and probably with a 16k machine too. Tests with
     <a href="emulation.html">Fuse emulation</a> confirm this.</p>
 
-    <p>The later Amstrad Spectrum machines (+2A/+2B/+3) have a different
-      expansion connector, and will not work directly with the SpeccyBoot as
-      described here. It's certainly possible to design a slightly modified
-      SpeccyBoot board to connect to one of these machines; I just haven't had
-      the opportunity to do so myself.</p>
-      <hr>
+    <p>
+      The later Amstrad Spectrum machines (+2A/+2B/+3) have different
+      expansion connectors, and will not work directly with the SpeccyBoot as
+      described here. I'm sure it's possible to design a slightly modified
+      SpeccyBoot board to connect to one of these machines, but I haven't had
+      the opportunity to do so myself.
+    </p>
+
+    <div class="footer">
       <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
+    </div>
     </div>
   </body>
 </html>

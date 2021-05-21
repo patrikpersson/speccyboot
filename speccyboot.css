@@ -49,6 +49,27 @@ table {
   width: 100%;
 }
 
+table#errortable tr td:first-child {
+  padding: 4px;
+}
+
+table#errortable tr td:first-child > div {
+  text-align: center;
+  padding: 2px;
+}
+
+table#errortable td:nth-child(2) {
+  white-space: nowrap;
+}
+
+table#errortable td > p {
+  margin: 0;
+}
+
+table#errortable td > p+p {
+  margin-top: 0.5rem;
+}
+
 div.imagegrid {
   margin: 4rem 0;
   display: grid;
@@ -111,7 +132,25 @@ li {
 }
 
 li > p {
-  margin-top: 0;
+  margin-top: 0.5rem;
+}
+
+ol.steps > li {
+  padding: 0.75rem;
+  border-left: 1rem solid #fff;
+  background-color: #f2f8ff;
+  margin: 1.5rem 0 1.5rem 1rem;
+}
+
+ol.steps > li > p {
+  margin: 0.5rem 0 0 0;
+}
+
+ol.steps > li > ul,
+ol.steps > li > ul > li,
+ol.steps > li > ul > li > p
+{
+  margin-bottom: 0;
 }
 
 div.biglink {
@@ -186,9 +225,9 @@ iframe#video {
   display: flex;
   align-items: flex-end;
   width: 100%;
-  padding: 0 0 3px 0;
-  margin-bottom: 36px;
-  border-bottom: 3px solid #8ac;
+  padding: 0 0 8px 0;
+  margin-bottom: 48px;
+  border-bottom: 2px solid #8ac;
 }
 
 h2 {
@@ -196,12 +235,23 @@ h2 {
   line-height: 150%;
 }
 
+h3 {
+  margin-top: 36px;
+}
+
 hr {
   color: #8ac;
   background-color: #8ac;
   height: 1px;
   border: none;
-  margin-top: 24px;
+  margin: 36px 0;
+}
+
+div.footer {
+  font-size: 80%;
+  border-top: 2px solid #ddd;
+  padding: 4px 0 0 0;
+  margin: 36px 0 0 0;
 }
 
 pre.code {
