@@ -70,7 +70,7 @@ ip_receive:
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     ld   a, (hl)
     or   a                              ;; a non-zero first octet
-    jr   z, ip_receive_address_checked  ;; means no has been set
+    jr   z, ip_receive_address_checked  ;; means no address has been set
 
     ;; An IP address has been set. Is the packet sent to this address?
     ;; If it is not, return immediately.
@@ -80,7 +80,8 @@ ip_receive:
 
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_DST_ADDR
     ld   b, #4
-    call memory_compare
+    rst  memory_compare
+    ret  nz
 
 ip_receive_address_checked:
 

@@ -259,7 +259,7 @@ progress_add_instr:
 progress_ratio:
     .db   3          ;; patched to 4 for 128k snapshots
 
-    call  a_div_b
+    rst   a_div_b
     ld    a, c
 
 00002$:
@@ -499,7 +499,7 @@ _s_chunk_header3:
     jr   c, s_chunk_header3_compatible
 s_chunk_header3_incompatible:
     ld   a, #FATAL_INCOMPATIBLE
-    jp   fail
+    rst  fail
 s_chunk_header3_compatible:
 
     ;; Decide on a good value for tftp_write_pos; store in HL.

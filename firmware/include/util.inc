@@ -59,6 +59,8 @@ SND_REG_VALUE     = 0xbffd
 
 
 ;; ----------------------------------------------------------------------------
+;; rst memory_compare
+;;
 ;; Compare memory blocks pointed to by HL and DE. Register B indicates the
 ;; number of bytes to compare (so, max 256).
 ;;
@@ -68,21 +70,25 @@ SND_REG_VALUE     = 0xbffd
 ;; A is destroyed.
 ;; ----------------------------------------------------------------------------
 
-    .globl memory_compare
+memory_compare = 0x30
 
 
 ;; ----------------------------------------------------------------------------
+;; rst fail
+;;
 ;; Set border to the value of register A, and halt the machine (DI+HALT)
 ;; ----------------------------------------------------------------------------
 
-    .globl fail
+fail = 0x20
 
 ;; ----------------------------------------------------------------------------
+;; rst a_div_b
+;;
 ;; Divides A by B. Returns result in C and remainder in A.
 ;; C flag is always set. Z flag is always cleared.
 ;; ----------------------------------------------------------------------------
 
-    .globl a_div_b
+a_div_b = 0x28
 
 ;; ----------------------------------------------------------------------------
 ;; Prints IP address, four octets of 1-3 digits, with a period between.

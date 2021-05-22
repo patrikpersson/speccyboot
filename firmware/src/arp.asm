@@ -77,7 +77,7 @@ arp_receive:
 
     ld   de, #arp_receive_reply_template
     ld   b, #(ARP_HEADER_SIZE - 1)
-    call memory_compare
+    rst  memory_compare
     ret  nz   ;; if the receive packet does not match the expected header, return
 
     ;; HL now points to the low-order OPER byte, expected to be 1 (REQUEST)
@@ -97,7 +97,7 @@ arp_receive:
 
     ld   de , #_rx_frame + ARP_OFFSET_TPA
     ld   b, #IPV4_ADDRESS_SIZE
-    call memory_compare
+    rst  memory_compare
     ret  nz   ;; if the packet is not for the local IP address, return
 
     ;; ========================================================================

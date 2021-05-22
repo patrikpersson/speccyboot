@@ -221,7 +221,7 @@ bootp_receive:
     ld   hl, #bootrequest_xid
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_XID
     ld   b, #4
-    call memory_compare
+    rst  memory_compare
     ret  nz
 
     ;; ------------------------------------------------------------------------
@@ -386,4 +386,4 @@ bootp_receive_invalid_address:
     ;; ERROR: boot server name is not a dotted-decimal IP address
 
     ld   a, #FATAL_INVALID_BOOT_SERVER
-    jp   fail
+    rst  fail

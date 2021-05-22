@@ -238,7 +238,7 @@ main_packet:
     push  hl
     ld    de, #eth_local_address
     ld    b, #ETH_ADDRESS_SIZE
-    call  memory_compare
+    rst   memory_compare
     pop   hl
     jr    z, main_packet_done
 

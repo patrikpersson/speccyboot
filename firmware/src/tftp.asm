@@ -95,7 +95,7 @@ tftp_receive:
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT
     ld   de, #_tftp_client_port
     ld   b, #2
-    call memory_compare
+    rst  memory_compare
     ret  nz
 
     ;; ------------------------------------------------------------------------
@@ -109,10 +109,12 @@ tftp_receive:
     jr   nz, tftp_receive_bad_reply
     ld   a, (hl)
     cp   a, #TFTP_OPCODE_DATA
+    jr   z, tftp_receive_got_data
 
 tftp_receive_bad_reply:
+
     ld   a, #FATAL_FILE_NOT_FOUND
-    jp   nz, fail
+    rst  fail
 
 tftp_receive_got_data:
 
@@ -322,7 +324,7 @@ _jp_hl:
 
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
-    jp  fail
+    rst fail
 
 tftp_receive_error:
 
