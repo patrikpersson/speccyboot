@@ -131,7 +131,6 @@ main_spin_loop:
     ld    e, #EPKTCNT
     call  enc28j60_read_register
 
-    ld    a, c
     or    a, a
     jr    nz, main_packet           ;; NZ means a packet has been received
 

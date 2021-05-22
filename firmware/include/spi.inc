@@ -118,12 +118,6 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
     .endm
 
 ;; ----------------------------------------------------------------------------
-;; Read 8 bits from SPI to register C.
-;; Destroys BC & AF; B will be zero on exit.
-;; ----------------------------------------------------------------------------
-    .globl spi_read_byte
-
-;; ----------------------------------------------------------------------------
 ;; Write 8 bits to SPI from register C.
 ;; Destroys BC & AF; B will be zero on exit.
 ;; ----------------------------------------------------------------------------

@@ -247,8 +247,8 @@ OPCODE_WBM             = 0x7A
 ;; Read value of indicated ETH/MAC/MII register.
 ;;
 ;; On entry, E should hold the register descriptor for the register to read.
-;; Returns the read value in C.
-;; Destroys AF, B. B will be zero on exit.
+;; Returns the read value in A.
+;; Destroys AF, BC. B will be zero on exit.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_register

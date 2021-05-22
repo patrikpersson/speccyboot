@@ -168,7 +168,7 @@ enc28j60_read_register:
     ;; ------------------------------------------------------------------------
 
     ld    a, e
-    and   a, #0x1f       ;; opcode RCR = 0x00
+    and   a, #REG_MASK       ;; opcode RCR = 0x00
     ld    c, a
     call  spi_write_byte
 
@@ -179,13 +179,21 @@ enc28j60_read_register:
     ld    a, e
     add   a, a   ;; bit 7 in descriptor set? then this is a MAC or MII register
 
-    call  c, spi_read_byte
+    ld   b, #8
+    jr   nc, 00001$
+    ld   b, #16  ;; for MAC/MII registers, read 2 bytes, keep the last one
+    
+00001$:
 
-    ;; ------------------------------------------------------------------------
-    ;; now read the actual register value
-    ;; ------------------------------------------------------------------------
+    ld    a, #SPI_IDLE
+    out   (SPI_OUT), a
+    inc   a
+    out   (SPI_OUT), a
+    in    a, (SPI_IN)
+    rra
+    rl    c
 
-    call  spi_read_byte
+    djnz 00001$
 
     ;; ------------------------------------------------------------------------
     ;; end transaction
@@ -197,6 +205,8 @@ enc28j60_end_transaction_and_return:
     out (SPI_OUT), a
     ld  a, #SPI_IDLE+SPI_CS
     out (SPI_OUT), a
+
+    ld  a, c
 
     ret
 
@@ -210,7 +220,6 @@ enc28j60_poll_register:
 00001$:
     push   bc
     call   enc28j60_read_register
-    ld     a, c
     pop    bc
 
     and    a, h
@@ -228,11 +237,6 @@ enc28j60_poll_register:
 ;; ############################################################################
 ;; enc28j60_read_memory
 ;; ############################################################################
-
-;; ----------------------------------------------------------------------------
-;; macro: read one bit from SPI to accumulator
-;; assumes C=SPI_IN=SPI_OUT    (on SpeccyBoot; set explicitly for DGBoot below)
-;; ----------------------------------------------------------------------------
 
 enc28j60_read_memory:
 
