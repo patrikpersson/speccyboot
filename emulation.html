@@ -79,6 +79,10 @@ ExecStart=/usr/local/bin/enable_tap.sh
 [Install]
 WantedBy=multi-user.target</pre>
         </li>
+        <li>
+        <p>Enable your new TAP service:</p>
+	<pre class="code">sudo systemctl enable tap</pre>
+        </li>
       </ol>
 
       <p>Note that this configuration assumes your new
@@ -111,7 +115,7 @@ WantedBy=multi-user.target</pre>
         Install Fuse:
       </p>
 
-      <pre class="code">sudo apt install fuse-gtk spectrum-roms</pre>
+      <pre class="code">sudo apt install fuse-emulator-gtk spectrum-roms</pre>
 
       <p>
         The Debian/Ubuntu package doesn't include the SpeccyBoot ROM, so you'll have to build
