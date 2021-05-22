@@ -243,7 +243,7 @@ main_packet:
     jr    z, main_packet_done
 
     ;; ------------------------------------------------------------------------
-    ;; remember sender's MAC address
+    ;; remember source MAC address
     ;; ------------------------------------------------------------------------
 
     ld    de, #eth_sender_address
@@ -500,35 +500,38 @@ eth_create_txbuf_set:
     ;; write per-packet control byte  (0x0E; datasheet, section 7.1)
     ;; ------------------------------------------------------------------------
 
-    ld    de, #1
+    ld    e, #1
     ld    hl, #eth_control_byte
-    call  enc28j60_write_memory
+    rst   enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
     ;; write destination (remote) MAC address
     ;; ------------------------------------------------------------------------
 
     pop   hl                             ;; bring back destination MAC address
-    call  enc28j60_write_memory_6_bytes
+    ld    e, #ETH_ADDRESS_SIZE
+    rst   enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
     ;; write source (local) MAC address
     ;; ------------------------------------------------------------------------
 
     ld    hl, #eth_local_address
-    call  enc28j60_write_memory_6_bytes
+    ld    e, #ETH_ADDRESS_SIZE
+    rst   enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
     ;; write Ethertype
     ;; ------------------------------------------------------------------------
 
-    ld    e, #ETH_SIZEOF_ETHERTYPE           ;; D==0 here
+    ld    e, #ETH_SIZEOF_ETHERTYPE
     ld    hl, #ethertype_ip
     ex    af, af'          ;; bring back ethertype from AF'
     jr    z, eth_create_ethertype_set
     ld    hl, #ethertype_arp
 eth_create_ethertype_set:
-    jp    enc28j60_write_memory
+    rst   enc28j60_write_memory_small
+    ret
 
 ;; ############################################################################
 ;; ip_send

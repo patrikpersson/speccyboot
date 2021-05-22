@@ -277,7 +277,7 @@ OPCODE_WBM             = 0x7A
 ;; The checksum is updated automatically.
 ;;
 ;; Call with
-;; HL = destination address (buffer to read data into=
+;; HL = destination address (buffer to read data into)
 ;; BC = number of bytes to read
 ;;
 ;; Destroys all registers, including alternate ones, except IX/IY.
@@ -299,15 +299,6 @@ OPCODE_WBM             = 0x7A
 
     .globl enc28j60_add_to_checksum
 
-;; ----------------------------------------------------------------------------
-;; Write six bytes to on-chip SRAM, continuing after previous write.
-;;
-;; Call with HL=pointer to data. Destroys AF, BC, DE.
-;;
-;; On exit, DE==0, and HL points to the next byte after the written data.
-;; ----------------------------------------------------------------------------
-
-    .globl enc28j60_write_memory_6_bytes
 
 ;; ----------------------------------------------------------------------------
 ;; Write a number of bytes to on-chip SRAM, continuing after previous write.
@@ -318,3 +309,20 @@ OPCODE_WBM             = 0x7A
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_write_memory
+    
+
+;; ----------------------------------------------------------------------------
+;; rst enc28j60_write_memory_small
+;;
+;; Shortcut to enc28j60_write_memory, for 8-bit lengths. Defined in crt0.asm.
+;; Same registers are used as for enc28j60_write_memory, except
+;;
+;;   E = length of data.      D will be set to zero.
+;;
+;; Call with HL=pointer to data, E=length of data. Destroys AF, BC, DE.
+;;
+;; On exit, DE==0, and HL points to the next byte after the written data.
+;; ----------------------------------------------------------------------------
+
+enc28j60_write_memory_small = 0x20
+

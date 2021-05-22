@@ -153,26 +153,27 @@ bootp_attr_lp1:
     ;; part 1: 8 bytes of header (constants)
     ;; ------------------------------------------------------------------------
 
-    ld   de, #BOOTP_PART1_SIZE
+    ld   e, #BOOTP_PART1_SIZE
     ld   hl, #bootrequest_header_data
-    call enc28j60_write_memory
+    rst  enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
     ;; part 2: 20 bytes of zeros
     ;; use VRAM as source of 20 zero-valued bytes
     ;; ------------------------------------------------------------------------
 
-    ld   e, #BOOTP_PART2_SIZE       ;; D==0 here
+    ld   e, #BOOTP_PART2_SIZE
     ld   hl, #0x4800
     push hl
-    call enc28j60_write_memory
+    rst  enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
     ;; part 3: 6 bytes of MAC address
     ;; ------------------------------------------------------------------------
 
     ld   hl, #eth_local_address
-    call enc28j60_write_memory_6_bytes
+    ld   e, #ETH_ADDRESS_SIZE
+    rst  enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
     ;; part 4: 266 bytes of zeros

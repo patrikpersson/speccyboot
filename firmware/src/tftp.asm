@@ -330,9 +330,9 @@ tftp_receive_error:
     ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
     call  udp_reply
 
-    ld    de, #TFTP_SIZE_OF_ERROR_PACKET
+    ld    e, #TFTP_SIZE_OF_ERROR_PACKET
     ld    hl, #tftp_receive_error_packet
-    call  enc28j60_write_memory
+    rst   enc28j60_write_memory_small
 
     jp    ip_send
 
@@ -404,21 +404,22 @@ tftp_read_request:
 
     ;; append 16-bit TFTP opcode
 
-    ld   de, #TFTP_SIZE_OF_RRQ_PREFIX
+    ld   e, #TFTP_SIZE_OF_RRQ_PREFIX
     ld   hl, #tftp_rrq_prefix
-    call enc28j60_write_memory
+    rst  enc28j60_write_memory_small
 
     ;; filename and length already stacked above
 
     pop  hl
     pop  de
 
-    call enc28j60_write_memory
+    rst  enc28j60_write_memory_small
 
-    ;; append option ("octet" mode), happens to be 6 bytes, like a MAC address
+    ;; append option ("octet" mode)
 
     ld   hl, #tftp_rrq_option
-    call enc28j60_write_memory_6_bytes
+    ld   e, #TFTP_SIZE_OF_RRQ_OPTION
+    rst  enc28j60_write_memory_small
 
     jp   ip_send
 

@@ -355,9 +355,11 @@ udp_create:
     ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
     ;; ----------------------------------------------------------------------
 
-    ld     de, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
+    ld     e, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
     ld     hl, #_header_template
-    jp     enc28j60_write_memory
+    rst    enc28j60_write_memory_small
+    
+    ret
 
 ;; ============================================================================
 ;; IP header defaults

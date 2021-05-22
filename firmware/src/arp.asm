@@ -110,31 +110,33 @@ arp_receive:
 
     ;; ARP header
 
-    ld   de, #ARP_HEADER_SIZE
+    ld   e, #ARP_HEADER_SIZE
     ld   hl, #arp_receive_reply_template
-    call enc28j60_write_memory
+    rst  enc28j60_write_memory_small
 
     ;; SHA: local MAC address
 
     ld   hl, #eth_local_address
-    call enc28j60_write_memory_6_bytes
+    ld   e, #ETH_ADDRESS_SIZE
+    rst  enc28j60_write_memory_small
 
     ;; SPA: local IPv4 address
 
-    ld   e, #IPV4_ADDRESS_SIZE         ;; D==0 here
+    ld   e, #IPV4_ADDRESS_SIZE
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    call enc28j60_write_memory
+    rst  enc28j60_write_memory_small
 
     ;; THA: sender MAC address
 
     ld   hl, #eth_sender_address
-    call enc28j60_write_memory_6_bytes
+    ld   e, #ETH_ADDRESS_SIZE
+    rst  enc28j60_write_memory_small
 
     ;; TPA: sender IP address, taken from SPA field in request
 
-    ld   e, #IPV4_ADDRESS_SIZE         ;; D==0 here
+    ld   e, #IPV4_ADDRESS_SIZE
     ld   hl, #_rx_frame + ARP_OFFSET_SPA
-    call enc28j60_write_memory
+    rst  enc28j60_write_memory_small
 
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
     jp   eth_send
