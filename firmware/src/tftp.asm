@@ -198,13 +198,13 @@ tftp_receive_blk_nbr_and_port_ok:
     ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
     call  udp_reply
 
-    ld    de, #TFTP_SIZE_OF_OPCODE
+    ld    e, #TFTP_SIZE_OF_OPCODE
     ld    hl, #tftp_receive_ack_opcode
-    call    enc28j60_write_memory
+    rst    enc28j60_write_memory_small
 
-    ld    e, #TFTP_SIZE_OF_OPCODE    ;; D==0 here
+    ld    e, #TFTP_SIZE_OF_OPCODE
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
-    call    enc28j60_write_memory
+    rst   enc28j60_write_memory_small
 
     call  ip_send
 
