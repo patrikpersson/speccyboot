@@ -39,14 +39,12 @@
     .area _CODE
 
 ;; ############################################################################
-;; spi_write_byte
+;; spi_write_byte_cont
 ;; ############################################################################
 
-spi_write_byte:
-
     ld    b, #8
-00001$:
+spi_write_byte_cont:
     spi_write_bit_from_c
-    djnz  00001$
+    djnz  spi_write_byte_cont
 
     ret

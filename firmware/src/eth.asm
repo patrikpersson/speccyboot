@@ -228,7 +228,7 @@ main_packet:
     ;; ------------------------------------------------------------------------
 
     ld    hl, #0x0100 * ECON2_PKTDEC + OPCODE_BFS + (ECON2 & REG_MASK)
-    call  enc28j60_write8plus8
+    rst   enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
     ;; ignore broadcasts from this host (duh)
@@ -382,7 +382,7 @@ eth_init_registers_loop:
     push  hl         ;; remember position in table
     push  bc         ;; move args
     pop   hl         ;; into HL
-    call  enc28j60_write8plus8
+    rst   enc28j60_write8plus8
     pop   hl
     jr    eth_init_registers_loop
 
@@ -653,30 +653,30 @@ perform_transmission:
       call  enc28j60_select_bank_0    ;; bank of ECON1
 
       ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
-      call  enc28j60_write8plus8
+      rst   enc28j60_write8plus8
 
       ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFC + (ECON1 & REG_MASK)
-      call  enc28j60_write8plus8
+      rst   enc28j60_write8plus8
 
       ;; ----------------------------------------------------------------------
       ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
       ;; ----------------------------------------------------------------------
 
       ld    hl, #0x0100 * EIE_TXIE + OPCODE_BFC + (EIE & REG_MASK)
-      call  enc28j60_write8plus8
+      rst   enc28j60_write8plus8
 
       ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + OPCODE_BFC + (EIR & REG_MASK)
-      call  enc28j60_write8plus8
+      rst   enc28j60_write8plus8
 
       ld    hl, #0x0100 * (ESTAT_TXABRT) + OPCODE_BFC + (ESTAT & REG_MASK)
-      call  enc28j60_write8plus8
+      rst   enc28j60_write8plus8
 
       ;; ----------------------------------------------------------------------
       ;; set ECON1.TXRTS, and poll it until it clears
       ;; ----------------------------------------------------------------------
 
       ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
-      call  enc28j60_write8plus8
+      rst   enc28j60_write8plus8
 
       ld    e, #ECON1
       ;; H=ECON1_TXRTS from above, B=0 from _spi_write_byte

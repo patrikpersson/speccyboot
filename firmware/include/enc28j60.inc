@@ -223,13 +223,13 @@ OPCODE_WBM             = 0x7A
     .globl enc28j60_select_bank
 
 ;; ----------------------------------------------------------------------------
-;; Write an 8-bit opcode plus another 8-bit value.
+;; Write an 8-bit opcode plus another 8-bit value. Defined in crt0.asm.
 ;;
 ;; L holds opcode, H holds the value.
 ;; Destroys BC, AF.
 ;; ----------------------------------------------------------------------------
 
-    .globl enc28j60_write8plus8
+enc28j60_write8plus8 = 0x10
 
 ;; ----------------------------------------------------------------------------
 ;; Write a 16-bit register.
@@ -325,4 +325,12 @@ OPCODE_WBM             = 0x7A
 ;; ----------------------------------------------------------------------------
 
 enc28j60_write_memory_small = 0x20
+
+;; ----------------------------------------------------------------------------
+;; Helper:
+;;
+;; end SPI transaction
+;; ----------------------------------------------------------------------------
+
+    .globl enc28j60_end_transaction_and_return
 

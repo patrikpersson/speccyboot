@@ -63,7 +63,7 @@ enc28j60_select_bank:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #0x0100 * 0x03 + OPCODE_BFC + (ECON1 & REG_MASK)
-    call enc28j60_write8plus8
+    rst  enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
     ;; mask in "bank" in bits 0 and 1 of register ECON1
@@ -72,28 +72,9 @@ enc28j60_select_bank:
     ld   h, e
     ld   l, #OPCODE_BFS + (ECON1 & REG_MASK)
 
-    ;; fall-through to enc28j60_write8plus8
+    rst  enc28j60_write8plus8
 
-;; ############################################################################
-;; enc28j60_write8plus8
-;; ############################################################################
-
-enc28j60_write8plus8:
-
-    ;; ------------------------------------------------------------------------
-    ;; start transaction
-    ;; ------------------------------------------------------------------------
-
-    ld    c, l
-    call  spi_write_byte         ;; preserves HL+DE
-    ld    c, h
-    call  spi_write_byte
-
-    ;; ------------------------------------------------------------------------
-    ;; end transaction
-    ;; ------------------------------------------------------------------------
-
-    jr    enc28j60_end_transaction_and_return
+    ret
 
 ;; ############################################################################
 ;; enc28j60_write_register16
@@ -108,10 +89,12 @@ enc28j60_write_register16:
     ld     h, l
     ld     l, a
 
-    call   enc28j60_write8plus8
+    rst   enc28j60_write8plus8
 
     ex     de, hl
-    jr     enc28j60_write8plus8
+    rst   enc28j60_write8plus8
+    
+    ret
 
 ;; ############################################################################
 ;; enc28j60_write_memory
@@ -124,7 +107,7 @@ enc28j60_write_memory:
     ;; ------------------------------------------------------------------------
 
     ld    c, #OPCODE_WBM
-    call  spi_write_byte
+    rst   spi_write_byte
 
     ;; ------------------------------------------------------------------------
     ;; write DE bytes, starting at HL
@@ -134,7 +117,7 @@ enc28j60_write_memory:
     ld    c, (hl)  ;; read byte from data
     inc   hl
 
-    call  spi_write_byte   ;; preserves HL+DE, destroys AF+BC
+    rst   spi_write_byte   ;; preserves HL+DE, destroys AF+BC
 
     dec   de
     ld    a, d
@@ -160,7 +143,7 @@ enc28j60_read_register:
     ld    a, e
     and   a, #REG_MASK       ;; opcode RCR = 0x00
     ld    c, a
-    call  spi_write_byte
+    rst   spi_write_byte
 
     ;; ------------------------------------------------------------------------
     ;; for MAC and MII registers, read and ignore a dummy byte
@@ -239,7 +222,7 @@ enc28j60_read_memory:
     ;; spi_start_transaction(ENC_OPCODE_RBM);
 
     ld    c, #OPCODE_RBM
-    call  spi_write_byte
+    rst   spi_write_byte
 
     ;;
     ;; assume dst_addr    at (IX + 0)
