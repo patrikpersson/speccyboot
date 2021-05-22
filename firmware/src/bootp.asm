@@ -386,4 +386,4 @@ bootp_receive_invalid_address:
     ;; ERROR: boot server name is not a dotted-decimal IP address
 
     ld   a, #FATAL_INVALID_BOOT_SERVER
-    rst  fail
+    jp   fail

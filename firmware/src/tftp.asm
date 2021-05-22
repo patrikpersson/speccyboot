@@ -109,12 +109,11 @@ tftp_receive:
     jr   nz, tftp_receive_bad_reply
     ld   a, (hl)
     cp   a, #TFTP_OPCODE_DATA
-    jr   z, tftp_receive_got_data
 
 tftp_receive_bad_reply:
 
     ld   a, #FATAL_FILE_NOT_FOUND
-    rst  fail
+    jp   nz, fail
 
 tftp_receive_got_data:
 
@@ -324,7 +323,7 @@ _jp_hl:
 
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
-    rst fail
+    jp  fail
 
 tftp_receive_error:
 

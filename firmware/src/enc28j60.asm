@@ -232,7 +232,7 @@ enc28j60_poll_register:
     jr     nz, 00001$
 
     ld     a, #FATAL_INTERNAL_ERROR
-    rst    fail
+    jp     fail
 
 ;; ############################################################################
 ;; enc28j60_read_memory

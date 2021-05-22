@@ -499,7 +499,7 @@ _s_chunk_header3:
     jr   c, s_chunk_header3_compatible
 s_chunk_header3_incompatible:
     ld   a, #FATAL_INCOMPATIBLE
-    rst  fail
+    jp   fail
 s_chunk_header3_compatible:
 
     ;; Decide on a good value for tftp_write_pos; store in HL.
