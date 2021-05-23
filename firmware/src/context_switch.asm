@@ -372,7 +372,7 @@ evacuate_pc:
 
     ld   hl, #ENC28J60_EVACUATED_DATA
     ld   a, #OPCODE_WCR + (EWRPTL & REG_MASK)
-    call enc28j60_write_register16
+    rst  enc28j60_write_register16
 
     ld   de, #RUNTIME_DATA_LENGTH
     ld   hl, #EVACUATION_TEMP_BUFFER
@@ -397,7 +397,7 @@ context_switch:
 
     ld   hl, #ENC28J60_EVACUATED_DATA
     ld   a, #OPCODE_WCR + (ERDPTL & REG_MASK)
-    call enc28j60_write_register16
+    rst  enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
     ;; set up 128k memory configuration,

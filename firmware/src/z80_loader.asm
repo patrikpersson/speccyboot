@@ -259,7 +259,7 @@ progress_add_instr:
 progress_ratio:
     .db   3          ;; patched to 4 for 128k snapshots
 
-    rst   a_div_b
+    call  a_div_b
     ld    a, c
 
 00002$:

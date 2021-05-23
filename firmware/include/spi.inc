@@ -123,7 +123,7 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 ;; Write 8 bits to SPI from register C.
 ;; Destroys BC & AF; B will be zero on exit.
 ;; ----------------------------------------------------------------------------
-spi_write_byte = 0x18
+spi_write_byte = 0x20
 
 ;; ----------------------------------------------------------------------------
 ;; Partial implementation for RST above.

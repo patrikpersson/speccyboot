@@ -206,32 +206,17 @@ OPCODE_WBM             = 0x7A
     .globl eth_control_byte
 
 ;; ----------------------------------------------------------------------------
-;; Ensure that register bank 0 is paged in.
-;;
-;; Destroys AF, BC, E, HL.
-;; ----------------------------------------------------------------------------
-
-    .globl enc28j60_select_bank_0
-
-;; ----------------------------------------------------------------------------
 ;; Ensure that the bank in register E (0..3) is paged in. Page 0 is
 ;; always paged in when outside of eth.c.
 ;;
 ;; Destroys AF, BC, HL.
 ;; ----------------------------------------------------------------------------
 
-    .globl enc28j60_select_bank
+enc28j60_select_bank = 0x08
 
 ;; ----------------------------------------------------------------------------
-;; Write an 8-bit opcode plus another 8-bit value. Defined in crt0.asm.
+;; rst enc28j60_write_register16:
 ;;
-;; L holds opcode, H holds the value.
-;; Destroys BC, AF.
-;; ----------------------------------------------------------------------------
-
-enc28j60_write8plus8 = 0x10
-
-;; ----------------------------------------------------------------------------
 ;; Write a 16-bit register.
 ;;
 ;; Call with A set to a WCR opcode for the low half of the register,
@@ -241,7 +226,16 @@ enc28j60_write8plus8 = 0x10
 ;; Destroys F, BC, DE.
 ;; ----------------------------------------------------------------------------
 
-    .globl enc28j60_write_register16
+enc28j60_write_register16 = 0x10
+
+;; ----------------------------------------------------------------------------
+;; Write an 8-bit opcode plus another 8-bit value. Defined in crt0.asm.
+;;
+;; L holds opcode, H holds the value.
+;; Destroys BC, AF.
+;; ----------------------------------------------------------------------------
+
+enc28j60_write8plus8 = 0x18
 
 ;; ----------------------------------------------------------------------------
 ;; Read value of indicated ETH/MAC/MII register.
@@ -324,7 +318,7 @@ enc28j60_write8plus8 = 0x10
 ;; On exit, DE==0, and HL points to the next byte after the written data.
 ;; ----------------------------------------------------------------------------
 
-enc28j60_write_memory_small = 0x20
+enc28j60_write_memory_small = 0x28
 
 ;; ----------------------------------------------------------------------------
 ;; Helper:

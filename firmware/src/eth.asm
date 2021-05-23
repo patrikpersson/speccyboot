@@ -124,7 +124,7 @@ main_loop:
     ;; ------------------------------------------------------------------------
 
     ld    e, #1       ;; bank 1 for EPKTCNT
-    call  enc28j60_select_bank
+    rst   enc28j60_select_bank
 
 main_spin_loop:
 
@@ -199,11 +199,12 @@ main_packet:
     ;; set ERDPT to _next_frame
     ;; ------------------------------------------------------------------------
 
-    call  enc28j60_select_bank_0
+    ld    e, #0
+    rst   enc28j60_select_bank
 
     ld    hl, (_next_frame)
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
-    call  enc28j60_write_register16
+    rst   enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
     ;; Read the administrative Ethernet header (including some ENC28J60
@@ -278,7 +279,8 @@ main_packet_done:
     ;; advance ERXRDPT
     ;; ------------------------------------------------------------------------
 
-    call  enc28j60_select_bank_0     ;; bank of ERXRDPT
+    ld    e, #0     ;; bank of ERXRDPT
+    rst   enc28j60_select_bank
 
     ;; errata B5, item 11:  EXRDPT must always be written with an odd value
 
@@ -287,7 +289,7 @@ main_packet_done:
     set   0, l
 
     ld    a, #OPCODE_WCR + (ERXRDPTL & REG_MASK)
-    call  enc28j60_write_register16
+    rst   enc28j60_write_register16
 
     jp    main_loop
 
@@ -364,7 +366,7 @@ eth_init_registers_loop:
     rlca
     and   a, #3
     ld    e, a
-    call  enc28j60_select_bank
+    rst   enc28j60_select_bank
 
     ;; ------------------------------------------------------------------------
     ;; write register value
@@ -468,7 +470,8 @@ eth_create:
     ;; select default bank for ENC28J60
     ;; ------------------------------------------------------------------------
 
-    call  enc28j60_select_bank_0
+    ld    e, #0
+    rst   enc28j60_select_bank
 
     ;; ------------------------------------------------------------------------
     ;; remember _current_txbuf depending on ethertype
@@ -490,7 +493,7 @@ eth_create_txbuf_set:
     ;; ------------------------------------------------------------------------
 
     ld    a, #OPCODE_WCR + (EWRPTL & REG_MASK)
-    call  enc28j60_write_register16
+    rst   enc28j60_write_register16
 
     ;; ========================================================================
     ;; write Ethernet header, including administrative control byte
@@ -615,17 +618,18 @@ perform_transmission:
       push  hl   ;; remember HL=end_address
       push  de
 
-      call  enc28j60_select_bank_0     ;; bank of ETXST and ETXND
+      ld    e, #0     ;; bank of ETXST and ETXND
+      rst   enc28j60_select_bank
 
       pop   hl
       ;; keep end_address on stack
 
       ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
-      call  enc28j60_write_register16
+      rst   enc28j60_write_register16
 
       ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
       pop   hl   ;; end_address pushed above
-      call  enc28j60_write_register16
+      rst  enc28j60_write_register16
 
       ;; ----------------------------------------------------------------------
       ;; Poll for link to come up (if it has not already)
@@ -635,7 +639,7 @@ perform_transmission:
       ;; ----------------------------------------------------------------------
 
       ld    e, #2             ;; bank 2 for MIRDH
-      call  enc28j60_select_bank
+      rst   enc28j60_select_bank
 
       ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
 
@@ -650,7 +654,8 @@ perform_transmission:
       ;; set bit TXRST in ECON1, then clear it
       ;; ----------------------------------------------------------------------
 
-      call  enc28j60_select_bank_0    ;; bank of ECON1
+      ld    e, #0    ;; bank of ECON1
+      rst   enc28j60_select_bank
 
       ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
       rst   enc28j60_write8plus8

@@ -45,9 +45,130 @@
 
   ;; --------------------------------------------------------------------------
 
-  .org   0
+  .org  0
 
-  im    1
+  im    1                    ;; 2 bytes
+  ld    hl, #_stack_top      ;; 3 bytes
+  ld    sp, hl               ;; 1 byte
+
+  jr    init_continued       ;; 2 bytes
+
+  ;; ========================================================================
+  ;; RST 0x08 ENTRYPOINT: enc28j60_select_bank
+  ;; ========================================================================
+
+  .org  0x08
+
+  ;; ------------------------------------------------------------------------
+  ;; clear bits 0 and 1 of register ECON1
+  ;; ------------------------------------------------------------------------
+
+  ld   hl, #0x0100 * 0x03 + OPCODE_BFC + (ECON1 & REG_MASK)        ;; 3 bytes
+  rst  enc28j60_write8plus8                                        ;; 1 byte
+
+  ;; ------------------------------------------------------------------------
+  ;; mask in "bank" in bits 0 and 1 of register ECON1
+  ;; ------------------------------------------------------------------------
+
+  ld    l, #OPCODE_BFS + (ECON1 & REG_MASK)                         ;; 2 bytes
+  jr    enc28j60_select_bank_continued                              ;; 2 bytes
+
+  ;; ========================================================================
+  ;; RST 0x10 ENTRYPOINT: enc28j60_write_register16
+  ;; ========================================================================
+
+  .org   0x10
+
+  ld     e, a
+  inc    e
+  ld     d, h
+
+  ld     h, l
+  ld     l, a
+
+  rst   enc28j60_write8plus8
+
+  ex     de, hl
+
+  nop
+
+  ;; FALL THROUGH to RST 0x18 == enc28j60_write8plus8
+
+  ;; ========================================================================
+  ;; RST 0x18 ENTRYPOINT: enc28j60_write8plus8
+  ;; ========================================================================
+
+  .org  0x18
+  
+  ld    c, l
+  rst   spi_write_byte
+  ld    c, h
+  rst   spi_write_byte
+  jp    enc28j60_end_transaction_and_return
+
+  ;; ========================================================================
+  ;; RST 0x20 ENTRYPOINT: spi_write_byte
+  ;; ========================================================================
+  
+  .org  0x20
+  
+  ld    b, #8
+  jp    spi_write_byte_cont
+
+  ;; ========================================================================
+  ;; RST 0x28 ENTRYPOINT: enc28j60_write_memory_small
+  ;; ========================================================================
+
+  .org  0x28
+  
+  ld    d, #0                                                      ;; 2 bytes
+  jp    enc28j60_write_memory                                      ;; 3 bytes
+
+  ;; --------------------------------------------------------------------------
+  ;; continuation of enc28j60_select_bank (RST 0x08)
+  ;; --------------------------------------------------------------------------
+
+enc28j60_select_bank_continued:
+  ld   h, e                                                        ;; 1 byte
+  rst  enc28j60_write8plus8                                        ;; 1 byte
+  ret                                                              ;; 1 byte
+
+  ;; ========================================================================
+  ;; RST 0x30 ENTRYPOINT: memory_compare
+  ;; ========================================================================
+  
+  .org  0x30
+ 
+ memory_compare_loop:
+  ld   a, (de)
+  cp   a, (hl)
+  ret  nz
+  inc  de
+  inc  hl
+  djnz memory_compare_loop
+  ret
+
+  ;; ========================================================================
+  ;; RST 0x38 ENTRYPOINT: 50 Hz interrupt
+  ;;
+  ;; Increase 16-bit value at '_timer_tick_count' by 2
+  ;; ========================================================================
+
+  .org	0x38
+  push  hl
+  ld	  hl, (_timer_tick_count)
+  inc	  hl
+  inc	  hl
+  ld	  (_timer_tick_count), hl
+  pop   hl
+  ei
+  ret
+
+  ;; ==========================================================================
+  ;; continued initialization (from 0x0000)
+  ;; ==========================================================================
+
+init_continued:
 
   ;; --------------------------------------------------------------------------
   ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
@@ -68,11 +189,11 @@
   ;; The Didaktik doesn't use '128-style banking, so we save a few bytes
   ;; here. They are needed to keep the RST handlers below in place.
 
-  ld    hl, #0x0410
+  ld    de, #0x0410
   ld    bc, #MEMCFG_PLUS_ADDR
-  out   (c), h
+  out   (c), d
   ld    b, #>MEMCFG_ADDR
-  out   (c), l
+  out   (c), e
 
 #endif
 
@@ -88,88 +209,6 @@
 
 #endif
 
-  jr    do_copy_trampoline       ;; two more bytes, 16 bytes in total
-
-  ;; --------------------------------------------------------------------------
-  ;; RST 0x10 ENTRYPOINT
-  ;; --------------------------------------------------------------------------
-
-  .org  0x10
-  
-;; enc28j60_write8plus8:
-    ld    c, l
-    rst   spi_write_byte
-    ld    c, h
-    rst   spi_write_byte
-    jp    enc28j60_end_transaction_and_return
-
-  ;; --------------------------------------------------------------------------
-  ;; RST 0x18 ENTRYPOINT
-  ;; --------------------------------------------------------------------------
-  
-  .org  0x18
-  
-  ld    b, #8
-  jp    spi_write_byte_cont
-  
-  ;; --------------------------------------------------------------------------
-  ;; RST 0x20 ENTRYPOINT
-  ;; --------------------------------------------------------------------------
-
-  .org  0x20
-  
-  ld    d, #0
-  jp    enc28j60_write_memory
-
-  ;; --------------------------------------------------------------------------
-  ;; RST 0x28 ENTRYPOINT
-  ;;
-  ;; a_div_b (see util.inc), happens to be precisely 8 bytes
-  ;; --------------------------------------------------------------------------
-  
-  .org  0x28
-
-  ld    c, #0
-a_div_b_loop:
-  cp    a, b
-  ret   c
-  inc   c
-  sub   a, b
-  jr    a_div_b_loop
-
-  ;; --------------------------------------------------------------------------
-  ;; RST 0x30 ENTRYPOINT
-  ;;
-  ;; memory_compare (see util.inc), happens to be precisely 8 bytes
-  ;; --------------------------------------------------------------------------
-  
-  .org  0x30
- 
- memory_compare_loop:
-  ld   a, (de)
-  cp   a, (hl)
-  ret  nz
-  inc  de
-  inc  hl
-  djnz memory_compare_loop
-  ret
-
-  ;; --------------------------------------------------------------------------
-  ;; RST 0x38 (50HZ INTERRUPT) ENTRYPOINT
-  ;;
-  ;; Increase 16-bit value at '_timer_tick_count' by 2
-  ;; --------------------------------------------------------------------------
-
-  .org	0x38
-  push  hl
-  ld	  hl, (_timer_tick_count)
-  inc	  hl
-  inc	  hl
-  ld	  (_timer_tick_count), hl
-  pop   hl
-  ei
-  ret
-
   ;; --------------------------------------------------------------------------
   ;; Copy trampoline to RAM. Far more than the trampoline is copied, since
   ;; this routine has an important side-effect: it provides a delay > 200ms
@@ -184,11 +223,12 @@ do_copy_trampoline:
 
   ld    hl, #ram_trampoline
   ld    de, #_stack_top
+  push  de
   ld    bc, #0x83F4
 
   ldir
   
-  jp    _stack_top
+  ret   ;; jump to _stack_top
 
   ;; --------------------------------------------------------------------------
   ;; Trampoline: copied to RAM above. Must be executed from RAM, since
@@ -213,7 +253,7 @@ ram_trampoline:
 
   ld    hl, #0x3d00        ;; address of font data in ROM1
   ld    de, #_font_data    ;; address of font buffer in RAM; means E is now 3
-  ld    b, e               ;; BC is now 0x300
+  ld    b, e               ;; BC is now 0x300  (BC was 0 after previous LDIR)
   ldir
 
   xor   a                  ;; page in SpeccyBoot ROM, keep ETH in reset
@@ -227,9 +267,6 @@ ram_trampoline:
 
 initialize_global_data:
 
-  ld    hl, #_stack_top
-  ld    sp, hl
-
   ;; clear RAM up to stage2_start + 1; this also sets screen to PAPER+INK 0
   ld    hl, #0x4000
   ld    de, #0x4001
@@ -240,22 +277,15 @@ initialize_global_data:
 
   ld    (_tftp_write_pos), hl
 
-
   ei
 
   ;; --------------------------------------------------------------------------
   ;; Ordering of segments for the linker
   ;; --------------------------------------------------------------------------
 
-  .area _HOME
   .area _CODE
-  .area _INITIALIZER
-  .area _GSINIT
-  .area _GSFINAL
 
   .area _DATA
-  .area _INITIALIZED
-  .area _BSS
 
   .area _STAGE2        ;; this is where the stage 2 bootloader starts (RAM)
   .area _NONRESIDENT   ;; continues here, with stuff that need not be resident

@@ -11,7 +11,7 @@ MAKEBIN      = makebin
 ECHO         = @/bin/echo
 
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
-LDFLAGS     += --code-loc 0x0083 --data-loc 0x5B20
+LDFLAGS     += --code-loc 0x008A --data-loc 0x5B20
 
 # =============================================================================
 # CONFIGURATION

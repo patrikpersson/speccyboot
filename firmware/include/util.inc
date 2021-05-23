@@ -75,19 +75,17 @@ memory_compare = 0x30
 
 
 ;; ----------------------------------------------------------------------------
-;; Set border to the value of register A, and halt the machine (DI+HALT)
+;; Set border to the value of register A, and halt the machine (DI+HALT).
 ;; ----------------------------------------------------------------------------
 
     .globl fail
 
 ;; ----------------------------------------------------------------------------
-;; rst a_div_b
-;;
 ;; Divides A by B. Returns result in C and remainder in A.
 ;; C flag is always set. Z flag is always cleared.
 ;; ----------------------------------------------------------------------------
 
-a_div_b = 0x28
+    .globl a_div_b
 
 ;; ----------------------------------------------------------------------------
 ;; Prints IP address, four octets of 1-3 digits, with a period between.
