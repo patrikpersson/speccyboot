@@ -37,14 +37,14 @@ endif
 # =============================================================================
 
 # NOTE: eth must be first here, as it contains the main function, and
-# crt0 will continue executing right into it (saves one JP)
+# init will continue executing right into it (saves one JP)
 ASMMODULES   = eth
 ASMMODULES  += arp bootp context_switch enc28j60 globals
 ASMMODULES  += menu spi tftp udp_ip ui util z80_loader
 
 # -----------------------------------------------------------------------------
 
-OFILES       = crt0.rel $(ASMMODULES:%=%.rel)
+OFILES       = init.rel $(ASMMODULES:%=%.rel)
 
 # -----------------------------------------------------------------------------
 

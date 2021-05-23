@@ -229,7 +229,7 @@ enc28j60_select_bank = 0x08
 enc28j60_write_register16 = 0x10
 
 ;; ----------------------------------------------------------------------------
-;; Write an 8-bit opcode plus another 8-bit value. Defined in crt0.asm.
+;; Write an 8-bit opcode plus another 8-bit value. Defined in init.asm.
 ;;
 ;; L holds opcode, H holds the value.
 ;; Destroys BC, AF.
@@ -308,7 +308,7 @@ enc28j60_write8plus8 = 0x18
 ;; ----------------------------------------------------------------------------
 ;; rst enc28j60_write_memory_small
 ;;
-;; Shortcut to enc28j60_write_memory, for 8-bit lengths. Defined in crt0.asm.
+;; Shortcut to enc28j60_write_memory, for 8-bit lengths. Defined in init.asm.
 ;; Same registers are used as for enc28j60_write_memory, except
 ;;
 ;;   E = length of data.      D will be set to zero.

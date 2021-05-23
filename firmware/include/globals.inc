@@ -42,7 +42,7 @@ VERSION_MINOR = 1
 VERSION_MAGIC = 0x5B | VERSION_MAJOR << 4 | VERSION_MINOR
 
 ;; ----------------------------------------------------------------------------
-;; Stack address (defined here so crt0.asm can find it via linker)
+;; Stack address (defined here so init.asm can find it via linker)
 ;; ----------------------------------------------------------------------------
 
 STACK_SIZE  = 0x20

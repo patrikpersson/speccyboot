@@ -68,7 +68,7 @@ _tftp_client_port:
    .ds   2       ;; client-side UDP port for TFTP
 
 _tftp_write_pos:
-   .ds   2       ;; initialized in crt0.asm
+   .ds   2       ;; initialized in init.asm
 
 ;; ----------------------------------------------------------------------------
 ;; If non-NULL, this function is called for every received TFTP packet

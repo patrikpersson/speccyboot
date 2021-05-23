@@ -59,6 +59,7 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
 JR_UNCONDITIONAL   = 0x18      ;; JR offset
 JR_NZ              = 0x20      ;; JR NZ, offset
+JP_C               = 0xda      ;; JP C, target
 LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
 LD_IX_NN           = 0x21DD    ;; LD IX, #nn
@@ -148,7 +149,7 @@ show_attr_char_address_known:
     add   a, a
     jr    c, 00004$
     ld    (hl), #BLACK + (BLACK << 3)
-    jr    00003$
+    .db   JP_C        ;; C always clear here => ignore the following two bytes
 00004$:
     ld    (hl), #WHITE + (WHITE << 3)
 00003$:

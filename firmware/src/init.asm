@@ -1,4 +1,6 @@
-  ;; crt0.s for SpeccyBoot
+  ;; init:
+  ;;
+  ;; System initialization, RST & interrupt handlers
   ;;
   ;; Part of SpeccyBoot <https://patrikpersson.github.io/speccyboot/>
   ;; --------------------------------------------------------------------------
@@ -27,7 +29,7 @@
   ;; OTHER DEALINGS IN THE SOFTWARE.
   ;; --------------------------------------------------------------------------
 
-  .module crt0
+  .module init
   .optsdcc -mz80
 
 #include "spi_asm.h"

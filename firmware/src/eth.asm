@@ -79,7 +79,7 @@ END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
 
 ;; ############################################################################
 ;; Main function: initiate BOOTP, receive frames and act on them
-;; Must be first in the _CODE segment, as crt0 will execute right into it
+;; Must be first in the _CODE segment, as init will execute right into it
 ;; ############################################################################
 
 _main:

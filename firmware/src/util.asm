@@ -39,7 +39,7 @@
     .area _DATA
 
 ;; ----------------------------------------------------------------------------
-;; Tick count, increased by 2 (!) by the 50Hz timer ISR in crt0.asm.
+;; Tick count, increased by 2 (!) by the 50Hz timer ISR in init.asm.
 ;; Means that the high byte is increased every 2.56 seconds.
 ;; ----------------------------------------------------------------------------
 
