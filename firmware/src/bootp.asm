@@ -94,25 +94,29 @@ bootp_init:
     ld    hl, #title_str       ;; 'SpeccyBoot x.y'
     ld    de, #0x4000          ;; coordinates (0,0)
 
-bootp_print_str:
-    ld   a, (hl)
-    inc  hl
-    or   a, a
-    jr   z, bootp_print_done
-    call print_char
-    jr   bootp_print_str
-bootp_print_done:
+    call  print_str
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'SpeccyBoot' heading: white ink, black paper, bright
+    ;; attributes for upper third of screen: white ink, black paper, bright
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #ATTRS_BASE      ;; (0,0)
-    ld    b, #14
+    ld    hl, #ATTRS_BASE      ;; (0,0), 256 bytes
 bootp_attr_lp1:
     ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
-    inc   hl
-    djnz  bootp_attr_lp1
+    inc   l
+    jr    nz, bootp_attr_lp1
+
+    ;; ------------------------------------------------------------------------
+    ;; lower third: white ink, black paper
+    ;; ------------------------------------------------------------------------
+
+    inc   h
+    inc   h
+bootp_attr_lp2:
+    ld    (hl), #(WHITE | (BLACK << 3))
+    inc   l
+    jr    nz, bootp_attr_lp2
+
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'B' indicator (BOOTP): white ink, black paper, flash, bright
@@ -313,16 +317,6 @@ bootp_receive_sname_done:
 
     ld    hl, #ATTRS_BASE + 23 * 32                ;; (23, 0)
     ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for IP addresses indicator: white ink, black paper
-    ;; ------------------------------------------------------------------------
-
-    ld    b, #31
-_ip_attrs_loop:
-    inc   hl
-    ld    (hl), #WHITE + (BLACK << 3)
-    djnz  _ip_attrs_loop
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: white ink, black paper, bright, flash

@@ -45,7 +45,7 @@ TFTP_DATA_MAXSIZE    = 512
 TFTP_HEADER_SIZE     = 4
 
 ;; ----------------------------------------------------------------------------
-;; NUL-terminated efault filename for stage 2 loader ('spboot.bin')
+;; NUL-terminated default filename for stage 2 loader ('spboot.bin')
 ;; ----------------------------------------------------------------------------
 
     .globl tftp_default_file

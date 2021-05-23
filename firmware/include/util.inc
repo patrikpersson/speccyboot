@@ -106,3 +106,14 @@ memory_compare = 0x30
 ;; ----------------------------------------------------------------------------
 
     .globl print_char
+
+
+;; ----------------------------------------------------------------------------
+;; print_str
+;;
+;; HL holds NUL-terminated string to print
+;; DE points to VRAM location
+;; destroys F; preserves BC; DE and HL are increased by string length
+;; ----------------------------------------------------------------------------
+
+    .globl print_str

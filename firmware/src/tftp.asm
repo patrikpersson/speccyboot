@@ -71,6 +71,12 @@ TFTP_SIZE_OF_ACK_PACKET   = 4
 TFTP_SIZE_OF_ERROR_PACKET = 5
 
 ;; ============================================================================
+;; Position on screen for TFTP filename display
+;; ============================================================================
+
+TFTP_VRAM_FILENAME_POS    = 0x5000 + 5 * 32 + 16   ;; (21, 16)
+
+;; ============================================================================
 
     .area _DATA
 
@@ -355,7 +361,10 @@ tftp_receive_ack_opcode:
 
 tftp_read_request:
 
-    ex   de, hl
+    push hl
+
+    ld   de, #TFTP_VRAM_FILENAME_POS
+    call print_str
 
     ;; ------------------------------------------------------------------------
     ;; reset _expected_tftp_block_no to 1
@@ -379,8 +388,9 @@ tftp_read_request:
 
     ;; calculate length of filename
 
-    ld   h, d
-    ld   l, e
+    pop  hl
+    ld   d, h
+    ld   e, l
 
     xor  a
     ld   b, a
