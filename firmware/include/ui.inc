@@ -64,24 +64,6 @@ FATAL_INCOMPATIBLE        = CYAN
 FATAL_INVALID_BOOT_SERVER = MAGENTA
 
 ;; ----------------------------------------------------------------------------
-;; Display a string at given coordinates, in 8x8 font. The string is
-;; terminated by the character 'terminator.'
-;;
-;; The displayed string is truncated or padded with spaces up to and
-;; including column 31.
-;;
-;; stack args:
-;; (uint8_t row, uint8_t col, char terminator, char *s)
-;; ----------------------------------------------------------------------------
-    .globl _print_at
-
-;; ----------------------------------------------------------------------------
 ;; Wait for keypress. Handles repeat events.
 ;; ----------------------------------------------------------------------------
     .globl _wait_key
-
-;; ----------------------------------------------------------------------------
-;; Set attributes to A for BC elements, starting at VRAM address HL.
-;; Destroys DE. BC is zero on exit.
-;; ----------------------------------------------------------------------------
-    .globl _set_attrs

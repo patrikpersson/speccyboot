@@ -44,8 +44,6 @@
     .include "include/util.inc"
     .include "include/z80_loader.inc"
 
-    .area _NONRESIDENT
-
 ;; ============================================================================
 
 DISPLAY_LINES = 20   ;; number of snapshot names displayed at a time
@@ -53,6 +51,68 @@ DISPLAY_LINES = 20   ;; number of snapshot names displayed at a time
 KEY_ENTER     = 13
 KEY_UP        = '7'
 KEY_DOWN      = '6'
+
+    .area _NONRESIDENT
+
+;; ============================================================================
+
+;; ----------------------------------------------------------------------------
+;; print_entry:
+;;
+;; call with
+;; IX = filename (terminated by NUL or '.')
+;; DE = VRAM address
+;;
+;; Returns with IX pointing to '.' or NUL,
+;; and DE pointing to first cell on next line
+;; Destroys AF, BC
+;; ----------------------------------------------------------------------------
+
+print_entry:
+    ld   a, e
+    and  a, #0x1f
+    ret  z
+    ld   a, (ix)
+    or   a, a
+    jr   z, pad_to_end_of_line
+    cp   a, #'.'
+    jr   z, pad_to_end_of_line
+    call print_char
+    inc  ix
+    jr   print_entry
+
+;; ----------------------------------------------------------------------------
+;; pad_to_end_of_line:
+;;
+;; call with
+;; DE = VRAM address
+;;
+;; Fills the remaining cells on the line with spaces.
+;; On exit, DE points to the first cell on the next line.
+;; ----------------------------------------------------------------------------
+
+pad_to_end_of_line:
+
+    ld   b, #8
+    ld   c, d
+    xor  a, a
+write_space_loop:
+    ld   (de), a
+    inc  d
+    djnz write_space_loop
+    ld   d, c
+    inc  e
+    jr   z, next_2k_segment
+    ld   a, e
+    and  a, #0x1f
+    ret  z
+    jr   pad_to_end_of_line
+
+next_2k_segment:
+    ld   a, d
+    add  a, #8
+    ld   d, a
+    ret
 
 ;; ============================================================================
 
@@ -63,6 +123,9 @@ run_menu:
     ;; once to load the snapshot list, and then again once that list is loaded.
     ;; (see tftp_receive in tftp.asm)
     ;; ========================================================================
+
+    ld   de, #TFTP_VRAM_FILENAME_POS
+    call pad_to_end_of_line
 
     ld   hl, (_tftp_write_pos)
     ld   (hl), #0                   ;; ensure menu data is NUL-terminated
@@ -210,6 +273,10 @@ menu_loop:
 
     ld   c, #0     ;; loop index
 
+    exx
+    ld   de, #0x4040      ;; (2,0)
+    exx
+
 redraw_menu_loop:
 
     ld   a, c
@@ -222,37 +289,24 @@ redraw_menu_loop:
     cp   a, e
     jr   nc, redraw_menu_done
 
-    push bc
-    push de
+    exx
 
     ld   l, a
     ld   h, #0
     add  hl, hl
-    ld   de, #_rx_frame
-    add  hl, de
-    ld   e, (hl)
+    ld   bc, #_rx_frame
+    add  hl, bc
+    ld   a, (hl)
     inc  hl
-    ld   d, (hl)
+    ld   h, (hl)
+    ld   l, a
+    push hl
+    pop  ix   ;; IX now points to filename string
 
-    push de       ;; stack string
+    inc  de   ;; skip first cell on each line
+    call print_entry
 
-    ld   a, #'.'
-    push af
-    inc  sp       ;; stack terminator
-
-    inc  c
-    inc  c
-    ld   b, #1
-    push bc
-
-    call _print_at
-
-    pop  bc
-    inc  sp
-    pop  hl
-
-    pop  de
-    pop  bc
+    exx
 
     inc  c
     jr   redraw_menu_loop
