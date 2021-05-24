@@ -148,10 +148,10 @@ show_attr_char_address_known:
 00002$:
     add   a, a
     jr    c, 00004$
-    ld    (hl), #BLACK + (BLACK << 3)
+    ld    (hl), #WHITE + (WHITE << 3)
     .db   JP_C        ;; C always clear here => ignore the following two bytes
 00004$:
-    ld    (hl), #WHITE + (WHITE << 3)
+    ld    (hl), #BLACK + (BLACK << 3)
 00003$:
     inc   hl
     djnz  00002$
@@ -269,7 +269,7 @@ progress_ratio:
     ld    bc, #PROGRESS_BAR_BASE-1
     add   a, c
     ld    c, a
-    ld    a, #(WHITE + (WHITE << 3) + BRIGHT)
+    ld    a, #(CYAN + (CYAN << 3))
     ld    (bc), a
 
     ;; ========================================================================
@@ -283,12 +283,7 @@ kilobytes_expected:
     cp    a, (hl)
     ret   nz
 
-#ifdef PAINT_STACK
-    di
-    halt
-#else
     jp    context_switch             ;; in stage 1 loader (ROM)
-#endif
 
 ;; ############################################################################
 ;; _get_next_byte

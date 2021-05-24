@@ -79,11 +79,11 @@ run_menu:
     ;; ------------------------------------------------------------------------
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: white ink, black paper, bright
+    ;; attributes for 'S' indicator: red ink, white paper
     ;; ------------------------------------------------------------------------
 
     ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
+    ld    (hl), #(RED | (WHITE << 3))
 
     ;; ========================================================================
     ;; this is the first time the stage 2 loader was invoked:
@@ -109,7 +109,7 @@ menu_second_time:
     ld   hl, #0x5840
     ld   de, #0x5841
     ld   bc, #DISPLAY_LINES * 32 - 1
-    ld   a, #BLUE + (WHITE << 3)
+    ld   a, #BLACK + (WHITE << 3) + BRIGHT
     ld   (hl), a
     ldir
 
@@ -268,7 +268,7 @@ redraw_menu_done:
     pop  de
     pop  bc
 
-    ld   a, #BLUE + (WHITE << 3)    ;; erase highlight
+    ld   a, #BLACK + (WHITE << 3) + BRIGHT    ;; erase highlight
     call menu_set_highlight
 
     ld   a, l       ;; return value from _wait_key above
@@ -413,14 +413,12 @@ menu_hit_enter:
     ld   (_tftp_receive_hook), hl
 
     ld    hl, #0x5800      ;; clear attribute lines 0..22
-    ld    de, #0x5801
     ld    bc, #0x2e0
-    xor   a
-    ld    (hl), a
-    ldir
+    ld    a, #WHITE + (WHITE << 3)
+    call  fill_memory
 
-    ld    c, #0x1f         ;; set attribute line 23 to BLUE
-    ld    a, #BLUE | (BLUE << 3)
+    ld    c, #0x1f         ;; set attribute line 23 to bright
+    ld    a, #WHITE + (WHITE << 3) + BRIGHT
     ld    (hl), a
     ldir
 
@@ -480,9 +478,6 @@ menu_highlight_loop:
 
     ret
 
-ip_address_str:
-    .ascii "Local:           TFTP:"
-    .db  0
 snapshots_lst_str:
     .ascii "snapshots.lst"
     .db  0

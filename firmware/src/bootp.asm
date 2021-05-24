@@ -97,29 +97,7 @@ bootp_init:
     call  print_str
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for upper third of screen: white ink, black paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #ATTRS_BASE      ;; (0,0), 256 bytes
-bootp_attr_lp1:
-    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
-    inc   l
-    jr    nz, bootp_attr_lp1
-
-    ;; ------------------------------------------------------------------------
-    ;; lower third: white ink, black paper
-    ;; ------------------------------------------------------------------------
-
-    inc   h
-    inc   h
-bootp_attr_lp2:
-    ld    (hl), #(WHITE | (BLACK << 3))
-    inc   l
-    jr    nz, bootp_attr_lp2
-
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'B' indicator (BOOTP): white ink, black paper, flash, bright
+    ;; attributes for 'B' indicator (BOOTP): black ink, white paper, flash
     ;; ------------------------------------------------------------------------
 
     ld    a, #'B'
@@ -127,7 +105,7 @@ bootp_attr_lp2:
     call  print_char
 
     ld    hl, #ATTRS_BASE + 23 * 32           ;; (23, 0)
-    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT | FLASH)
+    ld    (hl), #(BLACK | (WHITE << 3) | FLASH)
 
     ;; ========================================================================
     ;; the BOOTREQUEST is built in steps:
@@ -304,7 +282,7 @@ bootp_receive_sname_done:
     call print_ip_addr
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'L' indicator: white ink, black paper, bright
+    ;; attributes for 'L' indicator: blue ink, white paper
     ;; ------------------------------------------------------------------------
 
     ld    a, #'L'
@@ -316,14 +294,14 @@ bootp_receive_sname_done:
     call  print_char
 
     ld    hl, #ATTRS_BASE + 23 * 32                ;; (23, 0)
-    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT)
+    ld    (hl), #(RED | (WHITE << 3))
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: white ink, black paper, bright, flash
+    ;; attributes for 'S' indicator: black ink, white paper, flash
     ;; ------------------------------------------------------------------------
 
     ld    l, #<ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(WHITE | (BLACK << 3) | BRIGHT | FLASH)
+    ld    (hl), #(BLACK | (WHITE << 3) | FLASH)
 
     ret
 

@@ -56,12 +56,12 @@ ROW_LENGTH  = 32
 ;; codes for fatal_error() displayed as border colours
 ;; ----------------------------------------------------------------------------
 
+FATAL_INTERNAL_ERROR      = BLACK
 FATAL_VERSION_MISMATCH    = BLUE
 FATAL_NO_RESPONSE         = RED
 FATAL_FILE_NOT_FOUND      = YELLOW
 FATAL_INCOMPATIBLE        = CYAN
 FATAL_INVALID_BOOT_SERVER = MAGENTA
-FATAL_INTERNAL_ERROR      = WHITE
 
 ;; ----------------------------------------------------------------------------
 ;; Display a string at given coordinates, in 8x8 font. The string is

@@ -39,7 +39,7 @@
 VERSION_MAJOR = 2
 VERSION_MINOR = 1
 
-VERSION_MAGIC = 0x5B | VERSION_MAJOR << 4 | VERSION_MINOR
+VERSION_MAGIC = 0x5B00 | VERSION_MAJOR << 4 | VERSION_MINOR
 
 ;; ----------------------------------------------------------------------------
 ;; Stack address (defined here so init.asm can find it via linker)

@@ -80,12 +80,23 @@ memory_compare = 0x30
 
     .globl fail
 
+
 ;; ----------------------------------------------------------------------------
 ;; Divides A by B. Returns result in C and remainder in A.
 ;; C flag is always set. Z flag is always cleared.
 ;; ----------------------------------------------------------------------------
 
     .globl a_div_b
+    
+
+;; ----------------------------------------------------------------------------
+;; Fills (BC-1) bytes with value A, from address HL on.
+;; On return, HL points to the last byte in the filled area, and DE=HL+1.
+;; BC==0. Z and C flags are unaffected.
+;; ----------------------------------------------------------------------------
+
+    .globl fill_memory
+
 
 ;; ----------------------------------------------------------------------------
 ;; Prints IP address, four octets of 1-3 digits, with a period between.

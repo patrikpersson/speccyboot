@@ -39,6 +39,7 @@
   .include "include/globals.inc"
   .include "include/menu.inc"
   .include "include/udp_ip.inc"
+  .include "include/ui.inc"
   .include "include/util.inc"
 
   ;; --------------------------------------------------------------------------
@@ -172,6 +173,8 @@ enc28j60_select_bank_continued:
 
 init_continued:
 
+  di
+
   ;; --------------------------------------------------------------------------
   ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
   ;; This sequence differs between SpeccyBoot and DGBoot. The SpeccyBoot one
@@ -269,12 +272,25 @@ ram_trampoline:
 
 initialize_global_data:
 
-  ;; clear RAM up to stage2_start + 1; this also sets screen to PAPER+INK 0
+  ;; clear bitmap VRAM
+
   ld    hl, #0x4000
-  ld    de, #0x4001
-  ld    bc, #stage2_start - 0x4000
-  ld    (hl), a
+  ld    bc, #0x1800
+  ld    a, l
+  call  fill_memory
+
+  ;; set attribute VRAM (+ paint stack) to PAPER WHITE + INK BLACK
+
+  ;; clear RAM up to stage2_start + 1  (+1 to get the right HL for _tftp_write_pos)
+  ld    (hl), #BLACK + (WHITE << 3)
+  ld    bc, #0x300 + STACK_SIZE 
+  ldir
+
+  ld    a, #WHITE
   out   (ULA_PORT), a
+
+  ld    (hl), c
+  ld    bc, #stage2_start - _stack_top
   ldir
 
   ld    (_tftp_write_pos), hl

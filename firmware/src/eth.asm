@@ -88,14 +88,6 @@ _main:
     ;; system initialization
     ;; ------------------------------------------------------------------------
 
-#ifdef PAINT_STACK
-    ld    hl, #0x5b00
-    ld    de, #0x5b01
-    ld    bc, #(STACK_SIZE - 1)
-    ld    (hl), #0x48
-    ldir
-#endif
-
     call  eth_init
     call  bootp_init
 
