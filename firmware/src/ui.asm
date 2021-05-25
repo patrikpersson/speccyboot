@@ -54,15 +54,9 @@ REPEAT_NEXT_TIMEOUT  = 10
 rom_key_scan         = 0x028E
 rom_keymap           = 0x0205
 
-;; ============================================================================
+;; opcode for runtime patching
 
-    .area _DATA
-
-_previous_key:
-    .ds   1       ;; initially zero, for no key
-
-is_first_repetition:
-    .ds   1       ;; flag
+CP_A_N               = 0xfe
 
 ;; ============================================================================
 
@@ -108,8 +102,12 @@ _wait_key:
 
     call scan_key
     jr   z, wait_key_no_repetition
-    ld   a, (_previous_key)
-    cp   a, c
+    ld   a, c
+
+    .db  CP_A_N
+previous_key:
+    .db  0                        ;; value patched at runtime
+
     jr   nz, wait_key_no_repetition
 
     ;; ------------------------------------------------------------------------
@@ -124,7 +122,7 @@ wait_key_repetition_loop:
     call scan_key
     jr   z, wait_key_no_repetition      ;; key released?
 
-    ld   a, (_previous_key)
+    ld   a, (previous_key)
     cp   a, c
     jr   nz, wait_key_no_repetition
 
@@ -132,14 +130,12 @@ wait_key_repetition_loop:
     ;; decide on a timeout, depending on whether this is the first repetition
     ;; ------------------------------------------------------------------------
 
-    ld   a, (is_first_repetition)
-    or   a, a
-    ld   b, #REPEAT_FIRST_TIMEOUT
-    jr   nz, wait_key_check_repetition
-    ld   b, #REPEAT_NEXT_TIMEOUT
-wait_key_check_repetition:
     ld   a, (_timer_tick_count)
-    cp   a, b
+
+    .db  CP_A_N
+wait_key_timeout:
+    .db  REPEAT_FIRST_TIMEOUT          ;; value patched at runtime
+
     jr   c, wait_key_repetition_loop
 
     ;; ------------------------------------------------------------------------
@@ -147,7 +143,7 @@ wait_key_check_repetition:
     ;; ------------------------------------------------------------------------
 
 wait_key_repeat:
-    xor  a, a              ;; value for is_first_repetition
+    ld   a, #REPEAT_NEXT_TIMEOUT
     jr   wait_key_finish
 
     ;; ------------------------------------------------------------------------
@@ -160,17 +156,13 @@ wait_key_no_repetition:
     jr   z, wait_key_no_repetition
 
     ld   a, c
-    ld   (_previous_key), a
-
-    ;; ------------------------------------------------------------------------
-    ;; Any repetition after this will be the first one, so A needs to be set
-    ;; to a non-zero value. And it is: it is the non-zero key value.
-    ;; ------------------------------------------------------------------------
+    ld   (previous_key), a
+    ld   a, #REPEAT_FIRST_TIMEOUT
 
 wait_key_finish:
     ;; assume A holds value for is_first_repetition, and C holds result
     ld   hl, #0
     ld   (_timer_tick_count), hl
-    ld   (is_first_repetition), a
+    ld   (wait_key_timeout), a
     ld   l, c
     ret
