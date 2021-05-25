@@ -58,6 +58,7 @@ TFTP_SIZE_OF_OPCODE       = 2
 TFTP_OFFSET_OF_OPCODE     = 0
 
 TFTP_OFFSET_OF_BLOCKNO    = 2
+TFTP_OFFSET_OF_ERROR_MSG  = 4
 
 TFTP_SIZE_OF_RRQ_PREFIX   = 13
 
@@ -109,11 +110,18 @@ tftp_receive:
     jr   nz, tftp_receive_bad_reply
     ld   a, (hl)
     cp   a, #TFTP_OPCODE_DATA
+    jr   z, tftp_receive_got_data
+
+    ;; the only conceivable message type is now TFTP_OPCODE_ERROR
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_ERROR_MSG
+    ld   de, #TFTP_VRAM_ERROR_POS
+    call print_str
 
 tftp_receive_bad_reply:
 
     ld   a, #FATAL_FILE_NOT_FOUND
-    jp   nz, fail
+    jp   fail
 
 tftp_receive_got_data:
 

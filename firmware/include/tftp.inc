@@ -49,6 +49,7 @@ TFTP_HEADER_SIZE     = 4
 ;; ----------------------------------------------------------------------------
 
 TFTP_VRAM_FILENAME_POS = 0x5000 + 5 * 32 + 16   ;; (21, 16)
+TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
 
 ;; ----------------------------------------------------------------------------
 ;; NUL-terminated default filename for stage 2 loader ('spboot.bin')
