@@ -631,8 +631,6 @@ checked_chunk_length:
 
   ld  hl, (_chunk_bytes_remaining)
   sbc hl, bc
-  ld  a, h
-  or  l
   jr  nz, no_new_state
 
   ld  ix, #_s_chunk_header
@@ -744,63 +742,6 @@ s_chunk_compressed_chunk_end:
   ;;
 
 s_chunk_compressed_found_escape:
-  ;;
-  ;; optimization: if 3 bytes (or more) are available, and this is really
-  ;; a repetition sequence, jump directly to s_chunk_repetition
-  ;;
-
-  ;; if bc < 3, goto s_chunk_compressed_no_opt
-  ld  a, b
-  or  a
-  jr  nz, s_chunk_compressed_rept1
-  ld  a, c
-  cp  #3
-  jr  c, s_chunk_compressed_no_opt
-
-s_chunk_compressed_rept1:
-  ;; if de < 3, goto s_chunk_compressed_no_opt
-  ld  a, d
-  or  a
-  jr  nz, s_chunk_compressed_rept2
-  ld  a, e
-  cp  #3
-  jr  c, s_chunk_compressed_no_opt
-
-s_chunk_compressed_rept2:
-  ld  a, (iy)       ;; peek, do not change counts
-  cp  #Z80_ESCAPE
-  jr  nz, s_chunk_compressed_no_opt
-
-  ;;
-  ;; the optimization is possible -- read the sequence data and jump
-  ;; to the correct state
-  ;;
-  inc iy
-  ld  a, (iy)
-  inc iy
-  ld  (_rep_count), a
-  ld  a, (iy)
-  inc iy
-  ld  (_rep_value), a
-
-  dec bc
-  dec bc
-  dec bc
-  dec de
-  dec de
-  dec de
-
-  call s_chunk_compressed_write_back
-
-  ld  ix, #_s_chunk_repetition
-
-jp_ix_instr:         ;; convenient CALL target
-  jp  (ix)
-
-s_chunk_compressed_no_opt:
-  ;;
-  ;; no direct jump to s_chunk_repetition was possible
-  ;;
 
   ld  ix, #_s_chunk_compressed_escape
 
@@ -1055,3 +996,6 @@ receive_snapshot_no_evacuation:
     call  jp_ix_instr
 
     jr    receive_snapshot_byte_loop
+
+jp_ix_instr:
+    jp    (ix)
