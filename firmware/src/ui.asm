@@ -36,6 +36,7 @@
     .include "include/ui.inc"
 
     .include "include/globals.inc"
+    .include "include/spi.inc"
     .include "include/util.inc"
 
 ;; ============================================================================
@@ -48,6 +49,11 @@
 REPEAT_FIRST_TIMEOUT = 40
 REPEAT_NEXT_TIMEOUT  = 10
 
+;; BASIC ROM1 entry points
+
+rom_key_scan         = 0x028E
+rom_keymap           = 0x0205
+
 ;; ============================================================================
 
     .area _DATA
@@ -55,7 +61,7 @@ REPEAT_NEXT_TIMEOUT  = 10
 _previous_key:
     .ds   1       ;; initially zero, for no key
 
-_first_repetition:
+is_first_repetition:
     .ds   1       ;; flag
 
 ;; ============================================================================
@@ -63,84 +69,31 @@ _first_repetition:
     .area _NONRESIDENT
 
 ;; ############################################################################
-;; _poll_key
+;; scan_key
 ;;
-;; Return currently pressed key, or KEY_NONE, in register A and B.
-;; (The same value is returned in both A and B.)
+;; Return currently pressed key, if any, in register C.
+;; Z flag is set if no key is pressed, cleared if any key is set.
+;;
+;; Must run from RAM: pages in the BASIC ROM for keyboard scanning.
 ;;
 ;; Destroys HL, BC, DE, AF.
 ;; ############################################################################
 
-_poll_key:
-
-    ld    hl, #key_rows
-    ld    bc, #0x7ffe
-poll_outer:
-    in    d, (c)
-
-    ld    e, #5       ;; number of keys in each row
-
-poll_inner:
-    ld    a, (hl)
-    inc   hl
-    rr    d
-    jr    c, not_pressed
-    or    a
-    jr    nz, poll_done
-
-not_pressed:
-    dec   e
-    jr    nz, poll_inner
-
-    rrc   b
-    jr    c, poll_outer
-
-    xor   a         ;; KEY_NONE == 0
-
-poll_done:
-    ld    b, a
-
+scan_key:
+    di
+    ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT   ;; page out SpeccyBoot
+    out   (SPI_OUT), a
+    call  rom_key_scan                   ;; destroys AF, BC, DE, HL
+    ld    hl, #rom_keymap
+    ld    a, e
+    add   a, l
+    ld    l, a
+    ld    c, (hl)
+    ld    a, #SPI_IDLE+SPI_CS            ;; page in SpeccyBoot
+    out   (SPI_OUT), a
+    inc   e                              ;; set Z flag if no key pressed
+    ei
     ret
-
-;; ----------------------------------------------------------------------------
-;; Keyboard mapping (used by _poll_key above)
-;;
-;; ZX Spectrum BASIC Programming (Vickers), Chapter 23:
-;;
-;; IN 65278 reads the half row CAPS SHIFT to V
-;; IN 65022 reads the half row A to G
-;; IN 64510 reads the half row Q to T
-;; IN 63486 reads the half row 1 to 5
-;; IN 61438 reads the half row O to 6
-;; IN 57342 reads the half row P to 7
-;; IN 49150 reads the half row ENTER to H
-;; IN 32766 reads the half row SPACE to B
-;;
-;; http://www.worldofspectrum.org/ZXBasicManual/index.html
-;;
-;; A '0' in the 'key_rows' table means that key is to be ignored. The rows
-;; are ordered for the high byte in the row address to take values in the
-;; following order:
-;;
-;; 01111111
-;; 10111111
-;; 11011111
-;; 11101111
-;; 11110111
-;; 11111011
-;; 11111101
-;; 11111110
-;; ----------------------------------------------------------------------------
-
-key_rows:
-    .db  0x20, 0, 0x4d, 0x4e, 0x42      ;; 7FFE: space, shift, 'M', 'N', 'B'
-    .db  0x0d, 0x4c, 0x4b, 0x4a, 0x48   ;; BFFE: enter, 'L', 'K', 'J', 'H'
-    .db  0x50, 0x4f, 0x49, 0x55, 0x59   ;; DFFE: 'P', 'O', 'I', 'U', 'Y'
-    .db  0x30, 0x39, 0x38, 0x37, 0x36   ;; EFFE: '0', '9', '8', '7', '6'
-    .db  0x31, 0x32, 0x33, 0x34, 0x35   ;; F7FE: '1', '2', '3', '4', '5'
-    .db  0x51, 0x57, 0x45, 0x52, 0x54   ;; FBDE: 'Q', 'W', 'E', 'R', 'T'
-    .db  0x41, 0x53, 0x44, 0x46, 0x47   ;; FDFE: 'A', 'S', 'D', 'F', 'G'
-    .db  0, 0x5a, 0x58, 0x43, 0x56      ;; FEFE: shift, 'Z', 'X', 'C', 'V'
 
 
 ;; ############################################################################
@@ -153,50 +106,48 @@ _wait_key:
     ;; is the previous key still being pressed?
     ;; ------------------------------------------------------------------------
 
-    call _poll_key
-
-    or   a, a
+    call scan_key
     jr   z, wait_key_no_repetition
     ld   a, (_previous_key)
-    cp   a, b
+    cp   a, c
     jr   nz, wait_key_no_repetition
 
     ;; ------------------------------------------------------------------------
     ;; yes, the previous key is still being pressed
-    ;; see if it remains pressed until the repetition timer expires
+    ;; see if the same key remains pressed until the repetition timer expires
     ;; ------------------------------------------------------------------------
 
 wait_key_repetition_loop:
 
-    call _poll_key
+    halt                                ;; allow for an interrupt to occur
+
+    call scan_key
+    jr   z, wait_key_no_repetition      ;; key released?
+
     ld   a, (_previous_key)
-    cp   a, b
+    cp   a, c
     jr   nz, wait_key_no_repetition
 
     ;; ------------------------------------------------------------------------
     ;; decide on a timeout, depending on whether this is the first repetition
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_timer_tick_count + 1
-    ld   a, (hl)     ;; high byte of ticks
-    or   a, a        ;; non-zero? then definitely timeout
-    jr   nz, wait_key_repeat
-    ld   a, (_first_repetition)
+    ld   a, (is_first_repetition)
     or   a, a
-    ld   a, #REPEAT_FIRST_TIMEOUT
+    ld   b, #REPEAT_FIRST_TIMEOUT
     jr   nz, wait_key_check_repetition
-    ld   a, #REPEAT_NEXT_TIMEOUT
+    ld   b, #REPEAT_NEXT_TIMEOUT
 wait_key_check_repetition:
-    dec  hl          ;; now points to low byte of ticks
-    cp   a, (hl)
-    jr   nc, wait_key_repetition_loop
+    ld   a, (_timer_tick_count)
+    cp   a, b
+    jr   c, wait_key_repetition_loop
 
     ;; ------------------------------------------------------------------------
     ;; we have a repeat event, and this is no longer the first repetition
     ;; ------------------------------------------------------------------------
 
 wait_key_repeat:
-    xor  a, a              ;; value for _first_repetition
+    xor  a, a              ;; value for is_first_repetition
     jr   wait_key_finish
 
     ;; ------------------------------------------------------------------------
@@ -205,10 +156,10 @@ wait_key_repeat:
 
 wait_key_no_repetition:
 
-    call _poll_key
-    or   a, a
+    call scan_key
     jr   z, wait_key_no_repetition
 
+    ld   a, c
     ld   (_previous_key), a
 
     ;; ------------------------------------------------------------------------
@@ -217,9 +168,9 @@ wait_key_no_repetition:
     ;; ------------------------------------------------------------------------
 
 wait_key_finish:
-    ;; assume A holds value for _first_repetition, and B holds result
+    ;; assume A holds value for is_first_repetition, and C holds result
     ld   hl, #0
     ld   (_timer_tick_count), hl
-    ld   (_first_repetition), a
-    ld   l, b      ;; _poll_key returned same value in A and B
+    ld   (is_first_repetition), a
+    ld   l, c
     ret
