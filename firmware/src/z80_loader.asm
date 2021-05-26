@@ -63,6 +63,7 @@ JP_C               = 0xda      ;; JP C, target
 LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
 LD_IX_NN           = 0x21DD    ;; LD IX, #nn
+LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 
 
 ;; ============================================================================
@@ -81,9 +82,6 @@ _chunk_bytes_remaining:
 
 _rep_count:        ;; set: chunk_compressed_repcount
     .ds   1        ;; read: chunk_compressed_repetition
-
-_rep_value:
-    .ds   1        ;; byte value for repetition
 
 ;; ----------------------------------------------------------------------------
 ;; expected and currently loaded no. of kilobytes, for progress display
@@ -838,7 +836,6 @@ _s_chunk_repetition:
   ld  a, (_rep_count)
   ld  b, a                      ;; loop counter rep_count
   ld  hl, (_tftp_write_pos)
-  ld  a, (_rep_value)
   ld  c, a
 
 s_chunk_repetition_loop:
@@ -846,7 +843,10 @@ s_chunk_repetition_loop:
   or  a
   jr  z, s_chunk_repetition_write_back
 
-  ld  (hl), c
+  .db LD_INDIRECT_HL_N
+_rep_value:
+  .db 0
+
   inc hl
   dec b
 
