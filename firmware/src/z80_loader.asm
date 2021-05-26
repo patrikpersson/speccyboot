@@ -170,120 +170,6 @@ show_attr_char_address_known:
 
 
 ;; ############################################################################
-;; update_progress
-;;
-;; If the number of bytes loaded reached an even kilobyte,
-;; increase kilobyte counter and update status display
-;; ############################################################################
-
-    .area _STAGE2
-
-update_progress:
-
-    ld   hl, (_tftp_write_pos)
-
-    ;; check if HL is an integral number of kilobytes,
-    ;; return early otherwise
-
-    ld    a, l
-    or    a, l
-    ret   nz
-    ld    a, h
-    and   a, #0x03
-    ret   nz
-
-    ;; ========================================================================
-    ;; update the progress display
-    ;; ========================================================================
-
-    ;; This instruction is patched with different values at runtime.
-
-    .db   LD_A_N
-_digits:
-    .db   0      ;; digits (BCD) for progress display while loading a snapshot
-
-    inc   a
-    daa
-    push  af             ;; remember flags
-    ld    (_digits), a
-    ld    c, a
-    jr    nz, not_100k   ;; turned from 99->100?
-
-    ;; Number of kilobytes became zero in BCD:
-    ;; means it just turned from 99 to 100.
-    ;; Print the digit '1' for hundreds.
-
-    ;; L appropriately happens to be zero after LD HL above
-
-    inc   a      ;; A is now 1
-    call  show_attr_digit
-    ld    a, c
-
-not_100k:
-    pop   de             ;; recall flags, old F is now in E
-    bit   #4, e          ;; was H flag set? Then the tens have increased
-    jr    z, not_10k
-
-    ;; Print tens (_x_)
-
-    rra
-    ld    l, #7
-    call  show_attr_digit_already_shifted
-
-not_10k:
-    ;; Print single-number digit (__x)
-
-    ld    a, c
-    ld    l, #14
-    call  show_attr_digit
-
-    ;; ************************************************************************
-    ;; update progress bar
-    ;; ************************************************************************
-
-    ld    hl, #_kilobytes_loaded
-    inc   (hl)
-    ld    a, (hl)
-
-    ;; ------------------------------------------------------------------------
-    ;; Scale loaded number of kilobytes to a value 0..32. By default, 48k
-    ;; snapshots are scaled * 2 / 3. For 128k snapshots, the add below is
-    ;; patched to a NOP, and the immediate constant for LD_B_N to 4.
-    ;; ------------------------------------------------------------------------
-
-progress_add_instr:
-    add   a, a       ;; patched to NOP for 128k snapshots
-
-    .db   LD_B_N
-progress_ratio:
-    .db   3          ;; patched to 4 for 128k snapshots
-
-    call  a_div_b
-    ld    a, c
-
-00002$:
-    or    a, a       ;; zero progress?
-    ret   z
-    ld    bc, #PROGRESS_BAR_BASE-1
-    add   a, c
-    ld    c, a
-    ld    a, #(GREEN + (GREEN << 3))
-    ld    (bc), a
-
-    ;; ========================================================================
-    ;; if all data has been loaded, perform the context switch
-    ;; ========================================================================
-
-    .db   LD_A_N
-kilobytes_expected:
-    .db   48         ;; initial assumption, possibly patched to 128 in s_header
-
-    cp    a, (hl)
-    ret   nz
-
-    jp    context_switch             ;; in stage 1 loader (ROM)
-
-;; ############################################################################
 ;; _get_next_byte
 ;;
 ;; Returns *received_data++ in A
@@ -659,7 +545,7 @@ no_new_state:
   ;; update the status display, if needed
   ;;
 
-  jp   update_progress
+  jr   update_progress
 
 
 ;; ############################################################################
@@ -725,7 +611,7 @@ s_chunk_compressed_loop:
 
   call s_chunk_compressed_write_back
 
-  jp  update_progress
+  jr  update_progress
 
   ;;
   ;; reached end of chunk: switch state
@@ -786,11 +672,123 @@ _s_chunk_compressed_escape:
     ld    (hl), a
     inc   hl
     ld    (_tftp_write_pos), hl
-    call  update_progress
 
     ld    ix, #_s_chunk_compressed
 
-    ret
+    ;; FALL THROUGH to update_progress
+
+
+;; ############################################################################
+;; update_progress
+;;
+;; If the number of bytes loaded reached an even kilobyte,
+;; increase kilobyte counter and update status display
+;; ############################################################################
+
+update_progress:
+
+    ld   hl, (_tftp_write_pos)
+
+    ;; check if HL is an integral number of kilobytes,
+    ;; return early otherwise
+
+    ld    a, l
+    or    a, l
+    ret   nz
+    ld    a, h
+    and   a, #0x03
+    ret   nz
+
+    ;; ========================================================================
+    ;; update the progress display
+    ;; ========================================================================
+
+    ;; This instruction is patched with different values at runtime.
+
+    .db   LD_A_N
+_digits:
+    .db   0      ;; digits (BCD) for progress display while loading a snapshot
+
+    inc   a
+    daa
+    push  af             ;; remember flags
+    ld    (_digits), a
+    ld    c, a
+    jr    nz, not_100k   ;; turned from 99->100?
+
+    ;; Number of kilobytes became zero in BCD:
+    ;; means it just turned from 99 to 100.
+    ;; Print the digit '1' for hundreds.
+
+    ;; L appropriately happens to be zero after LD HL above
+
+    inc   a      ;; A is now 1
+    call  show_attr_digit
+    ld    a, c
+
+not_100k:
+    pop   de             ;; recall flags, old F is now in E
+    bit   #4, e          ;; was H flag set? Then the tens have increased
+    jr    z, not_10k
+
+    ;; Print tens (_x_)
+
+    rra
+    ld    l, #7
+    call  show_attr_digit_already_shifted
+
+not_10k:
+    ;; Print single-number digit (__x)
+
+    ld    a, c
+    ld    l, #14
+    call  show_attr_digit
+
+    ;; ************************************************************************
+    ;; update progress bar
+    ;; ************************************************************************
+
+    ld    hl, #_kilobytes_loaded
+    inc   (hl)
+    ld    a, (hl)
+
+    ;; ------------------------------------------------------------------------
+    ;; Scale loaded number of kilobytes to a value 0..32. By default, 48k
+    ;; snapshots are scaled * 2 / 3. For 128k snapshots, the add below is
+    ;; patched to a NOP, and the immediate constant for LD_B_N to 4.
+    ;; ------------------------------------------------------------------------
+
+progress_add_instr:
+    add   a, a       ;; patched to NOP for 128k snapshots
+
+    .db   LD_B_N
+progress_ratio:
+    .db   3          ;; patched to 4 for 128k snapshots
+
+    call  a_div_b
+    ld    a, c
+
+00002$:
+    or    a, a       ;; zero progress?
+    ret   z
+    ld    bc, #PROGRESS_BAR_BASE-1
+    add   a, c
+    ld    c, a
+    ld    a, #(GREEN + (GREEN << 3))
+    ld    (bc), a
+
+    ;; ========================================================================
+    ;; if all data has been loaded, perform the context switch
+    ;; ========================================================================
+
+    .db   LD_A_N
+kilobytes_expected:
+    .db   48         ;; initial assumption, possibly patched to 128 in s_header
+
+    cp    a, (hl)
+    ret   nz
+
+    jp    context_switch             ;; in stage 1 loader (ROM)
 
 
 ;; ############################################################################
@@ -866,7 +864,7 @@ _rep_value:
   ld  (_rep_count), a
   ld  (_tftp_write_pos), hl
 
-  jp  update_progress
+  jp  update_progress              ;; revisit and change to JR?
 
 s_chunk_repetition_write_back:
   ld  (_rep_count), a           ;; copied from b above
