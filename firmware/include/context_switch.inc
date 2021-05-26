@@ -50,19 +50,17 @@
 ;;
 ;; address range      size  contents
 ;; -------------      ----  --------
-;; 0x0000 .. 0x3FFF   16kB  SpeccyBoot ROM
+;; 0x0000 .. 0x07FF   2kB   SpeccyBoot ROM
 ;; 0x4000 .. 0x57FF   6kB   Video RAM (bitmap)
 ;; 0x5800 .. 0x5AFF   768B  Video RAM (attributes, progress display)     (!)
-;; 0x5B00 .. 0x5B5F   96B   CPU stack                                    (!)
-;; 0x5B60 .. 0x5F30   977B  static variables                             (!)
-;; 0x5F31 .. 0x5FFF   207B  font data ' '..'9'                           (!)
-;; 0x6000 .. 0x6230   561B  remaining font data
+;; 0x5B00 .. 0x5FFF  1280B  stack, data, resident code (.z80 loader)     (!)
+;; 0x6000 ..                non-resident code (menu)
 ;;
 ;; The area 0x5800 - 0x5FFF, marked with (!) above, needs to be preserved
 ;; during snapshot loading. When bytes destined for these addresses are
 ;; received, they are instead stored in the ENC28J60's on-chip SRAM:
 ;;
-;; 0x1400 .. 0x1FFF   3kB   data destined for addresses 0x5800 .. 0x63FF in
+;; 0x1800 .. 0x1FFF   3kB   data destined for addresses 0x5800 .. 0x5FFF in
 ;;                          the Spectrum RAM (temporary storage during loading)
 ;; ----------------------------------------------------------------------------
 
@@ -127,7 +125,7 @@ VRAM_REGSTATE_R             = 0x4702
 ;; ----------------------------------------------------------------------------
 
 RUNTIME_DATA                = 0x5800
-RUNTIME_DATA_LENGTH         = 0x0C00
+RUNTIME_DATA_LENGTH         = 0x0800
 
 ;; ----------------------------------------------------------------------------
 ;; Buffer to write evacuated data into, before we write all off it to the

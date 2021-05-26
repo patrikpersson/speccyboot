@@ -142,11 +142,11 @@ run_menu:
     ;; ------------------------------------------------------------------------
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: red ink, white paper
+    ;; attributes for 'S' indicator: black ink, white paper, bright
     ;; ------------------------------------------------------------------------
 
     ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(RED | (WHITE << 3))
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
     ;; ========================================================================
     ;; this is the first time the stage 2 loader was invoked:

@@ -269,7 +269,7 @@ progress_ratio:
     ld    bc, #PROGRESS_BAR_BASE-1
     add   a, c
     ld    c, a
-    ld    a, #(CYAN + (CYAN << 3))
+    ld    a, #(GREEN + (GREEN << 3))
     ld    (bc), a
 
     ;; ========================================================================
@@ -827,13 +827,11 @@ _s_chunk_repvalue:
 
     ld    ix, #_s_chunk_repetition
 
-    ret
+    ;; FALL THROUGH to _s_chunk_repetition
 
 ;; ############################################################################
 ;; state CHUNK_REPETITION
 ;; ############################################################################
-
-    .area _STAGE2
 
 _s_chunk_repetition:
 

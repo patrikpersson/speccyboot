@@ -97,7 +97,7 @@ bootp_init:
     call  print_str
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'B' indicator (BOOTP): black ink, white paper, flash
+    ;; attributes for 'B' indicator (BOOTP): black ink, white paper, bright, flash
     ;; ------------------------------------------------------------------------
 
     ld    a, #'B'
@@ -105,7 +105,7 @@ bootp_init:
     call  print_char
 
     ld    hl, #ATTRS_BASE + 23 * 32           ;; (23, 0)
-    ld    (hl), #(BLACK | (WHITE << 3) | FLASH)
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT | FLASH)
 
     ;; ========================================================================
     ;; the BOOTREQUEST is built in steps:
@@ -282,7 +282,7 @@ bootp_receive_sname_done:
     call print_ip_addr
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'L' indicator: blue ink, white paper
+    ;; attributes for 'L' indicator: black ink, white paper, bright
     ;; ------------------------------------------------------------------------
 
     ld    a, #'L'
@@ -294,14 +294,14 @@ bootp_receive_sname_done:
     call  print_char
 
     ld    hl, #ATTRS_BASE + 23 * 32                ;; (23, 0)
-    ld    (hl), #(RED | (WHITE << 3))
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, flash
+    ;; attributes for 'S' indicator: black ink, white paper, bright, flash
     ;; ------------------------------------------------------------------------
 
     ld    l, #<ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(BLACK | (WHITE << 3) | FLASH)
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT | FLASH)
 
     ret
 
