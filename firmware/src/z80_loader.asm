@@ -880,6 +880,7 @@ z80_loader_receive_hook:
     ;; register allocation (shared in all states):
     ;; IX: current state (pointer to function)
     ;; IY: read pointer (pointer to somewhere in rx_frame)
+    ;; DE: write pointer (pointer to somewhere in RAM)
     ;; ------------------------------------------------------------------------
 
     .dw  LD_IX_NN            ;; LD IX, #nn
@@ -917,23 +918,23 @@ receive_snapshot_byte_loop:
     or    a, l
     ret   z
 
+    ld  de, (_tftp_write_pos)
+
     ;; ------------------------------------------------------------------------
-    ;; check evacuation status only if low byte of _tftp_write_pos is zero
+    ;; check evacuation status only if low byte of E is zero
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #_tftp_write_pos
-    ld    a, (hl)
+    ld    a, e
     or    a, a
     jr    nz, receive_snapshot_no_evacuation
 
-    inc   hl
-    ld    a, (hl)        ;; A is now high byte of tftp_write_pos
+    ld    a, d     ;; A is now high byte of tftp_write_pos
 
     ;; ------------------------------------------------------------------------
     ;; reached RUNTIME_DATA (resident area)?
     ;; ------------------------------------------------------------------------
 
-    ld    de, #evacuation_activation_instr
+    ld    hl, #evacuation_activation_instr
 
     cp    a, #>RUNTIME_DATA
     jr    nz, receive_snapshot_not_entering_runtime_data
@@ -943,9 +944,8 @@ receive_snapshot_byte_loop:
     ;; and enable evacuation
     ;; ------------------------------------------------------------------------
 
-    ld    (hl), #>EVACUATION_TEMP_BUFFER
-    ld    a, #JR_NZ     ;; evacuation is now enabled
-    ld    (de), a
+    ld    d, #>EVACUATION_TEMP_BUFFER
+    ld    (hl), #JR_NZ     ;; evacuation is now enabled
 
     jr    receive_snapshot_no_evacuation
 
@@ -964,11 +964,10 @@ evacuation_activation_instr:
     ;; and disable evacuation
     ;; ------------------------------------------------------------------------
 
-    ld    (hl), #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
+    ld    d, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
 
     ;; evacuation (soon) done: change JR above to skip evacuation next time
-    ld    a, #JR_UNCONDITIONAL
-    ld    (de), a
+    ld    (hl), #JR_UNCONDITIONAL
 
     ;; ------------------------------------------------------------------------
     ;; prepare context switch and copy the evacuated data to ENC28J60 RAM
@@ -977,6 +976,8 @@ evacuation_activation_instr:
     call  prepare_context
 
 receive_snapshot_no_evacuation:
+
+    ld   (_tftp_write_pos), de
 
     ;; ------------------------------------------------------------------------
     ;; call function pointed to by z80_loader_state

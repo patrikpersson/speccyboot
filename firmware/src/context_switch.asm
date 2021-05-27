@@ -89,6 +89,8 @@ context_registers:   ;; registers DE, BC', DE', HL', AF', IX, IY
 
 prepare_context:
 
+    push de
+
     ;; ========================================================================
     ;; copy some of the context data immediately
     ;; (48k/128k flag, 128k memory + sound configuration, border colour,
@@ -377,7 +379,11 @@ evacuate_pc:
     ld   de, #RUNTIME_DATA_LENGTH
     ld   hl, #EVACUATION_TEMP_BUFFER
 
-    jp   enc28j60_write_memory
+    call enc28j60_write_memory
+
+    pop  de
+
+    ret
 
 ;; ============================================================================
 
