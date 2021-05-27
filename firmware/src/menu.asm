@@ -460,9 +460,6 @@ menu_hit_enter:
     ;; prepare for receiving .z80 snapshot data
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #0x4000
-    ld   (_tftp_write_pos), hl
-
     ld   hl, #z80_loader_receive_hook
     ld   (_tftp_receive_hook), hl
 

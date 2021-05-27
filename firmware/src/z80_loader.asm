@@ -316,6 +316,8 @@ s_header_set_state:
     ld   bc, #Z80_HEADER_RESIDENT_SIZE
     ldir
 
+    ld   de, #0x4000
+
     ret
 
 
@@ -425,7 +427,6 @@ s_chunk_header3_default_page:
 
 s_chunk_header3_set_page:
     ld   e, #0
-    ld   (_tftp_write_pos), de
 
     ;; If chunk_bytes_remaining is 0xffff, length is 0x4000
 
@@ -458,8 +459,6 @@ _s_chunk_uncompressed:
   ;; - received_data_length
   ;; - chunk_bytes_remaining
   ;;
-
-  ld  de, (_tftp_write_pos)
 
   ld  a, d
   add a, #4            ;; round up to next 512-bytes boundary
@@ -534,11 +533,9 @@ no_new_state:
 
   push iy
   pop  hl
-  ld   de, (_tftp_write_pos)
   ldir
   push hl
   pop  iy
-  ld  (_tftp_write_pos), de
 
   ;;
   ;; update the status display, if needed
@@ -557,7 +554,6 @@ _s_chunk_compressed:
 
   ld  bc, (_chunk_bytes_remaining)
   ld  hl, (_received_data_length)
-  ld  de, (_tftp_write_pos)
 
 s_chunk_compressed_loop:
 
@@ -629,7 +625,6 @@ s_chunk_compressed_found_escape:
 s_chunk_compressed_write_back:
   ld  (_chunk_bytes_remaining), bc
   ld  (_received_data_length), hl
-  ld  (_tftp_write_pos), de
 
   ret
 
@@ -657,20 +652,16 @@ _s_chunk_compressed_escape:
 
     push  af
 
-    ld    de, (_tftp_write_pos)
     ld    a, #Z80_ESCAPE
     ld    (de), a
     inc   de
-    ld    (_tftp_write_pos), de
 
     call  update_progress
 
     pop   af
 
-    ld    de, (_tftp_write_pos)
     ld    (de), a
     inc   de
-    ld    (_tftp_write_pos), de
 
     ld    ix, #_s_chunk_compressed
 
@@ -686,8 +677,6 @@ _s_chunk_compressed_escape:
 
 update_progress:
 
-    ld   de, (_tftp_write_pos)
-
     ;; check if DE is an integral number of kilobytes,
     ;; return early otherwise
 
@@ -695,6 +684,8 @@ update_progress:
     and   a, #0x03
     or    a, e
     ret   nz
+
+    push  de
 
     ;; ========================================================================
     ;; update the progress display
@@ -739,6 +730,8 @@ not_10k:
     ld    a, c
     ld    l, #14
     call  show_attr_digit
+
+    pop   de
 
     ;; ************************************************************************
     ;; update progress bar
@@ -829,8 +822,7 @@ _s_chunk_repetition:
 
   ld  a, (_rep_count)
   ld  b, a                      ;; loop counter rep_count
-  ld  de, (_tftp_write_pos)
-  ld  c, a
+  ld  c, a  ;; TODO: is this needed?
 
 s_chunk_repetition_loop:
   ld  a, b
@@ -858,13 +850,11 @@ _rep_value:
 
   ld  a, b
   ld  (_rep_count), a
-  ld  (_tftp_write_pos), de
 
   jp  update_progress              ;; revisit and change to JR?
 
 s_chunk_repetition_write_back:
   ld  (_rep_count), a           ;; copied from b above
-  ld  (_tftp_write_pos), de
 
   ld    ix, #_s_chunk_compressed
 
@@ -888,6 +878,7 @@ z80_loader_state:
     .dw  s_header            ;; initial state
 
     ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld   de, (_tftp_write_pos)
 
     ;; ------------------------------------------------------------------------
     ;; set up _received_data_length
@@ -908,6 +899,7 @@ z80_loader_state:
 receive_snapshot_byte_loop:
 
     ld   (z80_loader_state), ix
+    ld   (_tftp_write_pos), de
 
     ;; ------------------------------------------------------------------------
     ;; if received_data_length is zero, we are done
@@ -917,8 +909,6 @@ receive_snapshot_byte_loop:
     ld    a, h
     or    a, l
     ret   z
-
-    ld  de, (_tftp_write_pos)
 
     ;; ------------------------------------------------------------------------
     ;; check evacuation status only if low byte of E is zero
@@ -976,8 +966,6 @@ evacuation_activation_instr:
     call  prepare_context
 
 receive_snapshot_no_evacuation:
-
-    ld   (_tftp_write_pos), de
 
     ;; ------------------------------------------------------------------------
     ;; call function pointed to by z80_loader_state
