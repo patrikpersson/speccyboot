@@ -822,7 +822,6 @@ _s_chunk_repetition:
 
   ld  a, (_rep_count)
   ld  b, a                      ;; loop counter rep_count
-  ld  c, a  ;; TODO: is this needed?
 
 s_chunk_repetition_loop:
   ld  a, b
@@ -851,7 +850,7 @@ _rep_value:
   ld  a, b
   ld  (_rep_count), a
 
-  jp  update_progress              ;; revisit and change to JR?
+  jr  update_progress
 
 s_chunk_repetition_write_back:
   ld  (_rep_count), a           ;; copied from b above
