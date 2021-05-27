@@ -382,7 +382,7 @@ s_chunk_header3_incompatible:
     jp   fail
 s_chunk_header3_compatible:
 
-    ;; Decide on a good value for tftp_write_pos; store in HL.
+    ;; Decide on a good value for tftp_write_pos; store in DE.
 
     ld   b, a    ;; useful extra copy of A
 
@@ -391,7 +391,7 @@ s_chunk_header3_compatible:
     ;; 0x4000..0x7fff, the evacuation stuff will not work.
     ;;
 
-    ld   h, #0x40
+    ld   d, #0x40
     cp   a, #8                       ;; means page 5 (0x4000..0x7fff)
     jr   z, s_chunk_header3_set_page
 
@@ -400,7 +400,7 @@ s_chunk_header3_compatible:
     ;; different.
     ;;
 
-    ld   h, #0x80
+    ld   d, #0x80
     cp   a, #4                       ;; means page 1 (0x8000..0xbfff)
     jr   nz, s_chunk_header3_default_page
 
@@ -410,7 +410,7 @@ s_chunk_header3_compatible:
 
 s_chunk_header3_default_page:
 
-    ld   h, #0xc0
+    ld   d, #0xc0
     ld   a, c
     cp   a, #SNAPSHOT_128K
     jr   c, s_chunk_header3_set_page
@@ -424,8 +424,8 @@ s_chunk_header3_default_page:
     out  (c), a
 
 s_chunk_header3_set_page:
-    ld   l, #0
-    ld   (_tftp_write_pos), hl
+    ld   e, #0
+    ld   (_tftp_write_pos), de
 
     ;; If chunk_bytes_remaining is 0xffff, length is 0x4000
 
@@ -459,15 +459,14 @@ _s_chunk_uncompressed:
   ;; - chunk_bytes_remaining
   ;;
 
-  ld  hl, #_tftp_write_pos + 1
-  ld  a, (hl)
-  add #4            ;; round up to next 512-bytes boundary
-  and #0xfc         ;; clears C flag, so sbc below works fine
+  ld  de, (_tftp_write_pos)
+
+  ld  a, d
+  add a, #4            ;; round up to next 512-bytes boundary
+  and a, #0xfc         ;; clears C flag, so sbc below works fine
   ld  h, a
-  xor a
-  ld  l, a
-  ld  bc, (_tftp_write_pos)
-  sbc hl, bc
+  ld  l, #0
+  sbc hl, de
   ld  b, h
   ld  c, l
 
@@ -660,18 +659,20 @@ _s_chunk_compressed_escape:
 
     push  af
 
-    ld    hl, (_tftp_write_pos)
-    ld    (hl), #Z80_ESCAPE
-    inc   hl
-    ld    (_tftp_write_pos), hl
+    ld    de, (_tftp_write_pos)
+    ld    a, #Z80_ESCAPE
+    ld    (de), a
+    inc   de
+    ld    (_tftp_write_pos), de
+
     call  update_progress
 
     pop   af
 
-    ld    hl, (_tftp_write_pos)
-    ld    (hl), a
-    inc   hl
-    ld    (_tftp_write_pos), hl
+    ld    de, (_tftp_write_pos)
+    ld    (de), a
+    inc   de
+    ld    (_tftp_write_pos), de
 
     ld    ix, #_s_chunk_compressed
 
@@ -687,16 +688,14 @@ _s_chunk_compressed_escape:
 
 update_progress:
 
-    ld   hl, (_tftp_write_pos)
+    ld   de, (_tftp_write_pos)
 
-    ;; check if HL is an integral number of kilobytes,
+    ;; check if DE is an integral number of kilobytes,
     ;; return early otherwise
 
-    ld    a, l
-    or    a, l
-    ret   nz
-    ld    a, h
+    ld    a, d
     and   a, #0x03
+    or    a, e
     ret   nz
 
     ;; ========================================================================
@@ -720,8 +719,7 @@ _digits:
     ;; means it just turned from 99 to 100.
     ;; Print the digit '1' for hundreds.
 
-    ;; L appropriately happens to be zero after LD HL above
-
+    ld    l, a
     inc   a      ;; A is now 1
     call  show_attr_digit
     ld    a, c
@@ -833,7 +831,7 @@ _s_chunk_repetition:
 
   ld  a, (_rep_count)
   ld  b, a                      ;; loop counter rep_count
-  ld  hl, (_tftp_write_pos)
+  ld  de, (_tftp_write_pos)
   ld  c, a
 
 s_chunk_repetition_loop:
@@ -841,34 +839,34 @@ s_chunk_repetition_loop:
   or  a
   jr  z, s_chunk_repetition_write_back
 
-  .db LD_INDIRECT_HL_N
+  .db LD_A_N
 _rep_value:
   .db 0
 
-  inc hl
+  ld  (de), a
+
+  inc de
   dec b
 
   ;;
-  ;; if HL is an integral number of kilobytes,
+  ;; if DE is an integral number of kilobytes,
   ;; update the status display
   ;;
 
-  ld  a, l
-  or  a
-  jr  nz, s_chunk_repetition_loop
-  ld  a, h
-  and #0x03
+  ld  a, d
+  and a, #0x03
+  or  a, e
   jr  nz, s_chunk_repetition_loop
 
   ld  a, b
   ld  (_rep_count), a
-  ld  (_tftp_write_pos), hl
+  ld  (_tftp_write_pos), de
 
   jp  update_progress              ;; revisit and change to JR?
 
 s_chunk_repetition_write_back:
   ld  (_rep_count), a           ;; copied from b above
-  ld  (_tftp_write_pos), hl
+  ld  (_tftp_write_pos), de
 
   ld    ix, #_s_chunk_compressed
 
@@ -947,8 +945,7 @@ receive_snapshot_byte_loop:
     ;; and enable evacuation
     ;; ------------------------------------------------------------------------
 
-    ld    a, #>EVACUATION_TEMP_BUFFER
-    ld    (hl), a
+    ld    (hl), #>EVACUATION_TEMP_BUFFER
     ld    a, #JR_NZ     ;; evacuation is now enabled
     ld    (de), a
 
@@ -969,8 +966,7 @@ evacuation_activation_instr:
     ;; and disable evacuation
     ;; ------------------------------------------------------------------------
 
-    ld    a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
-    ld    (hl), a
+    ld    (hl), #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
 
     ;; evacuation (soon) done: change JR above to skip evacuation next time
     ld    a, #JR_UNCONDITIONAL
