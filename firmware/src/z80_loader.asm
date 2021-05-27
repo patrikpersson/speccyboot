@@ -556,8 +556,8 @@ no_new_state:
 _s_chunk_compressed:
 
   ld  bc, (_chunk_bytes_remaining)
-  ld  de, (_received_data_length)
-  ld  hl, (_tftp_write_pos)
+  ld  hl, (_received_data_length)
+  ld  de, (_tftp_write_pos)
 
 s_chunk_compressed_loop:
 
@@ -573,8 +573,8 @@ s_chunk_compressed_loop:
   ;; if received_data_length is zero, terminate loop
   ;;
 
-  ld  a, d
-  or  e
+  ld  a, h
+  or  l
   jp  z, s_chunk_compressed_write_back
 
   ;;
@@ -585,27 +585,25 @@ s_chunk_compressed_loop:
   ld  a, (iy)
   inc iy
   dec bc
-  dec de
+  dec hl
 
   ;;
   ;; act on read data
   ;;
 
-  cp  #Z80_ESCAPE
+  cp  a, #Z80_ESCAPE
   jr  z, s_chunk_compressed_found_escape
-  ld  (hl), a
-  inc hl
+  ld  (de), a
+  inc de
 
   ;;
-  ;; if HL is an integral number of kilobytes,
+  ;; if DE is an integral number of kilobytes,
   ;; update the status display
   ;;
 
-  xor a
-  or  l
-  jr  nz, s_chunk_compressed_loop
-  ld  a, h
-  and #0x03
+  ld  a, d
+  and a, #0x03
+  or  a, e
   jr  nz, s_chunk_compressed_loop
 
   call s_chunk_compressed_write_back
@@ -630,8 +628,8 @@ s_chunk_compressed_found_escape:
 
 s_chunk_compressed_write_back:
   ld  (_chunk_bytes_remaining), bc
-  ld  (_received_data_length), de
-  ld  (_tftp_write_pos), hl
+  ld  (_received_data_length), hl
+  ld  (_tftp_write_pos), de
 
   ret
 
