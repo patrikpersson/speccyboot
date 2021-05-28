@@ -453,95 +453,44 @@ s_chunk_header3_set_page:
 
 _s_chunk_uncompressed:
 
-  ;;
-  ;; compute BC as minimum of
-  ;; - distance to next kilobyte for tftp_write_pos
-  ;; - received_data_length
-  ;; - chunk_bytes_remaining
-  ;;
+  ;; end of chunk?
 
-  ld  a, d
-  add a, #4            ;; round up to next 512-bytes boundary
-  and a, #0xfc         ;; clears C flag, so sbc below works fine
-  ld  h, a
-  ld  l, #0
-  sbc hl, de
-  ld  b, h
-  ld  c, l
-
-  ;;
-  ;; is received_data_length less than BC?
-  ;; if it is, set BC to received_data_length
-  ;;
-
-  ld  hl, (_received_data_length)
-  and a     ;; clear C flag for sbc below
-  sbc hl, bc
-  jr  nc, checked_length
-
-  ld  bc, (_received_data_length)
-
-checked_length:
-
-  ;;
-  ;; is chunk_bytes_remaining less than BC?
-  ;; if it is, set BC to chunk_bytes_remaining
-  ;;
-
-  ld  hl, (_chunk_bytes_remaining)
-  and a     ;; clear C flag for sbc below
-  sbc hl, bc
-  jr  nc, checked_chunk_length
-
-  ld  bc, (_chunk_bytes_remaining)
-
-checked_chunk_length:
-
-  ;;
-  ;; subtract BC from received_data_length and chunk_bytes_remaining
-  ;;
-
-  and a     ;; clear C flag for sbc below
-  ld  hl, (_received_data_length)
-  sbc hl, bc
-  ld  (_received_data_length), hl
-
-  ;;
-  ;; subtract BC from chunk_bytes_remaining: if zero remains, set the next
-  ;; state to s_chunk_header
-  ;;
-
-  ld  hl, (_chunk_bytes_remaining)
-  sbc hl, bc
-  jr  nz, no_new_state
-
-  ld  ix, #_s_chunk_header
-
-no_new_state:
-  ld   (_chunk_bytes_remaining), hl
-
-  ;;
-  ;; if BC is zero, skip copying and status display update
-  ;;
+  ld   bc, (_chunk_bytes_remaining)
   ld   a, b
   or   a, c
+  jr   z, chunk_done
+
+  ;; return if received_data_length is zero
+
+  ld   hl, (_received_data_length)
+  ld   a, h
+  or   a, l
   ret  z
 
-  ;;
-  ;; Copy the required amount of data
-  ;;
+  ld   a, (iy)
+  inc  iy
 
-  push iy
-  pop  hl
-  ldir
-  push hl
-  pop  iy
+  ld   (de), a
+  inc  de
 
-  ;;
-  ;; update the status display, if needed
-  ;;
+  dec  bc
+  dec  hl
+  ld   (_chunk_bytes_remaining), bc
+  ld   (_received_data_length), hl
+
+  ;; update progress if DE is on a kilobyte boundary
+
+  ld   a, d
+  and  a, #0x03
+  or   a, e
+  jr   nz, _s_chunk_uncompressed
 
   jr   update_progress
+
+chunk_done:
+
+  ld   ix, #_s_chunk_header
+  ret
 
 
 ;; ############################################################################

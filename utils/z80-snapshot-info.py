@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # z80-snapshot-info.py
 #
@@ -8,7 +8,7 @@
 #
 # ----------------------------------------------------------------------------
 #
-# Copyright (c) 2009, Patrik Persson
+# Copyright (c) 2009-  Patrik Persson
 # 
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -166,7 +166,7 @@ else:
 print "snapshot format version %s" % version
 print " hardware: %s" % hw_desc
 
-if nbr_banks == 8:    # 128k/+2/+3
+if version > 1  and  nbr_banks == 8:    # 128k/+2/+3
   print " 128k paging state:",
   print "0x%02x (page %d at 0xc000, display page %d, ROM%d, %s)" % (
     hw_state,
