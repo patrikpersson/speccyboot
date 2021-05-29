@@ -61,8 +61,10 @@ JR_UNCONDITIONAL   = 0x18      ;; JR offset
 JR_NZ              = 0x20      ;; JR NZ, offset
 JR_Z               = 0x28      ;; JR Z, offset
 JP_C               = 0xda      ;; JP C, target
+JP_NZ              = 0xc2      ;; JP NZ, target
 LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
+LD_BC_NN           = 0x01      ;; LC BC, #nn
 LD_IX_NN           = 0x21DD    ;; LD IX, #nn
 LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 
@@ -70,9 +72,6 @@ LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 ;; ============================================================================
 
     .area _DATA
-
-_chunk_bytes_remaining:
-    .ds   2       ;; bytes remaining to unpack in current chunk
 
 ;; ----------------------------------------------------------------------------
 ;; expected and currently loaded no. of kilobytes, for progress display
@@ -247,6 +246,7 @@ s_header:
     jr   s_header_set_state
 
 s_header_uncompressed_data:
+    ;; A is zero here (as expected by set_state_uncompressed)
     call set_state_uncompressed
     jr   s_header_set_state
 
@@ -384,23 +384,34 @@ s_chunk_header3_compatible:
     jr   z, s_chunk_header3_set_page
 
     ;;
-    ;; Page 1 in a 48k snapshot points to 0x8000, but 128k snapshots are
-    ;; different.
+    ;; Page 1 is handled differently in 48k and 128k snapshots:
+    ;; https://worldofspectrum.org/faq/reference/z80format.htm
+    ;;
+    ;; In a 48k snapshot, page 1 is loaded at 0x8000.
+    ;; In a 128k snapshot, page 1 is loaded at 0xc800, and the
+    ;; memory configuration set accordingly.
     ;;
 
     cp   a, #4                       ;; means page 1 (0x8000..0xbfff)
     ld   d, #0x80
+    ld   a, e
     jr   nz, s_chunk_header3_default_page
 
-    ld   a, e
-    cp   a, #SNAPSHOT_128K    ;; 128k snapshot?
-    jr   c, s_chunk_header3_set_page
+    cp   a, #SNAPSHOT_128K               ;; is this a 128k snapshot?
+    jr   c, s_chunk_header3_set_page     ;; if not, we are done here
 
 s_chunk_header3_default_page:
 
-    ld   d, #0xc0
-    ld   a, e
+    ;;
+    ;; This is either
+    ;;   (a) page 5 in a 48k snapshot, or
+    ;;   (b) a page in a 128k snapshot
+    ;;
+    ;; In either case, the page is set up to be loaded at 0xc000.
+    ;;
+
     cp   a, #SNAPSHOT_128K
+    ld   d, #0xc0
     jr   c, s_chunk_header3_set_page
 
     ;; If this is a 128k snapshot, switch memory bank
@@ -431,11 +442,24 @@ s_chunk_header3_set_page:
 
     ld   bc, #0x4000
 
-    jr    set_state_uncompressed        ;; FIXME reorder?
+    ;; NOTE: A is zero here (from the INC A) above, as expected
+    ;; by set_state_uncompressed
 
+    ;; FALL THROUGH, but skip two bytes of set_state_compressed
+    ;; so as to fall through to set_state_uncompressed
+
+    .db   JP_NZ      ;; Z is set from INC A, so skip the following two bytes
 
 ;; ############################################################################
 ;; set_state_compressed
+;; set_state_uncompressed
+;;
+;; When calling set_state_uncompressed, A must be zero.
+;;
+;; These functions patch the JR Z branch at escape_check_branch.
+;; For compressed data, the offset is set to branch to escape_check_branch.
+;; For uncompressed data, the offset is set to zero, to ensure that Z80_ESCAPE
+;; bytes are handled like any others.
 ;; ############################################################################
 
 set_state_compressed:
@@ -443,21 +467,14 @@ set_state_compressed:
     ;; rewrite JR Z branch for compressed chunks (to react to Z80_ESCAPE bytes)
 
     ld    a, #chunk_escape - escape_check_branch - 2
-    jr    set_state_common
 
+    ;; FALL THROUGH
 
 ;; ############################################################################
 ;; set_state_uncompressed
 ;; ############################################################################
 
 set_state_uncompressed:
-
-    ;; rewrite JR Z branch for uncompressed chunks
-    ;; (to not handle Z80_ESCAPE bytes any different from others)
-
-    xor   a, a
-
-set_state_common:
 
     ld    (escape_check_branch + 1), a
     ld    ix, #s_chunk_write_data
@@ -763,7 +780,10 @@ z80_loader_state:
     ld   bc, #0x10000 - UDP_HEADER_SIZE - TFTP_HEADER_SIZE
     add  hl, bc
 
-    ld   bc, (_chunk_bytes_remaining)
+    .db  LD_BC_NN          ;; LD BC, #nn
+_chunk_bytes_remaining:
+    .dw  0
+
     ld   de, (_tftp_write_pos)
 
     ;; ========================================================================
