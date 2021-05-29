@@ -59,6 +59,7 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
 JR_UNCONDITIONAL   = 0x18      ;; JR offset
 JR_NZ              = 0x20      ;; JR NZ, offset
+JR_Z               = 0x28      ;; JR Z, offset
 JP_C               = 0xda      ;; JP C, target
 LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
@@ -75,13 +76,6 @@ _received_data_length:
 
 _chunk_bytes_remaining:
     .ds   2       ;; bytes remaining to unpack in current chunk
-
-;; ----------------------------------------------------------------------------
-;; state for a repetition sequence
-;; ----------------------------------------------------------------------------
-
-_rep_count:        ;; set: chunk_compressed_repcount
-    .ds   1        ;; read: chunk_compressed_repetition
 
 ;; ----------------------------------------------------------------------------
 ;; expected and currently loaded no. of kilobytes, for progress display
@@ -254,11 +248,15 @@ s_header:
     ;; decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
-    ld   ix, #_s_chunk_uncompressed
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
-    jr   z, s_header_set_state
-    ld   ix, #_s_chunk_compressed
+    jr   z, s_header_uncompressed_data
+
+    call set_state_compressed
+    jr   s_header_set_state
+
+s_header_uncompressed_data:
+    call set_state_uncompressed
     jr   s_header_set_state
 
 s_header_ext_hdr:
@@ -430,28 +428,91 @@ s_chunk_header3_set_page:
 
     ;; If chunk_bytes_remaining is 0xffff, length is 0x4000
 
-    ld    ix, #_s_chunk_compressed        ;; tentative next state
-
     ld   hl, (_chunk_bytes_remaining)
     inc  h
-    ret  nz
+    jr   nz, set_state_compressed
     inc  l
-    ret  nz
+    jr   nz, set_state_compressed
 
     ld   h, #0x40    ;; HL is now 0x4000
     ld   (_chunk_bytes_remaining), hl
 
-    ld    ix, #_s_chunk_uncompressed
+    jr    set_state_uncompressed        ;; FIXME reorder?
+
+
+;; ############################################################################
+;; set_state_compressed
+;; ############################################################################
+
+set_state_compressed:
+
+    ;; rewrite JR Z branch for compressed chunks (to react to Z80_ESCAPE bytes)
+
+    ld    a, #chunk_escape - escape_check_branch - 2
+    jr    set_state_common
+
+
+;; ############################################################################
+;; set_state_uncompressed
+;; ############################################################################
+
+set_state_uncompressed:
+
+    ;; rewrite JR Z branch for uncompressed chunks
+    ;; (to not handle Z80_ESCAPE bytes any different from others)
+
+    xor   a, a
+
+set_state_common:
+
+    ld    (escape_check_branch + 1), a
+    ld    ix, #s_chunk_write_data
 
     ret
 
 ;; ############################################################################
-;; state CHUNK_UNCOMPRESSED
+;; state CHUNK_WRITE_DATA
 ;; ############################################################################
 
     .area _STAGE2
 
-_s_chunk_uncompressed:
+s_chunk_write_data::
+  xor  a, a        ;; FIXME just to set Z flag
+
+  ;;
+  ;; the branch below is patched to JR NZ to
+  ;; activate a repetition sequence
+  ;;
+
+repetition_branch:
+  jr   no_repetition
+
+  .db  LD_A_N             ;; LD A, #n
+_repcount:
+  .db  0
+
+  or   a, a
+  jr   nz, do_repetition
+
+  ;; disable repetition
+
+  ld   a, #JR_UNCONDITIONAL
+  ld   (repetition_branch), a
+
+  ret
+
+do_repetition:
+
+  dec  a
+  ld   (_repcount), a
+
+  .db  LD_A_N             ;; LD A, #n
+_rep_value:
+  .db  0
+
+  jr   store_byte
+
+no_repetition:
 
   ;; end of chunk?
 
@@ -470,20 +531,32 @@ _s_chunk_uncompressed:
   ld   a, (iy)
   inc  iy
 
-  ld   (de), a
-  inc  de
-
   dec  bc
   dec  hl
+
   ld   (_chunk_bytes_remaining), bc
   ld   (_received_data_length), hl
+
+  cp   a, #Z80_ESCAPE
+
+  ;; -------------------------------------------------------------------------
+  ;; this branch is patched to a JR Z, 0 for an uncompressed chunk
+  ;; -------------------------------------------------------------------------
+
+escape_check_branch:
+  jr   z, chunk_escape
+
+store_byte:
+
+  ld   (de), a
+  inc  de
 
   ;; update progress if DE is on a kilobyte boundary
 
   ld   a, d
   and  a, #0x03
   or   a, e
-  jr   nz, _s_chunk_uncompressed
+  jr   nz, s_chunk_write_data
 
   jr   update_progress
 
@@ -492,89 +565,8 @@ chunk_done:
   ld   ix, #_s_chunk_header
   ret
 
-
-;; ############################################################################
-;; state CHUNK_COMPRESSED
-;; ############################################################################
-
-    .area _STAGE2
-
-_s_chunk_compressed:
-
-  ld  bc, (_chunk_bytes_remaining)
-  ld  hl, (_received_data_length)
-
-s_chunk_compressed_loop:
-
-  ;;
-  ;; if chunk_bytes_remaining is zero, terminate loop and switch state
-  ;;
-
-  ld  a, b
-  or  c
-  jr  z, s_chunk_compressed_chunk_end
-
-  ;;
-  ;; if received_data_length is zero, terminate loop
-  ;;
-
-  ld  a, h
-  or  l
-  jp  z, s_chunk_compressed_write_back
-
-  ;;
-  ;; read a byte of input, increase read pointer,
-  ;; decrease chunk_bytes_remaining and received_data_length
-  ;;
-
-  ld  a, (iy)
-  inc iy
-  dec bc
-  dec hl
-
-  ;;
-  ;; act on read data
-  ;;
-
-  cp  a, #Z80_ESCAPE
-  jr  z, s_chunk_compressed_found_escape
-  ld  (de), a
-  inc de
-
-  ;;
-  ;; if DE is an integral number of kilobytes,
-  ;; update the status display
-  ;;
-
-  ld  a, d
-  and a, #0x03
-  or  a, e
-  jr  nz, s_chunk_compressed_loop
-
-  call s_chunk_compressed_write_back
-
-  jr  update_progress
-
-  ;;
-  ;; reached end of chunk: switch state
-  ;;
-
-s_chunk_compressed_chunk_end:
-  ld  ix, #_s_chunk_header
-  jr  s_chunk_compressed_write_back
-
-  ;;
-  ;; found escape byte: switch state
-  ;;
-
-s_chunk_compressed_found_escape:
-
-  ld  ix, #_s_chunk_compressed_escape
-
-s_chunk_compressed_write_back:
-  ld  (_chunk_bytes_remaining), bc
-  ld  (_received_data_length), hl
-
+chunk_escape:
+  ld   ix, #_s_chunk_compressed_escape
   ret
 
 
@@ -599,7 +591,7 @@ _s_chunk_compressed_escape:
     ;;              so this is not an escape sequence
     ;;
 
-    push  af
+    ex    af, af'            ;; '
 
     ld    a, #Z80_ESCAPE
     ld    (de), a
@@ -607,12 +599,12 @@ _s_chunk_compressed_escape:
 
     call  update_progress
 
-    pop   af
+    ex    af, af'            ;; '
 
     ld    (de), a
     inc   de
 
-    ld    ix, #_s_chunk_compressed
+    ld    ix, #s_chunk_write_data
 
     ;; FALL THROUGH to update_progress
 
@@ -737,8 +729,16 @@ kilobytes_expected:
 
 _s_chunk_repcount:
 
+    ;;
+    ;; An escape sequence has been detected:
+    ;; patch code accordingly
+    ;;
+
+    ld   a, #JR_NZ
+    ld   (repetition_branch), a
+
     call _get_next_byte
-    ld   (_rep_count), a
+    ld   (_repcount), a
 
     call _dec_chunk_bytes
 
@@ -759,54 +759,10 @@ _s_chunk_repvalue:
 
     call _dec_chunk_bytes
 
-    ld    ix, #_s_chunk_repetition
+    ld    ix, #s_chunk_write_data
 
-    ;; FALL THROUGH to _s_chunk_repetition
+    jp    s_chunk_write_data   ;; FIXME reorder routines
 
-;; ############################################################################
-;; state CHUNK_REPETITION
-;; ############################################################################
-
-_s_chunk_repetition:
-
-  ld  a, (_rep_count)
-  ld  b, a                      ;; loop counter rep_count
-
-s_chunk_repetition_loop:
-  ld  a, b
-  or  a
-  jr  z, s_chunk_repetition_write_back
-
-  .db LD_A_N
-_rep_value:
-  .db 0
-
-  ld  (de), a
-
-  inc de
-  dec b
-
-  ;;
-  ;; if DE is an integral number of kilobytes,
-  ;; update the status display
-  ;;
-
-  ld  a, d
-  and a, #0x03
-  or  a, e
-  jr  nz, s_chunk_repetition_loop
-
-  ld  a, b
-  ld  (_rep_count), a
-
-  jr  update_progress
-
-s_chunk_repetition_write_back:
-  ld  (_rep_count), a           ;; copied from b above
-
-  ld    ix, #_s_chunk_compressed
-
-  ret
 
 ;; ############################################################################
 ;; z80_loader_receive_hook

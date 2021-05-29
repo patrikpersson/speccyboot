@@ -109,11 +109,29 @@ def display_compressed_data(bytes):
 
 # -----------------------------------------------------------------------------
 
+def display_compression_sequences(bytes):
+  addr = 0  
+  i = 0
+  while i < len(bytes):
+    b = bytes[i]
+    i += 1
+    if ord(b) == 0xED and (i + 2) < len(bytes) and ord(bytes[i]) == 0xED:
+      # found a sequence
+      seq_length = ord(bytes[i+1])
+      print "  offset: %04x  dest addr: %04x  ed ed %02x %02x" % (i - 1, addr, seq_length, ord(bytes[i+2]))
+      i += 3
+      addr += seq_length
+    else:
+      addr += 1
+
+# -----------------------------------------------------------------------------
+
 def usage():
   print "usage:"
   print "  %s [-v] [-h] <some_snapshot.z80>" % os.path.basename(sys.argv[0])
   print ""
   print "  -h: display this message"
+  print "  -s: list compression sequences (ED ED)"
   print "  -v: verbose (dump memory bank contents)"
   exit(1)
 
@@ -121,14 +139,17 @@ def usage():
 
 if len(sys.argv) < 2: usage()
 
-verbose    = False
-in_file    = None
+verbose        = False
+show_sequences = False
+in_file        = None
 
 for arg in sys.argv[1:]:
   if arg == '-h':
     usage()
   elif arg == '-v':
     verbose = True
+  elif arg == '-s':
+    show_sequences = True
   else:
     if in_file:
       usage()
@@ -199,6 +220,7 @@ if version == 1:
     print " single 48k compressed block"
     data = in_file.read()
     if verbose: display_compressed_data(data)
+    if show_sequences: display_compression_sequences(data)
 else:
   print " %d x 16k pages:" % nbr_banks
   for i in range(nbr_banks):
@@ -211,3 +233,4 @@ else:
       print "  page %d, compressed (%d bytes)" % (page_id, page_data_length)
       data = in_file.read(page_data_length)
       if verbose: display_compressed_data(data)
+      if show_sequences: display_compression_sequences(data)
