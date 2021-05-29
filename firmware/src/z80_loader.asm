@@ -160,16 +160,12 @@ show_attr_char_address_known:
 
 
 ;; ############################################################################
-;; _get_next_byte
-;;
-;; Returns *received_data++ in A
-;; also decreases HL
-;;
+;; load_byte_from_packet
 ;; ############################################################################
 
     .area _STAGE2
 
-_get_next_byte:
+load_byte_from_packet:
 
     ld   a, (iy)
     inc  iy
@@ -316,7 +312,7 @@ s_header_set_state:
 
 _s_chunk_header:
 
-    call _get_next_byte
+    call load_byte_from_packet
     ld   c, a
 
     ld   ix, #_s_chunk_header2
@@ -334,7 +330,7 @@ _s_chunk_header:
 
 _s_chunk_header2:
 
-    call _get_next_byte
+    call load_byte_from_packet
     ld   b, a
 
     ld   ix, #_s_chunk_header3
@@ -361,7 +357,7 @@ _s_chunk_header3:
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
     ld   e, a
 
-    call _get_next_byte
+    call load_byte_from_packet
 
     cp   a, #3
     jr   c, s_chunk_header3_incompatible
@@ -489,31 +485,29 @@ set_state_uncompressed:
 
 s_chunk_write_data:
 
+  ;; -------------------------------------------------------------------------
+  ;; Check the repetition count. This is zero when no repetition is active,
+  ;; including when an uncompressed chunk is being loaded.
+  ;; -------------------------------------------------------------------------
+
   .db  LD_A_N             ;; LD A, #n
 _repcount:
   .db  0
 
   or   a, a
-  jr   z, no_repetition
+  jr   nz, do_repetition
 
-  dec  a
-  ld   (_repcount), a
-
-  .db  LD_A_N             ;; LD A, #n
-_rep_value:
-  .db  0
-
-  jr   store_byte
-
-no_repetition:
-
-  ;; end of chunk?
+  ;; -------------------------------------------------------------------------
+  ;; reached end of current chunk?
+  ;; -------------------------------------------------------------------------
 
   ld   a, b
   or   a, c
   jr   z, chunk_done
 
-  ;; return if received_data_length is zero
+  ;; -------------------------------------------------------------------------
+  ;; reached end of loaded TFTP data?
+  ;; -------------------------------------------------------------------------
 
   ld   a, h
   or   a, l
@@ -525,11 +519,14 @@ no_repetition:
   dec  bc
   dec  hl
 
-  cp   a, #Z80_ESCAPE
+  ;; -------------------------------------------------------------------------
+  ;; Check for the escape byte of a repetition sequence. If an uncompressed
+  ;; chunk is being loaded, the branch 'escape_check_branch' below is
+  ;; patched to a JR Z, 0, to ensure escape bytes are handled just like
+  ;; any other.
+  ;; -------------------------------------------------------------------------
 
-  ;; -------------------------------------------------------------------------
-  ;; this branch is patched to a JR Z, 0 for an uncompressed chunk
-  ;; -------------------------------------------------------------------------
+  cp   a, #Z80_ESCAPE
 
 escape_check_branch:
   jr   z, chunk_escape
@@ -539,7 +536,9 @@ store_byte:
   ld   (de), a
   inc  de
 
-  ;; update progress if DE is on a kilobyte boundary
+  ;; -------------------------------------------------------------------------
+  ;; update progress if DE reached a kilobyte boundary
+  ;; -------------------------------------------------------------------------
 
   ld   a, d
   and  a, #0x03
@@ -548,9 +547,33 @@ store_byte:
 
   jr   update_progress
 
+  ;; -------------------------------------------------------------------------
+  ;; a non-zero number of repetitions remain:
+  ;; decrease repetition count and write the repetition value to memory
+  ;; -------------------------------------------------------------------------
+
+do_repetition:
+
+  dec  a
+  ld   (_repcount), a
+
+  .db  LD_A_N             ;; LD A, #n
+_rep_value:
+  .db  0
+
+  jr   store_byte
+
+  ;; -------------------------------------------------------------------------
+  ;; End of current chunk: switch state
+  ;; -------------------------------------------------------------------------
+
 chunk_done:
   ld   ix, #_s_chunk_header
   ret
+
+  ;; -------------------------------------------------------------------------
+  ;; Escape byte found: switch state
+  ;; -------------------------------------------------------------------------
 
 chunk_escape:
   ld   ix, #_s_chunk_compressed_escape
@@ -565,7 +588,7 @@ chunk_escape:
 
 _s_chunk_compressed_escape:
 
-    call  _get_next_byte
+    call  load_byte_from_packet
     dec   bc
 
     ld    ix, #_s_chunk_repcount        ;; tentative next state
@@ -722,7 +745,7 @@ no_progress_bar:
 
 _s_chunk_repcount:
 
-    call _get_next_byte
+    call load_byte_from_packet
     dec  bc
 
     ld   (_repcount), a
@@ -738,7 +761,7 @@ _s_chunk_repcount:
 
 _s_chunk_repvalue:
 
-    call _get_next_byte
+    call load_byte_from_packet
     dec  bc
     ld   (_rep_value), a
 

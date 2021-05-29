@@ -170,11 +170,9 @@ menu_second_time:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #0x5840
-    ld   de, #0x5841
     ld   bc, #DISPLAY_LINES * 32 - 1
     ld   a, #BLACK + (WHITE << 3) + BRIGHT
-    ld   (hl), a
-    ldir
+    call fill_memory
 
     ;; ========================================================================
     ;; Scan through the loaded snapshot list, and build an array of pointers
@@ -184,7 +182,8 @@ menu_second_time:
 
     ld   hl, #_snapshot_list
     ld   de, #_rx_frame
-    ld   c, #0            ;; number of snapshots, max 255
+
+    ;; register C is zero here after fill_memory above
 
     ;; ------------------------------------------------------------------------
     ;; check if done:
