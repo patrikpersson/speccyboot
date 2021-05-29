@@ -189,8 +189,8 @@ menu_second_time:
     ;; The resulting number of snapshots in the list is stored in C.
     ;; ========================================================================
 
-    ld   hl, #_snapshot_list
-    ld   de, #_rx_frame
+    ld   de, #_snapshot_list
+    ld   hl, #_rx_frame
 
     ;; register C is zero here after fill_memory above
 
@@ -202,7 +202,7 @@ menu_second_time:
 
 menu_setup_loop1:
 
-    ld   a, (hl)
+    ld   a, (de)
     or   a, a
     jr   z, menu_setup_ready
 
@@ -216,12 +216,10 @@ menu_setup_loop1:
 
 menu_setup_store_ptr:
 
-    ld   a, l
-    ld   (de), a
-    inc  de
-    ld   a, h
-    ld   (de), a
-    inc  de
+    ld   (hl), e
+    inc  hl
+    ld   (hl), d
+    inc  hl
 
     inc  c
 
@@ -230,23 +228,23 @@ menu_setup_store_ptr:
     ;; ------------------------------------------------------------------------
 
 menu_setup_loop2:
-    ld   a, (hl)
+    ld   a, (de)
     cp   a, #' '        ;; less than 32 means end of file name (CR/LF/NUL)
-    jr   c, menu_setup_found_nul
-    inc  hl
+    jr   c, menu_setup_found_eol
+    inc  de
     jr   menu_setup_loop2
 
-menu_setup_found_nul:
+menu_setup_found_eol:
     xor  a, a
-    ld   (hl), a
+    ld   (de), a
 
     ;; ------------------------------------------------------------------------
     ;; skip any other trailing CR/LF stuff
     ;; ------------------------------------------------------------------------
 
 menu_setup_find_next:
-    inc  hl
-    ld   a, (hl)
+    inc  de
+    ld   a, (de)
     or   a, a
     jr   z, menu_setup_ready
     cp   a, #' '
