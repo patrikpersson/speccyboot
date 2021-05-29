@@ -164,7 +164,7 @@ show_attr_char_address_known:
 ;; load_byte_from_packet
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 load_byte_from_packet:
 
@@ -198,7 +198,9 @@ s_header:
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     ld   de, #_snapshot_header
-    ld   bc, #Z80_HEADER_RESIDENT_SIZE
+
+    ;; BC is set to Z80_HEADER_RESIDENT_SIZE in z80_loader_receive_hook below
+
     ldir
 
     ;; ------------------------------------------------------------------------
@@ -217,8 +219,8 @@ s_header:
 
     ;; ------------------------------------------------------------------------
     ;; Not an extended header: expect a single 48k chunk. For a compressed
-    ;; chunk this value will be overkill (the compressed chunk is actually)
-    ;; shorter. This is OK, since the context switch will kick in when the
+    ;; chunk this value will be overkill (the compressed chunk is actually
+    ;; shorter). This is OK, since the context switch will kick in when the
     ;; chunk is fully loaded anyway.
     ;; ------------------------------------------------------------------------
 
@@ -230,14 +232,11 @@ s_header:
 
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
-    jr   z, s_header_uncompressed_data
 
-    call set_state_compressed
-    jr   s_header_set_state
-
-s_header_uncompressed_data:
     ;; A is zero here (as expected by set_state_uncompressed)
-    call set_state_uncompressed
+
+    call z, set_state_uncompressed
+    call nz, set_state_compressed
     jr   s_header_set_state
 
 s_header_ext_hdr:
@@ -438,7 +437,8 @@ s_chunk_header3_set_page:
 ;; set_state_compressed
 ;; set_state_uncompressed
 ;;
-;; When calling set_state_uncompressed, A must be zero.
+;; When calling set_state_uncompressed, A must be zero. These functions do not
+;; affect any CPU flags.
 ;;
 ;; These functions patch the JR Z branch at escape_check_branch.
 ;; For compressed data, the offset is set to branch to escape_check_branch.
@@ -795,7 +795,7 @@ z80_loader_state:
 
     .db  LD_BC_NN          ;; LD BC, #nn
 _chunk_bytes_remaining:
-    .dw  0
+    .dw  Z80_HEADER_RESIDENT_SIZE    ;; useful initial value for state S_HEADER
 
     .db  LD_DE_NN          ;; LD DE, #nn
 write_pos:
