@@ -299,7 +299,7 @@ udp_create:
     ;; copy destination IP address
 
     pop   hl
-    ld    bc, #4
+    ld    c, #4       ;; B == 0 after LDIR above
     ;; keep DE from above: destination address follows immediately after source
     ldir
 
