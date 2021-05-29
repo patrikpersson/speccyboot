@@ -193,38 +193,27 @@ prepare_context_set_bank:
     ;; below.)
     ;; ========================================================================
 
-    ld   bc, #EVACUATION_TEMP_BUFFER
-    ld   hl, #BITMAP_BASE
+    ld   de, #EVACUATION_TEMP_BUFFER + 4        ;; points to attribute data
+    ld   l, #<BITMAP_BASE + 4
 
-    ld   d, #5
 evacuate_data_loop1:   ;;  loop over character cells
-      ld   e, #0       ;;  accumulated bit weight
-      push bc
 
       ld   c, #8
+      ld   h, #>BITMAP_BASE
+      xor  a, a        ;;  accumulated bit weight
 evacuate_data_loop2:   ;;  loop over pixel rows in cell
-        ld   a, (hl)
-        inc  h
-
         ld   b, #8
 evacuate_data_loop3:   ;;  loop over pixels in cell
-          rra
-          jr   nc, pixel_not_set
-          inc  e
-pixel_not_set:
+          rr   (hl)
+          adc  a, #0
         djnz evacuate_data_loop3
 
+        inc  h
         dec  c
       jr   nz, evacuate_data_loop2
 
-      ld   bc, #0x7ff  ;;  decrease for loop above + increase to next cell
-      xor  a           ;;  clear C flag
-      sbc  hl, bc
-      pop  bc
-
-      ld   a, e
-      cp   #33         ;;  more than half of the total pixels in cell
-      ld   a, (bc)
+      cp   a, #33         ;;  more than half of the total pixels in cell
+      ld   a, (de)
       jr   nc, evac_use_fg
 
       ;; few pixels set -- use background color
@@ -237,17 +226,18 @@ evac_use_fg:  ;; many pixels set -- use foreground color
 
       and  #7
 
-      ld   e, a
+      ld   c, a
       add  a, a
       add  a, a
       add  a, a
-      or   a, e
+      or   a, c
 
 evac_colour_set:
-      ld   (bc), a
-      inc  bc
-      dec  d
-    jr   nz, evacuate_data_loop1
+      ld   (de), a
+      dec  e
+      dec  l
+
+    jp   p, evacuate_data_loop1  ;; continue if positive
 
     ;; ------------------------------------------------------------------------
     ;; write JP nn instructions to VRAM trampoline, at positions 0x40X2
@@ -257,7 +247,7 @@ evac_colour_set:
     ld   b, #6
 write_trampoline_loop:
       ld   l, #2
-      ld   (hl), #0xc3        ;; JP nn
+      ld   (hl), #JP_UNCONDITIONAL        ;; JP nn
       inc  hl
       ld   (hl), #0           ;; low byte of JP target is 0
       inc  hl

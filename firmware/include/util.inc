@@ -64,6 +64,7 @@ SND_REG_VALUE     = 0xbffd
 JR_UNCONDITIONAL   = 0x18      ;; JR offset
 JR_NZ              = 0x20      ;; JR NZ, offset
 JR_Z               = 0x28      ;; JR Z, offset
+JP_UNCONDITIONAL   = 0xc3      ;; JP target
 JP_C               = 0xda      ;; JP C, target
 JP_NZ              = 0xc2      ;; JP NZ, target
 LD_A_N             = 0x3e      ;; LD A, #n
