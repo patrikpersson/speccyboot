@@ -307,7 +307,6 @@ initialize_global_data:
 
   .area _STAGE2        ;; this is where the stage 2 bootloader starts (RAM)
   .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
-  .area _MAGIC         ;; area for magic number (integrity check)
   .area _SNAPSHOTLIST  ;; area for loaded snapshot list (snapshots.lst)
 
 _tftp_file_buffer::
@@ -317,15 +316,13 @@ _tftp_file_buffer::
 stage2_start:
 
   ;; --------------------------------------------------------------------------
-  ;; Special mark for integrity check, as last three bytes in loaded binary:
-  ;; entry point (2 bytes)
+  ;; Special mark for integrity check, as first five bytes in loaded binary:
   ;; VERSION_MAGIC (magic number depending on version, 2 bytes)
+  ;; JP to entry point (3 bytes)
   ;; --------------------------------------------------------------------------
 
-  .area _MAGIC
-
-  .dw   run_menu
   .dw   VERSION_MAGIC
+  jp    run_menu
 
   .area _SNAPSHOTLIST
 

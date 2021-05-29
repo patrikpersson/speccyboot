@@ -79,4 +79,4 @@ _snapshot_header = 0x7f00             ;; snapshot header, temporary storage
     .globl _ip_checksum
     .globl _tftp_receive_hook
     .globl _snapshot_list
-    .globl stage2_saved_entrypoint
+    .globl stage2_start

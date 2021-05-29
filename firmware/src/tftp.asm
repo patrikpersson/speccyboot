@@ -279,59 +279,21 @@ tftp_receive_blk_nbr_and_port_ok:
 
     ;; ========================================================================
     ;; This was the last packet, of either the stage 2 binary or snapshots.lst.
-    ;; Execute the stage 2 loader.
+    ;; Check version signature and execute the stage 2 loader.
     ;; ========================================================================
 
-    ;; ------------------------------------------------------------------------
-    ;; We will reach this point twice:
-    ;;   1. when the stage 2 loader has been loaded
-    ;;   2. when snaphots.lst has been loaded
-    ;;
-    ;; In phase 1:
-    ;;   - check the version magic of the loaded binary
-    ;;   - load entry point, store it in stage2_saved_entrypoint
-    ;;   - jump to entry point
-    ;;
-    ;; In phase 2:
-    ;;   - load entry point from stage2_saved_entrypoint
-    ;;   - jump to entry point (again)
-    ;; ------------------------------------------------------------------------
-
-    ld  hl, (stage2_saved_entrypoint)
-    ld  a, h
-    or  a, l
-    jr  nz, _jp_hl   ;; entry point saved? then we are in phase 2, just jump
-
-    ;; ------------------------------------------------------------------------
-    ;; Phase 1: check integrity (16-bit VERSION_MAGIC)
-    ;; ------------------------------------------------------------------------
-
-    ex  de, hl
-    dec hl
-    ld  a, (hl)
-    cp  a, #>VERSION_MAGIC
-    jr  nz, version_mismatch
-    dec hl
+    ld  hl, #stage2_start
     ld  a, (hl)
     cp  a, #<VERSION_MAGIC
     jr  nz, version_mismatch
-
-    ;; ------------------------------------------------------------------------
-    ;; Phase 1: VERSION_MAGIC checked out, store entry point and jump
-    ;; ------------------------------------------------------------------------
-
-    dec hl
-    ld  d, (hl)
-    dec hl
-    ld  e, (hl)
-    ex  de, hl
-    ld  (stage2_saved_entrypoint), hl
-_jp_hl:
-    jp  (hl)
-
+    inc hl
+    ld  a, (hl)
+    cp  a, #>VERSION_MAGIC
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
-    jp  fail
+    jp  nz, version_mismatch
+    inc hl
+    jp  (hl)
 
 tftp_receive_error:
 
