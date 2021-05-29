@@ -71,9 +71,6 @@ LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 
     .area _DATA
 
-_received_data_length:
-    .ds   2       ;; number of valid bytes remaining in received_data
-
 _chunk_bytes_remaining:
     .ds   2       ;; bytes remaining to unpack in current chunk
 
@@ -167,10 +164,8 @@ show_attr_char_address_known:
 ;; _get_next_byte
 ;;
 ;; Returns *received_data++ in A
-;; also decreases received_data_length
+;; also decreases HL
 ;;
-;; (reads byte from (IY), increases received_data, returns byte in A)
-;; Modifies HL (but not F)
 ;; ############################################################################
 
     .area _STAGE2
@@ -180,25 +175,8 @@ _get_next_byte:
     ld   a, (iy)
     inc  iy
 
-    ld   hl, (_received_data_length)
     dec  hl
-    ld   (_received_data_length), hl
 
-    ret
-
-;; ############################################################################
-;; _dec_chunk_bytes
-;;
-;; Decreases chunk_bytes_remaining (byte counter in compressed chunk)
-;; ############################################################################
-
-    .area _STAGE2
-
-_dec_chunk_bytes:
-
-    ld   hl, (_chunk_bytes_remaining)
-    dec  hl
-    ld   (_chunk_bytes_remaining), hl
     ret
 
 ;; ############################################################################
@@ -215,6 +193,8 @@ _dec_chunk_bytes:
 
 s_header:
 
+    push hl
+
     ;; ------------------------------------------------------------------------
     ;; set bank 0, ROM 1 (48K ROM) for 128k memory config while loading
     ;; ------------------------------------------------------------------------
@@ -222,6 +202,15 @@ s_header:
     ld   a, #MEMCFG_ROM_48K
     ld   bc, #MEMCFG_ADDR
     out  (c), a
+
+    ;; ------------------------------------------------------------------------
+    ;; keep .z80 header until prepare_context is called
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld   de, #_snapshot_header
+    ld   bc, #Z80_HEADER_RESIDENT_SIZE
+    ldir
 
     ;; ------------------------------------------------------------------------
     ;; check snapshot header
@@ -238,11 +227,13 @@ s_header:
     jr   z, s_header_ext_hdr               ;; extended header?
 
     ;; ------------------------------------------------------------------------
-    ;; not an extended header: expect a single 48k chunk
+    ;; Not an extended header: expect a single 48k chunk. For a compressed
+    ;; chunk this value will be overkill (the compressed chunk is actually)
+    ;; shorter. This is OK, since the context switch will kick in when the
+    ;; chunk is fully loaded anyway.
     ;; ------------------------------------------------------------------------
 
-    ld   a, #>0xc000
-    ld   (_chunk_bytes_remaining + 1), a       ;; low byte of is already zero
+    ld   bc, #0xc000
 
     ;; ------------------------------------------------------------------------
     ;; decide next state, depending on whether COMPRESSED flag is set
@@ -296,23 +287,19 @@ s_header_not_128k:
 s_header_set_state:
 
     ;; ------------------------------------------------------------------------
-    ;; adjust _received_data and _received_data_length for header size
+    ;; adjust IY read pointer and HL for header size
     ;; ------------------------------------------------------------------------
 
-    add  iy, de
+    pop  hl
 
-    ld   hl, (_received_data_length)
-    sbc  hl, de                      ;; C flag should be clear from ADD above
-    ld   (_received_data_length), hl
+    add  iy, de         ;; clears C flag, as DE is less than IY here
+    sbc  hl, de         ;; C flag is zero here
 
     ;; ------------------------------------------------------------------------
-    ;; keep .z80 header until prepare_context is called
+    ;; Prepare DE for a single 48k snapshot. In a v2+ snapshot, separate chunks
+    ;; will follow, and then this value will be overridden for these
+    ;; individually.
     ;; ------------------------------------------------------------------------
-
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ld   de, #_snapshot_header
-    ld   bc, #Z80_HEADER_RESIDENT_SIZE
-    ldir
 
     ld   de, #0x4000
 
@@ -322,7 +309,7 @@ s_header_set_state:
 ;; ############################################################################
 ;; state CHUNK_HEADER:
 ;;
-;; receive low byte of chunk length
+;; receive first byte in chunk header: low byte of chunk length
 ;; ############################################################################
 
     .area _STAGE2
@@ -330,9 +317,9 @@ s_header_set_state:
 _s_chunk_header:
 
     call _get_next_byte
-    ld   (_chunk_bytes_remaining), a
+    ld   c, a
 
-    ld    ix, #_s_chunk_header2
+    ld   ix, #_s_chunk_header2
 
     ret
 
@@ -340,7 +327,7 @@ _s_chunk_header:
 ;; ############################################################################
 ;; state CHUNK_HEADER2:
 ;;
-;; receive high byte of chunk length
+;; receive second byte in chunk header: high byte of chunk length
 ;; ############################################################################
 
     .area _STAGE2
@@ -348,16 +335,17 @@ _s_chunk_header:
 _s_chunk_header2:
 
     call _get_next_byte
-    ld   (_chunk_bytes_remaining + 1), a
+    ld   b, a
 
-    ld    ix, #_s_chunk_header3
+    ld   ix, #_s_chunk_header3
 
     ret
 
 ;; ############################################################################
 ;; state CHUNK_HEADER3:
 ;;
-;; receive ID of the page the chunk belongs to, range is 3..10
+;; receive third byte in chunk header:
+;; ID of the page the chunk belongs to (range is 3..10)
 ;;
 ;; See:
 ;; https://www.worldofspectrum.org/faq/reference/z80format.htm
@@ -368,8 +356,10 @@ _s_chunk_header2:
 
 _s_chunk_header3:
 
+    ;; use DE for scratch here: it will get its proper value below
+
     ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-    ld   c, a
+    ld   e, a
 
     call _get_next_byte
 
@@ -384,15 +374,13 @@ s_chunk_header3_compatible:
 
     ;; Decide on a good value for tftp_write_pos; store in DE.
 
-    ld   b, a    ;; useful extra copy of A
-
     ;;
     ;; Need to handle page 5 separately -- if we do not use the address range
     ;; 0x4000..0x7fff, the evacuation stuff will not work.
     ;;
 
-    ld   d, #0x40
     cp   a, #8                       ;; means page 5 (0x4000..0x7fff)
+    ld   d, #0x40
     jr   z, s_chunk_header3_set_page
 
     ;;
@@ -400,42 +388,48 @@ s_chunk_header3_compatible:
     ;; different.
     ;;
 
-    ld   d, #0x80
     cp   a, #4                       ;; means page 1 (0x8000..0xbfff)
+    ld   d, #0x80
     jr   nz, s_chunk_header3_default_page
 
-    ld   a, c
+    ld   a, e
     cp   a, #SNAPSHOT_128K    ;; 128k snapshot?
     jr   c, s_chunk_header3_set_page
 
 s_chunk_header3_default_page:
 
     ld   d, #0xc0
-    ld   a, c
+    ld   a, e
     cp   a, #SNAPSHOT_128K
     jr   c, s_chunk_header3_set_page
 
     ;; If this is a 128k snapshot, switch memory bank
 
-    ld   a, b
+    ld   a, -1(iy)        ;; byte just loaded: chunk bank id
     sub  a, #3
     or   a, #MEMCFG_ROM_48K    ;; needed for digits while loading
+
+    exx
     ld   bc, #MEMCFG_ADDR
     out  (c), a
+    exx
 
 s_chunk_header3_set_page:
+
     ld   e, #0
 
-    ;; If chunk_bytes_remaining is 0xffff, length is 0x4000
+    ;; -----------------------------------------------------------------------
+    ;; https://worldofspectrum.org/faq/reference/z80format.htm :
+    ;;
+    ;; If length=0xffff, data is 16384 bytes long and not compressed
+    ;; -----------------------------------------------------------------------
 
-    ld   hl, (_chunk_bytes_remaining)
-    inc  h
-    jr   nz, set_state_compressed
-    inc  l
+    ld   a, b
+    and  a, c
+    inc  a
     jr   nz, set_state_compressed
 
-    ld   h, #0x40    ;; HL is now 0x4000
-    ld   (_chunk_bytes_remaining), hl
+    ld   bc, #0x4000
 
     jr    set_state_uncompressed        ;; FIXME reorder?
 
@@ -498,14 +492,12 @@ no_repetition:
 
   ;; end of chunk?
 
-  ld   bc, (_chunk_bytes_remaining)
   ld   a, b
   or   a, c
   jr   z, chunk_done
 
   ;; return if received_data_length is zero
 
-  ld   hl, (_received_data_length)
   ld   a, h
   or   a, l
   ret  z
@@ -515,9 +507,6 @@ no_repetition:
 
   dec  bc
   dec  hl
-
-  ld   (_chunk_bytes_remaining), bc
-  ld   (_received_data_length), hl
 
   cp   a, #Z80_ESCAPE
 
@@ -543,7 +532,6 @@ store_byte:
   jr   update_progress
 
 chunk_done:
-
   ld   ix, #_s_chunk_header
   ret
 
@@ -561,7 +549,7 @@ chunk_escape:
 _s_chunk_compressed_escape:
 
     call  _get_next_byte
-    call  _dec_chunk_bytes
+    dec   bc
 
     ld    ix, #_s_chunk_repcount        ;; tentative next state
 
@@ -608,7 +596,11 @@ update_progress:
     or    a, e
     ret   nz
 
-    push  de
+    ;; ------------------------------------------------------------------------
+    ;; use alternate BC, DE, HL for scratch here
+    ;; ------------------------------------------------------------------------
+
+    exx
 
     ;; ========================================================================
     ;; update the progress display
@@ -654,8 +646,6 @@ not_10k:
     ld    l, #14
     call  show_attr_digit
 
-    pop   de
-
     ;; ************************************************************************
     ;; update progress bar
     ;; ************************************************************************
@@ -681,8 +671,9 @@ progress_ratio:
     ld    a, c
 
 00002$:
-    or    a, a       ;; zero progress?
-    ret   z
+    or    a, a
+    jr    z, no_progress_bar
+
     ld    bc, #PROGRESS_BAR_BASE-1
     add   a, c
     ld    c, a
@@ -698,9 +689,12 @@ kilobytes_expected:
     .db   48         ;; initial assumption, possibly patched to 128 in s_header
 
     cp    a, (hl)
-    ret   nz
+    jp    z, context_switch             ;; in stage 1 loader (ROM)
 
-    jp    context_switch             ;; in stage 1 loader (ROM)
+no_progress_bar:
+
+    exx
+    ret
 
 
 ;; ############################################################################
@@ -712,11 +706,10 @@ kilobytes_expected:
 _s_chunk_repcount:
 
     call _get_next_byte
+    dec  bc
+
     ld   (_repcount), a
-
-    call _dec_chunk_bytes
-
-    ld    ix, #_s_chunk_repvalue
+    ld   ix, #_s_chunk_repvalue
 
     ret
 
@@ -729,9 +722,8 @@ _s_chunk_repcount:
 _s_chunk_repvalue:
 
     call _get_next_byte
+    dec  bc
     ld   (_rep_value), a
-
-    call _dec_chunk_bytes
 
     ld    ix, #s_chunk_write_data
 
@@ -746,9 +738,12 @@ z80_loader_receive_hook:
 
     ;; ------------------------------------------------------------------------
     ;; register allocation (shared in all states):
+    ;;
     ;; IX: current state (pointer to function)
     ;; IY: read pointer (pointer to somewhere in rx_frame)
-    ;; DE: write pointer (pointer to somewhere in RAM)
+    ;; BC: number of bytes left to read in current chunk       (Bytes in Chunk)
+    ;; DE: write pointer (pointer to somewhere in RAM)            (DEstination)
+    ;; HL: number of bytes left to read from current TFTP packet
     ;; ------------------------------------------------------------------------
 
     .dw  LD_IX_NN            ;; LD IX, #nn
@@ -756,10 +751,9 @@ z80_loader_state:
     .dw  s_header            ;; initial state
 
     ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ld   de, (_tftp_write_pos)
 
     ;; ------------------------------------------------------------------------
-    ;; set up _received_data_length
+    ;; set up HL, BC, DE
     ;; ------------------------------------------------------------------------
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH)
@@ -768,7 +762,9 @@ z80_loader_state:
     ld   h, a
     ld   bc, #0x10000 - UDP_HEADER_SIZE - TFTP_HEADER_SIZE
     add  hl, bc
-    ld   (_received_data_length), hl
+
+    ld   bc, (_chunk_bytes_remaining)
+    ld   de, (_tftp_write_pos)
 
     ;; ========================================================================
     ;; read bytes, evacuate when needed, call state functions
@@ -776,14 +772,10 @@ z80_loader_state:
 
 receive_snapshot_byte_loop:
 
-    ld   (z80_loader_state), ix
-    ld   (_tftp_write_pos), de
-
     ;; ------------------------------------------------------------------------
-    ;; if received_data_length is zero, we are done
+    ;; if HL is zero, we are done
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_received_data_length)
     ld    a, h
     or    a, l
     ret   z
@@ -802,8 +794,6 @@ receive_snapshot_byte_loop:
     ;; reached RUNTIME_DATA (resident area)?
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #evacuation_activation_instr
-
     cp    a, #>RUNTIME_DATA
     jr    nz, receive_snapshot_not_entering_runtime_data
 
@@ -813,7 +803,8 @@ receive_snapshot_byte_loop:
     ;; ------------------------------------------------------------------------
 
     ld    d, #>EVACUATION_TEMP_BUFFER
-    ld    (hl), #JR_NZ     ;; evacuation is now enabled
+    ld    a, #JR_NZ                                ;; evacuation is now enabled
+    ld    (evacuation_activation_instr), a
 
     jr    receive_snapshot_no_evacuation
 
@@ -835,7 +826,8 @@ evacuation_activation_instr:
     ld    d, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
 
     ;; evacuation (soon) done: change JR above to skip evacuation next time
-    ld    (hl), #JR_UNCONDITIONAL
+    ld    a, #JR_UNCONDITIONAL
+    ld    (evacuation_activation_instr), a
 
     ;; ------------------------------------------------------------------------
     ;; prepare context switch and copy the evacuated data to ENC28J60 RAM
@@ -851,6 +843,10 @@ receive_snapshot_no_evacuation:
     ;; ------------------------------------------------------------------------
 
     call  jp_ix_instr
+
+    ld    (z80_loader_state), ix
+    ld    (_chunk_bytes_remaining), bc
+    ld    (_tftp_write_pos), de
 
     jr    receive_snapshot_byte_loop
 

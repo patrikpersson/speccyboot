@@ -89,7 +89,11 @@ context_registers:   ;; registers DE, BC', DE', HL', AF', IX, IY
 
 prepare_context:
 
-    push de
+    ;; ------------------------------------------------------------------------
+    ;; use alternate BC, DE, HL for scratch here
+    ;; ------------------------------------------------------------------------
+
+    exx
 
     ;; ========================================================================
     ;; copy some of the context data immediately
@@ -381,7 +385,7 @@ evacuate_pc:
 
     call enc28j60_write_memory
 
-    pop  de
+    exx
 
     ret
 
