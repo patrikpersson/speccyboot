@@ -259,9 +259,9 @@ main_packet:
     or    a, a
     jr    z, main_packet_ip
     cp    a, #6
-    jr    nz, main_packet_done
-    call  arp_receive
+    call  z, arp_receive
     jr    main_packet_done
+
 main_packet_ip:
     call  ip_receive
 
