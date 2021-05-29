@@ -45,10 +45,11 @@ ULA_PORT   = 0xFE
 ;; 128k memory bank configuration
 ;; ----------------------------------------------------------------------------
 
-MEMCFG_ADDR       = 0x7ffd
-MEMCFG_PLUS_ADDR  = 0x1ffd
-MEMCFG_ROM_48K    = 0x10
-MEMCFG_LOCK       = 0x20
+MEMCFG_ADDR         = 0x7ffd
+MEMCFG_PLUS_ADDR    = 0x1ffd
+MEMCFG_ROM_48K      = 0x10
+MEMCFG_LOCK         = 0x20
+MEMCFG_PLUS_ROM_48K = 0x04
 
 ;; ----------------------------------------------------------------------------
 ;; I/O addresses for sound registers (128k machines)

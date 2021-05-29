@@ -64,7 +64,8 @@ JP_C               = 0xda      ;; JP C, target
 JP_NZ              = 0xc2      ;; JP NZ, target
 LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
-LD_BC_NN           = 0x01      ;; LC BC, #nn
+LD_BC_NN           = 0x01      ;; LD BC, #nn
+LD_DE_NN           = 0x11      ;; LD DE, #nn
 LD_IX_NN           = 0x21DD    ;; LD IX, #nn
 LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 
@@ -184,19 +185,12 @@ load_byte_from_packet:
 ;; and verifies compatibility.
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 s_header:
 
+    push de
     push hl
-
-    ;; ------------------------------------------------------------------------
-    ;; set bank 0, ROM 1 (48K ROM) for 128k memory config while loading
-    ;; ------------------------------------------------------------------------
-
-    ld   a, #MEMCFG_ROM_48K
-    ld   bc, #MEMCFG_ADDR
-    out  (c), a
 
     ;; ------------------------------------------------------------------------
     ;; keep .z80 header until prepare_context is called
@@ -228,7 +222,7 @@ s_header:
     ;; chunk is fully loaded anyway.
     ;; ------------------------------------------------------------------------
 
-    ld   bc, #0xc000
+    ld   b, #0xC0   ;; BC == 0 from LDIR above, so BC == 0xC000 now
 
     ;; ------------------------------------------------------------------------
     ;; decide next state, depending on whether COMPRESSED flag is set
@@ -265,7 +259,7 @@ s_header_ext_hdr:
 s_header_not_128k:
 
     ;; ------------------------------------------------------------------------
-    ;; adjust header length
+    ;; adjust header length, keep in DE
     ;; ------------------------------------------------------------------------
 
     ld    hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
@@ -283,7 +277,7 @@ s_header_not_128k:
 s_header_set_state:
 
     ;; ------------------------------------------------------------------------
-    ;; adjust IY read pointer and HL for header size
+    ;; adjust IY and HL for header size
     ;; ------------------------------------------------------------------------
 
     pop  hl
@@ -291,13 +285,7 @@ s_header_set_state:
     add  iy, de         ;; clears C flag, as DE is less than IY here
     sbc  hl, de         ;; C flag is zero here
 
-    ;; ------------------------------------------------------------------------
-    ;; Prepare DE for a single 48k snapshot. In a v2+ snapshot, separate chunks
-    ;; will follow, and then this value will be overridden for these
-    ;; individually.
-    ;; ------------------------------------------------------------------------
-
-    ld   de, #0x4000
+    pop  de
 
     ret
 
@@ -368,7 +356,7 @@ s_chunk_header3_incompatible:
     jp   fail
 s_chunk_header3_compatible:
 
-    ;; Decide on a good value for tftp_write_pos; store in DE.
+    ;; Decide on a good value for write_pos; store in DE.
 
     ;;
     ;; Need to handle page 5 separately -- if we do not use the address range
@@ -774,6 +762,8 @@ _s_chunk_repvalue:
 ;; z80_loader_receive_hook
 ;; ############################################################################
 
+    .area _STAGE2
+
 z80_loader_receive_hook:
 
     ;; ------------------------------------------------------------------------
@@ -807,7 +797,9 @@ z80_loader_state:
 _chunk_bytes_remaining:
     .dw  0
 
-    ld   de, (_tftp_write_pos)
+    .db  LD_DE_NN          ;; LD DE, #nn
+write_pos:
+    .dw  0x4000            ;; default for single-chunk snapshots
 
     ;; ========================================================================
     ;; read bytes, evacuate when needed, call state functions
@@ -831,7 +823,7 @@ receive_snapshot_byte_loop:
     or    a, a
     jr    nz, receive_snapshot_no_evacuation
 
-    ld    a, d     ;; A is now high byte of tftp_write_pos
+    ld    a, d     ;; A is now high byte of write_pos
 
     ;; ------------------------------------------------------------------------
     ;; reached RUNTIME_DATA (resident area)?
@@ -862,7 +854,7 @@ evacuation_activation_instr:
     jr    receive_snapshot_no_evacuation
 
     ;; ------------------------------------------------------------------------
-    ;; then set _tftp_write_pos := RUNTIME_DATA + RUNTIME_DATA_LENGTH,
+    ;; then set write_pos := RUNTIME_DATA + RUNTIME_DATA_LENGTH,
     ;; and disable evacuation
     ;; ------------------------------------------------------------------------
 
@@ -885,11 +877,13 @@ receive_snapshot_no_evacuation:
     ;; there is no "CALL (IX)" instruction, so CALL a JP (IX) instead
     ;; ------------------------------------------------------------------------
 
+breakpoint::
+
     call  jp_ix_instr
 
     ld    (z80_loader_state), ix
     ld    (_chunk_bytes_remaining), bc
-    ld    (_tftp_write_pos), de
+    ld    (write_pos), de
 
     jr    receive_snapshot_byte_loop
 

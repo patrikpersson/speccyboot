@@ -191,14 +191,16 @@ init_continued:
   ;; Set the ROM selection bit in both registers to page in the 48k
   ;; BASIC ROM (ROM1 on the 128k, ROM3 on +2A/+3).
 
+  ;; https://worldofspectrum.org/faq/reference/128kreference.htm
+
   ;; The Didaktik doesn't use '128-style banking, so we save a few bytes
   ;; here. They are needed to keep the RST handlers below in place.
 
-  ld    de, #0x0410
+  ld    de, #((MEMCFG_PLUS_ROM_48K) << 8) + (MEMCFG_ROM_48K)
   ld    bc, #MEMCFG_PLUS_ADDR
-  out   (c), d
+  out   (c), d   ;; MEMCFG_PLUS_ROM_48K
   ld    b, #>MEMCFG_ADDR
-  out   (c), e
+  out   (c), e   ;; MEMCFG_ROM_48K
 
 #endif
 
