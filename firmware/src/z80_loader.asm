@@ -487,9 +487,9 @@ _s_chunk_repcount:
 _s_chunk_repvalue:
 
     call load_byte_from_chunk
-    ld   (_rep_value), a
+    ld   i, a
 
-    ld    ix, #s_chunk_write_data
+    ld   ix, #s_chunk_write_data
 
     ;; FALL THROUGH to s_chunk_write_data
 
@@ -572,9 +572,7 @@ do_repetition:
   dec  a
   ld   (_repcount), a
 
-  .db  LD_A_N             ;; LD A, #n
-_rep_value:
-  .db  0
+  ld   a, i
 
   jr   store_byte
 
@@ -768,6 +766,7 @@ z80_loader_receive_hook:
     ;; BC: number of bytes left to read in current chunk       (Bytes in Chunk)
     ;; DE: write pointer (pointer to somewhere in RAM)            (DEstination)
     ;; HL: number of bytes left to read from current TFTP packet
+    ;; I:  repetition value (valid during an ED ED repetition)
     ;; ------------------------------------------------------------------------
 
     .dw  LD_IX_NN            ;; LD IX, #nn

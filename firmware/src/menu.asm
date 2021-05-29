@@ -52,9 +52,9 @@ KEY_ENTER     = 13
 KEY_UP        = '7'
 KEY_DOWN      = '6'
 
-    .area _NONRESIDENT
-
 ;; ============================================================================
+
+    .area _CODE
 
 ;; ----------------------------------------------------------------------------
 ;; print_entry:
@@ -114,7 +114,11 @@ next_2k_segment:
     ld   d, a
     ret
 
+    .area _CODE
+
 ;; ============================================================================
+
+    .area _NONRESIDENT
 
 run_menu:
 
@@ -504,6 +508,8 @@ menu_hit_enter:
     ;; subroutine: highlight current line to colour in register A
     ;; ========================================================================
 
+    .area _CODE
+
 menu_set_highlight:
 
     push hl
@@ -532,6 +538,8 @@ menu_highlight_loop:
     pop hl
 
     ret
+
+    .area _CODE
 
 snapshots_lst_str:
     .ascii "snapshots.lst"
