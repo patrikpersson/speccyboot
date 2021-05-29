@@ -268,7 +268,7 @@ write_trampoline_loop:
     ;; ------------------------------------------------------------------------
 
     ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_I - 1)
-    ld   l, #0x3E                  ;; LD A, n
+    ld   l, #LD_A_N                  ;; LD A, n
     ld   (VRAM_TRAMPOLINE_LD_A_FOR_I), hl
 
     ;; ------------------------------------------------------------------------
@@ -283,7 +283,7 @@ write_trampoline_loop:
     ;; write LD I, A to trampoline
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #0x47ED
+    ld   hl, #LD_I_A
     ld   (VRAM_TRAMPOLINE_LD_I), hl
 
     ;; ------------------------------------------------------------------------

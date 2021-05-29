@@ -69,6 +69,7 @@ JP_C               = 0xda      ;; JP C, target
 JP_NZ              = 0xc2      ;; JP NZ, target
 LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
+LD_I_A             = 0x47ED    ;; LD I, A
 LD_BC_NN           = 0x01      ;; LD BC, #nn
 LD_DE_NN           = 0x11      ;; LD DE, #nn
 LD_IX_NN           = 0x21DD    ;; LD IX, #nn
