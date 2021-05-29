@@ -510,22 +510,25 @@ menu_hit_enter:
 
 menu_set_highlight:
 
+    ;; ------------------------------------------------------------------------
+    ;; The VRAM attribute address is 0x5840 + 32 * (C - D). This is computed as
+    ;; 32 * (C - D + 0x2C2). The difference (C-D) is at most decimal 20, so the
+    ;; value (C - D + 0xC2) fits in a byte (at most 0xD6)
+    ;; ------------------------------------------------------------------------
+
     push hl
-    push bc
     push af
-    ld   h, #0
+    ld   h, #2           ;; high byte of 0x2C2
     ld   a, c
     sub  a, d
+    add  a, #0xC2
     ld   l, a   ;; H is now zero
     add  hl, hl
     add  hl, hl
     add  hl, hl
     add  hl, hl
     add  hl, hl
-    ld   bc, #0x5840      ;; (2,0)
-    add  hl, bc
     pop  af
-    pop  bc
 
     ld   b, #32
 menu_highlight_loop:
