@@ -143,17 +143,6 @@ second_time_branch_offset:
     ld   a, #menu_second_time - second_time_branch - 2
     ld   (second_time_branch_offset), a
 
-    ;; ------------------------------------------------------------------------
-    ;; Initialize user interface
-    ;; ------------------------------------------------------------------------
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
     ;; ========================================================================
     ;; this is the first time the stage 2 loader was invoked:
     ;; load the snapshot list
@@ -168,6 +157,17 @@ menu_second_time:
 
     ld   hl, (_tftp_write_pos)
     ld   (hl), #0                   ;; ensure menu data is NUL-terminated
+
+    ;; ------------------------------------------------------------------------
+    ;; Initialize user interface
+    ;; ------------------------------------------------------------------------
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'S' indicator: black ink, green paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT)
 
     ;; ========================================================================
     ;; this is the second time the stage 2 loader was invoked:
