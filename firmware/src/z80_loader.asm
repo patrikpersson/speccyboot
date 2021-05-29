@@ -476,32 +476,14 @@ set_state_common:
 
     .area _STAGE2
 
-s_chunk_write_data::
-  xor  a, a        ;; FIXME just to set Z flag
-
-  ;;
-  ;; the branch below is patched to JR NZ to
-  ;; activate a repetition sequence
-  ;;
-
-repetition_branch:
-  jr   no_repetition
+s_chunk_write_data:
 
   .db  LD_A_N             ;; LD A, #n
 _repcount:
   .db  0
 
   or   a, a
-  jr   nz, do_repetition
-
-  ;; disable repetition
-
-  ld   a, #JR_UNCONDITIONAL
-  ld   (repetition_branch), a
-
-  ret
-
-do_repetition:
+  jr   z, no_repetition
 
   dec  a
   ld   (_repcount), a
@@ -728,14 +710,6 @@ kilobytes_expected:
     .area _STAGE2
 
 _s_chunk_repcount:
-
-    ;;
-    ;; An escape sequence has been detected:
-    ;; patch code accordingly
-    ;;
-
-    ld   a, #JR_NZ
-    ld   (repetition_branch), a
 
     call _get_next_byte
     ld   (_repcount), a
