@@ -53,22 +53,6 @@ ATTR_DIGIT_ROW     = 0x5A00   ;; attribute VRAM address for kilobyte counter
 
 PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
-;; ----------------------------------------------------------------------------
-;; opcodes for patching code at runtime
-;; ----------------------------------------------------------------------------
-
-JR_UNCONDITIONAL   = 0x18      ;; JR offset
-JR_NZ              = 0x20      ;; JR NZ, offset
-JR_Z               = 0x28      ;; JR Z, offset
-JP_C               = 0xda      ;; JP C, target
-JP_NZ              = 0xc2      ;; JP NZ, target
-LD_A_N             = 0x3e      ;; LD A, #n
-LD_B_N             = 0x06      ;; LD B, #n
-LD_BC_NN           = 0x01      ;; LD BC, #nn
-LD_DE_NN           = 0x11      ;; LD DE, #nn
-LD_IX_NN           = 0x21DD    ;; LD IX, #nn
-LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
-
 
 ;; ============================================================================
 
@@ -149,9 +133,8 @@ show_attr_char_address_known:
     add   a, l
     ld    l, a
 
-    ld    a, #ROW_LENGTH * 6
-    cp    a, l
-    jr    nc, 00001$
+    cp    a, #ROW_LENGTH * 6
+    jr    c, 00001$
 
     ld    a, #SPI_IDLE+SPI_CS       ;; page SpeccyBoot back in
     out   (SPI_OUT), a
@@ -161,10 +144,23 @@ show_attr_char_address_known:
 
 
 ;; ############################################################################
-;; load_byte_from_packet
+;; load_byte_from_chunk
+;;
+;; like load_byte_from_packet, but also decreases BC
 ;; ############################################################################
 
-    .area _CODE
+    .area _STAGE2
+
+load_byte_from_chunk:
+
+    dec   bc
+
+    ;; FALL THROUGH to load_byte_from_packet
+
+
+;; ############################################################################
+;; load_byte_from_packet
+;; ############################################################################
 
 load_byte_from_packet:
 
@@ -185,7 +181,7 @@ load_byte_from_packet:
 ;; and verifies compatibility.
 ;; ############################################################################
 
-    .area _CODE
+    .area _STAGE2
 
 s_header:
 
@@ -465,11 +461,42 @@ set_state_uncompressed:
 
     ret
 
+
 ;; ############################################################################
-;; state CHUNK_WRITE_DATA
+;; state CHUNK_REPCOUNT
 ;; ############################################################################
 
     .area _STAGE2
+
+_s_chunk_repcount:
+
+    call load_byte_from_chunk
+
+    ld   (_repcount), a
+    ld   ix, #_s_chunk_repvalue
+
+    ret
+
+
+;; ############################################################################
+;; state CHUNK_REPVALUE
+;; ############################################################################
+
+    .area _STAGE2
+
+_s_chunk_repvalue:
+
+    call load_byte_from_chunk
+    ld   (_rep_value), a
+
+    ld    ix, #s_chunk_write_data
+
+    ;; FALL THROUGH to s_chunk_write_data
+
+
+;; ############################################################################
+;; state CHUNK_WRITE_DATA
+;; ############################################################################
 
 s_chunk_write_data:
 
@@ -726,39 +753,6 @@ no_progress_bar:
 
 
 ;; ############################################################################
-;; state CHUNK_REPCOUNT
-;; ############################################################################
-
-    .area _STAGE2
-
-_s_chunk_repcount:
-
-    call load_byte_from_packet
-    dec  bc
-
-    ld   (_repcount), a
-    ld   ix, #_s_chunk_repvalue
-
-    ret
-
-;; ############################################################################
-;; state CHUNK_REPVALUE
-;; ############################################################################
-
-    .area _STAGE2
-
-_s_chunk_repvalue:
-
-    call load_byte_from_packet
-    dec  bc
-    ld   (_rep_value), a
-
-    ld    ix, #s_chunk_write_data
-
-    jp    s_chunk_write_data   ;; FIXME reorder routines
-
-
-;; ############################################################################
 ;; z80_loader_receive_hook
 ;; ############################################################################
 
@@ -876,8 +870,6 @@ receive_snapshot_no_evacuation:
     ;; call function pointed to by z80_loader_state
     ;; there is no "CALL (IX)" instruction, so CALL a JP (IX) instead
     ;; ------------------------------------------------------------------------
-
-breakpoint::
 
     call  jp_ix_instr
 

@@ -121,21 +121,23 @@ run_menu:
     ;; ========================================================================
     ;; This function will be called twice:
     ;; once to load the snapshot list, and then again once that list is loaded.
-    ;; (see tftp_receive in tftp.asm)
     ;; ========================================================================
 
     ld   de, #TFTP_VRAM_FILENAME_POS
     call pad_to_end_of_line
 
-    ld   hl, (_tftp_write_pos)
-    ld   (hl), #0                   ;; ensure menu data is NUL-terminated
+    ;; ------------------------------------------------------------------------
+    ;; on first entry, this branch is patched to jump right upon
+    ;; second time
+    ;; ------------------------------------------------------------------------
 
-    ld   a, h
-    cp   a, #>_snapshot_list
-    jr   nz, menu_second_time
-    ld   a, l
-    cp   a, #<_snapshot_list
-    jr   nz, menu_second_time
+second_time_branch:
+    .db  JR_UNCONDITIONAL
+second_time_branch_offset:
+    .db  0
+
+    ld   a, #menu_second_time - second_time_branch - 2
+    ld   (second_time_branch_offset), a
 
     ;; ------------------------------------------------------------------------
     ;; Initialize user interface
@@ -159,6 +161,9 @@ run_menu:
     jp   main_loop
 
 menu_second_time:
+
+    ld   hl, (_tftp_write_pos)
+    ld   (hl), #0                   ;; ensure menu data is NUL-terminated
 
     ;; ========================================================================
     ;; this is the second time the stage 2 loader was invoked:

@@ -57,6 +57,23 @@ MEMCFG_PLUS_ROM_48K = 0x04
 SND_REG_SELECT    = 0xfffd
 SND_REG_VALUE     = 0xbffd
 
+;; ----------------------------------------------------------------------------
+;; opcodes for patching code at runtime
+;; ----------------------------------------------------------------------------
+
+JR_UNCONDITIONAL   = 0x18      ;; JR offset
+JR_NZ              = 0x20      ;; JR NZ, offset
+JR_Z               = 0x28      ;; JR Z, offset
+JP_C               = 0xda      ;; JP C, target
+JP_NZ              = 0xc2      ;; JP NZ, target
+LD_A_N             = 0x3e      ;; LD A, #n
+LD_B_N             = 0x06      ;; LD B, #n
+LD_BC_NN           = 0x01      ;; LD BC, #nn
+LD_DE_NN           = 0x11      ;; LD DE, #nn
+LD_IX_NN           = 0x21DD    ;; LD IX, #nn
+LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
+
+
     .globl _timer_tick_count
 
 
