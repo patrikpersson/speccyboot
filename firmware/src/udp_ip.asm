@@ -184,15 +184,22 @@ ip_receive_udp_checksum_done:
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
     ex   de, hl
 
+    ;; BOOTP response?
+
+    ld   a, e
+    or   a, a
+    jr   nz, ip_receive_not_bootp
+    ld   a, d
+    cp   a, #UDP_PORT_BOOTP_CLIENT
+    jp   z, bootp_receive
+
+ip_receive_not_bootp:
+
     ;; TFTP response?
 
     ld   hl, (_tftp_client_port)
-    ld   a, h
-    cp   a, d
-    jr   nz, ip_receive_not_tftp
-    ld   a, l
-    cp   a, e
-    jr   nz, ip_receive_not_tftp
+    sbc  hl, de     ;; C flag is clear from OR A, A above
+    ret  nz
 
     ;; only accept TFTP if an IP address has been set
 
@@ -200,16 +207,6 @@ ip_receive_udp_checksum_done:
     or   a  ;; a non-zero first octet
     jp   nz, tftp_receive
 
-ip_receive_not_tftp:
-
-    ;; BOOTP response?
-
-    ld   a, e
-    or   a
-    ret  nz
-    ld   a, d
-    cp   a, #UDP_PORT_BOOTP_CLIENT
-    jp   z, bootp_receive
     ret
 
 ;; -----------------------------------------------------------------------
