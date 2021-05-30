@@ -128,16 +128,16 @@ print_ip_addr:
 
 ;; ----------------------------------------------------------------------------
 ;; Divides A by B, and prints as one digit. Returns remainder in A.
+;; Destroys AF'.  '
 ;; ----------------------------------------------------------------------------
 
 print_div:
     call  a_div_b
 
-    push  af
+    ex    af, af'            ;;'
     ld    a, c
-    call  print_digit
-    pop   af
-    ret
+
+    ;; FALL THROUGH to print_digit
 
 
 ;; ############################################################################
@@ -157,13 +157,12 @@ print_char:
     push hl
     push bc
 
+    add  a, #<((_font_data - 32 * 8) >> 3)
     ld   l, a
-    ld   h, #0
+    ld   h, #>((_font_data - 32 * 8) >> 3)
     add  hl, hl
     add  hl, hl
     add  hl, hl
-    ld   bc, #_font_data - 32 * 8
-    add  hl, bc
 
     ld   b, #8
     ld   c, d
@@ -179,6 +178,8 @@ _print_char_loop:
 
     pop  bc
     pop  hl
+
+    ex   af, af'            ;;'   bring back A after print_div
 
     ret
 

@@ -93,19 +93,13 @@ print_entry:
 
 pad_to_end_of_line:
 
-    ld   b, #8
-    ld   c, d
-    xor  a, a
-write_space_loop:
-    ld   (de), a
-    inc  d
-    djnz write_space_loop
-    ld   d, c
-    inc  e
-    jr   z, next_2k_segment
     ld   a, e
+    or   a, a
+    jr   z, next_2k_segment
     and  a, #0x1f
     ret  z
+    ld   a, #' '
+    call print_char
     jr   pad_to_end_of_line
 
 next_2k_segment:
@@ -163,11 +157,11 @@ menu_second_time:
     ;; ------------------------------------------------------------------------
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, green paper, bright
+    ;; attributes for 'S' indicator: black ink, white paper, bright
     ;; ------------------------------------------------------------------------
 
     ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT)
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
     ;; ========================================================================
     ;; this is the second time the stage 2 loader was invoked:

@@ -58,7 +58,7 @@ _stack_top  = 0x5b00 + STACK_SIZE
 
 RX_FRAME_SIZE = 20 + 8 + 4 + 512
 
-_font_data  = 0xfd03                  ;; full font, but overwritten by snapshot
+_font_data  = 0xfd00                  ;; full font, but overwritten by snapshot
 
 ;; ----------------------------------------------------------------------------
 ;; Snapshot header, copied here while the snapshot is loading.

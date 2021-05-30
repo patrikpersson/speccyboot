@@ -259,8 +259,8 @@ ram_trampoline:
   jp    nc, 0              ;; if Caps Shift was pressed, go to BASIC
 
   ld    hl, #0x3d00        ;; address of font data in ROM1
-  ld    de, #_font_data    ;; address of font buffer in RAM; means E is now 3
-  ld    b, e               ;; BC is now 0x300  (BC was 0 after previous LDIR)
+  ld    de, #_font_data    ;; address of font buffer in RAM
+  ld    b, #3              ;; BC is now 0x300  (BC was 0 after previous LDIR)
   ldir
 
   xor   a                  ;; page in SpeccyBoot ROM, keep ETH in reset
@@ -277,7 +277,7 @@ initialize_global_data:
   ;; clear bitmap VRAM
 
   ld    hl, #0x4000
-  ld    bc, #0x1800
+  ld    b, #0x18           ;; BC is now 0x1800 (BC was 0 after previous LDIR)
   ld    a, l
   call  fill_memory
 

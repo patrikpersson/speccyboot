@@ -133,7 +133,7 @@ memory_compare = 0x30
 ;;
 ;; A holds character to print
 ;; DE points to VRAM location
-;; destroys F; preserves BC, HL; DE is preserved and increased by one
+;; destroys AF and AF'; preserves BC, HL; DE is preserved and increased by one
 ;; ----------------------------------------------------------------------------
 
     .globl print_char
