@@ -239,11 +239,10 @@ menu_setup_found_eol:
 menu_setup_find_next:
     inc  de
     ld   a, (de)
-    or   a, a
-    jr   z, menu_setup_ready
     cp   a, #' '
     jr   nc, menu_setup_loop1
-    jr   menu_setup_find_next
+    or   a, a
+    jr   nz, menu_setup_find_next
 
 menu_setup_ready:
 
