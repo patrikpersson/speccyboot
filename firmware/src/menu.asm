@@ -94,19 +94,11 @@ print_entry:
 pad_to_end_of_line:
 
     ld   a, e
-    or   a, a
-    jr   z, next_2k_segment
     and  a, #0x1f
     ret  z
     ld   a, #' '
     call print_char
     jr   pad_to_end_of_line
-
-next_2k_segment:
-    ld   a, d
-    add  a, #8
-    ld   d, a
-    ret
 
     .area _CODE
 
