@@ -60,10 +60,10 @@ KEY_DOWN      = '6'
 ;; print_entry:
 ;;
 ;; call with
-;; IX = filename (terminated by NUL or '.')
+;; HL = filename (terminated by NUL or '.')
 ;; DE = VRAM address
 ;;
-;; Returns with IX pointing to '.' or NUL,
+;; Returns with HL pointing to '.' or NUL,
 ;; and DE pointing to first cell on next line
 ;; Destroys AF, BC
 ;; ----------------------------------------------------------------------------
@@ -72,13 +72,13 @@ print_entry:
     ld   a, e
     and  a, #0x1f
     ret  z
-    ld   a, (ix)
+    ld   a, (hl)
     or   a, a
     jr   z, pad_to_end_of_line
     cp   a, #'.'
     jr   z, pad_to_end_of_line
     call print_char
-    inc  ix
+    inc  hl
     jr   print_entry
 
 ;; ----------------------------------------------------------------------------
@@ -149,12 +149,10 @@ second_time_branch_offset:
 
 menu_second_time:
 
-    ld   hl, (_tftp_write_pos)
-    ld   (hl), #0                   ;; ensure menu data is NUL-terminated
-
-    ;; ------------------------------------------------------------------------
-    ;; Initialize user interface
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
+    ;; this is the second time the stage 2 loader was invoked:
+    ;; run the menu interface
+    ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, white paper, bright
@@ -162,11 +160,6 @@ menu_second_time:
 
     ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
     ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
-    ;; ========================================================================
-    ;; this is the second time the stage 2 loader was invoked:
-    ;; run the menu interface
-    ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
     ;; set up menu colours
@@ -223,12 +216,11 @@ menu_setup_store_ptr:
 
 menu_setup_loop2:
     ld   a, (de)
-    cp   a, #' '        ;; less than 32 means end of file name (CR/LF/NUL)
-    jr   c, menu_setup_found_eol
     inc  de
-    jr   menu_setup_loop2
+    cp   a, #' '        ;; less than 32 means end of file name (CR/LF/NUL)
+    jr   nc, menu_setup_loop2
 
-menu_setup_found_eol:
+    dec  de
     xor  a, a
     ld   (de), a
 
@@ -298,11 +290,9 @@ redraw_menu_loop:
     ld   a, (hl)
     inc  hl
     ld   h, (hl)
-    ld   l, a
-    push hl
-    pop  ix   ;; IX now points to filename string
+    ld   l, a  ;; HL now points to filename string
 
-    inc  de   ;; skip first cell on each line
+    inc  de    ;; skip first cell on each line
     call print_entry
 
     exx

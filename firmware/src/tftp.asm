@@ -274,6 +274,9 @@ tftp_receive_blk_nbr_and_port_ok:
     ;; Check version signature and execute the stage 2 loader.
     ;; ========================================================================
 
+    ex   de, hl
+    ld   (hl), #0                   ;; ensure loaded data is NUL-terminated
+
     ld  hl, #stage2_start
     ld  a, (hl)
     cp  a, #<VERSION_MAGIC
