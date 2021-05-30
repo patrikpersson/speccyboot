@@ -421,7 +421,7 @@ menu_adjust:
     jr   nc, menu_not_top
 
     ld   d, c
-    jr   menu_loop_alternative
+    jr   menu_loop
 
 menu_not_top:
 
@@ -474,7 +474,7 @@ menu_hit_enter:
     ldir
 
     ld    l, #14
-    xor   a
+    xor   a, a
     call  show_attr_digit
 
     ld    l, #25

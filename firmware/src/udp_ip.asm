@@ -181,8 +181,7 @@ ip_receive_udp_checksum_done:
     ;; Pass on to BOOTP/TFTP
     ;; ------------------------------------------------------------
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
-    ex   de, hl
+    ld   de, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
 
     ;; BOOTP response?
 
