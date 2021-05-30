@@ -345,21 +345,8 @@ eth_init_registers_loop:
     cp    a, #END_OF_TABLE
     jr    z, eth_init_registers_done
 
-    ;; ------------------------------------------------------------------------
-    ;; select register bank (encoded as bits 5-6 from descriptor)
-    ;; ------------------------------------------------------------------------
-
-    exx           ;; keep HL
-    rlca          ;; rotate left 3 == rotate right 5
-    rlca
-    rlca
-    and   a, #3
-    ld    e, a
-    rst   enc28j60_select_bank
-    exx
-
-    ld    a, (hl)        ;; register descriptor, again
     inc   hl
+    ld    d, a
 
     and   a, #0x1f       ;; mask out register index (0..1f)
     or    a, #OPCODE_WCR
@@ -368,14 +355,30 @@ eth_init_registers_loop:
     ld    b, (hl)
     inc   hl
 
+    push  bc         ;; arguments for enc28j60_write8plus8 below
+
+    ;; ------------------------------------------------------------------------
+    ;; select register bank (encoded as bits 5-6 from descriptor)
+    ;; ------------------------------------------------------------------------
+
+    ld    a, d    ;; recall register descriptor
+
+    exx           ;; keep HL
+
+    rlca          ;; rotate left 3 == rotate right 5
+    rlca
+    rlca
+    and   a, #3
+    ld    e, a
+    rst   enc28j60_select_bank
+
     ;; ------------------------------------------------------------------------
     ;; write register value
     ;; ------------------------------------------------------------------------
 
-    push  bc
-    exx
     pop   hl         ;; into HL
     rst   enc28j60_write8plus8
+
     exx
 
     jr    eth_init_registers_loop
