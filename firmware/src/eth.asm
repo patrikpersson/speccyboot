@@ -344,40 +344,40 @@ eth_init_registers_loop:
     ld    a, (hl)  ;; register descriptor, 8 bits
     cp    a, #END_OF_TABLE
     jr    z, eth_init_registers_done
-    inc   hl
-
-    push  hl
-    push  af      ;; stack register descriptor
 
     ;; ------------------------------------------------------------------------
     ;; select register bank (encoded as bits 5-6 from descriptor)
     ;; ------------------------------------------------------------------------
 
+    exx           ;; keep HL
     rlca          ;; rotate left 3 == rotate right 5
     rlca
     rlca
     and   a, #3
     ld    e, a
     rst   enc28j60_select_bank
+    exx
+
+    ld    a, (hl)        ;; register descriptor, again
+    inc   hl
+
+    and   a, #0x1f       ;; mask out register index (0..1f)
+    or    a, #OPCODE_WCR
+    ld    c, a
+
+    ld    b, (hl)
+    inc   hl
 
     ;; ------------------------------------------------------------------------
     ;; write register value
     ;; ------------------------------------------------------------------------
 
-    pop   af             ;; A is now register descriptor
-    and   a, #0x1f       ;; mask out register index (0..1f)
-    or    a, #OPCODE_WCR
-    ld    c, a
-
-    pop   hl
-    ld    b, (hl)
-    inc   hl
-
-    push  hl         ;; remember position in table
-    push  bc         ;; move args
+    push  bc
+    exx
     pop   hl         ;; into HL
     rst   enc28j60_write8plus8
-    pop   hl
+    exx
+
     jr    eth_init_registers_loop
 
 eth_init_registers_done:

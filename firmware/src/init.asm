@@ -142,7 +142,7 @@ enc28j60_select_bank_continued:
   
   .org  0x30
  
- memory_compare_loop:
+memory_compare_loop:
   ld   a, (de)
   cp   a, (hl)
   ret  nz
@@ -172,8 +172,6 @@ enc28j60_select_bank_continued:
   ;; ==========================================================================
 
 init_continued:
-
-  di
 
   ;; --------------------------------------------------------------------------
   ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
