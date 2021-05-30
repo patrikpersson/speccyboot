@@ -251,19 +251,9 @@ tftp_receive_blk_nbr_and_port_ok:
     ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
     ld  de, #0x10000 - UDP_HEADER_SIZE - TFTP_HEADER_SIZE
     add hl, de
+    ld  a, h
     ld  b, h
     ld  c, l       ;; BC is now payload length excluding headers, 0..512
-
-    ;; ------------------------------------------------------------------------
-    ;; check if BC == 0x200; store result of comparison in alternate AF
-    ;; (BC should be exactly 0x200 for all DATA packets except the last one,
-    ;; so we are done if B != 2)
-    ;; ------------------------------------------------------------------------
-
-    ld  a, #2
-    cp  a, b
-00001$:
-    ex  af, af'               ;; '
 
     ld  de, (_tftp_write_pos)
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
@@ -272,9 +262,11 @@ tftp_receive_blk_nbr_and_port_ok:
 
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
+    ;; (BC above should be exactly 0x200 for all DATA packets except the last
+    ;; one, so we are done if A != 2 here)
     ;; ------------------------------------------------------------------------
 
-    ex  af, af'               ;; '
+    cp  a, #2
     ret z
 
     ;; ========================================================================
@@ -353,23 +345,20 @@ tftp_read_request:
     ;; calculate length of filename
 
     pop  hl
-    ld   d, h
-    ld   e, l
+    push hl        ;; remember filename pointer for later
 
     xor  a
-    ld   b, a
-    ld   c, a
+    ld   d, a
+    ld   e, a
 00001$:
-    inc  bc
-    cp   a, (hl)
-    inc  hl
+    inc  de
+    cpi
     jr   nz, 00001$
 
-    push bc        ;; remember filename length for later
-    push de        ;; remember filename pointer for later
+    push de        ;; remember filename length for later
 
     ld   hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
-    add  hl, bc
+    add  hl, de
     ex   de, hl    ;; DE = UDP length
 
     ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
@@ -384,8 +373,8 @@ tftp_read_request:
 
     ;; filename and length already stacked above
 
-    pop  hl
     pop  de
+    pop  hl
 
     rst  enc28j60_write_memory_small
 
