@@ -1,0 +1,18 @@
+-mjwx
+-i obj/speccyboot.ihx
+-b _CODE = 0x0097
+-b _DATA = 0x5b20
+obj/init.rel
+obj/eth.rel
+obj/arp.rel
+obj/bootp.rel
+obj/context_switch.rel
+obj/enc28j60.rel
+obj/globals.rel
+obj/menu.rel
+obj/spi.rel
+obj/tftp.rel
+obj/udp_ip.rel
+obj/ui.rel
+obj/util.rel
+obj/z80_loader.rel
