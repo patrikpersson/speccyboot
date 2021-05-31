@@ -43,13 +43,6 @@
     .include "include/util.inc"
 
 ;; ============================================================================
-;; BOOTP operations
-;; ============================================================================
-
-BOOTREQUEST            = 1
-BOOTREPLY              = 2
-
-;; ============================================================================
 ;; BOOTP packet structure
 ;; ============================================================================
 
@@ -167,19 +160,6 @@ bootp_init:
     call enc28j60_write_memory
 
     jp   ip_send
-
-    ;; ========================================================================
-    ;; data for the first 8 bytes of the BOOTREQUEST
-    ;; ========================================================================
-
-bootrequest_header_data:
-    .db   BOOTREQUEST        ;; op
-    .db   1                  ;; htype (10mbps Ethernet)
-    .db   6                  ;; hlen
-    .db   0                  ;; hops
-
-bootrequest_xid:
-    ;; use first four bytes of title_str ("Spec") for XID
 
 title_str:
     .ascii "SpeccyBoot "

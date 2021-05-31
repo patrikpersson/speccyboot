@@ -360,13 +360,30 @@ udp_create:
 ;; ============================================================================
 ;; IP header defaults
 ;; https://en.wikipedia.org/wiki/IPv4#Header
+;;
+;; Four of these bytes are also used as BOOTREQUEST data. The length field
+;; is only a spaceholder (the actual value is set at runtime). The ID field
+;; is arbitrary, according to RFC 6864:
+;;
+;;   Originating sources MAY set the IPv4 ID field of
+;;   atomic datagrams to any value.
+;;
+;; https://datatracker.ietf.org/doc/html/rfc6864#section-4.1
+;;
+;; The BOOTP XID is similarly arbitrary, and taken from the
+;; flags, fragment offset, time-to-live, and protocol IP fields.
 ;; ============================================================================
 
 ip_header_defaults:
     .db   0x45, 0            ;; version, IHL, DSCP, EN
-    .dw   0xffff             ;; total length (to be replaced)
-    .dw   0                  ;; identification
+
+bootrequest_header_data:
+    .db   BOOTREQUEST, 1     ;; IP: length      BOOTP: op, htype (10M Ethernet)
+    .db   6, 0               ;; IP: packet ID   BOOTP: hlen, hops
+
+bootrequest_xid:
     .db   0x40, 0            ;; DO NOT FRAGMENT, fragment offset 0
     .db   0x40               ;; time to live
     .db   IP_PROTOCOL_UDP    ;; protocol
+
     .dw   0                  ;; checksum (temporary value for computation)

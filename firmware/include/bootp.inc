@@ -29,6 +29,13 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
+;; ============================================================================
+;; BOOTP operations
+;; ============================================================================
+
+BOOTREQUEST            = 1
+BOOTREPLY              = 2
+
 ;; ----------------------------------------------------------------------------
 ;; Called by UDP when a BOOTP packet has been received.
 ;; If a BOOTREPLY with an IP address is found, call tftp_read_request().
