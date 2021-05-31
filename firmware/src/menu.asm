@@ -100,7 +100,81 @@ pad_to_end_of_line:
     call print_char
     jr   pad_to_end_of_line
 
+;; ----------------------------------------------------------------------------
+;; Set up table of file name pointers in _rx_frame.
+;; Returns number of snapshots in the list in register E.
+;; ----------------------------------------------------------------------------
+
     .area _CODE
+
+menu_setup:
+
+    ;; ========================================================================
+    ;; Scan through the loaded snapshot list, and build an array of pointers
+    ;; to NUL-terminated file names in rx_frame.
+    ;; ========================================================================
+
+    ld   bc, #_snapshot_list
+    ld   hl, #_rx_frame
+
+    ld   e, #0
+
+    ;; ------------------------------------------------------------------------
+    ;; check if done:
+    ;; - found a NUL byte? (interpreted as end of file)
+    ;; - filled RX buffer with filename pointers? (max 255)
+    ;; ------------------------------------------------------------------------
+
+menu_setup_loop1:
+
+    ld   a, (bc)
+    or   a, a
+    ret  z
+
+    ld   a, e
+    inc  a
+    ret  z
+
+    ;; ------------------------------------------------------------------------
+    ;; store a pointer to the current file name
+    ;; ------------------------------------------------------------------------
+
+menu_setup_store_ptr:
+
+    ld   (hl), c
+    inc  hl
+    ld   (hl), b
+    inc  hl
+
+    inc  e
+
+    ;; ------------------------------------------------------------------------
+    ;; ensure the current file name is NUL terminated, and advance HL to next
+    ;; ------------------------------------------------------------------------
+
+menu_setup_loop2:
+    ld   a, (bc)
+    inc  bc
+    cp   a, #' '        ;; less than 32 means end of file name (CR/LF/NUL)
+    jr   nc, menu_setup_loop2
+
+    dec  bc
+    xor  a, a
+    ld   (bc), a
+
+    ;; ------------------------------------------------------------------------
+    ;; skip any other trailing CR/LF stuff
+    ;; ------------------------------------------------------------------------
+
+menu_setup_find_next:
+    inc  bc
+    ld   a, (bc)
+    cp   a, #' '
+    jr   nc, menu_setup_loop1
+    or   a, a
+    jr   nz, menu_setup_find_next
+
+    ret
 
 ;; ============================================================================
 
@@ -163,74 +237,6 @@ menu_second_time:
     call fill_memory
 
     ;; ========================================================================
-    ;; Scan through the loaded snapshot list, and build an array of pointers
-    ;; to NUL-terminated file names in rx_frame.
-    ;; The resulting number of snapshots in the list is stored in C.
-    ;; ========================================================================
-
-    ld   de, #_snapshot_list
-    ld   hl, #_rx_frame
-
-    ;; register C is zero here after fill_memory above
-
-    ;; ------------------------------------------------------------------------
-    ;; check if done:
-    ;; - found a NUL byte? (interpreted as end of file)
-    ;; - filled RX buffer with filename pointers? (max 255)
-    ;; ------------------------------------------------------------------------
-
-menu_setup_loop1:
-
-    ld   a, (de)
-    or   a, a
-    jr   z, menu_setup_ready
-
-    ld   a, c
-    inc  a
-    jr   z, menu_setup_ready
-
-    ;; ------------------------------------------------------------------------
-    ;; store a pointer to the current file name
-    ;; ------------------------------------------------------------------------
-
-menu_setup_store_ptr:
-
-    ld   (hl), e
-    inc  hl
-    ld   (hl), d
-    inc  hl
-
-    inc  c
-
-    ;; ------------------------------------------------------------------------
-    ;; ensure the current file name is NUL terminated, and advance HL to next
-    ;; ------------------------------------------------------------------------
-
-menu_setup_loop2:
-    ld   a, (de)
-    inc  de
-    cp   a, #' '        ;; less than 32 means end of file name (CR/LF/NUL)
-    jr   nc, menu_setup_loop2
-
-    dec  de
-    xor  a, a
-    ld   (de), a
-
-    ;; ------------------------------------------------------------------------
-    ;; skip any other trailing CR/LF stuff
-    ;; ------------------------------------------------------------------------
-
-menu_setup_find_next:
-    inc  de
-    ld   a, (de)
-    cp   a, #' '
-    jr   nc, menu_setup_loop1
-    or   a, a
-    jr   nz, menu_setup_find_next
-
-menu_setup_ready:
-
-    ;; ========================================================================
     ;; main loop for the menu
     ;;
     ;; C = currently highlighted entry (0..254)
@@ -238,7 +244,8 @@ menu_setup_ready:
     ;; E = total number of snapshots (0..255)
     ;; ========================================================================
 
-    ld   e, c
+    call menu_setup
+
     ld   c, #0
     ld   d, c
 
@@ -402,7 +409,9 @@ menu_adjust:
     jr   nc, menu_not_top
 
     ld   d, c
-    jr   menu_loop
+
+    ;; fall through here: nothing useful will happen,
+    ;; but saves a JR menu_loop
 
 menu_not_top:
 
