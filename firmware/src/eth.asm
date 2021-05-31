@@ -32,15 +32,15 @@
     .module eth
     .optsdcc -mz80
 
-    .include "include/arp.inc"
-    .include "include/bootp.inc"
-    .include "include/enc28j60.inc"
-    .include "include/eth.inc"
-    .include "include/globals.inc"
-    .include "include/spi.inc"
-    .include "include/udp_ip.inc"
-    .include "include/ui.inc"
-    .include "include/util.inc"
+    .include "arp.inc"
+    .include "bootp.inc"
+    .include "enc28j60.inc"
+    .include "eth.inc"
+    .include "globals.inc"
+    .include "spi.inc"
+    .include "udp_ip.inc"
+    .include "ui.inc"
+    .include "util.inc"
 
 ;; ============================================================================
 

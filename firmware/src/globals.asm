@@ -32,12 +32,12 @@
     .module globals
     .optsdcc -mz80
 
-    .include "include/globals.inc"
+    .include "globals.inc"
 
-    .include "include/context_switch.inc"
-    .include "include/eth.inc"
-    .include "include/udp_ip.inc"
-    .include "include/tftp.inc"
+    .include "context_switch.inc"
+    .include "eth.inc"
+    .include "udp_ip.inc"
+    .include "tftp.inc"
 
     .area _DATA
 

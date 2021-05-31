@@ -34,14 +34,14 @@
     .module context_switch
     .optsdcc -mz80
 
-    .include "include/context_switch.inc"
+    .include "context_switch.inc"
 
-    .include "include/enc28j60.inc"
-    .include "include/eth.inc"
-    .include "include/globals.inc"
-    .include "include/spi.inc"
-    .include "include/ui.inc"
-    .include "include/util.inc"
+    .include "enc28j60.inc"
+    .include "eth.inc"
+    .include "globals.inc"
+    .include "spi.inc"
+    .include "ui.inc"
+    .include "util.inc"
 
 ;; ----------------------------------------------------------------------------
 ;; Offset to the R register when stored, to compensate for the fact that R

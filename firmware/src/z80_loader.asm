@@ -34,17 +34,17 @@
     .module z80_loader
     .optsdcc -mz80
 
-    .include "include/z80_loader.inc"
+    .include "z80_loader.inc"
 
-    .include "include/context_switch.inc"
-    .include "include/enc28j60.inc"
-    .include "include/eth.inc"
-    .include "include/globals.inc"
-    .include "include/spi.inc"
-    .include "include/tftp.inc"
-    .include "include/udp_ip.inc"
-    .include "include/ui.inc"
-    .include "include/util.inc"
+    .include "context_switch.inc"
+    .include "enc28j60.inc"
+    .include "eth.inc"
+    .include "globals.inc"
+    .include "spi.inc"
+    .include "tftp.inc"
+    .include "udp_ip.inc"
+    .include "ui.inc"
+    .include "util.inc"
 
 ;; ============================================================================
 

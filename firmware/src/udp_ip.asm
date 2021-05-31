@@ -33,14 +33,14 @@
     .module udp_ip
     .optsdcc -mz80
 
-    .include "include/udp_ip.inc"
+    .include "udp_ip.inc"
 
-    .include "include/bootp.inc"
-    .include "include/enc28j60.inc"
-    .include "include/eth.inc"
-    .include "include/globals.inc"
-    .include "include/tftp.inc"
-    .include "include/util.inc"
+    .include "bootp.inc"
+    .include "enc28j60.inc"
+    .include "eth.inc"
+    .include "globals.inc"
+    .include "tftp.inc"
+    .include "util.inc"
 
     .area _CODE
 

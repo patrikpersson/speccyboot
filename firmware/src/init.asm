@@ -32,15 +32,13 @@
   .module init
   .optsdcc -mz80
 
-#include "spi_asm.h"
-
-  .include "include/spi.inc"
-  .include "include/enc28j60.inc"
-  .include "include/globals.inc"
-  .include "include/menu.inc"
-  .include "include/udp_ip.inc"
-  .include "include/ui.inc"
-  .include "include/util.inc"
+  .include "spi.inc"
+  .include "enc28j60.inc"
+  .include "globals.inc"
+  .include "menu.inc"
+  .include "udp_ip.inc"
+  .include "ui.inc"
+  .include "util.inc"
 
   ;; --------------------------------------------------------------------------
 
@@ -175,44 +173,10 @@ init_continued:
 
   ;; --------------------------------------------------------------------------
   ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
-  ;; This sequence differs between SpeccyBoot and DGBoot. The SpeccyBoot one
-  ;; is longer (12 bytes).
+  ;; This sequence differs between SpeccyBoot and DGBoot.
   ;; --------------------------------------------------------------------------
 
-#ifdef HWTARGET_SPECCYBOOT
-
-  ;; before the 128k memory configuration is set (0x7ffd), set the
-  ;; +2A/+3 memory configuration (0x1ffd). On a plain 128k machine,
-  ;; the access to 0x1ffd would be mapped to 0x7ffd, overwriting the
-  ;; 128k configuration. On a 48k machine neither access has any effect.
-  
-  ;; Set the ROM selection bit in both registers to page in the 48k
-  ;; BASIC ROM (ROM1 on the 128k, ROM3 on +2A/+3).
-
-  ;; https://worldofspectrum.org/faq/reference/128kreference.htm
-
-  ;; The Didaktik doesn't use '128-style banking, so we save a few bytes
-  ;; here. They are needed to keep the RST handlers below in place.
-
-  ld    de, #((MEMCFG_PLUS_ROM_48K) << 8) + (MEMCFG_ROM_48K)
-  ld    bc, #MEMCFG_PLUS_ADDR
-  out   (c), d   ;; MEMCFG_PLUS_ROM_48K
-  ld    b, #>MEMCFG_ADDR
-  out   (c), e   ;; MEMCFG_ROM_48K
-
-#endif
-
-#ifdef HWTARGET_DGBOOT
-
-  ;; Initialize the Didaktik 8255  (8 bytes)
-  CWR   = 0x7f
-
-  ld    a, #0x20
-  out   (SPI_OUT),a          ;; Question: why this needed? Pages out DGBoot???
-  ld    a, #0x90             ;; PB out, PC out, PA in, mode 0
-  out   (CWR), a
-
-#endif
+  platform_init
 
   ;; --------------------------------------------------------------------------
   ;; Copy trampoline to RAM. Far more than the trampoline is copied, since

@@ -32,15 +32,15 @@
     .module bootp
     .optsdcc -mz80
 
-    .include "include/bootp.inc"
+    .include "bootp.inc"
 
-    .include "include/enc28j60.inc"
-    .include "include/eth.inc"
-    .include "include/globals.inc"
-    .include "include/tftp.inc"
-    .include "include/udp_ip.inc"
-    .include "include/ui.inc"
-    .include "include/util.inc"
+    .include "enc28j60.inc"
+    .include "eth.inc"
+    .include "globals.inc"
+    .include "tftp.inc"
+    .include "udp_ip.inc"
+    .include "ui.inc"
+    .include "util.inc"
 
 ;; ============================================================================
 ;; BOOTP packet structure

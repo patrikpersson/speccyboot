@@ -9,32 +9,26 @@ AS           = sdasz80
 LD           = sdldz80
 MAKEBIN      = makebin
 
-LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
-LDFLAGS     += --code-loc 0x0097 --data-loc 0x5B20
-
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-# Run 'make DGBOOT=1' to build for Imrich Kolkol's DGBoot hardware design
+# Run 'make DGBOOT=1' to build for Imrich Konkol's DGBoot hardware design
 # instead of the default SpeccyBoot
 
-TARGETFLAGS  =
+ASFLAGS      = -Iinclude
 
 ifdef DGBOOT
-TARGETFLAGS += -DHWTARGET_DGBOOT
+ASFLAGS     += -Iinclude/platform/dgboot
 else
-TARGETFLAGS += -DHWTARGET_SPECCYBOOT
+ASFLAGS     += -Iinclude/platform/speccyboot
 endif
 
 # =============================================================================
 # COMPONENTS
 # =============================================================================
 
-# NOTE: eth must be first here, as it contains the main function, and
-# init will continue executing right into it (saves one JP)
-ASMMODULES   = eth
-ASMMODULES  += arp bootp context_switch enc28j60 globals
+ASMMODULES   = arp bootp context_switch eth enc28j60 globals
 ASMMODULES  += menu spi tftp udp_ip ui util z80_loader
 
 # -----------------------------------------------------------------------------
@@ -97,13 +91,11 @@ IHXFILE  = $(OBJDIR)/speccyboot.ihx
 # binary, then split
 COMBINED = $(OBJDIR)/combined.bin
 
-# run GCC preprocessor on assembly files, exclude all hashed lines
-%.rel: %.asm $(OBJDIR)
-	gcc -E -xc-header -I$(INCLUDEDIR) $(TARGETFLAGS) $< | grep -v '^#'  > $(OBJDIR)/$(<:src/%.asm=%_preprocessed.asm)
-	$(AS) -o $(OBJDIR)/$@ $(OBJDIR)/$(<:src/%.asm=%_preprocessed.asm)
-
 $(OBJDIR):
 	mkdir -p $@
+
+%.rel: %.asm $(OBJDIR)
+	$(AS) $(ASFLAGS) -o $(OBJDIR)/$@ $<
 
 $(IHXFILE): $(OFILES)
 	$(LD) -f $(LINKFILE)

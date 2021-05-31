@@ -33,16 +33,16 @@
     .module menu
     .optsdcc -mz80
 
-    .include "include/menu.inc"
+    .include "menu.inc"
 
-    .include "include/context_switch.inc"
-    .include "include/eth.inc"
-    .include "include/globals.inc"
-    .include "include/tftp.inc"
-    .include "include/udp_ip.inc"
-    .include "include/ui.inc"
-    .include "include/util.inc"
-    .include "include/z80_loader.inc"
+    .include "context_switch.inc"
+    .include "eth.inc"
+    .include "globals.inc"
+    .include "tftp.inc"
+    .include "udp_ip.inc"
+    .include "ui.inc"
+    .include "util.inc"
+    .include "z80_loader.inc"
 
 ;; ============================================================================
 

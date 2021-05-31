@@ -32,9 +32,7 @@
     .module spi
     .optsdcc -mz80
 
-#include "spi_asm.h"
-
-    .include "include/spi.inc"
+    .include "spi.inc"
 
     .area _CODE
 

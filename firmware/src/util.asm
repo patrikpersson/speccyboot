@@ -32,9 +32,9 @@
     .module util
     .optsdcc -mz80
 
-    .include "include/util.inc"
+    .include "util.inc"
 
-    .include "include/globals.inc"
+    .include "globals.inc"
 
     .area _DATA
 

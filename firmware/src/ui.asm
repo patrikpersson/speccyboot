@@ -33,11 +33,11 @@
     .module ui
     .optsdcc -mz80
 
-    .include "include/ui.inc"
+    .include "ui.inc"
 
-    .include "include/globals.inc"
-    .include "include/spi.inc"
-    .include "include/util.inc"
+    .include "globals.inc"
+    .include "spi.inc"
+    .include "util.inc"
 
 ;; ============================================================================
 ;; Repeat time-outs: between the keypress and the first repetition, and for

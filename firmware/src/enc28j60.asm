@@ -32,13 +32,12 @@
     .module enc28j60
     .optsdcc -mz80
 
-#include "spi_asm.h"
+    .include "enc28j60.inc"
 
-    .include "include/enc28j60.inc"
-    .include "include/spi.inc"
-    .include "include/udp_ip.inc"
-    .include "include/util.inc"
-    .include "include/ui.inc"
+    .include "spi.inc"
+    .include "udp_ip.inc"
+    .include "util.inc"
+    .include "ui.inc"
 
     .area _CODE
 
@@ -140,12 +139,8 @@ word_loop:
     ld   b, #8                     ;; 7
 word_byte1:
 
-#ifdef HWTARGET_SPECCYBOOT
     spi_read_bit_to_acc            ;; 448 (56*8)
-#endif
-#ifdef HWTARGET_DGBOOT
-    spi_read_bit_to_acc_dgboot
-#endif
+
     djnz word_byte1                ;; 112 (13*8+8)
 
     exx                            ;; 4
@@ -156,12 +151,9 @@ word_byte1:
 
     ld   b, #8                     ;; 7
 word_byte2:
-#ifdef HWTARGET_SPECCYBOOT
+
     spi_read_bit_to_acc            ;; 448 (56*8)
-#endif
-#ifdef HWTARGET_DGBOOT
-    spi_read_bit_to_acc_dgboot
-#endif
+
     djnz word_byte2                ;; 112 (13*8+8)
 
     exx                            ;; 4
@@ -193,12 +185,9 @@ odd_byte:
 
     ld   b, #8
 odd_byte_loop:
-#ifdef HWTARGET_SPECCYBOOT
+
     spi_read_bit_to_acc
-#endif
-#ifdef HWTARGET_DGBOOT
-    spi_read_bit_to_acc_dgboot
-#endif
+
     djnz odd_byte_loop
 
     exx

@@ -32,13 +32,13 @@
     .module arp
     .optsdcc -mz80
 
-    .include "include/arp.inc"
+    .include "arp.inc"
 
-    .include "include/eth.inc"
-    .include "include/enc28j60.inc"
-    .include "include/globals.inc"
-    .include "include/udp_ip.inc"
-    .include "include/util.inc"
+    .include "eth.inc"
+    .include "enc28j60.inc"
+    .include "globals.inc"
+    .include "udp_ip.inc"
+    .include "util.inc"
 
 ;; ============================================================================
 ;; ARP header constants

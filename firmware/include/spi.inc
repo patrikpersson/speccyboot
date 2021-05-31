@@ -32,18 +32,10 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 ;;
 
-;; ============================================================================
-;; I/O details for SPI
-;; FIXME: bring in DGBoot using conditional compilation, or something similar
-;; ============================================================================
-
-SPI_OUT  = 0x9f
-SPI_IN   = SPI_OUT
-
-SPI_CS   = 0x08
+    .include "platform.inc"
 
 ;; ============================================================================
-;; Masks for the individual bits (SPI_CS is also related, but set in spi_asm.h)
+;; Masks for the individual bits (SPI_CS is set in platform.inc)
 ;; ============================================================================
 
 SPI_SCK  = 0x01
@@ -53,42 +45,6 @@ SPI_MOSI = 0x80
 PAGE_OUT = 0x20          ;; mask for paging out SpeccyBoot, paging in BASIC ROM
 
 SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
-
-;; ----------------------------------------------------------------------------
-;; Macro: read one bit from SPI to accumulator,
-;; requires C=0x9f (on SpeccyBoot), H=0x40. Destroys F, L.
-;; ----------------------------------------------------------------------------
-
-    ;; Optimized version for SpeccyBoot; assumes C=0x9f.
-    ;; Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states
-
-    .macro  spi_read_bit_to_acc
-    out   (c), h
-    inc   h
-    out   (c), h
-    dec   h
-    in    l, (c)
-    rr    l
-    rla
-    .endm
-
-    ;; ------------------------------------------------------------------------
-
-    ;; Imrich Konkol's DGBoot maps SPI IN and OUT to different registers;
-    ;; for this reason, C is loaded explicitly each time, resulting in
-    ;; some slight CPU overhead per bit.
-
-    .macro  spi_read_bit_to_acc_dgboot
-    ld    c, #SPI_OUT           ;; added for DGBoot
-    out   (c), h
-    inc   h
-    out   (c), h
-    dec   h
-    ld    c, #SPI_IN            ;; added for DGBoot
-    in    l, (c)
-    rr    l
-    rla
-    .endm
 
 ;; ----------------------------------------------------------------------------
 ;; Macro: write bit 7 from register C to SPI, then shift REG left one bit
