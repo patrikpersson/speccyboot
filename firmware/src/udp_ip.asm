@@ -103,7 +103,7 @@ ip_receive_address_checked:
     and  a, #0x0f
     add  a, a
     add  a, a
-    push af     ;; remember IP header size for later
+    push af     ;; remember IP header size for later, carry == 0
 
     sub  a, #IPV4_HEADER_SIZE
     jr   z, ip_receive_options_done
@@ -118,21 +118,16 @@ ip_receive_address_checked:
 
 ip_receive_options_done:
 
-    pop  bc    ;; B now holds IP header size
+    ;; B == 0 here,
+    ;; either from enc28j60_read_memory or memory_compare
 
-    ;; ------------------------------------------------------------
-    ;; Check IP header checksum
-    ;; ------------------------------------------------------------
-
-    call ip_receive_check_checksum
+    pop  af    ;; A now holds IP header size, carry == 0
 
     ;; ------------------------------------------------------------
     ;; Load UDP payload
     ;; ------------------------------------------------------------
 
-    ;; Set IP checksum to htons(IP_PROTOCOL_UDP), for pseudo header
-    ld   hl, #(IP_PROTOCOL_UDP << 8)   ;; network order is big-endian
-    ld   (_ip_checksum), hl
+    ld   c, a        ;; BC now holds IP header size
 
     ;; compute T-N, where
     ;;   T is the total packet length
@@ -142,13 +137,20 @@ ip_receive_options_done:
     ld   a, l
     ld   l, h
     ld   h, a        ;; byteswap from network to host order
+    sbc  hl, bc      ;; carry is 0 from POP AF above
 
-    xor  a, a        ;; clear C flag
-    ld   c, b
-    ld   b, a        ;; BC now holds IP header size
-    sbc  hl, bc
+    ex   de, hl      ;; DE now holds UDP length
 
-    ex   de, hl
+    ;; ------------------------------------------------------------
+    ;; if IP header checksum is ok, load packet data
+    ;; ------------------------------------------------------------
+
+    call ip_receive_check_checksum
+
+    ;; Set IP checksum to htons(IP_PROTOCOL_UDP), for pseudo header
+    ld   hl, #(IP_PROTOCOL_UDP << 8)   ;; network order is big-endian
+    ld   (_ip_checksum), hl
+
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call enc28j60_read_memory
 

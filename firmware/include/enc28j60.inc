@@ -275,6 +275,7 @@ enc28j60_write8plus8 = 0x18
 ;; DE = number of bytes to read
 ;;
 ;; Saves HL. Destroys other registers, including alternate ones, except IX/IY.
+;; BC == 0 on exit.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_memory
