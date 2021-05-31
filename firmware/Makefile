@@ -5,10 +5,9 @@
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # =============================================================================
 
-CC           = sdcc
 AS           = sdasz80
+LD           = sdldz80
 MAKEBIN      = makebin
-ECHO         = @/bin/echo
 
 LDFLAGS      = -mz80 --out-fmt-ihx --no-std-crt0
 LDFLAGS     += --code-loc 0x0097 --data-loc 0x5B20
@@ -26,10 +25,6 @@ ifdef DGBOOT
 TARGETFLAGS += -DHWTARGET_DGBOOT
 else
 TARGETFLAGS += -DHWTARGET_SPECCYBOOT
-endif
-
-ifdef PAINT_STACK
-TARGETFLAGS += -DPAINT_STACK
 endif
 
 # =============================================================================
@@ -71,6 +66,7 @@ VPATH        = $(OBJDIR)
 vpath %.asm  $(SRCDIR)
 vpath %.inc  $(INCLUDEDIR)
 
+LINKFILE     = speccyboot.lk
 
 # =============================================================================
 # COMMAND-LINE TARGETS
@@ -95,6 +91,8 @@ install: $(ROM)
 # BUILD TARGETS
 # =============================================================================
 
+IHXFILE  = $(OBJDIR)/speccyboot.ihx
+
 # temporary result when building binary: both stages are built into a single
 # binary, then split
 COMBINED = $(OBJDIR)/combined.bin
@@ -107,9 +105,11 @@ COMBINED = $(OBJDIR)/combined.bin
 $(OBJDIR):
 	mkdir -p $@
 
-$(COMBINED): $(OFILES)
-	$(CC) $(LDFLAGS) -o $(OBJDIR)/$(ROM) $(OFILES:%=$(OBJDIR)/%)
-	$(MAKEBIN) $(MAKEBINFLAGS) $(OBJDIR)/$(ROM) $@
+$(IHXFILE): $(OFILES)
+	$(LD) -f $(LINKFILE)
+
+$(COMBINED): $(IHXFILE)
+	$(MAKEBIN) $(MAKEBINFLAGS) $(IHXFILE) $@
 
 $(ROM): $(COMBINED)
 	dd if=$< of=$@ bs=1k count=8
