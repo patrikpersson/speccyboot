@@ -108,12 +108,11 @@ enc28j60_read_memory:
     ;; F   C flag from previous checksum addition
     ;;
 
-    ld    d, 1(ix)
-    ld    e, 0(ix)
+    ex    de, hl    ;; DE now holds destination address
     ld    hl, (_ip_checksum)
     exx
 
-    and   a           ;; reset initial C flag
+    and   a, a        ;; reset initial C flag
     ex    af, af'     ;; here's an apostrophe for syntax coloring...
 
     ld    c, #SPI_OUT
@@ -121,7 +120,7 @@ enc28j60_read_memory:
 
     ld    d, 3(ix)
     ld    e, 2(ix)
-    rr    d           ;; shift DE right (number of 16-bit words)
+    srl   d           ;; shift DE right (number of 16-bit words)
     rr    e
 
     ;; Read one word to (de'), increase de', update checksum in hl'.   '

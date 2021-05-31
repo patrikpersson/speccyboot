@@ -272,7 +272,7 @@ enc28j60_write8plus8 = 0x18
 ;;
 ;; Call with
 ;; HL = destination address (buffer to read data into)
-;; BC = number of bytes to read
+;; DE = number of bytes to read
 ;;
 ;; Destroys all registers, including alternate ones, except IX/IY.
 ;; Returns with current checksum in HL (also stored in _ip_checksum)
