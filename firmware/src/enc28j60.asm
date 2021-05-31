@@ -247,18 +247,15 @@ enc28j60_add_to_checksum:
     or    a, a         ;; clear addition carry
 
 checksum_loop:
-    push  bc
 
     ld    a, (de)
-    ld    c, a
+    adc   a, l
+    ld    l, a
     inc   de
     ld    a, (de)
-    ld    b, a
+    adc   a, h
+    ld    h, a
     inc   de
-
-    adc   hl, bc
-
-    pop   bc
 
     djnz checksum_loop
 
