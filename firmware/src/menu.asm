@@ -384,14 +384,13 @@ menu_not_top:
     ld   a, d
     add  a, #DISPLAY_LINES - 1
     cp   a, c
-    jr   nc, menu_loop_alternative
+    jr   nc, menu_loop
 
     ld   a, c
     sub  a, #DISPLAY_LINES - 1
     ld   d, a
 
-menu_loop_alternative:     ;; TODO: check this when code is tighter
-    jp   menu_loop
+    jr   menu_loop
 
     ;; ========================================================================
     ;; user hit ENTER: load selected snapshot
@@ -452,53 +451,55 @@ menu_hit_enter:
 
 
     ;; ========================================================================
-    ;; subroutine: user hit key in register A, find snapshot matching that key
-    ;; and return index in register C
+    ;; subroutine: select snapshot matching keypress
+    ;;
+    ;; On entry:
+    ;;   E: number of snapshots in list
+    ;;   A: pressed key (ASCII)
+    ;;
+    ;; On exit:
+    ;;   C: index of selected snapshot
+    ;;
+    ;; Destroys AF, B, HL; preserves DE.
     ;; ========================================================================
 
     .area _CODE
 
 find_snapshot_for_key:
 
-    push de     ;; DE used for temporary data
-
-    ld   b, e   ;; loop counter
-    ld   c, a   ;; pressed key
-    ld   e, #0  ;; result (selected index)
-
-    ;; Only search through max-1 entries, and default to the last one if
-    ;; nothing is found. This also handles empty lists.
-
-    dec  b
-    jr   c, find_snapshot_for_letter_found
+    ld   b, a
+    ld   c, #0  ;; result (selected index)
 
     ld   hl, #_rx_frame
-find_snapshot_for_letter_lp:
+find_snapshot_for_key_lp:
+
+    ld   a, c
+    inc  a
+    cp   a, e
+
+    ret  nc
+
     push de
+
     ld   e, (hl)
     inc  hl
     ld   d, (hl)
     inc  hl
     ld   a, (de)
+
     pop  de
+
     cp   a, #'a'
-    jr   c, find_snapshot_for_letter_no_lcase
-    cp   a, #'z' + 1
-    jr   nc, find_snapshot_for_letter_no_lcase
-    and  a, #0xDF     ;; upper case
-find_snapshot_for_letter_no_lcase:
-    cp   a, c
-    jr   nc, find_snapshot_for_letter_found
+    jr   c, not_lowercase_letter
+    and  a, #0xDF     ;; to upper case
+not_lowercase_letter:
 
-    inc  e
-    djnz find_snapshot_for_letter_lp
+    cp   a, b
+    ret  nc
 
-find_snapshot_for_letter_found:
-    ld   c, e
+    inc  c
 
-    pop  de        ;; restore E=number of snapshots, D=offset
-
-    ret
+    jr   find_snapshot_for_key_lp
 
 
     ;; ========================================================================
