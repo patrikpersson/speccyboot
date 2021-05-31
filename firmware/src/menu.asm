@@ -52,6 +52,10 @@ KEY_ENTER     = 13
 KEY_UP        = '7'
 KEY_DOWN      = '6'
 
+;; position for loader version (one lower-case letter)
+
+VRAM_LOADER_VERSION = BITMAP_BASE + 14   ;; (0, 14)
+
 ;; ============================================================================
 
     .area _CODE
@@ -235,6 +239,10 @@ menu_second_time:
     ld   bc, #DISPLAY_LINES * 32 - 1
     ld   a, #BLACK + (WHITE << 3) + BRIGHT
     call fill_memory
+
+    ld   a, #VERSION_LOADER + 'a'
+    ld   de, #VRAM_LOADER_VERSION
+    call print_char
 
     ;; ========================================================================
     ;; main loop for the menu
@@ -448,7 +456,6 @@ menu_hit_enter:
     ;; ------------------------------------------------------------------------
 
     jp   main_loop
-
 
     ;; ========================================================================
     ;; subroutine: select snapshot matching keypress

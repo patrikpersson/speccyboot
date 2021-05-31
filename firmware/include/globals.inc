@@ -36,8 +36,9 @@
 ;; Version information
 ;; ============================================================================
 
-VERSION_MAJOR = 2
-VERSION_MINOR = 1
+VERSION_MAJOR  = 2
+VERSION_MINOR  = 1
+VERSION_LOADER = 0
 
 VERSION_MAGIC = 0x5B00 | VERSION_MAJOR << 4 | VERSION_MINOR
 
