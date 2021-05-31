@@ -92,7 +92,7 @@ bootp_init:
     ;; ------------------------------------------------------------------------
 
     ld    hl, #title_str       ;; 'SpeccyBoot x.y'
-    ld    de, #0x4000          ;; coordinates (0,0)
+    ld    de, #BITMAP_BASE     ;; coordinates (0,0)
 
     call  print_str
 

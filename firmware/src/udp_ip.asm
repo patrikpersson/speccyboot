@@ -260,15 +260,18 @@ udp_create:
     push  bc
 
     ;; ----------------------------------------------------------------------
-    ;; set up a header template, to be filled in with proper data below
+    ;; Set up a header template, to be filled in with proper data below.
     ;; ----------------------------------------------------------------------
 
-    exx        ;; need DE below
+    exx                  ;; remember DE for use below
+
     ld    hl, #ip_header_defaults
     ld    de, #_header_template
     ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
+
     ldir
-    exx
+
+    exx                  ;; recall DE
 
     ;; current_packet_length = udp_length + IPV4_HEADER_SIZE
 
@@ -307,7 +310,7 @@ udp_create:
     ld     l, c
     ld     (_ip_checksum), hl
 
-    ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10); B=0 here
+    ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
     ld     de, #_header_template
     call   enc28j60_add_to_checksum
 
