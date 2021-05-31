@@ -329,43 +329,7 @@ redraw_menu_done:
     ;; select the first snapshot with that initial letter
     ;; ========================================================================
 
-    push de     ;; DE used for temporary data
-
-    ld   b, e   ;; loop counter
-    ld   c, a   ;; pressed key
-    ld   e, #0  ;; result (selected index)
-
-    ;; Only search through max-1 entries, and default to the last one if
-    ;; nothing is found. This also handles empty lists.
-
-    dec  b
-    jr   c, find_snapshot_for_letter_found
-
-    ld   hl, #_rx_frame
-find_snapshot_for_letter_lp:
-    push de
-    ld   e, (hl)
-    inc  hl
-    ld   d, (hl)
-    inc  hl
-    ld   a, (de)
-    pop  de
-    cp   a, #'a'
-    jr   c, find_snapshot_for_letter_no_lcase
-    cp   a, #'z' + 1
-    jr   nc, find_snapshot_for_letter_no_lcase
-    and  a, #0xDF     ;; upper case
-find_snapshot_for_letter_no_lcase:
-    cp   a, c
-    jr   nc, find_snapshot_for_letter_found
-
-    inc  e
-    djnz find_snapshot_for_letter_lp
-
-find_snapshot_for_letter_found:
-    ld   c, e
-
-    pop  de        ;; restore E=number of snapshots, D=offset
+    call find_snapshot_for_key
 
     jr   menu_adjust
 
@@ -485,6 +449,57 @@ menu_hit_enter:
     ;; ------------------------------------------------------------------------
 
     jp   main_loop
+
+
+    ;; ========================================================================
+    ;; subroutine: user hit key in register A, find snapshot matching that key
+    ;; and return index in register C
+    ;; ========================================================================
+
+    .area _CODE
+
+find_snapshot_for_key:
+
+    push de     ;; DE used for temporary data
+
+    ld   b, e   ;; loop counter
+    ld   c, a   ;; pressed key
+    ld   e, #0  ;; result (selected index)
+
+    ;; Only search through max-1 entries, and default to the last one if
+    ;; nothing is found. This also handles empty lists.
+
+    dec  b
+    jr   c, find_snapshot_for_letter_found
+
+    ld   hl, #_rx_frame
+find_snapshot_for_letter_lp:
+    push de
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
+    inc  hl
+    ld   a, (de)
+    pop  de
+    cp   a, #'a'
+    jr   c, find_snapshot_for_letter_no_lcase
+    cp   a, #'z' + 1
+    jr   nc, find_snapshot_for_letter_no_lcase
+    and  a, #0xDF     ;; upper case
+find_snapshot_for_letter_no_lcase:
+    cp   a, c
+    jr   nc, find_snapshot_for_letter_found
+
+    inc  e
+    djnz find_snapshot_for_letter_lp
+
+find_snapshot_for_letter_found:
+    ld   c, e
+
+    pop  de        ;; restore E=number of snapshots, D=offset
+
+    ret
+
 
     ;; ========================================================================
     ;; subroutine: highlight current line to colour in register A
