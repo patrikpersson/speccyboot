@@ -72,12 +72,9 @@ enc28j60_poll_register:
 
 enc28j60_read_memory:
 
-    push  de         ;; nbr_bytes
-
-    ld    ix, #0
-    add   ix, sp
-
     push  hl         ;; dst_addr
+
+    push  de         ;; number of bytes
 
     ;; spi_start_transaction(ENC_OPCODE_RBM);
 
@@ -118,8 +115,8 @@ enc28j60_read_memory:
     ld    c, #SPI_OUT
     ld    h, #0x40
 
-    ld    d, 1(ix)
-    ld    e, 0(ix)
+    pop   de
+    push  de
     srl   d           ;; shift DE right (number of 16-bit words)
     rr    e
 
@@ -182,8 +179,7 @@ word_loop_end:
 
     ;; If there is a single odd byte remaining, handle it
 
-    ld    a, 0(ix)
-    rra
+    pop   af    ;; number of bytes, lowest bit now in C flag
     jr    c, odd_byte
 
     ;; No odd byte, add the remaining C flag
@@ -231,7 +227,6 @@ final:
     ld    (_ip_checksum), hl
 
     pop   hl
-    pop   de
 
     jr    enc28j60_end_transaction_and_return
 
