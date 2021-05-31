@@ -275,6 +275,7 @@ enc28j60_write8plus8 = 0x18
 ;; BC = number of bytes to read
 ;;
 ;; Destroys all registers, including alternate ones, except IX/IY.
+;; Returns with current checksum in HL (also stored in _ip_checksum)
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_memory
@@ -289,10 +290,18 @@ enc28j60_write8plus8 = 0x18
 ;; On exit:
 ;;   BC == 0
 ;;   DE points to next byte after checksummed data
-;;   HL holds checksum (also stored in _ip_checksum)
+;;   HL holds current checksum (also stored in _ip_checksum)
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_add_to_checksum
+
+
+;; ----------------------------------------------------------------------------
+;; Like enc28j60_add_to_checksum, but expects the current checksum to be passed
+;; in HL (not read from _ip_checksum).
+;; ----------------------------------------------------------------------------
+
+    .globl enc28j60_add_to_checksum_hl
 
 
 ;; ----------------------------------------------------------------------------

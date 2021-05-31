@@ -244,6 +244,8 @@ enc28j60_add_to_checksum:
 
     ld    hl, (_ip_checksum)
 
+enc28j60_add_to_checksum_hl:
+
     or    a, a         ;; clear addition carry
 
 checksum_loop:

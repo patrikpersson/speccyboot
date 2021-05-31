@@ -306,22 +306,19 @@ udp_create:
     ;; compute checksum of IP header
     ;; ----------------------------------------------------------------------
 
-    ld     h, b   ;; BC=0 here
+    ld     h, b   ;; BC==0 here after LDIR above
     ld     l, c
-    ld     (_ip_checksum), hl
 
     ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
     ld     de, #_header_template
-    call   enc28j60_add_to_checksum
+    call   enc28j60_add_to_checksum_hl
 
-    ld     hl, #_ip_checksum
     ld     de, #_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
-    ld     a, (hl)
+    ld     a, l
     cpl
     ld     (de), a
-    inc    hl
     inc    de
-    ld     a, (hl)
+    ld     a, h
     cpl
     ld     (de), a
 
