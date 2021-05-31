@@ -274,8 +274,7 @@ enc28j60_write8plus8 = 0x18
 ;; HL = destination address (buffer to read data into)
 ;; DE = number of bytes to read
 ;;
-;; Destroys all registers, including alternate ones, except IX/IY.
-;; Returns with current checksum in HL (also stored in _ip_checksum)
+;; Destroys all registers, including alternate ones, except IY.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_memory
