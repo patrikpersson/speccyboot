@@ -242,40 +242,33 @@ final:
 
 enc28j60_add_to_checksum:
 
-    ;; ------------------------------------------------------------------------
-    ;; Can't use the ENC28J60's checksum offload (errata, item #15)
-    ;; ------------------------------------------------------------------------
-
     ld    hl, (_ip_checksum)
 
-    xor   a         ;; clear addition carry
+    or    a, a         ;; clear addition carry
 
 checksum_loop:
-    ex    af, af'   ;; ' store addition carry
+    push  bc
 
-    ld    a, b
-    or    c
-    jr    z, checksum_words_done
-    dec   bc
+    ld    a, (de)
+    ld    c, a
+    inc   de
+    ld    a, (de)
+    ld    b, a
+    inc   de
 
-    ld    e, (iy)
-    inc   iy
-    ld    d, (iy)
-    inc   iy
+    adc   hl, bc
 
-    ex    af, af'   ;; ' load addition carry
-    adc   hl, de
+    pop   bc
 
-    jr    checksum_loop
+    djnz checksum_loop
 
-checksum_words_done:
-
-    ex    af, af'   ;; ' load addition carry
-    adc   hl, bc    ;;  final carry (BC is zero here)
+    ld    c, b      ;; BC is now zero
+    adc   hl, bc    ;; final carry only (BC is zero here)
 
     ld    (_ip_checksum), hl
 
     ret
+
 
 ;; ############################################################################
 ;; enc28j60_write_memory

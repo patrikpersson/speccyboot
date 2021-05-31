@@ -283,12 +283,13 @@ enc28j60_write8plus8 = 0x18
 ;; Add a number of 16-bit words to the IP-style checksum.
 ;;
 ;; On entry:
-;;   IY = pointer to 16-words
-;;   BC = number of 16-bit words (!) to add
+;;   DE = pointer to 16-words
+;;   B = number of 16-bit words (!) to add
 ;;
 ;; On exit:
 ;;   BC == 0
-;;   IY points to next byte after checksummed data
+;;   DE points to next byte after checksummed data
+;;   HL holds checksum (also stored in _ip_checksum)
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_add_to_checksum

@@ -165,12 +165,12 @@ ip_receive_options_done:
     ;; was already included (given as initial value above), so we do not add
     ;; it here.
 
-    ld   bc, #IPV4_ADDRESS_SIZE ;; BC is number of words (4)
-    ld   iy, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    ld   b, #IPV4_ADDRESS_SIZE    ;; number of words (4 for two IP addresses)
+    ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
     call enc28j60_add_to_checksum
 
-    ld   c, #1 ;; one word, B==0 here
-    ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld   b, #1 ;; one word
+    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
     call enc28j60_add_to_checksum
 
     call ip_receive_check_checksum
@@ -307,8 +307,8 @@ udp_create:
     ld     l, c
     ld     (_ip_checksum), hl
 
-    ld     c, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10); B=0 here
-    ld     iy, #_header_template
+    ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10); B=0 here
+    ld     de, #_header_template
     call   enc28j60_add_to_checksum
 
     ld     hl, #_ip_checksum
