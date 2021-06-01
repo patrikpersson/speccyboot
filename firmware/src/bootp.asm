@@ -146,9 +146,8 @@ bootp_init:
     ;; part 3: 6 bytes of MAC address
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #eth_local_address
     ld   e, #ETH_ADDRESS_SIZE
-    rst  enc28j60_write_memory_small
+    call enc28j60_write_local_hwaddr
 
     ;; ------------------------------------------------------------------------
     ;; part 4: 266 bytes of zeros

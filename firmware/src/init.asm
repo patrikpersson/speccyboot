@@ -32,10 +32,11 @@
   .module init
   .optsdcc -mz80
 
-  .include "spi.inc"
   .include "enc28j60.inc"
+  .include "eth.inc"
   .include "globals.inc"
   .include "menu.inc"
+  .include "spi.inc"
   .include "udp_ip.inc"
   .include "ui.inc"
   .include "util.inc"
@@ -115,6 +116,16 @@
   
   ld    b, #8
   jp    spi_write_byte_cont
+
+  ;; ------------------------------------------------------------------------
+  ;; enc28j60_write_local_hwaddr
+  ;; ------------------------------------------------------------------------
+
+enc28j60_write_local_hwaddr:
+
+  ld    hl, #eth_local_address
+
+  ;; FALL THROUGH to enc28j60_write_memory_small
 
   ;; ========================================================================
   ;; RST 0x28 ENTRYPOINT: enc28j60_write_memory_small

@@ -514,9 +514,8 @@ eth_create_txbuf_set:
     ;; write source (local) MAC address
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #eth_local_address
     ld    e, #ETH_ADDRESS_SIZE
-    rst   enc28j60_write_memory_small
+    call  enc28j60_write_local_hwaddr
 
     ;; ------------------------------------------------------------------------
     ;; write Ethertype

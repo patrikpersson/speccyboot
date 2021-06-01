@@ -316,6 +316,20 @@ enc28j60_write8plus8 = 0x18
     
 
 ;; ----------------------------------------------------------------------------
+;; Write six bytes of the local MAC address to on-chip SRAM, continuing after
+;; previous write. (Shortcut to enc28j60_write_memory, with HL set to
+;; eth_local_address. Note that E must still be set before calling.)
+;;
+;; Defined in init.asm.
+;;
+;; Call with E=6. Destroys AF, BC, HL.
+;;
+;; On exit, DE==0, and HL points to the next byte after eth_local_address.
+;; ----------------------------------------------------------------------------
+
+    .globl enc28j60_write_local_hwaddr
+
+;; ----------------------------------------------------------------------------
 ;; rst enc28j60_write_memory_small
 ;;
 ;; Shortcut to enc28j60_write_memory, for 8-bit lengths. Defined in init.asm.
