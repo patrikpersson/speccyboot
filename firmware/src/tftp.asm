@@ -244,16 +244,25 @@ tftp_receive_blk_nbr_and_port_ok:
     jp  (hl)
 
 00002$:
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    ld  d, (hl)
-    inc hl
-    ld  e, (hl)    ;; network order
-    ex  de, hl     ;; HL is now UDP length, including UDP + TFTP headers
-    ld  de, #0x10000 - UDP_HEADER_SIZE - TFTP_HEADER_SIZE
-    add hl, de
-    ld  a, h
-    ld  b, h
-    ld  c, l       ;; BC is now payload length excluding headers, 0..512
+
+    ;; -----------------------------------------------------------------------
+    ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
+    ;; from the UDP length. Start with the low-order byte in network order;
+    ;; hence the "+1" below.
+    ;; -----------------------------------------------------------------------
+
+breakpoint::
+
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH + 1
+    ld  a, (hl)                                      ;; UDP length, low byte
+    sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)  
+    ld  c, a                                         ;; TFTP length, low byte
+    dec hl
+    ld  a, (hl)                                      ;; UDP length, high byte
+    sbc a, #0
+    ld  b, a                                         ;; TFTP length, high byte
+ 
+    ;; BC is now payload length excluding headers, 0..512
 
     ld  de, (_tftp_write_pos)
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
