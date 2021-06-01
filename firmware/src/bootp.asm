@@ -34,6 +34,7 @@
 
     .include "bootp.inc"
 
+    .include "arp.inc"
     .include "enc28j60.inc"
     .include "eth.inc"
     .include "globals.inc"
@@ -196,6 +197,16 @@ bootp_receive:
     ld   de, #_ip_config
     ld   bc, #8
     ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; broadcast the new IP address as a gratuitous ARP Reply
+    ;; (https://datatracker.ietf.org/doc/html/rfc2002#section-4.6)
+    ;; ------------------------------------------------------------------------
+
+    ld   bc, #eth_local_address
+    ld   de, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   hl, #eth_broadcast_address
+    call arp_reply
 
     ;; ========================================================================
     ;; Check SNAME field for a dotted-decimal IP address (four octets)
