@@ -198,33 +198,72 @@ bootp_receive:
     ld   bc, #8
     ldir
 
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
     ;; Check SNAME field for a dotted-decimal IP address (four octets)
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_SNAME
-    ld   a, (hl)
+    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_SNAME
+    ld   a, (de)
     or   a, a
     jr   z, bootp_receive_sname_done
 
-    ld   de, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
+    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     ld   b, #4  ;; four octets
 
 bootp_receive_octet_loop:
     push bc
-    call parse_decimal_byte
-    ld   a, c
-    pop  bc
 
-    ld   (de), a
+    ;; ========================================================================
+    ;; Parse decimal number at DE. Truncated to 8 bits (unsigned).
+    ;; ========================================================================
+
+    ld   c, #0
+
+parse_loop:
+
+    ld   a, (de)
+    or   a, a
+    jr   z, parse_byte_complete
+    cp   a, #'.'
+    jr   z, parse_byte_complete
+
     inc  de
 
-    ld   a, (hl)
+    ;; backwards comparison, to ensure C is _cleared_ for non-digits
+    add  a, #(0x100 - '0')
+    jr   nc, parse_invalid_address
+
+    cp   a, #10
+    ld   b, a          ;; B now holds digit value 0..9
+parse_invalid_address:
+    ld   a, #FATAL_INVALID_BOOT_SERVER
+    jp   nc, fail
+
+    ld   a, c
+    add  a, a
+    add  a, a
+    add  a, a
+    add  a, c
+    add  a, c
+    add  a, b       ;; A := C*10 + B
+
+    ld   c, a
+
+    jr parse_loop
+
+parse_byte_complete:
+
+    ld   (hl), c
+    pop  bc
+
     inc  hl
+
+    ld   a, (de)
+    inc  de
     or   a      ;; can only be '.' or NUL here
     jr   nz, bootp_receive_more_octets
 
-    ;;   HL apparently points to NUL. This is only OK after last octet (B==1)
+    ;; DE apparently points to NUL. This is only OK after last octet (B==1)
 
     ld   a, b
     dec  a
@@ -244,7 +283,8 @@ bootp_receive_sname_done:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
-    or   a, (hl)      ;; we know A is zero here
+    xor  a, a
+    or   a, (hl)
     jr   nz, 00001$
     ld   hl, #tftp_default_file
 00001$:
@@ -282,52 +322,3 @@ bootp_receive_sname_done:
     ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
 
     ret
-
-    ;; ========================================================================
-    ;; Subroutine:
-    ;;
-    ;; Parse decimal number at HL, return value in C. The number is truncated
-    ;; to 8 bits (unsigned). Destroys AF and BC.
-    ;;
-    ;; Afterwards HL points to the first byte after the number
-    ;; (either '.' or NUL).
-    ;; Fails with FATAL_INVALID_BOOT_SERVER directly if a character other than
-    ;; 0123456789. or NUL is found.
-    ;; ========================================================================
-
-parse_decimal_byte:
-
-    ld   c, #0
-
-parse_loop:
-
-    ld   a, (hl)
-    or   a, a
-    ret  z
-    cp   a, #'.'
-    ret  z
-
-    inc  hl
-
-    ;; backwards comparison, to ensure C is _cleared_ for non-digits
-    add  a, #(0x100 - '0')
-    jr   nc, parse_invalid_address
-
-    cp   a, #10
-    ld   b, a          ;; B now holds digit value 0..9
-parse_invalid_address:
-    ld   a, #FATAL_INVALID_BOOT_SERVER
-    jp   nc, fail
-
-    ld   a, c
-    add  a, a
-    add  a, a
-    add  a, a
-    add  a, c
-    add  a, c
-    add  a, b       ;; A := C*10 + B
-
-    ld   c, a
-
-    jr parse_loop
-
