@@ -221,17 +221,17 @@ tftp_receive_blk_nbr_and_port_ok:
     ;; ========================================================================
 
     ld    hl, (_expected_tftp_block_no)
-    ld    d, h
-    ld    e, l
 
-    push  ix
-    pop   bc
-    or   a, a       ;; clear C flag
-    sbc   hl, bc
+    ld    de, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO)
+    ld    a, e
+    cp    a, h    ;; network order  
+    ret   nz
+    ld    a, d
+    cp    a, l
     ret   nz
 
-    inc   de
-    ld    (_expected_tftp_block_no), de
+    inc   hl
+    ld    (_expected_tftp_block_no), hl
 
     ;; ------------------------------------------------------------------------
     ;; If a receive hook has been installed, jump there
