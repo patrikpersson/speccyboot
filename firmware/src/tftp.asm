@@ -193,7 +193,7 @@ tftp_receive_blk_nbr_ok:
 
     ld    hl, (_server_port)
     ;; BC was loaded above, early on; holds server-side port nbr from packet
-    or    a, a     ;; clear C flag
+    ;; C flag is clear from either SBC HL, DE (resulting in zero) or OR A, L
     sbc   hl, bc
     jr    nz, tftp_receive_error
 
