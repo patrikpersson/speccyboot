@@ -212,10 +212,8 @@ bootp_receive:
 
 bootp_receive_octet_loop:
     push bc
-    push de
-    call bootp_receive_parse_octet
+    call parse_decimal_byte
     ld   a, c
-    pop  de
     pop  bc
 
     ld   (de), a
@@ -230,7 +228,7 @@ bootp_receive_octet_loop:
 
     ld   a, b
     dec  a
-    jr   nz , #bootp_receive_invalid_address
+    jr   nz , #parse_invalid_address
 
 bootp_receive_more_octets:
     djnz bootp_receive_octet_loop
@@ -285,13 +283,11 @@ bootp_receive_sname_done:
 
     ret
 
-bootp_receive_parse_octet:
-
     ;; ========================================================================
     ;; Subroutine:
     ;;
-    ;; Parse decimal number (0..255) at HL, return value in C.
-    ;; Destroys A, BC, DE, and F.
+    ;; Parse decimal number at HL, return value in C. The number is truncated
+    ;; to 8 bits (unsigned). Destroys AF and BC.
     ;;
     ;; Afterwards HL points to the first byte after the number
     ;; (either '.' or NUL).
@@ -299,29 +295,11 @@ bootp_receive_parse_octet:
     ;; 0123456789. or NUL is found.
     ;; ========================================================================
 
-    ld   bc, #0x0300        ;; B := 3, C := 0
-    ld   a, (hl)
-00001$:
-    inc  hl
-    sub  a, #'0'
-    jr   c, bootp_receive_invalid_address
-    cp   a, #10
-    jr   nc, bootp_receive_invalid_address
-    ld   d, a          ;; D now holds digit value 0..9
+parse_decimal_byte:
 
-    ;; A := C*10, destroys E
+    ld   c, #0
 
-    ld   a, c
-    add  a, a
-    add  a, a
-    add  a, a
-    ld   e, a  ;; now E = C*8
-    ld   a, c
-    add  a, a  ;; C*2
-    add  a, e
-
-    add  a, d
-    ld   c, a  ;; C := C*10 + D
+parse_loop:
 
     ld   a, (hl)
     or   a, a
@@ -329,14 +307,27 @@ bootp_receive_parse_octet:
     cp   a, #'.'
     ret  z
 
-    djnz 00001$
+    inc  hl
 
-    ;; If we got here, it means we had three digits followed by something else
-    ;; than '.' or NUL. Fall through to error routine below.
+    ;; backwards comparison, to ensure C is _cleared_ for non-digits
+    add  a, #(0x100 - '0')
+    jr   nc, parse_invalid_address
 
-bootp_receive_invalid_address:
-
-    ;; ERROR: boot server name is not a dotted-decimal IP address
-
+    cp   a, #10
+    ld   b, a          ;; B now holds digit value 0..9
+parse_invalid_address:
     ld   a, #FATAL_INVALID_BOOT_SERVER
-    jp   fail
+    jp   nc, fail
+
+    ld   a, c
+    add  a, a
+    add  a, a
+    add  a, a
+    add  a, c
+    add  a, c
+    add  a, b       ;; A := C*10 + B
+
+    ld   c, a
+
+    jr parse_loop
+
