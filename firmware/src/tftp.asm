@@ -208,7 +208,7 @@ tftp_receive_blk_nbr_and_port_ok:
 
     ld    e, #TFTP_SIZE_OF_OPCODE
     ld    hl, #tftp_receive_ack_opcode
-    rst    enc28j60_write_memory_small
+    rst   enc28j60_write_memory_small
 
     ld    e, #TFTP_SIZE_OF_OPCODE
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO

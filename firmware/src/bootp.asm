@@ -199,7 +199,7 @@ bootp_receive:
     ldir
 
     ;; ------------------------------------------------------------------------
-    ;; broadcast the new IP address as a gratuitous ARP Reply
+    ;; Broadcast the new IP address as a gratuitous ARP reply
     ;; (https://datatracker.ietf.org/doc/html/rfc2002#section-4.6)
     ;; ------------------------------------------------------------------------
 
