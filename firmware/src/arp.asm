@@ -53,9 +53,6 @@ ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 
 ;; ############################################################################
 ;; arp_receive
-;;
-;; Called by eth.c when an Ethernet frame holding an ARP packet has been
-;; received.
 ;; ############################################################################
 
 arp_receive:
@@ -100,12 +97,28 @@ arp_receive:
     rst  memory_compare
     ret  nz   ;; if the packet is not for the local IP address, return
 
-    ;; ========================================================================
-    ;; create ARP response
-    ;; ========================================================================
+    ld   bc, #eth_sender_address   ;; return to sender MAC address
+    ld   de, #_rx_frame + ARP_OFFSET_SPA  ;; sender IP address, taken from SPA field in request
+    ld   h, b
+    ld   l, c
 
-    ld   hl, #eth_sender_address
-    cpl       ;; A was zero after memory_compare, now 0xFF, non-zero means ARP
+    ;; FALL THROUGH to arp_reply
+
+
+;; ############################################################################
+;; arp_reply
+;; ############################################################################
+
+arp_reply:
+
+    push de
+    push bc
+
+    ;; set A to a non-zero value (to indicate an ARP frame to eth_create)
+    ;; D is always non-zero here, as DE points to TPA (an IP address)
+
+    ld   a, d
+
     call eth_create
 
     ;; ARP header
@@ -126,16 +139,16 @@ arp_receive:
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     rst  enc28j60_write_memory_small
 
-    ;; THA: sender MAC address
+    ;; THA
 
-    ld   hl, #eth_sender_address
+    pop  hl
     ld   e, #ETH_ADDRESS_SIZE
     rst  enc28j60_write_memory_small
 
-    ;; TPA: sender IP address, taken from SPA field in request
+    ;; TPA
 
+    pop  hl
     ld   e, #IPV4_ADDRESS_SIZE
-    ld   hl, #_rx_frame + ARP_OFFSET_SPA
     rst  enc28j60_write_memory_small
 
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
