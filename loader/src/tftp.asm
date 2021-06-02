@@ -251,23 +251,31 @@ tftp_receive_blk_nbr_and_port_ok:
     ;; hence the "+1" below.
     ;; -----------------------------------------------------------------------
 
-breakpoint::
-
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH + 1
-    ld  a, (hl)                                      ;; UDP length, low byte
+    ld  de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH + 1
+    ld  a, (de)                                      ;; UDP length, low byte
     sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)  
     ld  c, a                                         ;; TFTP length, low byte
-    dec hl
-    ld  a, (hl)                                      ;; UDP length, high byte
-    sbc a, #0
+    dec de
+    ld  a, (de)                                      ;; UDP length, high byte
+    sbc a, l                                         ;; HL is zero (no hook)
     ld  b, a                                         ;; TFTP length, high byte
- 
+
     ;; BC is now payload length excluding headers, 0..512
+
+    push bc  ;; remember payload length for hook
 
     ld  de, (_tftp_write_pos)
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+
+    or  a, c
+    jr  z, tftp_zero_length_data               ;; stay clear of LDIR if BC == 0
+
     ldir
     ld  (_tftp_write_pos), de
+
+tftp_zero_length_data:
+
+    pop hl  ;; recall payload length
 
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
@@ -280,24 +288,23 @@ breakpoint::
 
     ;; ========================================================================
     ;; This was the last packet, of either the stage 2 binary or snapshots.lst.
-    ;; Check version signature and execute the stage 2 loader.
+    ;; NUL-terminate data, check version signature and run the stage 2 loader.
     ;; ========================================================================
 
-    ex   de, hl
-    ld   (hl), #0                   ;; ensure loaded data is NUL-terminated
+    ex  de, hl                       ;; now DE==payload length, HL==end of data 
 
-    ld  hl, #stage2_start
-    ld  a, (hl)
+    ld   (hl), c     ;; ensure loaded data is NUL-terminated (BC==0 after LDIR)
+
+    ld  hl, (stage2_start)
+    ld  a, l
     cp  a, #<VERSION_MAGIC
     jr  nz, version_mismatch
-    inc hl
-    ld  a, (hl)
+    ld  a, h
     cp  a, #>VERSION_MAGIC
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
     jp  nz, version_mismatch
-    inc hl
-    jp  (hl)
+    jp  stage2_start + 2
 
 tftp_receive_error:
 

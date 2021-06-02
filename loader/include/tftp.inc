@@ -52,6 +52,18 @@ TFTP_VRAM_FILENAME_POS = 0x5000 + 5 * 32 + 16   ;; (21, 16)
 TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
 
 ;; ----------------------------------------------------------------------------
+;; RAM pointer to routine to call on TFTP data.
+;; Initially zero (and unused), then set by stage 2 to a hook in z80_loader
+;; to enable snapshot loading.
+;;
+;; When this routine is called, registers are set as follows:
+;;
+;; DE: number of bytes loaded, excluding IP/UDP/TFTP headers
+;; ----------------------------------------------------------------------------
+
+    .globl _tftp_receive_hook
+
+;; ----------------------------------------------------------------------------
 ;; NUL-terminated default filename for stage 2 loader ('spboot.bin')
 ;; ----------------------------------------------------------------------------
 
