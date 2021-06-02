@@ -1,6 +1,6 @@
 # =============================================================================
 # Top-level Makefile for SpeccyBoot
-# Patrik Persson, 2009-2013
+# Patrik Persson, 2009-
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 # -----------------------------------------------------------------------------
@@ -15,7 +15,8 @@
 
 BIN2WAV     = wavloader/bin2wav
 LOADER      = wavloader/loader.bin
-FIRMWARE    = firmware/speccyboot.rom
+STAGE1      = loader/speccyboot.rom
+STAGE2      = loader/spboot.bin
 WAV         = speccyboot.wav
 
 export
@@ -24,12 +25,12 @@ all: $(WAV) tests_all
 
 install:
 	$(MAKE) -C utils install
-	$(MAKE) -C firmware install
+	$(MAKE) -C loader install
 
-$(WAV): $(FIRMWARE) $(BIN2WAV) $(LOADER)
+$(WAV): $(STAGE1) $(BIN2WAV) $(LOADER)
 
-$(FIRMWARE):
-	$(MAKE) -C firmware all
+$(STAGE1) $(STAGE2):
+	$(MAKE) -C loader all
 
 $(BIN2WAV) $(LOADER):
 	$(MAKE) -C wavloader all
@@ -38,12 +39,12 @@ tests_all:
 	$(MAKE) -C tests all
 
 clean:
-	$(MAKE) -C firmware clean
+	$(MAKE) -C loader clean
 	$(MAKE) -C tests clean
 	$(MAKE) -C wavloader clean
 	rm -f $(WAV)
 
 # -------------------------------------------
 
-$(WAV): $(FIRMWARE) $(BIN2WAV) $(LOADER)
-	cat $(LOADER) $(FIRMWARE) | $(BIN2WAV) > $(WAV)
+$(WAV): $(STAGE1) $(BIN2WAV) $(LOADER)
+	cat $(LOADER) $(STAGE1) | $(BIN2WAV) > $(WAV)

@@ -38,7 +38,7 @@ OFILES       = init.rel $(ASMMODULES:%=%.rel)
 # -----------------------------------------------------------------------------
 
 # ROM:       stage 1, binary file to be loaded into EEPROM (address 0x0000)
-# STAGE2BIN: binary file to be loaded over TFTP by stage 1
+# STAGE2BIN: stage 2, binary file to be loaded over TFTP by stage 1
 
 ROM          = speccyboot.rom
 STAGE2BIN    = spboot.bin
@@ -49,6 +49,7 @@ STAGE2BIN    = spboot.bin
 
 PREFIX      ?= /usr/local
 FUSEROMDIR   = $(PREFIX)/share/fuse
+INSTALLDIR   = $(PREFIX)/share/speccyboot
 
 SRCDIR       = src
 INCLUDEDIR   = include
@@ -74,8 +75,9 @@ bin: $(ROM) $(STAGE2BIN)
 clean:
 	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
 
-install: $(ROM)
+install: $(ROM) $(STAGE2BIN) $(INSTALLDIR)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
+	install --mode=a+r $(STAGE2BIN) $(INSTALLDIR)
 
 .SUFFIXES:
 
@@ -91,7 +93,7 @@ IHXFILE  = $(OBJDIR)/speccyboot.ihx
 # binary, then split
 COMBINED = $(OBJDIR)/combined.bin
 
-$(OBJDIR):
+$(OBJDIR) $(INSTALLDIR):
 	mkdir -p $@
 
 %.rel: %.asm $(OBJDIR)

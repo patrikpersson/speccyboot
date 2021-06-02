@@ -7,6 +7,9 @@
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 
+# if you installed to another directory, you'll have to change this
+STAGE2DIR=/usr/local/share/speccyboot
+
 # if your TFTP server serves from another directory than the ones listed here,
 # please modify this variable
 
@@ -20,5 +23,19 @@ for DIR in ${TFTP_DIRS}; do
     echo Updating SpeccyBoot index in ${SPECCYBOOT}
     cd ${SPECCYBOOT}
     ls -1 *.z80 | sort --ignore-case > snapshots.lst
+    if [ -L spboot.bin ]; then
+      echo '(Ignoring symlinked spboot.bin.)'
+    elif [ ! -f spboot.bin ]; then
+      echo Copying spboot.bin to ${SPECCYBOOT}
+      cp ${STAGE2DIR}/spboot.bin .
+    elif cmp -s ${STAGE2DIR}/spboot.bin spboot.bin; then
+      echo '(Keeping existing spboot.bin.)'
+    else
+      echo ERROR:
+      echo "  " An spboot.bin file of a different version was found here:
+      echo "    " ${SPECCYBOOT}
+      echo "  " Remove or rename it and run this command again.
+      exit 1
+    fi
   fi
 done
