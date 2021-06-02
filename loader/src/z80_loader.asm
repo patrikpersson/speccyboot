@@ -779,12 +779,8 @@ z80_loader_state:
     ;; set up HL, BC, DE
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH)
-    ld   a, l      ;; byteswap: length is stored in network order in UDP header
-    ld   l, h
-    ld   h, a
-    ld   bc, #0x10000 - UDP_HEADER_SIZE - TFTP_HEADER_SIZE
-    add  hl, bc
+    ld   h, b
+    ld   l, c
 
     .db  LD_BC_NN          ;; LD BC, #nn
 _chunk_bytes_remaining:

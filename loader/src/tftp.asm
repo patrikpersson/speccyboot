@@ -233,6 +233,21 @@ tftp_receive_blk_nbr_and_port_ok:
     inc   hl
     ld    (_expected_tftp_block_no), hl
 
+    ;; -----------------------------------------------------------------------
+    ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
+    ;; from the UDP length. Start with the low-order byte in network order;
+    ;; hence the "+1" below. Set BC to TFTP payload length, 0..512.
+    ;; -----------------------------------------------------------------------
+
+    ld  de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH + 1
+    ld  a, (de)                                      ;; UDP length, low byte
+    sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)  
+    ld  c, a                                         ;; TFTP length, low byte
+    dec de
+    ld  a, (de)                                      ;; UDP length, high byte
+    sbc a, #0
+    ld  b, a                                         ;; TFTP length, high byte
+
     ;; ------------------------------------------------------------------------
     ;; If a receive hook has been installed, jump there
     ;; ------------------------------------------------------------------------
@@ -245,28 +260,10 @@ tftp_receive_blk_nbr_and_port_ok:
 
 00002$:
 
-    ;; -----------------------------------------------------------------------
-    ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
-    ;; from the UDP length. Start with the low-order byte in network order;
-    ;; hence the "+1" below.
-    ;; -----------------------------------------------------------------------
-
-    ld  de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH + 1
-    ld  a, (de)                                      ;; UDP length, low byte
-    sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)  
-    ld  c, a                                         ;; TFTP length, low byte
-    dec de
-    ld  a, (de)                                      ;; UDP length, high byte
-    sbc a, l                                         ;; HL is zero (no hook)
-    ld  b, a                                         ;; TFTP length, high byte
-
-    ;; BC is now payload length excluding headers, 0..512
-
-    push bc  ;; remember payload length for hook
-
-    ld  de, (_tftp_write_pos)
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld  de, (_tftp_write_pos)
 
+    ld  a, b
     or  a, c
     jr  z, tftp_zero_length_data               ;; stay clear of LDIR if BC == 0
 
@@ -275,14 +272,13 @@ tftp_receive_blk_nbr_and_port_ok:
 
 tftp_zero_length_data:
 
-    pop hl  ;; recall payload length
-
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
     ;; (BC above should be exactly 0x200 for all DATA packets except the last
-    ;; one, so we are done if A != 2 here)
+    ;; one, so we are done if B != 2 here)
     ;; ------------------------------------------------------------------------
 
+    ld  a, b
     cp  a, #2
     ret z
 
@@ -291,9 +287,8 @@ tftp_zero_length_data:
     ;; NUL-terminate data, check version signature and run the stage 2 loader.
     ;; ========================================================================
 
-    ex  de, hl                       ;; now DE==payload length, HL==end of data 
-
-    ld   (hl), c     ;; ensure loaded data is NUL-terminated (BC==0 after LDIR)
+    xor a, a
+    ld  (de), a                         ;; ensure loaded data is NUL-terminated
 
     ld  hl, (stage2_start)
     ld  a, l
