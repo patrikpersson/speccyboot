@@ -600,8 +600,7 @@ chunk_escape:
 
 _s_chunk_compressed_escape:
 
-    call  load_byte_from_packet
-    dec   bc
+    call  load_byte_from_chunk
 
     ld    ix, #_s_chunk_repcount        ;; tentative next state
 
