@@ -61,7 +61,7 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 ;; expected and currently loaded no. of kilobytes, for progress display
 ;; ----------------------------------------------------------------------------
 
-_kilobytes_loaded:
+kilobytes_loaded:
     .ds    1
 
 ;; ============================================================================
@@ -266,7 +266,7 @@ s_header_not_128k:
     ;; a chunk is expected next
     ;; ------------------------------------------------------------------------
 
-    ld   ix, #_s_chunk_header
+    ld   ix, #s_chunk_header
 
 s_header_set_state:
 
@@ -292,12 +292,12 @@ s_header_set_state:
 
     .area _STAGE2
 
-_s_chunk_header:
+s_chunk_header:
 
     call load_byte_from_packet
     ld   c, a
 
-    ld   ix, #_s_chunk_header2
+    ld   ix, #s_chunk_header2
 
     ret
 
@@ -310,12 +310,12 @@ _s_chunk_header:
 
     .area _STAGE2
 
-_s_chunk_header2:
+s_chunk_header2:
 
     call load_byte_from_packet
     ld   b, a
 
-    ld   ix, #_s_chunk_header3
+    ld   ix, #s_chunk_header3
 
     ret
 
@@ -332,7 +332,7 @@ _s_chunk_header2:
 
     .area _STAGE2
 
-_s_chunk_header3:
+s_chunk_header3:
 
     ;; use DE for scratch here: it will get its proper value below
 
@@ -467,12 +467,12 @@ set_state_uncompressed:
 
     .area _STAGE2
 
-_s_chunk_repcount:
+s_chunk_repcount:
 
     call load_byte_from_chunk
 
     ld   (_repcount), a
-    ld   ix, #_s_chunk_repvalue
+    ld   ix, #s_chunk_repvalue
 
     ret
 
@@ -483,7 +483,7 @@ _s_chunk_repcount:
 
     .area _STAGE2
 
-_s_chunk_repvalue:
+s_chunk_repvalue:
 
     call load_byte_from_chunk
     ld   i, a
@@ -580,7 +580,7 @@ do_repetition:
   ;; -------------------------------------------------------------------------
 
 chunk_done:
-  ld   ix, #_s_chunk_header
+  ld   ix, #s_chunk_header
   ret
 
   ;; -------------------------------------------------------------------------
@@ -588,7 +588,7 @@ chunk_done:
   ;; -------------------------------------------------------------------------
 
 chunk_escape:
-  ld   ix, #_s_chunk_compressed_escape
+  ld   ix, #s_chunk_compressed_escape
   ret
 
 
@@ -598,11 +598,11 @@ chunk_escape:
 
     .area _STAGE2
 
-_s_chunk_compressed_escape:
+s_chunk_compressed_escape:
 
     call  load_byte_from_chunk
 
-    ld    ix, #_s_chunk_repcount        ;; tentative next state
+    ld    ix, #s_chunk_repcount        ;; tentative next state
 
     cp    a, #Z80_ESCAPE
     ret   z
@@ -612,7 +612,7 @@ _s_chunk_compressed_escape:
     ;;              so this is not an escape sequence
     ;;
 
-    ex    af, af'            ;; '
+    ex    af, af'
 
     ld    a, #Z80_ESCAPE
     ld    (de), a
@@ -620,7 +620,7 @@ _s_chunk_compressed_escape:
 
     call  update_progress
 
-    ex    af, af'            ;; '
+    ex    af, af'
 
     ld    (de), a
     inc   de
@@ -701,7 +701,7 @@ not_10k:
     ;; update progress bar
     ;; ************************************************************************
 
-    ld    hl, #_kilobytes_loaded
+    ld    hl, #kilobytes_loaded
     inc   (hl)
     ld    a, (hl)
 

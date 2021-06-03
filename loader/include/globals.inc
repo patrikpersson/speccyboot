@@ -72,7 +72,6 @@ _snapshot_header = 0x7f00             ;; snapshot header, temporary storage
 ;; ----------------------------------------------------------------------------
 
     .globl _rx_frame
-    .globl _kilobytes_loaded
     .globl _tftp_client_port
     .globl _tftp_write_pos
     .globl _ip_config
