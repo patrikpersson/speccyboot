@@ -43,7 +43,6 @@
     .include "spi.inc"
     .include "tftp.inc"
     .include "udp_ip.inc"
-    .include "ui.inc"
     .include "util.inc"
 
 ;; ============================================================================

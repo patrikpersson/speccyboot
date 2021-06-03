@@ -13,6 +13,5 @@ obj/menu.rel
 obj/spi.rel
 obj/tftp.rel
 obj/udp_ip.rel
-obj/ui.rel
 obj/util.rel
 obj/z80_loader.rel

@@ -38,9 +38,9 @@
     .include "context_switch.inc"
     .include "eth.inc"
     .include "globals.inc"
+    .include "spi.inc"
     .include "tftp.inc"
     .include "udp_ip.inc"
-    .include "ui.inc"
     .include "util.inc"
     .include "z80_loader.inc"
 
@@ -55,6 +55,25 @@ KEY_DOWN      = '6'
 ;; position for loader version (one lower-case letter)
 
 VRAM_LOADER_VERSION = BITMAP_BASE + 14   ;; (0, 14)
+
+;; ============================================================================
+;; Repeat time-outs: between the keypress and the first repetition, and for
+;; any subsequent repetitions
+;;
+;; (measured in double-ticks of 20ms)
+;; ============================================================================
+
+REPEAT_FIRST_TIMEOUT = 40
+REPEAT_NEXT_TIMEOUT  = 10
+
+;; BASIC ROM1 entry points
+
+rom_key_scan         = 0x028E
+rom_keymap           = 0x0205
+
+;; opcode for runtime patching
+
+CP_A_N               = 0xfe
 
 ;; ============================================================================
 
@@ -318,7 +337,7 @@ redraw_menu_done:
     ;; handle user input
     ;; ========================================================================
 
-    call _wait_key
+    call wait_for_key
 
     pop  de
     pop  bc
@@ -326,7 +345,7 @@ redraw_menu_done:
     ld   a, #BLACK + (WHITE << 3) + BRIGHT    ;; erase highlight
     call menu_set_highlight
 
-    ld   a, l       ;; return value from _wait_key above
+    ld   a, l       ;; return value from wait_for_key above
 
     cp   a, #KEY_ENTER
     jr   z, menu_hit_enter
@@ -557,3 +576,119 @@ menu_highlight_loop:
 snapshots_lst_str:
     .ascii "snapshots.lst"
     .db  0
+
+;; ============================================================================
+
+    .area _NONRESIDENT
+
+
+;; ############################################################################
+;; wait_for_key
+;;
+;; wait for keypress. Handles repeat events.
+;; ############################################################################
+
+wait_for_key:
+
+    ;; ------------------------------------------------------------------------
+    ;; is any key being pressed?
+    ;; ------------------------------------------------------------------------
+
+    call scan_key
+    jr   z, wait_key_no_repetition
+
+    ;; ------------------------------------------------------------------------
+    ;; is the previous key still being pressed?
+    ;; ------------------------------------------------------------------------
+
+    ld   a, c
+
+    .db  CP_A_N
+previous_key:
+    .db  0                        ;; value patched at runtime
+
+    jr   nz, wait_key_no_repetition
+
+    ;; ------------------------------------------------------------------------
+    ;; yes, the previous key is still being pressed
+    ;; see if the same key remains pressed until the repetition timer expires
+    ;; ------------------------------------------------------------------------
+
+wait_key_repetition_loop:
+
+    halt                                ;; allow for an interrupt to occur
+
+    call scan_key
+    jr   z, wait_key_no_repetition      ;; key released?
+
+    ld   a, (previous_key)
+    cp   a, c
+    jr   nz, wait_key_no_repetition
+
+    ;; ------------------------------------------------------------------------
+    ;; decide on a timeout, depending on whether this is the first repetition
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (_timer_tick_count)
+
+    .db  CP_A_N
+wait_key_timeout:
+    .db  REPEAT_FIRST_TIMEOUT          ;; value patched at runtime
+
+    jr   c, wait_key_repetition_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; we have a repeat event, and this is no longer the first repetition
+    ;; ------------------------------------------------------------------------
+
+wait_key_repeat:
+    ld   a, #REPEAT_NEXT_TIMEOUT
+    jr   wait_key_finish
+
+    ;; ------------------------------------------------------------------------
+    ;; no repetition: instead wait for a key to become pressed
+    ;; ------------------------------------------------------------------------
+
+wait_key_no_repetition:
+
+    call scan_key
+    jr   z, wait_key_no_repetition
+
+    ld   a, c
+    ld   (previous_key), a
+    ld   a, #REPEAT_FIRST_TIMEOUT
+
+wait_key_finish:
+    ;; assume A holds value for is_first_repetition, and C holds result
+    ld   hl, #0
+    ld   (_timer_tick_count), hl
+    ld   (wait_key_timeout), a
+    ld   l, c
+    ret
+
+;; ############################################################################
+;; scan_key
+;;
+;; Return currently pressed key, if any, in register C.
+;; Z flag is set if no key is pressed, cleared if any key is set.
+;;
+;; Must run from RAM: pages in the BASIC ROM for keyboard scanning.
+;;
+;; Destroys HL, BC, DE, AF.
+;; ############################################################################
+
+scan_key:
+    di
+    ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT   ;; page out SpeccyBoot
+    out   (SPI_OUT), a
+    call  rom_key_scan                   ;; destroys AF, BC, DE, HL
+    ld    hl, #rom_keymap
+    ld    a, e
+    add   a, l
+    ld    l, a
+    ld    c, (hl)
+    ld    a, #SPI_IDLE+SPI_CS            ;; page in SpeccyBoot
+    out   (SPI_OUT), a
+    inc   e                              ;; set Z flag if no key pressed
+    ei
+    ret

@@ -37,7 +37,6 @@
     .include "spi.inc"
     .include "udp_ip.inc"
     .include "util.inc"
-    .include "ui.inc"
 
     .area _CODE
 

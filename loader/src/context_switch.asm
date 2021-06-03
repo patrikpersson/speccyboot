@@ -40,7 +40,6 @@
     .include "eth.inc"
     .include "globals.inc"
     .include "spi.inc"
-    .include "ui.inc"
     .include "util.inc"
 
 ;; ----------------------------------------------------------------------------

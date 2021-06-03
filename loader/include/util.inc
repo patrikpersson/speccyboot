@@ -1,6 +1,7 @@
 ;; Module util:
 ;;
-;; Various low-level useful stuff.
+;; Various low-level useful stuff, including access to
+;; ZX Spectrum display, keyboard, and sound.
 ;;
 ;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
@@ -75,6 +76,43 @@ LD_DE_NN           = 0x11      ;; LD DE, #nn
 LD_IX_NN           = 0x21DD    ;; LD IX, #nn
 LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 
+;; ----------------------------------------------------------------------------
+;; Spectrum attributes & VRAM addresses
+;; ----------------------------------------------------------------------------
+
+BLACK   = 0
+BLUE    = 1
+RED     = 2
+MAGENTA = 3
+GREEN   = 4
+CYAN    = 5
+YELLOW  = 6
+WHITE   = 7
+
+BRIGHT  = 0x40
+FLASH   = 0x80
+
+;; ----------------------------------------------------------------------------
+
+BITMAP_BASE = 0x4000
+ATTRS_BASE  = 0x5800
+ROW_LENGTH  = 32
+
+;; ----------------------------------------------------------------------------
+;; codes for fatal_error() displayed as border colours
+;; ----------------------------------------------------------------------------
+
+FATAL_INTERNAL_ERROR      = BLACK
+FATAL_VERSION_MISMATCH    = BLUE
+FATAL_NO_RESPONSE         = RED
+FATAL_NO_SNAPSHOTS        = GREEN
+FATAL_FILE_NOT_FOUND      = YELLOW
+FATAL_INCOMPATIBLE        = CYAN
+FATAL_INVALID_BOOT_SERVER = MAGENTA
+
+;; ----------------------------------------------------------------------------
+;; 16-bit word increased by 2 (!) every 20 milliseconds
+;; ----------------------------------------------------------------------------
 
     .globl _timer_tick_count
 

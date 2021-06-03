@@ -39,7 +39,6 @@
     .include "globals.inc"
     .include "spi.inc"
     .include "udp_ip.inc"
-    .include "ui.inc"
     .include "util.inc"
 
 ;; ============================================================================

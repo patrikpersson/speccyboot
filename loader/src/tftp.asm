@@ -38,7 +38,6 @@
     .include "eth.inc"
     .include "globals.inc"
     .include "udp_ip.inc"
-    .include "ui.inc"
     .include "util.inc"
 
 ;; ============================================================================
