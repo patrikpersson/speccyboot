@@ -198,16 +198,6 @@ bootp_receive:
     ld   bc, #8
     ldir
 
-    ;; ------------------------------------------------------------------------
-    ;; Broadcast the new IP address as a gratuitous ARP reply
-    ;; (https://datatracker.ietf.org/doc/html/rfc2002#section-4.6)
-    ;; ------------------------------------------------------------------------
-
-    ld   bc, #eth_local_address
-    ld   de, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    ld   hl, #eth_broadcast_address
-    call arp_reply
-
     ;; ========================================================================
     ;; Check SNAME field for a dotted-decimal IP address (four octets)
     ;; ========================================================================

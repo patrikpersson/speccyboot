@@ -97,28 +97,11 @@ arp_receive:
     rst  memory_compare
     ret  nz   ;; if the packet is not for the local IP address, return
 
-    ld   bc, #eth_sender_address   ;; return to sender MAC address
-    ld   de, #_rx_frame + ARP_OFFSET_SPA  ;; sender IP address, taken from SPA field in request
-    ld   h, b
-    ld   l, c
-
-    ;; FALL THROUGH to arp_reply
-
-
-;; ############################################################################
-;; arp_reply
-;; ############################################################################
-
-arp_reply:
-
-    push de
-    push bc
-
     ;; set A to a non-zero value (to indicate an ARP frame to eth_create)
-    ;; D is always non-zero here, as DE points to TPA (an IP address)
+    ;; D is always non-zero here, as DE points to RAM after memory_compare
 
     ld   a, d
-
+    ld   hl, #eth_sender_address
     call eth_create
 
     ;; ARP header
@@ -140,13 +123,12 @@ arp_reply:
 
     ;; THA
 
-    pop  hl
     ld   e, #ETH_ADDRESS_SIZE
-    rst  enc28j60_write_memory_small
+    call enc28j60_write_local_hwaddr
 
     ;; TPA
 
-    pop  hl
+    ld   hl, #_rx_frame + ARP_OFFSET_SPA  ;; sender IP address, taken from SPA field in request
     ld   e, #IPV4_ADDRESS_SIZE
     rst  enc28j60_write_memory_small
 

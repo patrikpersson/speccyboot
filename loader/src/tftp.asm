@@ -103,6 +103,8 @@ tftp_receive:
     ;; only accept DATA packets; anything else is a fatal error
     ;; ------------------------------------------------------------------------
 
+breakpoint::
+
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
     xor  a, a
     or   a, (hl)
@@ -264,7 +266,8 @@ tftp_receive_blk_nbr_and_port_ok:
     ld  de, (_tftp_write_pos)
 
     ld  a, b
-    or  a, c
+    or  a, c                                   ;; check if BC == 0
+    ld  a, b                                   ;; but keep A == B
     jr  z, tftp_zero_length_data               ;; stay clear of LDIR if BC == 0
 
     ldir
@@ -275,10 +278,9 @@ tftp_zero_length_data:
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
     ;; (BC above should be exactly 0x200 for all DATA packets except the last
-    ;; one, so we are done if B != 2 here)
+    ;; one, never larger; so we are done if A != 2 here)
     ;; ------------------------------------------------------------------------
 
-    ld  a, b
     cp  a, #2
     ret z
 
