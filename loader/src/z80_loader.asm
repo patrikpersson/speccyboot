@@ -70,10 +70,37 @@ kilobytes_loaded:
 ;; The Z80 snapshot state machine is implemented by one routine for each
 ;; state. The function returns whenever one of the following happens:
 ;;
-;; - all currently available data has been consumed (received_data_length == 0)
+;; - all currently available data has been consumed (HL == 0)
 ;; - a state transition is required
-;; - the write pointer has reached an integral number of kilobytes
-;;   (the outer loop then manages evacuation)
+;; - the DE write pointer has reached an integral number of kilobytes
+;; ----------------------------------------------------------------------------
+;;
+;; States:
+;;  
+;;                        HEADER                       (parse snapshot header)
+;;                           |
+;; (for v.1 snapshots) /-----+-----\ (for v.2+ snapshots)
+;;                     |           |
+;;                     |           v  
+;;                     |      CHUNK_HEADER <--\        (load low byte
+;;                     |           |          |         of chunk length)
+;;                     v           v          |
+;;                     |      CHUNK_HEADER2   |        (load high byte
+;;                     |           |          |         of chunk length)
+;;                     |           v          ^
+;;                     |      CHUNK_HEADER3   |        (load byte: page id)
+;;                     |           |          |
+;;                     \-----+-----/          |
+;;                           |                |
+;;                           v                |
+;;          /-------> CHUNK_WRITE_DATA --->---/        (write bytes to RAM)
+;;          |            |        ^
+;;          |            v        |
+;;          ^      CHUNK_COMPRESSED_ESCAPE             (handle ED ED
+;;          |                 |                         compressed sequences)
+;;          |                 v
+;;     CHUNK_REPVAL <-- CHUNK_REPCOUNT
+;;
 ;; ----------------------------------------------------------------------------
 
     .area _STAGE2
