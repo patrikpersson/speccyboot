@@ -140,12 +140,10 @@ tftp_receive_got_data:
     ld    hl, (_expected_tftp_block_no)
 
     ;; ------------------------------------------------------------------------
-    ;; keep server-side port number in BC, and received block number in DE & IX
+    ;; keep server-side port number in BC
     ;; ------------------------------------------------------------------------
 
     ld    bc, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
-    push  de
-    pop   ix
 
     ;; ------------------------------------------------------------------------
     ;; special case: if received and expected both are 1,
