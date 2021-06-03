@@ -313,15 +313,7 @@ redraw_menu_loop:
 
     exx
 
-    ld   l, a
-    ld   h, #0
-    add  hl, hl
-    ld   bc, #_rx_frame
-    add  hl, bc
-    ld   a, (hl)
-    inc  hl
-    ld   h, (hl)
-    ld   l, a  ;; HL now points to filename string
+    call get_filename_pointer
 
     inc  de    ;; skip first cell on each line
     call print_entry
@@ -430,16 +422,10 @@ menu_not_top:
 
 menu_hit_enter:
 
-    ld   h, #0
-    ld   l, c
-    add  hl, hl
-    ld   de, #_rx_frame
-    add  hl, de
-    ld   e, (hl)
-    inc  hl
-    ld   d, (hl)
+    ld   a, c
+    call get_filename_pointer
 
-    push de     ;; push arg for tftp_read_request below
+    push hl     ;; push arg for tftp_read_request below
 
     ;; ------------------------------------------------------------------------
     ;; prepare for receiving .z80 snapshot data
@@ -480,6 +466,27 @@ menu_hit_enter:
     ;; ------------------------------------------------------------------------
 
     jp   main_loop
+
+    ;; ========================================================================
+    ;; subroutine: get filename pointer for index in A (0..255), return
+    ;; pointer in HL
+    ;; ========================================================================
+
+    .area _CODE
+
+get_filename_pointer:
+    push  bc
+    ld   h, #0
+    ld   l, a
+    add  hl, hl
+    ld   bc, #_rx_frame
+    add  hl, bc
+    ld   a, (hl)
+    inc  hl
+    ld   h, (hl)
+    ld   l, a
+    pop   bc
+    ret
 
     ;; ========================================================================
     ;; subroutine: select snapshot matching keypress
