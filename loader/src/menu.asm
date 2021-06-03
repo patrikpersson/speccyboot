@@ -257,6 +257,11 @@ menu_second_time:
     ld   c, #0
     ld   d, c
 
+    ld   a, e
+    or   a, a
+    ld   a, #FATAL_NO_SNAPSHOTS
+    jp   z, fail
+
 menu_loop:
 
     ld   a, #WHITE + (BLUE << 3) + BRIGHT
