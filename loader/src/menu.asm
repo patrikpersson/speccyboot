@@ -199,6 +199,123 @@ menu_setup_find_next:
 
     ret
 
+    ;; ========================================================================
+    ;; subroutine: get filename pointer for index in A (0..255), return
+    ;; pointer in HL
+    ;; ========================================================================
+
+    .area _CODE
+
+get_filename_pointer:
+    push  bc
+    ld   h, #0
+    ld   l, a
+    add  hl, hl
+    ld   bc, #_rx_frame
+    add  hl, bc
+    ld   a, (hl)
+    inc  hl
+    ld   h, (hl)
+    ld   l, a
+    pop   bc
+    ret
+
+    ;; ========================================================================
+    ;; subroutine: select snapshot matching keypress
+    ;;
+    ;; On entry:
+    ;;   E: number of snapshots in list
+    ;;   A: pressed key (ASCII)
+    ;;
+    ;; On exit:
+    ;;   C: index of selected snapshot
+    ;;
+    ;; Destroys AF, B, HL; preserves DE.
+    ;; ========================================================================
+
+    .area _CODE
+
+find_snapshot_for_key:
+
+    ld   b, a
+    ld   c, #0  ;; result (selected index)
+
+    ld   hl, #_rx_frame
+find_snapshot_for_key_lp:
+
+    ld   a, c
+    inc  a
+    cp   a, e
+
+    ret  nc
+
+    push de
+
+    ld   e, (hl)
+    inc  hl
+    ld   d, (hl)
+    inc  hl
+    ld   a, (de)
+
+    pop  de
+
+    cp   a, #'a'
+    jr   c, not_lowercase_letter
+    and  a, #0xDF     ;; to upper case
+not_lowercase_letter:
+
+    cp   a, b
+    ret  nc
+
+    inc  c
+
+    jr   find_snapshot_for_key_lp
+
+
+    ;; ========================================================================
+    ;; subroutine: highlight current line to colour in register A
+    ;; ========================================================================
+
+    .area _CODE
+
+menu_set_highlight:
+
+    ;; ------------------------------------------------------------------------
+    ;; The VRAM attribute address is 0x5840 + 32 * (C - D). This is computed as
+    ;; 32 * (C - D + 0x2C2). The difference (C-D) is at most decimal 20, so the
+    ;; value (C - D + 0xC2) fits in a byte (at most 0xD6)
+    ;; ------------------------------------------------------------------------
+
+    push hl
+    push af
+    ld   h, #2           ;; high byte of 0x2C2
+    ld   a, c
+    sub  a, d
+    add  a, #0xC2
+    ld   l, a   ;; H is now zero
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    pop  af
+
+    ld   b, #32
+menu_highlight_loop:
+    ld   (hl), a
+    inc  hl
+    djnz menu_highlight_loop
+
+    pop hl
+
+    ret
+
+    .area _CODE
+
+snapshots_lst_str:
+    .ascii "snapshots.lst"
+    .db  0
+
 ;; ============================================================================
 
     .area _NONRESIDENT
@@ -466,123 +583,6 @@ menu_hit_enter:
     ;; ------------------------------------------------------------------------
 
     jp   main_loop
-
-    ;; ========================================================================
-    ;; subroutine: get filename pointer for index in A (0..255), return
-    ;; pointer in HL
-    ;; ========================================================================
-
-    .area _CODE
-
-get_filename_pointer:
-    push  bc
-    ld   h, #0
-    ld   l, a
-    add  hl, hl
-    ld   bc, #_rx_frame
-    add  hl, bc
-    ld   a, (hl)
-    inc  hl
-    ld   h, (hl)
-    ld   l, a
-    pop   bc
-    ret
-
-    ;; ========================================================================
-    ;; subroutine: select snapshot matching keypress
-    ;;
-    ;; On entry:
-    ;;   E: number of snapshots in list
-    ;;   A: pressed key (ASCII)
-    ;;
-    ;; On exit:
-    ;;   C: index of selected snapshot
-    ;;
-    ;; Destroys AF, B, HL; preserves DE.
-    ;; ========================================================================
-
-    .area _CODE
-
-find_snapshot_for_key:
-
-    ld   b, a
-    ld   c, #0  ;; result (selected index)
-
-    ld   hl, #_rx_frame
-find_snapshot_for_key_lp:
-
-    ld   a, c
-    inc  a
-    cp   a, e
-
-    ret  nc
-
-    push de
-
-    ld   e, (hl)
-    inc  hl
-    ld   d, (hl)
-    inc  hl
-    ld   a, (de)
-
-    pop  de
-
-    cp   a, #'a'
-    jr   c, not_lowercase_letter
-    and  a, #0xDF     ;; to upper case
-not_lowercase_letter:
-
-    cp   a, b
-    ret  nc
-
-    inc  c
-
-    jr   find_snapshot_for_key_lp
-
-
-    ;; ========================================================================
-    ;; subroutine: highlight current line to colour in register A
-    ;; ========================================================================
-
-    .area _CODE
-
-menu_set_highlight:
-
-    ;; ------------------------------------------------------------------------
-    ;; The VRAM attribute address is 0x5840 + 32 * (C - D). This is computed as
-    ;; 32 * (C - D + 0x2C2). The difference (C-D) is at most decimal 20, so the
-    ;; value (C - D + 0xC2) fits in a byte (at most 0xD6)
-    ;; ------------------------------------------------------------------------
-
-    push hl
-    push af
-    ld   h, #2           ;; high byte of 0x2C2
-    ld   a, c
-    sub  a, d
-    add  a, #0xC2
-    ld   l, a   ;; H is now zero
-    add  hl, hl
-    add  hl, hl
-    add  hl, hl
-    add  hl, hl
-    add  hl, hl
-    pop  af
-
-    ld   b, #32
-menu_highlight_loop:
-    ld   (hl), a
-    inc  hl
-    djnz menu_highlight_loop
-
-    pop hl
-
-    ret
-
-    .area _CODE
-
-snapshots_lst_str:
-    .ascii "snapshots.lst"
-    .db  0
 
 ;; ============================================================================
 
