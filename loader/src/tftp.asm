@@ -102,8 +102,6 @@ tftp_receive:
     ;; only accept DATA packets; anything else is a fatal error
     ;; ------------------------------------------------------------------------
 
-breakpoint::
-
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
     xor  a, a
     or   a, (hl)

@@ -88,7 +88,7 @@ CP_A_N               = 0xfe
 ;;
 ;; Returns with HL pointing to '.' or NUL,
 ;; and DE pointing to first cell on next line
-;; Destroys AF, BC
+;; Destroys AF, preserves BC.
 ;; ----------------------------------------------------------------------------
 
 print_entry:
@@ -201,7 +201,7 @@ menu_setup_find_next:
 
     ;; ========================================================================
     ;; subroutine: get filename pointer for index in A (0..255), return
-    ;; pointer in HL
+    ;; pointer in HL. Destroys AF, preserves BC and DE.
     ;; ========================================================================
 
     .area _CODE
@@ -410,32 +410,27 @@ menu_loop:
     push bc
     push de
 
-    ld   c, #0     ;; loop index
+    ld   c, d     ;; C=first index
+    ld   a, c
+    add  a, #DISPLAY_LINES
+    cp   a, e
+    jr   c, redraw_menu_limit
+    ld   a, e
+redraw_menu_limit:
+    ld   b, a     ;; B=last index + 1
 
-    exx
     ld   de, #0x4040      ;; (2,0)
-    exx
 
 redraw_menu_loop:
 
     ld   a, c
-    cp   a, #DISPLAY_LINES
+    cp   a, b
     jr   nc, redraw_menu_done
-
-    ;; break the loop if C + D >= E
-
-    add  a, d
-    cp   a, e
-    jr   nc, redraw_menu_done
-
-    exx
 
     call get_filename_pointer
 
     inc  de    ;; skip first cell on each line
     call print_entry
-
-    exx
 
     inc  c
     jr   redraw_menu_loop
@@ -584,16 +579,14 @@ menu_hit_enter:
 
     jp   main_loop
 
-;; ============================================================================
-
-    .area _NONRESIDENT
-
 
 ;; ############################################################################
 ;; wait_for_key
 ;;
 ;; wait for keypress. Handles repeat events.
 ;; ############################################################################
+
+    .area _NONRESIDENT
 
 wait_for_key:
 
@@ -683,6 +676,8 @@ wait_key_finish:
 ;;
 ;; Destroys HL, BC, DE, AF.
 ;; ############################################################################
+
+    .area _NONRESIDENT
 
 scan_key:
     di
