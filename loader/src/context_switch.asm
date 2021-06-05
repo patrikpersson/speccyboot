@@ -61,13 +61,7 @@ REG_R_ADJUSTMENT   = 0xEF
     .area _DATA
 
 context_128k_flag:   ;; zero means 48k, non-zero means 128k
-    .ds   1
-
-context_border:      ;; value for I/O 0xfe (border)
-    .ds   1
-
-context_registers:   ;; registers DE, BC', DE', HL', AF', IX, IY
-    .ds   14
+    .ds   2          ;; second byte is 128 memory configuration
 
 stored_snapshot_header:
     .ds   Z80_HEADER_RESIDENT_SIZE
@@ -89,8 +83,7 @@ prepare_context:
 
     ;; ========================================================================
     ;; copy some of the context data immediately
-    ;; (48k/128k flag, 128k memory + sound configuration, border colour,
-    ;; registers DE, alternate AF+BC+DE+HL, IX, IY)
+    ;; (48k/128k flag, 128k memory configuration)
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
@@ -121,43 +114,6 @@ prepare_context_48k:
     ld   hl, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
 prepare_context_set_bank:
     ld   (context_128k_flag), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; clean up MISC_FLAGS, turn it into a value ready for OUT (0xFE), A
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
-    ld   a, (hl)
-    rra
-    and  a, #0x07
-    ld   (context_border), a
-
-    ;; ------------------------------------------------------------------------
-    ;; copy DE, alternate BC+DE+HL
-    ;; ------------------------------------------------------------------------
-
-    inc  hl    ;; now points to Z80_HEADER_OFFSET_DE
-    ld   de, #context_registers
-    ld   bc, #2*4  ;; DE, alternate BC+DE+HL
-    ldir
-
-    ;; ------------------------------------------------------------------------
-    ;; swap A_P and F_P (to make simple POP in context switch possible)
-    ;; ------------------------------------------------------------------------
-
-    ld   c, #5    ;; B==0 here; need BC==4 after LDI, for LDIR below
-
-    ld   a, (hl)
-    inc  hl
-    ldi
-    ld   (de), a
-    inc  de
-
-    ;; ------------------------------------------------------------------------
-    ;; copy IX, IY
-    ;; ------------------------------------------------------------------------
-
-    ldir
 
     ;; ========================================================================
     ;; Prepare VRAM trampoline.
@@ -413,14 +369,14 @@ context_switch_snd_reg_loop:
 
 context_switch_48k_snapshot:
 
-    ld     hl, #context_border
-
     ;; ------------------------------------------------------------------------
     ;; Restore border
     ;; ------------------------------------------------------------------------
 
-    ld     a, (hl)
-    out    (ULA_PORT), a
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
+    rra
+    and  a, #0x07
+    out  (ULA_PORT), a
 
     ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
@@ -430,8 +386,9 @@ context_switch_48k_snapshot:
     ;; - IX & IY
     ;; ------------------------------------------------------------------------
 
-    inc    hl
+    ld     hl, #stored_snapshot_header + Z80_HEADER_OFFSET_DE
     ld     sp, hl
+
     pop    de
     exx
     pop    bc
@@ -439,8 +396,19 @@ context_switch_48k_snapshot:
     pop    hl
     exx
 
+    ;; the .z80 snapshot format has switched A and F around, so some
+    ;; trickery is required to restore AF'
+
+    ;; A goes first (loaded temporarily to C)
+    pop    bc
+
+    ;; then F
+    dec    sp
     pop    af
-    ex     af, af'               ;;'
+    dec    sp
+
+    ld     a, c
+    ex     af, af'
 
     pop     iy
     pop     ix
@@ -492,10 +460,13 @@ context_switch_restore_bits_loop:
     pop   af        ;; A gets wrong value here, but this is fixed in trampoline
 
     ;; ------------------------------------------------------------------------
-    ;; Restore SP & R
+    ;; Restore SP, I, R
     ;; ------------------------------------------------------------------------
 
     ld    sp, (VRAM_REGSTATE_SP)
+
+    ld    a, (VRAM_REGSTATE_I)
+    ld    i, a
 
     ld    a, (VRAM_REGSTATE_R)
     ld    r, a
