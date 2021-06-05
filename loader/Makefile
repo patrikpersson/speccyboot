@@ -39,11 +39,9 @@ OFILES       = init.rel $(ASMMODULES:%=%.rel)
 
 # ROM:       stage 1, binary file to be loaded into EEPROM (address 0x0000)
 # STAGE2BIN: stage 2, binary file to be loaded over TFTP by stage 1
-# METADATA:  metadata file, including load address for stage 2 binary
 
 ROM          = speccyboot.rom
 STAGE2BIN    = spboot.bin
-METADATA     = spboot.dat
 
 # -----------------------------------------------------------------------------
 
@@ -79,15 +77,14 @@ MAKEBINFLAGS = -p
 
 all: bin
 
-bin: $(ROM) $(STAGE2BIN) $(METADATA)
+bin: $(ROM) $(STAGE2BIN)
 
 clean:
 	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
 
-install: $(ROM) $(STAGE2BIN) $(METADATA) $(INSTALLDIR)
+install: $(ROM) $(STAGE2BIN) $(INSTALLDIR)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
 	install --mode=a+r $(STAGE2BIN) $(INSTALLDIR)
-	install --mode=a+r $(METADATA) $(INSTALLDIR)
 
 .SUFFIXES:
 
@@ -120,6 +117,3 @@ $(ROM): $(COMBINED)
 
 $(STAGE2BIN): $(COMBINED)
 	dd if=$< of=$@ bs=1 skip=${get_address}
-
-$(METADATA): $(COMBINED)
-	echo ADDR=${get_address} > $@

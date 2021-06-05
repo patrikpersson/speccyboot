@@ -137,67 +137,47 @@ menu_setup:
     ;; to NUL-terminated file names in rx_frame.
     ;; ========================================================================
 
-    ld   bc, #snapshot_list
-    ld   hl, #_rx_frame
+    xor  a, a
+    ld   e, a
+    exx
 
-    ld   e, #0
+    ld   b, a
+    ld   c, a                  ;; BC==0, don't limit CPIR below
+    ld   hl, #snapshot_list
+    ld   de, #_rx_frame
 
-    ;; ------------------------------------------------------------------------
-    ;; check if done:
-    ;; - found a NUL byte? (interpreted as end of file)
-    ;; - filled RX buffer with filename pointers? (max 255)
-    ;; ------------------------------------------------------------------------
+menu_setup_loop:
 
-menu_setup_loop1:
-
-    ld   a, (bc)
+    ld   a, (hl)        ;; double NUL means end of data
     or   a, a
+    exx
     ret  z
 
     ld   a, e
     inc  a
     ret  z
 
+    inc  e
+    exx
+
     ;; ------------------------------------------------------------------------
     ;; store a pointer to the current file name
     ;; ------------------------------------------------------------------------
 
-menu_setup_store_ptr:
-
-    ld   (hl), c
-    inc  hl
-    ld   (hl), b
-    inc  hl
-
-    inc  e
+    ld   a, l
+    ld   (de), a
+    inc  de
+    ld   a, h
+    ld   (de), a
+    inc  de
 
     ;; ------------------------------------------------------------------------
-    ;; ensure the current file name is NUL terminated, and advance HL to next
+    ;; advance HL to next
     ;; ------------------------------------------------------------------------
 
-menu_setup_loop2:
-    ld   a, (bc)
-    inc  bc
-    cp   a, #' '        ;; less than 32 means end of file name (CR/LF/NUL)
-    jr   nc, menu_setup_loop2
-
-    dec  bc
     xor  a, a
-    ld   (bc), a
-
-    ;; ------------------------------------------------------------------------
-    ;; skip any other trailing CR/LF stuff
-    ;; ------------------------------------------------------------------------
-
-menu_setup_find_next:
-    inc  bc
-    ld   a, (bc)
-    cp   a, #' '
-    jr   nc, menu_setup_loop1
-    or   a, a
-    jr   nz, menu_setup_find_next
-
-    ret
+    cpir
+    jr   menu_setup_loop
 
     ;; ========================================================================
     ;; subroutine: select snapshot matching keypress
@@ -250,12 +230,34 @@ not_lowercase_letter:
 
     jr   find_snapshot_for_key_lp
 
-
     .area _CODE
 
 snapshots_lst_str:
     .ascii "snapshots.lst"
     .db  0
+
+
+;; ############################################################################
+;; subroutine: get filename pointer for index in A (0..255), return
+;; pointer in HL. Destroys AF, preserves BC and DE.
+;; ############################################################################
+
+    .area _CODE
+
+get_filename_pointer:
+    push  bc
+    ld   h, #0
+    ld   l, a
+    add  hl, hl
+    ld   bc, #_rx_frame
+    add  hl, bc
+    ld   a, (hl)
+    inc  hl
+    ld   h, (hl)
+    ld   l, a
+    pop   bc
+    ret
+
 
 ;; ============================================================================
 
@@ -559,26 +561,6 @@ menu_highlight_loop:
 
     ret
 
-;; ############################################################################
-;; subroutine: get filename pointer for index in A (0..255), return
-;; pointer in HL. Destroys AF, preserves BC and DE.
-;; ############################################################################
-
-    .area _NONRESIDENT
-
-get_filename_pointer:
-    push  bc
-    ld   h, #0
-    ld   l, a
-    add  hl, hl
-    ld   bc, #_rx_frame
-    add  hl, bc
-    ld   a, (hl)
-    inc  hl
-    ld   h, (hl)
-    ld   l, a
-    pop   bc
-    ret
 
 ;; ############################################################################
 ;; wait_for_key

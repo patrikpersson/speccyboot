@@ -22,7 +22,7 @@ for DIR in ${TFTP_DIRS}; do
   if [ -d ${SPECCYBOOT} ]; then
     echo Updating SpeccyBoot index in ${SPECCYBOOT}
     cd ${SPECCYBOOT}
-    ls -1 *.z80 | sort --ignore-case > snapshots.lst
+    ls -1 *.z80 | sort --ignore-case | tr '\n' '\0' > snapshots.lst
     if [ -L spboot.bin ]; then
       echo '(Ignoring symlinked spboot.bin.)'
     elif [ ! -f spboot.bin ]; then
