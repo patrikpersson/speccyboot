@@ -219,7 +219,7 @@ s_header:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ld   de, #_snapshot_header
+    ld   de, #stored_snapshot_header
 
     ;; BC is set to Z80_HEADER_RESIDENT_SIZE in z80_loader_receive_hook below
 
@@ -363,7 +363,7 @@ s_chunk_header3:
 
     ;; use DE for scratch here: it will get its proper value below
 
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
     ld   e, a
 
     call load_byte_from_packet

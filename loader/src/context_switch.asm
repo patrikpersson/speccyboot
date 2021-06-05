@@ -78,6 +78,13 @@ context_border:      ;; value for I/O 0xfe (border)
 context_registers:   ;; registers DE, BC', DE', HL', AF', IX, IY
     .ds   14
 
+;; ----------------------------------------------------------------------------
+;; Snapshot header
+;; ----------------------------------------------------------------------------
+
+stored_snapshot_header:
+    .ds   Z80_HEADER_RESIDENT_SIZE
+
 ;; ============================================================================
 
     .area _NONRESIDENT
@@ -104,7 +111,7 @@ prepare_context:
     ;; check snapshot version (is PC == 0?)
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_PC)
     ld   a, h
     or   a, l      ;; extended snapshot (version 2+) ?
     jr   nz, prepare_context_48k     ;; non-zero PC means version 1, always 48k
@@ -114,7 +121,7 @@ prepare_context:
     ;; load HW_TYPE into L, and memory config into H
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
 
     ;; ------------------------------------------------------------------------
     ;; Check HW_TYPE: only use 128k memory config from snapshot if this is
@@ -134,12 +141,12 @@ prepare_context_set_bank:
     ;; but then it will not be used in the actual context switch)
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
     ld   de, #context_snd_regs
     ld   bc, #16               ;; 16 sound registers
     ldir
 
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
     ld   (de), a
     inc  de                    ;; DE now points to context_border
 
@@ -147,7 +154,7 @@ prepare_context_set_bank:
     ;; clean up MISC_FLAGS, turn it into a value ready for OUT (0xFE), A
     ;; ------------------------------------------------------------------------
 
-    ld   l, #<_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
     ld   a, (hl)
     rra
     and  a, #0x07
@@ -266,7 +273,7 @@ write_trampoline_loop:
     ;; write LD A, x to trampoline  (value to be stored in I)
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_I - 1)
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_I - 1)
     ld   l, #LD_A_N                  ;; LD A, n
     ld   (VRAM_TRAMPOLINE_LD_A_FOR_I), hl
 
@@ -274,7 +281,7 @@ write_trampoline_loop:
     ;; write LD A, x to trampoline  (actual value for A)
     ;; ------------------------------------------------------------------------
 
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_A)
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_A)
     ld   h, a
     ld   (VRAM_TRAMPOLINE_LD_A), hl
 
@@ -294,7 +301,7 @@ write_trampoline_loop:
     dec  h
     ld   (hl), #0xED                        ;; *0x04400 = first byte of IMx
     inc  l
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
     ld   b, #0x46                           ;; second byte of IM0
     and  a, #3
     jr   z, im_set
@@ -310,7 +317,7 @@ im_set:
     ;; ------------------------------------------------------------------------
 
     inc  h                                  ;; now back at 0x4501
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_IFF1)
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
     jr   z, evacuate_di     ;; flag byte is zero, which also happens to be NOP
     ld   a, #0xFB           ;; EI
@@ -321,33 +328,33 @@ evacuate_di:
     ;; write register state to VRAM trampoline area
     ;; ------------------------------------------------------------------------
 
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_R)
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_R)
     add  a, #REG_R_ADJUSTMENT
     and  a, #0x7f
     ld   b, a
-    ld   a, (_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #0x01
     rrca
     or   a, b
     ld   (VRAM_REGSTATE_R), a
 
-    ld   hl, #_snapshot_header + Z80_HEADER_OFFSET_F
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_F
     ld   de, #VRAM_REGSTATE_F
     ld   bc, #5                  ;; F + BC + HL
     ldi
 
-    ;; HL now points to _snapshot_header + Z80_HEADER_OFFSET_BC_HL
+    ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_BC_HL
     ld   de, #VRAM_REGSTATE_BC_HL_F
     ldir
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_SP)
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_SP)
     ld   (VRAM_REGSTATE_SP), hl
 
     ;; ========================================================================
     ;; set PC value in VRAM trampoline
     ;; ========================================================================
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_PC)
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_PC)
     ld   a, h
     or   a, l      ;; extended snapshot (version 2+) ?
     jr   nz, evacuate_pc
@@ -356,7 +363,7 @@ evacuate_di:
     ;; snapshot version 2+: use PC value from extended snapshot header,
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_snapshot_header + Z80_HEADER_OFFSET_EXT_PC)
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_EXT_PC)
 
 evacuate_pc:
     ld   (VRAM_REGSTATE_PC), hl
