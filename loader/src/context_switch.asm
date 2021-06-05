@@ -177,7 +177,7 @@ evac_colour_set:
     ;; ------------------------------------------------------------------------
 
     ld   h, #0x40
-    ld   b, #6
+    ld   b, #4
 write_trampoline_loop:
       ld   l, #2
       ld   (hl), #JP_UNCONDITIONAL        ;; JP nn
@@ -197,27 +197,12 @@ write_trampoline_loop:
     ld   (VRAM_TRAMPOLINE_OUT), hl
 
     ;; ------------------------------------------------------------------------
-    ;; write LD A, x to trampoline  (value to be stored in I)
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_I - 1)
-    ld   l, #LD_A_N                  ;; LD A, n
-    ld   (VRAM_TRAMPOLINE_LD_A_FOR_I), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; write LD A, x to trampoline  (actual value for A)
+    ;; write LD A, x to trampoline
     ;; ------------------------------------------------------------------------
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_A)
     ld   h, a
     ld   (VRAM_TRAMPOLINE_LD_A), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; write LD I, A to trampoline
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #LD_I_A
-    ld   (VRAM_TRAMPOLINE_LD_I), hl
 
     ;; ------------------------------------------------------------------------
     ;; write NOP and IM0/IM1/IM2 to trampoline

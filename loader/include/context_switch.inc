@@ -72,18 +72,12 @@
 ;;    out (0x9f), a
 ;;    jp  0x4100
 ;; 0x4100:
-;;    ld  a, #N      (value to be set for I below)
+;;    ld  a, #N
 ;;    jp  0x4200
 ;; 0x4200:
-;;    ld  i, a
+;;    im0/im1/im2   (depending on snapshot interrupt mode)
 ;;    jp  0x4300
 ;; 0x4300:
-;;    ld  a, #N
-;;    jp  0x4400
-;; 0x4400:
-;;    im0/im1/im2   (depending on snapshot interrupt mode)
-;;    jp  0x4500
-;; 0x4500:
 ;;    nop           (for symmetry of JPs)
 ;;    ei / nop      (depending on whether interrupts are to be enabled)
 ;;    jp  NN
@@ -94,13 +88,11 @@
 
 VRAM_TRAMPOLINE_START       = 0x4000
 VRAM_TRAMPOLINE_OUT         = VRAM_TRAMPOLINE_START
-VRAM_TRAMPOLINE_LD_A_FOR_I  = 0x4100
-VRAM_TRAMPOLINE_LD_I        = 0x4200
-VRAM_TRAMPOLINE_LD_A        = 0x4300
-VRAM_TRAMPOLINE_IM          = 0x4400
-VRAM_TRAMPOLINE_NOP         = 0x4500
-VRAM_TRAMPOLINE_EI_OR_NOP   = 0x4501
-VRAM_TRAMPOLINE_JP_FINAL    = 0x4502
+VRAM_TRAMPOLINE_LD_A        = 0x4100
+VRAM_TRAMPOLINE_IM          = 0x4200
+VRAM_TRAMPOLINE_NOP         = 0x4300
+VRAM_TRAMPOLINE_EI_OR_NOP   = 0x4301
+VRAM_TRAMPOLINE_JP_FINAL    = 0x4302
 
 ;; ----------------------------------------------------------------------------
 ;; Register state, stored in VRAM along with the trampoline
