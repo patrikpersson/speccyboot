@@ -54,7 +54,7 @@
 ;; - Set REG_R_ADJUSTMENT := (E - N)
 ;; ----------------------------------------------------------------------------
 
-REG_R_ADJUSTMENT   = 0xEF
+REG_R_ADJUSTMENT   = 0xF4
 
 ;; ============================================================================
 
@@ -202,6 +202,7 @@ write_trampoline_loop:
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_A)
     ld   h, a
+    ld   l, #LD_A_N
     ld   (VRAM_TRAMPOLINE_LD_A), hl
 
     ;; ------------------------------------------------------------------------
@@ -369,6 +370,7 @@ context_switch_48k_snapshot:
     ;; - DE
     ;; - alternate registers (BC, DE, HL, AF)
     ;; - IX & IY
+    ;; - I
     ;; ------------------------------------------------------------------------
 
     ld     hl, #stored_snapshot_header + Z80_HEADER_OFFSET_DE
@@ -397,6 +399,9 @@ context_switch_48k_snapshot:
 
     pop     iy
     pop     ix
+
+    ld    a, (stored_snapshot_header + Z80_HEADER_OFFSET_I)
+    ld    i, a
 
     ;; ========================================================================
     ;; restore application data temporarily stored in ENC28J60 RAM
@@ -449,9 +454,6 @@ context_switch_restore_bits_loop:
     ;; ------------------------------------------------------------------------
 
     ld    sp, (VRAM_REGSTATE_SP)
-
-    ld    a, (VRAM_REGSTATE_I)
-    ld    i, a
 
     ld    a, (VRAM_REGSTATE_R)
     ld    r, a
