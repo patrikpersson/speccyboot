@@ -34,7 +34,6 @@
 
     .include "bootp.inc"
 
-    .include "arp.inc"
     .include "enc28j60.inc"
     .include "eth.inc"
     .include "globals.inc"
