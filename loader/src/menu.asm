@@ -251,44 +251,6 @@ not_lowercase_letter:
     jr   find_snapshot_for_key_lp
 
 
-    ;; ========================================================================
-    ;; subroutine: highlight current line to colour in register A
-    ;; ========================================================================
-
-    .area _CODE
-
-menu_set_highlight:
-
-    ;; ------------------------------------------------------------------------
-    ;; The VRAM attribute address is 0x5840 + 32 * (C - D). This is computed as
-    ;; 32 * (C - D + 0x2C2). The difference (C-D) is at most decimal 20, so the
-    ;; value (C - D + 0xC2) fits in a byte (at most 0xD6)
-    ;; ------------------------------------------------------------------------
-
-    push hl
-    push af
-    ld   h, #2           ;; high byte of 0x2C2
-    ld   a, c
-    sub  a, d
-    add  a, #0xC2
-    ld   l, a   ;; H is now zero
-    add  hl, hl
-    add  hl, hl
-    add  hl, hl
-    add  hl, hl
-    add  hl, hl
-    pop  af
-
-    ld   b, #32
-menu_highlight_loop:
-    ld   (hl), a
-    inc  hl
-    djnz menu_highlight_loop
-
-    pop hl
-
-    ret
-
     .area _CODE
 
 snapshots_lst_str:
@@ -558,6 +520,44 @@ menu_hit_enter:
 
     jp   main_loop
 
+
+;; ############################################################################
+;; subroutine: highlight current line to colour in register A
+;; ############################################################################
+
+    .area _NONRESIDENT
+
+menu_set_highlight:
+
+    ;; ------------------------------------------------------------------------
+    ;; The VRAM attribute address is 0x5840 + 32 * (C - D). This is computed as
+    ;; 32 * (C - D + 0x2C2). The difference (C-D) is at most decimal 20, so the
+    ;; value (C - D + 0xC2) fits in a byte (at most 0xD6)
+    ;; ------------------------------------------------------------------------
+
+    push hl
+    push af
+    ld   h, #2           ;; high byte of 0x2C2
+    ld   a, c
+    sub  a, d
+    add  a, #0xC2
+    ld   l, a   ;; H is now zero
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    pop  af
+
+    ld   b, #32
+menu_highlight_loop:
+    ld   (hl), a
+    inc  hl
+    djnz menu_highlight_loop
+
+    pop hl
+
+    ret
 
 ;; ############################################################################
 ;; subroutine: get filename pointer for index in A (0..255), return

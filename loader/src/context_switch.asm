@@ -54,7 +54,7 @@
 ;; - Set REG_R_ADJUSTMENT := (E - N)
 ;; ----------------------------------------------------------------------------
 
-REG_R_ADJUSTMENT   = 0xF4
+REG_R_ADJUSTMENT   = 0xF7
 
 ;; ============================================================================
 
@@ -177,7 +177,7 @@ evac_colour_set:
     ;; ------------------------------------------------------------------------
 
     ld   h, #0x40
-    ld   b, #4
+    ld   b, #3
 write_trampoline_loop:
       ld   l, #2
       ld   (hl), #JP_UNCONDITIONAL        ;; JP nn
@@ -206,34 +206,16 @@ write_trampoline_loop:
     ld   (VRAM_TRAMPOLINE_LD_A), hl
 
     ;; ------------------------------------------------------------------------
-    ;; write NOP and IM0/IM1/IM2 to trampoline
+    ;; write NOP and either EI or NOP, depending on IFF1 state in snapshot
     ;; ------------------------------------------------------------------------
 
     ld   hl, #VRAM_TRAMPOLINE_NOP
-    ld   (hl), l                            ;; *0x4500 = NOP
-    dec  h
-    ld   (hl), #0xED                        ;; *0x04400 = first byte of IMx
-    inc  l
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
-    ld   b, #0x46                           ;; second byte of IM0
-    and  a, #3
-    jr   z, im_set
-    ld   b, #0x56                           ;; second byte of IM1
-    dec  a
-    jr   z, im_set
-    ld   b, #0x5E                           ;; second byte of IM2
-im_set:
-    ld   (hl), b
-
-    ;; ------------------------------------------------------------------------
-    ;; write EI or NOP to trampoline, depending on IFF1 state in snapshot
-    ;; ------------------------------------------------------------------------
-
-    inc  h                                  ;; now back at 0x4501
+    ld   (hl), l                            ;; *0x4200 = NOP
+    inc  l                                  ;; 0x4201
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
     jr   z, evacuate_di     ;; flag byte is zero, which also happens to be NOP
-    ld   a, #0xFB           ;; EI
+    ld   a, #EI
 evacuate_di:
     ld   (hl), a
 
@@ -363,6 +345,20 @@ context_switch_48k_snapshot:
     rra
     and  a, #0x07
     out  (ULA_PORT), a
+
+    ;; ------------------------------------------------------------------------
+    ;; Restore interrupt mode
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
+    im   0
+    and  a, #3
+    jr   z, context_switch_im_set
+    im   1
+    dec  a
+    jr   z, context_switch_im_set
+    im   2
+context_switch_im_set:
 
     ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
