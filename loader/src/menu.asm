@@ -200,27 +200,6 @@ menu_setup_find_next:
     ret
 
     ;; ========================================================================
-    ;; subroutine: get filename pointer for index in A (0..255), return
-    ;; pointer in HL. Destroys AF, preserves BC and DE.
-    ;; ========================================================================
-
-    .area _CODE
-
-get_filename_pointer:
-    push  bc
-    ld   h, #0
-    ld   l, a
-    add  hl, hl
-    ld   bc, #_rx_frame
-    add  hl, bc
-    ld   a, (hl)
-    inc  hl
-    ld   h, (hl)
-    ld   l, a
-    pop   bc
-    ret
-
-    ;; ========================================================================
     ;; subroutine: select snapshot matching keypress
     ;;
     ;; On entry:
@@ -579,6 +558,27 @@ menu_hit_enter:
 
     jp   main_loop
 
+
+;; ############################################################################
+;; subroutine: get filename pointer for index in A (0..255), return
+;; pointer in HL. Destroys AF, preserves BC and DE.
+;; ############################################################################
+
+    .area _NONRESIDENT
+
+get_filename_pointer:
+    push  bc
+    ld   h, #0
+    ld   l, a
+    add  hl, hl
+    ld   bc, #_rx_frame
+    add  hl, bc
+    ld   a, (hl)
+    inc  hl
+    ld   h, (hl)
+    ld   l, a
+    pop   bc
+    ret
 
 ;; ############################################################################
 ;; wait_for_key

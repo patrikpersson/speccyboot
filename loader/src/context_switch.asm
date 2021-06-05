@@ -63,35 +63,21 @@ REG_R_ADJUSTMENT   = 0xEF
 context_128k_flag:   ;; zero means 48k, non-zero means 128k
     .ds   1
 
-context_7ffd:        ;; 128k memory config (I/O 0x7ffd)
-    .ds   1
-
-context_snd_regs:    ;; 16 bytes of sound register values (128k snapshots only)
-    .ds   16
-
-context_fffd:        ;; value for I/O 0xfffd  (sound register select)
-    .ds   1
-
 context_border:      ;; value for I/O 0xfe (border)
     .ds   1
 
 context_registers:   ;; registers DE, BC', DE', HL', AF', IX, IY
     .ds   14
 
-;; ----------------------------------------------------------------------------
-;; Snapshot header
-;; ----------------------------------------------------------------------------
-
 stored_snapshot_header:
     .ds   Z80_HEADER_RESIDENT_SIZE
 
-;; ============================================================================
-
-    .area _NONRESIDENT
 
 ;; ############################################################################
 ;; prepare_context
 ;; ############################################################################
+
+    .area _NONRESIDENT
 
 prepare_context:
 
@@ -137,20 +123,6 @@ prepare_context_set_bank:
     ld   (context_128k_flag), hl
 
     ;; ------------------------------------------------------------------------
-    ;; copy sound register data (may be invalid for a 48k snapshot,
-    ;; but then it will not be used in the actual context switch)
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
-    ld   de, #context_snd_regs
-    ld   bc, #16               ;; 16 sound registers
-    ldir
-
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
-    ld   (de), a
-    inc  de                    ;; DE now points to context_border
-
-    ;; ------------------------------------------------------------------------
     ;; clean up MISC_FLAGS, turn it into a value ready for OUT (0xFE), A
     ;; ------------------------------------------------------------------------
 
@@ -158,8 +130,7 @@ prepare_context_set_bank:
     ld   a, (hl)
     rra
     and  a, #0x07
-    ld   (de), a
-    inc  de
+    ld   (context_border), a
 
     ;; ------------------------------------------------------------------------
     ;; copy DE, alternate BC+DE+HL
@@ -423,7 +394,7 @@ context_switch:
     ;; ------------------------------------------------------------------------
 
     ld   de, #16   ;; D := 0; E := 16
-    ld   hl, #context_snd_regs
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
 context_switch_snd_reg_loop:
     ld   b, #>SND_REG_SELECT
     out  (c), d
@@ -435,6 +406,7 @@ context_switch_snd_reg_loop:
     dec  e
     jr   nz, context_switch_snd_reg_loop
 
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
     ld   b, #>SND_REG_SELECT
     ld   a, (hl)
     out  (c), a
