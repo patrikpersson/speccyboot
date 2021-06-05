@@ -70,6 +70,9 @@ _retransmission_timeout:
 _end_of_critical_frame:
     .ds 2                   ;; written to ETXND for re-transmission
 
+_rx_frame:
+    .ds   RX_FRAME_SIZE
+
 ;; ============================================================================
 
     .area _CODE

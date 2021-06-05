@@ -8,7 +8,6 @@ obj/arp.rel
 obj/bootp.rel
 obj/context_switch.rel
 obj/enc28j60.rel
-obj/globals.rel
 obj/menu.rel
 obj/spi.rel
 obj/tftp.rel

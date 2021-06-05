@@ -42,6 +42,19 @@
     .include "tftp.inc"
     .include "util.inc"
 
+;; ============================================================================
+
+    .area _DATA
+
+_ip_config:
+    .ds    4 * 2
+
+_header_template:
+    .ds   IPV4_HEADER_SIZE + UDP_HEADER_SIZE
+
+_ip_checksum:
+    .ds   2
+
     .area _CODE
 
 ;; ############################################################################

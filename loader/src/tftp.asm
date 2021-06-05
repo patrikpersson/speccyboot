@@ -80,6 +80,22 @@ _expected_tftp_block_no:
 _server_port:
     .ds 2        ;; source port currently used by server
 
+_tftp_client_port:
+   .ds   2
+
+_tftp_write_pos:
+   .ds   2
+
+;; ----------------------------------------------------------------------------
+;; If non-NULL, this function is called for every received TFTP packet
+;; (instead of regular raw data file handling)
+;; ----------------------------------------------------------------------------
+
+_tftp_receive_hook:
+   .ds   2
+
+;; ============================================================================
+
     .area _CODE
 
 ;; ############################################################################

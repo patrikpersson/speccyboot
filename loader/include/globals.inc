@@ -70,12 +70,13 @@ _font_data  = 0xfd00                  ;; full font, but overwritten by snapshot
 _snapshot_header = 0x7f00             ;; snapshot header, temporary storage
 
 ;; ----------------------------------------------------------------------------
+;; Address of stage 2 loader
+;; ----------------------------------------------------------------------------
 
-    .globl _rx_frame
-    .globl _tftp_client_port
-    .globl _tftp_write_pos
-    .globl _ip_config
-    .globl _header_template
-    .globl _ip_checksum
-    .globl _snapshot_list
     .globl stage2_start
+
+;; ----------------------------------------------------------------------------
+;; Address of the snapshot list (first byte after stage 2 loader)
+;; ----------------------------------------------------------------------------
+
+    .globl snapshot_list

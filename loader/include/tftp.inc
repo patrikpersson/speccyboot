@@ -52,6 +52,18 @@ TFTP_VRAM_FILENAME_POS = 0x5000 + 5 * 32 + 16   ;; (21, 16)
 TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
 
 ;; ----------------------------------------------------------------------------
+;; UDP client-side port for UDP transfers (checked in udp_ip.asm)
+;; ----------------------------------------------------------------------------
+
+    .globl _tftp_client_port
+
+;; ----------------------------------------------------------------------------
+;; Position to write loaded TFTP data to (initialized in init.asm)
+;; ----------------------------------------------------------------------------
+
+    .globl _tftp_write_pos
+
+;; ----------------------------------------------------------------------------
 ;; RAM pointer to routine to call on TFTP data.
 ;; Initially zero (and unused), then set by stage 2 to a hook in z80_loader
 ;; to enable snapshot loading.

@@ -137,7 +137,7 @@ menu_setup:
     ;; to NUL-terminated file names in rx_frame.
     ;; ========================================================================
 
-    ld   bc, #_snapshot_list
+    ld   bc, #snapshot_list
     ld   hl, #_rx_frame
 
     ld   e, #0

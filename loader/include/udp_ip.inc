@@ -45,8 +45,6 @@ IPV4_HEADER_OFFSETOF_CHECKSUM           = 10
 IPV4_HEADER_OFFSETOF_SRC_ADDR           = 12
 IPV4_HEADER_OFFSETOF_DST_ADDR           = 16
 
-    .globl _ip_checksum
-
 ;; ----------------------------------------------------------------------------
 ;; UDP
 ;; ----------------------------------------------------------------------------
@@ -65,13 +63,34 @@ UDP_HEADER_OFFSETOF_LENGTH     = 4
 UDP_HEADER_OFFSETOF_CHECKSUM   = 6
 
 ;; ----------------------------------------------------------------------------
-;; IP configuration (host + server addresses)
+;; Cumulative IP checksum
+;; ----------------------------------------------------------------------------
+
+    .globl _ip_checksum
+
+;; ----------------------------------------------------------------------------
+;; Header template for outgoing UDP packets
+;; ----------------------------------------------------------------------------
+
+    .globl _header_template
+
+;; ----------------------------------------------------------------------------
+;; IP configuration (host + server addresses, 4 + 4 bytes)
 ;; ----------------------------------------------------------------------------
 
     .globl _ip_config
 
 IP_CONFIG_HOST_ADDRESS_OFFSET  = 0
 IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
+
+;; ----------------------------------------------------------------------------
+;; Header data for BOOTP
+;; ----------------------------------------------------------------------------
+
+    .globl bootrequest_header_data
+    .globl bootrequest_xid
+
+;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
 ;; Called by eth.c when an Ethernet frame holding an IP packet has been
@@ -98,11 +117,3 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 ;; ----------------------------------------------------------------------------
 
     .globl udp_reply
-
-
-;; ----------------------------------------------------------------------------
-;; Header data for BOOTP
-;; ----------------------------------------------------------------------------
-
-    .globl bootrequest_header_data
-    .globl bootrequest_xid

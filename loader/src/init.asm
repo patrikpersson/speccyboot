@@ -5,7 +5,7 @@
   ;; Part of SpeccyBoot <https://patrikpersson.github.io/speccyboot/>
   ;; --------------------------------------------------------------------------
   ;;
-  ;; Copyright (c) 2009-  Patrik Persson & Imrich Kolkol
+  ;; Copyright (c) 2009-  Patrik Persson & Imrich Konkol
   ;;
   ;; Permission is hereby granted, free of charge, to any person
   ;; obtaining a copy of this software and associated documentation
@@ -37,6 +37,7 @@
   .include "globals.inc"
   .include "menu.inc"
   .include "spi.inc"
+  .include "tftp.inc"
   .include "udp_ip.inc"
   .include "util.inc"
 
@@ -300,4 +301,4 @@ stage2_start:
 
   .area _SNAPSHOTLIST
 
-_snapshot_list:
+snapshot_list:

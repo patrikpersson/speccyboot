@@ -28,7 +28,7 @@ endif
 # COMPONENTS
 # =============================================================================
 
-ASMMODULES   = arp bootp context_switch eth enc28j60 globals
+ASMMODULES   = arp bootp context_switch eth enc28j60
 ASMMODULES  += menu spi tftp udp_ip util z80_loader
 
 # -----------------------------------------------------------------------------
