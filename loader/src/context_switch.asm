@@ -209,15 +209,15 @@ write_trampoline_loop:
     ;; write NOP and either EI or NOP, depending on IFF1 state in snapshot
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #VRAM_TRAMPOLINE_NOP
-    ld   (hl), l                            ;; *0x4200 = NOP
-    inc  l                                  ;; 0x4201
+    ld   h, b                  ;; B is zero after DJNZ above
+    ld   l, b                  ;; two NOP instructions
+
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
-    jr   z, evacuate_di     ;; flag byte is zero, which also happens to be NOP
-    ld   a, #EI
-evacuate_di:
-    ld   (hl), a
+    jr   z, evacuate_no_ei
+    ld   h, #EI
+evacuate_no_ei:
+    ld   (VRAM_TRAMPOLINE_NOP), hl
 
     ;; ------------------------------------------------------------------------
     ;; write register state to VRAM trampoline area
@@ -239,7 +239,7 @@ evacuate_di:
     ldi
 
     ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_BC_HL
-    ld   de, #VRAM_REGSTATE_BC_HL_F
+    ld   e, #<VRAM_REGSTATE_BC_HL_F
     ldir
 
     ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_SP)
