@@ -296,12 +296,19 @@ tftp_zero_length_data:
     ret z
 
     ;; ========================================================================
-    ;; This was the last packet, of either the stage 2 binary or snapshots.lst.
-    ;; NUL-terminate data, check version signature and run the stage 2 loader.
+    ;; This was the last packet, of either the stage 2 binary or snapshots.lst
     ;; ========================================================================
 
-    xor a, a
-    ld  (de), a                         ;; ensure loaded data is NUL-terminated
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'S' indicator: black ink, white paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
+
+    ;; ------------------------------------------------------------------------
+    ;; check version signature and run the stage 2 loader
+    ;; ------------------------------------------------------------------------
 
     ld  hl, (stage2_start)
     ld  a, l
@@ -331,7 +338,7 @@ tftp_receive_error:
     ;; ------------------------------------------------------------------------
 
 tftp_default_file:
-    .ascii 'spboot.bin'           ;; trailing NUL pinched from following packet
+    .ascii 'stage2'               ;; trailing NUL pinched from following packet
 tftp_receive_error_packet:
     .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
 tftp_receive_ack_opcode:
@@ -345,9 +352,6 @@ tftp_receive_ack_opcode:
 tftp_read_request:
 
     push hl
-
-    ld   de, #TFTP_VRAM_FILENAME_POS
-    call print_str
 
     ;; ------------------------------------------------------------------------
     ;; reset _expected_tftp_block_no to 1

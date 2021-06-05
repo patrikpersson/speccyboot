@@ -104,16 +104,6 @@ print_entry:
     inc  hl
     jr   print_entry
 
-;; ----------------------------------------------------------------------------
-;; pad_to_end_of_line:
-;;
-;; call with
-;; DE = VRAM address
-;;
-;; Fills the remaining cells on the line with spaces.
-;; On exit, DE points to the first cell on the next line.
-;; ----------------------------------------------------------------------------
-
 pad_to_end_of_line:
 
     ld   a, e
@@ -230,12 +220,6 @@ not_lowercase_letter:
 
     jr   find_snapshot_for_key_lp
 
-    .area _CODE
-
-snapshots_lst_str:
-    .ascii "snapshots.lst"
-    .db  0
-
 
 ;; ############################################################################
 ;; subroutine: get filename pointer for index in A (0..255), return
@@ -264,51 +248,6 @@ get_filename_pointer:
     .area _NONRESIDENT
 
 run_menu:
-
-    ;; ========================================================================
-    ;; This function will be called twice:
-    ;; once to load the snapshot list, and then again once that list is loaded.
-    ;; ========================================================================
-
-    ld   de, #TFTP_VRAM_FILENAME_POS
-    call pad_to_end_of_line
-
-    ;; ------------------------------------------------------------------------
-    ;; on first entry, this branch is patched to jump right upon
-    ;; second time
-    ;; ------------------------------------------------------------------------
-
-second_time_branch:
-    .db  JR_UNCONDITIONAL
-second_time_branch_offset:
-    .db  0
-
-    ld   a, #menu_second_time - second_time_branch - 2
-    ld   (second_time_branch_offset), a
-
-    ;; ========================================================================
-    ;; this is the first time the stage 2 loader was invoked:
-    ;; load the snapshot list
-    ;; ========================================================================
-
-    ld   hl, #snapshots_lst_str
-    call tftp_read_request
-
-    jp   main_loop
-
-menu_second_time:
-
-    ;; ========================================================================
-    ;; this is the second time the stage 2 loader was invoked:
-    ;; run the menu interface
-    ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
     ;; ------------------------------------------------------------------------
     ;; set up menu colours

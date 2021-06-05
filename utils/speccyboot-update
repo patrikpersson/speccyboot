@@ -2,8 +2,8 @@
 #
 # speccyboot-update.py
 #
-# Simple script to update the 'snapshots.lst' index file, used for serving
-# .z80 snapshots over TFTP to SpeccyBoot.
+# Simple script to update the 'stage2' second-stage loader,
+# used for serving .z80 snapshots over TFTP to SpeccyBoot.
 #
 # Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
 
@@ -22,20 +22,11 @@ for DIR in ${TFTP_DIRS}; do
   if [ -d ${SPECCYBOOT} ]; then
     echo Updating SpeccyBoot index in ${SPECCYBOOT}
     cd ${SPECCYBOOT}
-    ls -1 *.z80 | sort --ignore-case | tr '\n' '\0' > snapshots.lst
-    if [ -L spboot.bin ]; then
-      echo '(Ignoring symlinked spboot.bin.)'
-    elif [ ! -f spboot.bin ]; then
-      echo Copying spboot.bin to ${SPECCYBOOT}
-      cp ${STAGE2DIR}/spboot.bin .
-    elif cmp -s ${STAGE2DIR}/spboot.bin spboot.bin; then
-      echo '(Keeping existing spboot.bin.)'
-    else
-      echo ERROR:
-      echo "  " An spboot.bin file of a different version was found here:
-      echo "    " ${SPECCYBOOT}
-      echo "  " Remove or rename it and run this command again.
-      exit 1
-    fi
+    rm -f stage2
+    cp ${STAGE2DIR}/spboot.bin stage2
+    chmod u+w stage2
+    ls -1 *.z80 | sort --ignore-case | tr '\n' '\0' >> stage2
+    printf '\0' >> stage2
+    chmod a-wx stage2
   fi
 done

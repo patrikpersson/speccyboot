@@ -45,10 +45,9 @@ TFTP_DATA_MAXSIZE    = 512
 TFTP_HEADER_SIZE     = 4
 
 ;; ----------------------------------------------------------------------------
-;; Position on screen for TFTP filename display
+;; Position on screen for TFTP error display
 ;; ----------------------------------------------------------------------------
 
-TFTP_VRAM_FILENAME_POS = 0x5000 + 5 * 32 + 16   ;; (21, 16)
 TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
 
 ;; ----------------------------------------------------------------------------
@@ -76,7 +75,7 @@ TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
     .globl _tftp_receive_hook
 
 ;; ----------------------------------------------------------------------------
-;; NUL-terminated default filename for stage 2 loader ('spboot.bin')
+;; NUL-terminated default filename for stage 2 loader ('stage2')
 ;; ----------------------------------------------------------------------------
 
     .globl tftp_default_file

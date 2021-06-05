@@ -278,7 +278,7 @@ bootp_receive_sname_done:
 
     ;; ------------------------------------------------------------------------
     ;; Send TFTP read request for filename in FILE field, or, if none given,
-    ;; use the default 'spboot.bin'
+    ;; use the default 'stage2'
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
