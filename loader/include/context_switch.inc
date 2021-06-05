@@ -79,7 +79,7 @@
 ;;    ei / nop      (depending on whether interrupts are to be enabled)
 ;;    jp  NN
 ;;
-;; (state for registers BC, DE, HL, SP, F, R follow
+;; (state for registers BC, HL, F, SP, R follow
 ;; in the remaining scan lines of this 5-cell trampoline)
 ;; ----------------------------------------------------------------------------
 
@@ -98,11 +98,11 @@ VRAM_REGSTATE_PC            = VRAM_TRAMPOLINE_JP_FINAL + 1
 
 VRAM_REGSTATE_A             = VRAM_TRAMPOLINE_LD_A + 1
 
-VRAM_REGSTATE_BC_HL_F       = 0x4600
-VRAM_REGSTATE_F             = 0x4604
+VRAM_REGSTATE_BC_HL_F       = 0x4300
+VRAM_REGSTATE_F             = 0x4304
 
-VRAM_REGSTATE_SP            = 0x4700
-VRAM_REGSTATE_R             = 0x4702
+VRAM_REGSTATE_SP            = 0x4400
+VRAM_REGSTATE_R             = 0x4402
 
 ;; ----------------------------------------------------------------------------
 ;; Runtime data (the stuff to evacuate). Note that the z80_loader code

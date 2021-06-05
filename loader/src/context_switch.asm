@@ -338,15 +338,6 @@ context_switch_snd_reg_loop:
 context_switch_48k_snapshot:
 
     ;; ------------------------------------------------------------------------
-    ;; Restore border
-    ;; ------------------------------------------------------------------------
-
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
-    rra
-    and  a, #0x07
-    out  (ULA_PORT), a
-
-    ;; ------------------------------------------------------------------------
     ;; Restore interrupt mode
     ;; ------------------------------------------------------------------------
 
@@ -361,6 +352,16 @@ context_switch_48k_snapshot:
 context_switch_im_set:
 
     ;; ------------------------------------------------------------------------
+    ;; Restore border
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+    ld   a, (hl)
+    rra
+    and  a, #0x07
+    out  (ULA_PORT), a
+
+    ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
     ;; so we can avoid using VRAM for them:
     ;; - DE
@@ -369,7 +370,7 @@ context_switch_im_set:
     ;; - I
     ;; ------------------------------------------------------------------------
 
-    ld     hl, #stored_snapshot_header + Z80_HEADER_OFFSET_DE
+    inc    hl              ;; stored_snapshot_header + Z80_HEADER_OFFSET_DE
     ld     sp, hl
 
     pop    de
@@ -393,26 +394,27 @@ context_switch_im_set:
     ld     a, c
     ex     af, af'
 
-    pop     iy
-    pop     ix
+    pop    iy
+    pop    ix
 
     ld    a, (stored_snapshot_header + Z80_HEADER_OFFSET_I)
     ld    i, a
 
     ;; ========================================================================
     ;; restore application data temporarily stored in ENC28J60 RAM
+    ;; (while not using the stack)
     ;; ========================================================================
 
     ld     bc, #0x0800 + OPCODE_RBM        ;; 8 bits, opcode RBM
 context_switch_restore_rbm_loop:
-    spi_write_bit_from_c
+    spi_write_bit_from_c                   ;; avoid using stack
     djnz  context_switch_restore_rbm_loop
 
     ;; ------------------------------------------------------------------------
     ;; read RUNTIME_DATA_LENGTH bytes from current ERDPT to RUNTIME_DATA
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #(RUNTIME_DATA)
+    ld    hl, #RUNTIME_DATA
 context_switch_restore_bytes_loop:
 
     ld    b, #8                      ;; one byte
@@ -446,7 +448,7 @@ context_switch_restore_bits_loop:
     pop   af        ;; A gets wrong value here, but this is fixed in trampoline
 
     ;; ------------------------------------------------------------------------
-    ;; Restore SP, I, R
+    ;; Restore SP and R
     ;; ------------------------------------------------------------------------
 
     ld    sp, (VRAM_REGSTATE_SP)
