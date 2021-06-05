@@ -82,40 +82,6 @@ prepare_context:
     exx
 
     ;; ========================================================================
-    ;; copy some of the context data immediately
-    ;; (48k/128k flag, 128k memory configuration)
-    ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; check snapshot version (is PC == 0?)
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_PC)
-    ld   a, h
-    or   a, l      ;; extended snapshot (version 2+) ?
-    jr   nz, prepare_context_48k     ;; non-zero PC means version 1, always 48k
-
-    ;; ------------------------------------------------------------------------
-    ;; snapshot version 2+:
-    ;; load HW_TYPE into L, and memory config into H
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-
-    ;; ------------------------------------------------------------------------
-    ;; Check HW_TYPE: only use 128k memory config from snapshot if this is
-    ;; actually a 128k snapshot
-    ;; ------------------------------------------------------------------------
-
-    ld   a, l
-    cp   a, #SNAPSHOT_128K
-    jr   nc, prepare_context_set_bank
-prepare_context_48k:
-    ld   hl, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
-prepare_context_set_bank:
-    ld   (context_128k_flag), hl
-
-    ;; ========================================================================
     ;; Prepare VRAM trampoline.
     ;;
     ;; Clear out the top-left five character cells, by setting ink colour
@@ -246,22 +212,40 @@ evacuate_no_ei:
     ld   (VRAM_REGSTATE_SP), hl
 
     ;; ========================================================================
-    ;; set PC value in VRAM trampoline
+    ;; Set up 48k/128k flag, 128k memory configuration, PC value
     ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; check snapshot version (is PC == 0?)
+    ;; set up 128k flag + memory config in DE, snapshot PC in HL
+    ;; ------------------------------------------------------------------------
 
     ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_PC)
     ld   a, h
     or   a, l      ;; extended snapshot (version 2+) ?
-    jr   nz, evacuate_pc
+    jr   nz, prepare_context_48k     ;; non-zero PC means version 1, always 48k
 
     ;; ------------------------------------------------------------------------
-    ;; snapshot version 2+: use PC value from extended snapshot header,
+    ;; snapshot version 2+:
+    ;; load HW_TYPE into E, and memory config into D
     ;; ------------------------------------------------------------------------
 
+    ld   de, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
     ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_EXT_PC)
 
-evacuate_pc:
+    ;; ------------------------------------------------------------------------
+    ;; Check HW_TYPE: only use 128k memory config from snapshot if this is
+    ;; actually a 128k snapshot
+    ;; ------------------------------------------------------------------------
+
+    ld   a, e
+    cp   a, #SNAPSHOT_128K
+    jr   nc, prepare_context_set_bank
+prepare_context_48k:
+    ld   de, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
+prepare_context_set_bank:
     ld   (VRAM_REGSTATE_PC), hl
+    ld   (context_128k_flag), de
 
     ;; ========================================================================
     ;; write evacuated data to ENC28J60 RAM
