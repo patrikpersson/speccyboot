@@ -364,15 +364,15 @@ udp_create:
 ;; https://en.wikipedia.org/wiki/IPv4#Header
 ;;
 ;; Four of these bytes are also used as BOOTREQUEST data. The length field
-;; is only a spaceholder (the actual value is set at runtime). The ID field
-;; is arbitrary, according to RFC 6864:
+;; is only a placeholder (the actual value is set at runtime). The ID field
+;; is arbitrary when the Don't Fragment flag is set, according to RFC 6864:
 ;;
 ;;   Originating sources MAY set the IPv4 ID field of
 ;;   atomic datagrams to any value.
 ;;
 ;; https://datatracker.ietf.org/doc/html/rfc6864#section-4.1
 ;;
-;; The BOOTP XID is similarly arbitrary, and taken from the
+;; The BOOTP XID is similarly arbitrary, and happens to be taken from the
 ;; flags, fragment offset, time-to-live, and protocol IP fields.
 ;; ============================================================================
 
