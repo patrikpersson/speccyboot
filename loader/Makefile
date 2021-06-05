@@ -39,9 +39,17 @@ OFILES       = init.rel $(ASMMODULES:%=%.rel)
 
 # ROM:       stage 1, binary file to be loaded into EEPROM (address 0x0000)
 # STAGE2BIN: stage 2, binary file to be loaded over TFTP by stage 1
+# METADATA:  metadata file, including load address for stage 2 binary
 
 ROM          = speccyboot.rom
 STAGE2BIN    = spboot.bin
+METADATA     = spboot.dat
+
+# -----------------------------------------------------------------------------
+
+# macro for getting the loading address of the stage2 binary
+
+get_address  = $(shell grep s__STAGE2 $(OBJDIR)/speccyboot.noi | cut -d' ' -f3 | sed -e 's/0x/obase=10;ibase=16; /g' | bc)
 
 # =============================================================================
 # DIRECTORIES
@@ -63,21 +71,23 @@ vpath %.inc  $(INCLUDEDIR)
 
 LINKFILE     = speccyboot.lk
 
+MAKEBINFLAGS = -p
+
 # =============================================================================
 # COMMAND-LINE TARGETS
 # =============================================================================
 
 all: bin
 
-MAKEBINFLAGS=-p
-bin: $(ROM) $(STAGE2BIN)
+bin: $(ROM) $(STAGE2BIN) $(METADATA)
 
 clean:
 	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
 
-install: $(ROM) $(STAGE2BIN) $(INSTALLDIR)
+install: $(ROM) $(STAGE2BIN) $(METADATA) $(INSTALLDIR)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
 	install --mode=a+r $(STAGE2BIN) $(INSTALLDIR)
+	install --mode=a+r $(METADATA) $(INSTALLDIR)
 
 .SUFFIXES:
 
@@ -100,7 +110,7 @@ $(OBJDIR) $(INSTALLDIR):
 	$(AS) $(ASFLAGS) -o $(OBJDIR)/$@ $<
 
 $(IHXFILE): $(OFILES)
-	$(LD) -f $(LINKFILE)
+	$(LD) -n -f $(LINKFILE)
 
 $(COMBINED): $(IHXFILE)
 	$(MAKEBIN) $(MAKEBINFLAGS) $(IHXFILE) $@
@@ -109,4 +119,7 @@ $(ROM): $(COMBINED)
 	dd if=$< of=$@ bs=1k count=8
 
 $(STAGE2BIN): $(COMBINED)
-	dd if=$< of=$@ bs=1 skip=$(shell grep s__STAGE2 $(OBJDIR)/speccyboot.noi | cut -d' ' -f3 | sed -e 's/0x/obase=10;ibase=16; /g' | bc)
+	dd if=$< of=$@ bs=1 skip=${get_address}
+
+$(METADATA): $(COMBINED)
+	echo ADDR=${get_address} > $@
