@@ -161,20 +161,20 @@ evacuate_iff1_set:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_A
-    ld   a, (hl)
-    ld   (VRAM_REGSTATE_A), a
+    ld   de, #VRAM_REGSTATE_A
+    ld   bc, #6                  ;; A + F + BC + HL
+
+    ldi                          ;; only one byte (A), BC is now 5
 
     ;; ------------------------------------------------------------------------
     ;; write F
     ;; ------------------------------------------------------------------------
 
-    inc  hl
-
     ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_F
 
     ld   de, #VRAM_REGSTATE_F
-    ld   bc, #5                  ;; F + BC + HL
-    ldi                          ;; one byte (F) in this step
+
+    ldi                          ;; only one byte (F), BC is now 4
 
     ;; ------------------------------------------------------------------------
     ;; write BC and HL
