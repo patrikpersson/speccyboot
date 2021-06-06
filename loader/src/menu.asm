@@ -203,6 +203,15 @@ run_menu:
     ld   a, #BLACK + (WHITE << 3) + BRIGHT
     call fill_memory
 
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'S' indicator: black ink, white paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ;; H already has the right value here
+
+    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
+
     ld   a, #VERSION_LOADER + 'a'
     ld   de, #VRAM_LOADER_VERSION
     call print_char
