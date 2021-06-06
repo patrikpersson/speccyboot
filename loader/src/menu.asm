@@ -78,7 +78,7 @@ CP_A_N               = 0xfe
 
 ;; ============================================================================
 
-    .area _CODE
+    .area _NONRESIDENT
 
 ;; ----------------------------------------------------------------------------
 ;; print_entry:
@@ -127,7 +127,7 @@ pad_to_end_of_line:
     ;; Destroys AF, B, HL; preserves DE.
     ;; ========================================================================
 
-    .area _CODE
+    .area _NONRESIDENT
 
 find_snapshot_for_key:
 
@@ -171,7 +171,7 @@ not_lowercase_letter:
 ;; pointer in HL. Destroys AF, preserves BC and DE.
 ;; ############################################################################
 
-    .area _CODE
+    .area _NONRESIDENT
 
 get_filename_pointer:
     push  bc
@@ -406,7 +406,7 @@ menu_hit_enter:
 ;; subroutine: highlight current line to colour in register A
 ;; ############################################################################
 
-    .area _CODE
+    .area _NONRESIDENT
 
 menu_set_highlight:
 

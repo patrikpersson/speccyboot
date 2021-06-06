@@ -71,7 +71,7 @@ stored_snapshot_header:
 ;; prepare_context
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 prepare_context:
 

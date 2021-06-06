@@ -283,9 +283,6 @@ initialize_global_data:
   .area _STAGE2        ;; this is where the stage 2 bootloader starts (RAM)
   .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
   .area _SNAPSHOTLIST  ;; area for loaded snapshot list (snapshots.lst)
-
-_tftp_file_buffer::
-
   .area _STAGE2
 
 stage2_start:
