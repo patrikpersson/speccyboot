@@ -2,7 +2,7 @@
 # Makefile for SpeccyBoot
 # Patrik Persson, 2009-
 #
-# Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+# Part of the SpeccyBoot project <https://github.com/patrikpersson/speccyboot>
 # =============================================================================
 
 AS           = sdasz80
@@ -42,6 +42,7 @@ OFILES       = init.rel $(ASMMODULES:%=%.rel)
 
 ROM          = speccyboot.rom
 STAGE2BIN    = spboot.bin
+LOADINFO     = speccyboot.py
 
 # -----------------------------------------------------------------------------
 
@@ -77,14 +78,15 @@ MAKEBINFLAGS = -p
 
 all: bin
 
-bin: $(ROM) $(STAGE2BIN)
+bin: $(ROM) $(STAGE2BIN) $(LOADINFO)
 
 clean:
-	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
+	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN) $(LOADINFO)
 
 install: $(ROM) $(STAGE2BIN) $(INSTALLDIR)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
 	install --mode=a+r $(STAGE2BIN) $(INSTALLDIR)
+	install --mode=a+r $(LOADINFO) $(INSTALLDIR)
 
 .SUFFIXES:
 
@@ -117,3 +119,7 @@ $(ROM): $(COMBINED)
 
 $(STAGE2BIN): $(COMBINED)
 	dd if=$< of=$@ bs=1 skip=${get_address}
+
+$(LOADINFO): $(COMBINED)
+	echo '# automatically generated: do not modify' > $@
+	echo 'stage2_load_address =' ${get_address} >> $@
