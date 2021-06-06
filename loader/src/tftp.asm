@@ -59,8 +59,6 @@ TFTP_OFFSET_OF_OPCODE     = 0
 TFTP_OFFSET_OF_BLOCKNO    = 2
 TFTP_OFFSET_OF_ERROR_MSG  = 4
 
-TFTP_SIZE_OF_RRQ_PREFIX   = 13
-
 TFTP_SIZE_OF_RRQ_OPTION   = 6
 
 ;; ============================================================================
@@ -388,7 +386,7 @@ tftp_read_request:
 
     push de        ;; remember filename length for later
 
-    ld   hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
+    ld   hl, #UDP_HEADER_SIZE + (tftp_rrq_prefix_end - tftp_rrq_prefix) + TFTP_SIZE_OF_RRQ_OPTION
     add  hl, de
     ex   de, hl    ;; DE = UDP length
 
@@ -398,7 +396,7 @@ tftp_read_request:
 
     ;; append 16-bit TFTP opcode
 
-    ld   e, #TFTP_SIZE_OF_RRQ_PREFIX
+    ld   e, #tftp_rrq_prefix_end - tftp_rrq_prefix
     ld   hl, #tftp_rrq_prefix
     rst  enc28j60_write_memory_small
 
@@ -426,3 +424,4 @@ tftp_rrq_option:
 tftp_rrq_prefix:
     .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
     .ascii "speccyboot/"       ;; no NUL necessary here
+tftp_rrq_prefix_end:

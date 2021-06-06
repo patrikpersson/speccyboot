@@ -293,7 +293,7 @@ bootp_receive_sname_done:
     call print_ip_addr
 
     ;; HL and D both have the right values
-    ;; (TFTP address follow directly after local address)
+    ;; (TFTP address follows directly after local address)
     ld   e, #<SERVER_IP_POS
     call print_ip_addr
 
