@@ -46,6 +46,7 @@
 ;; ============================================================================
 
 ARP_HEADER_SIZE = 8         ;; ARP header size
+ARP_OFFSET_SHA =  8         ;; offset of SHA field in ARP header
 ARP_OFFSET_SPA = 14         ;; offset of SPA field in ARP header
 ARP_OFFSET_TPA = 24         ;; offset of TPA field in ARP header
 ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
@@ -521,7 +522,6 @@ eth_create_txbuf_set:
     ;; write source (local) MAC address
     ;; ------------------------------------------------------------------------
 
-    ld    e, #ETH_ADDRESS_SIZE
     call  enc28j60_write_local_hwaddr
 
     ;; ------------------------------------------------------------------------
@@ -597,7 +597,6 @@ arp_receive:
 
     ;; SHA: local MAC address
 
-    ld   e, #ETH_ADDRESS_SIZE
     call enc28j60_write_local_hwaddr
 
     ;; SPA: local IPv4 address
@@ -609,7 +608,8 @@ arp_receive:
     ;; THA
 
     ld   e, #ETH_ADDRESS_SIZE
-    call enc28j60_write_local_hwaddr
+    ld   hl, #_rx_frame + ARP_OFFSET_SHA  ;; sender MAC address, taken from SHA field in request
+    rst  enc28j60_write_memory_small
 
     ;; TPA
 

@@ -117,11 +117,7 @@
   ld    b, #8
   jp    spi_write_byte_cont
 
-  ;; ------------------------------------------------------------------------
-  ;; enc28j60_write_local_hwaddr
-  ;; ------------------------------------------------------------------------
-
-enc28j60_write_local_hwaddr:
+enc28j60_write_local_hwaddr_cont:
 
   ld    hl, #eth_local_address
 
@@ -175,6 +171,15 @@ memory_compare_loop:
   pop   hl
   ei
   ret
+
+  ;; ==========================================================================
+  ;; enc28j60_write_local_hwaddr
+  ;; ==========================================================================
+
+enc28j60_write_local_hwaddr:
+
+  ld    e, #ETH_ADDRESS_SIZE
+  jr    enc28j60_write_local_hwaddr_cont
 
   ;; ==========================================================================
   ;; continued initialization (from 0x0000)
