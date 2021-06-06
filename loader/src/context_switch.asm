@@ -242,12 +242,28 @@ prepare_context_set_bank:
     ret
 
 ;; ============================================================================
+;; The following code is copied to the five top-left character cells in VRAM
+;; ============================================================================
 
 trampoline_data:
 
-    .db  0xD3, SPI_OUT, JP_UNCONDITIONAL, 0x00, 0x41      ;; OUT (SPI_OUT), A ; JP 0x4100
-    .db  LD_A_N, 0, JP_UNCONDITIONAL, 0x00, 0x42          ;; LD A, #n         ; JP 0x4200
-    .db  EI, JP_UNCONDITIONAL                             ;; EI               ; JP xxxx
+    ;; 0x4000
+    
+    out (SPI_OUT), a
+    jp  0x4100
+
+    ;; 0x4100
+
+    ld  a, #0         ;; immediate value written to trampoline above
+    jp  0x4200
+
+    ;; 0x4200
+
+    ei                ;; replaced with NOP if IFF1=0 in snapshot header
+    jp  0             ;; jump address written to trampoline above
+
+    ;; the loop that copies the trampoline above will also copy the next
+    ;; two bytes from ROM to VRAM
 
 ;; ============================================================================
 
