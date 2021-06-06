@@ -297,7 +297,8 @@ enc28j60_write8plus8 = 0x18
     .globl enc28j60_read_memory
 
 ;; ----------------------------------------------------------------------------
-;; additional entrypoint to enc28j60_read_memory, with HL set to _rx_frame
+;; Additional entrypoint to enc28j60_read_memory, with HL set to _rx_frame
+;; and D set to zero. Reads up to 255 bytes to _rx_frame.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_memory_to_rxframe

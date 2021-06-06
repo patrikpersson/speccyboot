@@ -70,7 +70,7 @@ ip_receive:
 
     ;; read a minimal IPv4 header
 
-    ld   de, #IPV4_HEADER_SIZE
+    ld   e, #IPV4_HEADER_SIZE
     call enc28j60_read_memory_to_rxframe
 
     ;; ------------------------------------------------------------

@@ -212,7 +212,7 @@ main_packet:
     ;; separately (below) before the RX buffer is used for IP/ARP data.
     ;; ------------------------------------------------------------------------
 
-    ld    de, #ETH_ADM_HEADER_SIZE
+    ld    e, #ETH_ADM_HEADER_SIZE
     call  enc28j60_read_memory_to_rxframe
 
     ;; ------------------------------------------------------------------------
@@ -547,7 +547,7 @@ arp_receive:
     ;; retrieve ARP payload
     ;; ------------------------------------------------------------------------
 
-    ld   de, #ARP_IP_ETH_PACKET_SIZE
+    ld   e, #ARP_IP_ETH_PACKET_SIZE
     call enc28j60_read_memory_to_rxframe
 
     ;; ------------------------------------------------------------------------

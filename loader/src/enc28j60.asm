@@ -80,6 +80,7 @@ enc28j60_poll_register:
 enc28j60_read_memory_to_rxframe:
 
     ld    hl, #_rx_frame
+    ld    d, #0
 
     ;; FALL THROUGH to enc28j60_read_memory
 
