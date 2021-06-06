@@ -71,8 +71,7 @@ ip_receive:
     ;; read a minimal IPv4 header
 
     ld   de, #IPV4_HEADER_SIZE
-    ld   hl, #_rx_frame
-    call enc28j60_read_memory
+    call enc28j60_read_memory_to_rxframe
 
     ;; ------------------------------------------------------------
     ;; Check the IP destination address

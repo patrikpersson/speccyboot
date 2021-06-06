@@ -49,16 +49,6 @@ VERSION_MAGIC = 0x5B00 | VERSION_MAJOR << 4 | VERSION_MINOR
 STACK_SIZE  = 0x20
 _stack_top  = 0x5b00 + STACK_SIZE
 
-;; ----------------------------------------------------------------------------
-;; Size of receive buffer:
-;; IPV4_HEADER_SIZE
-;;  + UDP_HEADER_SIZE
-;;  + TFTP_HEADER_SIZE
-;;  + TFTP_DATA_MAXSIZE
-;; ----------------------------------------------------------------------------
-
-RX_FRAME_SIZE = 20 + 8 + 4 + 512
-
 _font_data  = 0xfd00                  ;; full font, but overwritten by snapshot
 
 ;; ----------------------------------------------------------------------------

@@ -34,9 +34,17 @@
 
     .include "enc28j60.inc"
 
+    .include "eth.inc"
     .include "spi.inc"
     .include "udp_ip.inc"
     .include "util.inc"
+
+;; ============================================================================
+
+    .area _DATA
+
+_rx_frame:
+    .ds   RX_FRAME_SIZE
 
     .area _CODE
 
@@ -63,6 +71,18 @@ enc28j60_poll_register:
 
     ld     a, #FATAL_INTERNAL_ERROR
     jp     fail
+
+
+;; ############################################################################
+;; enc28j60_read_memory_to_rxframe
+;; ############################################################################
+
+enc28j60_read_memory_to_rxframe:
+
+    ld    hl, #_rx_frame
+
+    ;; FALL THROUGH to enc28j60_read_memory
+
 
 ;; ############################################################################
 ;; enc28j60_read_memory

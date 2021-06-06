@@ -1,6 +1,7 @@
 ;; Module eth:
 ;;
 ;; Ethernet implementation using the Microchip ENC28J60 Ethernet host.
+;; Also handles ARP (RFC 826).
 ;;
 ;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
@@ -77,9 +78,6 @@ _retransmission_timeout:
 
 _end_of_critical_frame:
     .ds 2                   ;; written to ETXND for re-transmission
-
-_rx_frame:
-    .ds   RX_FRAME_SIZE
 
 ;; ============================================================================
 
@@ -215,8 +213,7 @@ main_packet:
     ;; ------------------------------------------------------------------------
 
     ld    de, #ETH_ADM_HEADER_SIZE
-    ld    hl, #_rx_frame
-    call  enc28j60_read_memory
+    call  enc28j60_read_memory_to_rxframe
 
     ;; ------------------------------------------------------------------------
     ;; update _next_frame
@@ -551,8 +548,7 @@ arp_receive:
     ;; ------------------------------------------------------------------------
 
     ld   de, #ARP_IP_ETH_PACKET_SIZE
-    ld   hl, #_rx_frame
-    call enc28j60_read_memory
+    call enc28j60_read_memory_to_rxframe
 
     ;; ------------------------------------------------------------------------
     ;; check header against template

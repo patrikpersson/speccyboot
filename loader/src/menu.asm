@@ -36,6 +36,7 @@
     .include "menu.inc"
 
     .include "context_switch.inc"
+    .include "enc28j60.inc"
     .include "eth.inc"
     .include "globals.inc"
     .include "spi.inc"

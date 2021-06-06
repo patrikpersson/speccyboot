@@ -1,6 +1,7 @@
 ;; Module eth:
 ;;
 ;; Ethernet implementation using the Microchip ENC28J60 Ethernet host.
+;; Also handles ARP (RFC 826).
 ;;
 ;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
@@ -143,12 +144,6 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
 
     .globl _retransmission_timeout
     .globl _end_of_critical_frame
-
-;; ----------------------------------------------------------------------------
-;; buffer for received packet data
-;; ----------------------------------------------------------------------------
-
-    .globl _rx_frame
 
 ;; ============================================================================
 ;; Initialize Ethernet layer
