@@ -111,7 +111,7 @@ clear_cells_loop:
     ;; write JP nn instructions to VRAM trampoline, at positions 0x40X2
     ;; ------------------------------------------------------------------------
 
-    ld   h, #0x40
+    ld   h, #>VRAM_TRAMPOLINE_OUT
     ld   b, #3
 write_trampoline_loop:
       ld   l, #2
@@ -144,8 +144,8 @@ write_trampoline_loop:
     ;; write NOP and either EI or NOP, depending on IFF1 state in snapshot
     ;; ------------------------------------------------------------------------
 
-    ld   h, b                  ;; B is zero after DJNZ above
-    ld   l, b                  ;; two NOP instructions
+    ld   h, b                  ;; B is zero after DJNZ above:
+    ld   l, b                  ;; set HL to two NOP instructions
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
@@ -158,14 +158,15 @@ evacuate_no_ei:
     ;; write register state to VRAM trampoline area
     ;; ------------------------------------------------------------------------
 
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_R)
-    add  a, #REG_R_ADJUSTMENT
-    and  a, #0x7f
-    ld   b, a
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS)
-    and  a, #0x01
-    rrca
-    or   a, b
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_R)
+
+    ;; now L holds low 7 bits of R, and bit 0 of H holds bit 7 of R
+
+    ld   a, #REG_R_ADJUSTMENT
+    add  a, l
+    rla                ;; carry now in bit 0, but shifted again out soon
+    rr   h
+    rra
     ld   (VRAM_REGSTATE_R), a
 
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_F
