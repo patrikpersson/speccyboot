@@ -85,58 +85,27 @@ prepare_context:
     ;; Prepare VRAM trampoline.
     ;;
     ;; Clear out the top-left five character cells, by setting ink colour
-    ;; to the same as the paper colour. Which colour is chosen depends on how
-    ;; many pixels are set in that particular character cell.
+    ;; to the same as the paper colour.
     ;;
     ;; (These character cells are used as temporary storage for the trampoline
     ;; below.)
     ;; ========================================================================
 
-    ld   de, #EVACUATION_TEMP_BUFFER + 4        ;; points to attribute data
-    ld   l, #<BITMAP_BASE + 4
-
-evacuate_data_loop1:   ;;  loop over character cells
-
-      ld   c, #8
-      ld   h, #>BITMAP_BASE
-      xor  a, a        ;;  accumulated bit weight
-evacuate_data_loop2:   ;;  loop over pixel rows in cell
-        ld   b, #8
-evacuate_data_loop3:   ;;  loop over pixels in cell
-          rr   (hl)
-          adc  a, #0
-        djnz evacuate_data_loop3
-
-        inc  h
-        dec  c
-      jr   nz, evacuate_data_loop2
-
-      cp   a, #33         ;;  more than half of the total pixels in cell
-      ld   a, (de)
-      jr   nc, evac_use_fg
-
-      ;; few pixels set -- use background color
-
-      rra
-      rra
-      rra
-
-evac_use_fg:  ;; many pixels set -- use foreground color
-
-      and  #7
-
-      ld   c, a
-      add  a, a
-      add  a, a
-      add  a, a
-      or   a, c
-
-evac_colour_set:
-      ld   (de), a
-      dec  e
-      dec  l
-
-    jp   p, evacuate_data_loop1  ;; continue if positive
+    ld   hl, #EVACUATION_TEMP_BUFFER        ;; points to attribute data
+    ld   b, #5
+clear_cells_loop:
+    ld   a, (hl)
+    rra
+    rra
+    rra
+    and  a, #7
+    ld   c, a
+    ld   a, (hl)
+    and  a, #0xf8
+    or   a, c
+    ld   (hl), a
+    inc  hl
+    djnz clear_cells_loop
 
     ;; ------------------------------------------------------------------------
     ;; write JP nn instructions to VRAM trampoline, at positions 0x40X2
