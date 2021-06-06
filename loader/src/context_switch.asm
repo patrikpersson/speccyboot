@@ -254,13 +254,13 @@ trampoline_data:
 
     ;; 0x4100
 
-    ld  a, #0         ;; immediate value written to trampoline above
+    ld  a, #0              ;; immediate value written to trampoline above
     jp  0x4200
 
     ;; 0x4200
 
-    ei                ;; replaced with NOP if IFF1=0 in snapshot header
-    jp  0             ;; jump address written to trampoline above
+    ei                     ;; replaced with NOP if IFF1=0 in snapshot header
+    .db JP_UNCONDITIONAL   ;; jump address written to trampoline above
 
     ;; the loop that copies the trampoline above will also copy the next
     ;; two bytes from ROM to VRAM
