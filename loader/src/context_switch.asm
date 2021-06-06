@@ -54,14 +54,20 @@
 ;; - Set REG_R_ADJUSTMENT := (E - N)
 ;; ----------------------------------------------------------------------------
 
-REG_R_ADJUSTMENT   = 0xF7
+REG_R_ADJUSTMENT   = 0xF8
 
 ;; ============================================================================
 
     .area _DATA
 
-context_128k_flag:   ;; zero means 48k, non-zero means 128k
-    .ds   2          ;; second byte is 128 memory configuration
+;; ----------------------------------------------------------------------------
+;; 16-bit word for memory configuration
+;;  low byte:  flag (zero means 48k, non-zero means 128k)
+;;  high byte: 128k memory configuration (0x7ffd)
+;; ----------------------------------------------------------------------------
+
+memory_state:
+    .ds   2
 
 stored_snapshot_header:
     .ds   Z80_HEADER_RESIDENT_SIZE
@@ -108,51 +114,32 @@ clear_cells_loop:
     djnz clear_cells_loop
 
     ;; ------------------------------------------------------------------------
-    ;; write JP nn instructions to VRAM trampoline, at positions 0x40X2
+    ;; write trampoline to VRAM
     ;; ------------------------------------------------------------------------
 
-    ld   h, #>VRAM_TRAMPOLINE_OUT
-    ld   b, #3
-write_trampoline_loop:
-      ld   l, #2
-      ld   (hl), #JP_UNCONDITIONAL        ;; JP nn
-      inc  hl
-      ld   (hl), #0           ;; low byte of JP target is 0
-      inc  hl
-      ld   (hl), h
-      inc  (hl)               ;; high byte of JP target
-      inc  h
-    djnz   write_trampoline_loop
+    ld   hl, #trampoline_data
+    ld   d, #0x3F
+    ld   a, #3
+
+create_trampoline_loop:
+    inc  d
+    ld   e, b        ;; B==0 since DJNZ or LDIR, so start of next scanline
+    ld   c, #5
+    ldir
+    dec  a
+    jr   nz, create_trampoline_loop
 
     ;; ------------------------------------------------------------------------
-    ;; write OUT(SPI_OUT), A to trampoline
+    ;; if IFF1 is 0 in snapshot, replace EI with NOP
     ;; ------------------------------------------------------------------------
-
-    ld   hl, #0xD3 + 0x100 * SPI_OUT    ;; *0x4000 = OUT(SPI_OUT), A
-    ld   (VRAM_TRAMPOLINE_OUT), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; write LD A, x to trampoline
-    ;; ------------------------------------------------------------------------
-
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_A)
-    ld   h, a
-    ld   l, #LD_A_N
-    ld   (VRAM_TRAMPOLINE_LD_A), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; write NOP and either EI or NOP, depending on IFF1 state in snapshot
-    ;; ------------------------------------------------------------------------
-
-    ld   h, b                  ;; B is zero after DJNZ above:
-    ld   l, b                  ;; set HL to two NOP instructions
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
-    jr   z, evacuate_no_ei
-    ld   h, #EI
-evacuate_no_ei:
-    ld   (VRAM_TRAMPOLINE_NOP), hl
+    jr   nz, evacuate_iff1_set
+    xor  a, a                                  ;; A is now NOP
+    ld   (VRAM_TRAMPOLINE_EI_OR_NOP), a
+
+evacuate_iff1_set:
 
     ;; ------------------------------------------------------------------------
     ;; write register state to VRAM trampoline area
@@ -169,12 +156,32 @@ evacuate_no_ei:
     rra
     ld   (VRAM_REGSTATE_R), a
 
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_F
+    ;; ------------------------------------------------------------------------
+    ;; write A to trampoline
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_A
+    ld   a, (hl)
+    ld   (VRAM_REGSTATE_A), a
+
+    ;; ------------------------------------------------------------------------
+    ;; write F
+    ;; ------------------------------------------------------------------------
+
+    inc  hl
+
+    ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_F
+
     ld   de, #VRAM_REGSTATE_F
     ld   bc, #5                  ;; F + BC + HL
-    ldi
+    ldi                          ;; one byte (F) in this step
+
+    ;; ------------------------------------------------------------------------
+    ;; write BC and HL
+    ;; ------------------------------------------------------------------------
 
     ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_BC_HL
+
     ld   e, #<VRAM_REGSTATE_BC_HL_F
     ldir
 
@@ -215,7 +222,7 @@ prepare_context_48k:
     ld   de, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
 prepare_context_set_bank:
     ld   (VRAM_REGSTATE_PC), hl
-    ld   (context_128k_flag), de
+    ld   (memory_state), de
 
     ;; ========================================================================
     ;; write evacuated data to ENC28J60 RAM
@@ -233,6 +240,14 @@ prepare_context_set_bank:
     exx
 
     ret
+
+;; ============================================================================
+
+trampoline_data:
+
+    .db  0xD3, SPI_OUT, JP_UNCONDITIONAL, 0x00, 0x41      ;; OUT (SPI_OUT), A ; JP 0x4100
+    .db  LD_A_N, 0, JP_UNCONDITIONAL, 0x00, 0x42          ;; LD A, #n         ; JP 0x4200
+    .db  EI, JP_UNCONDITIONAL                             ;; EI               ; JP xxxx
 
 ;; ============================================================================
 
@@ -259,11 +274,11 @@ context_switch:
     ;; and check whether this is a 48k or 128k snapshot
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (context_128k_flag)
+    ld   hl, (memory_state)
     ld   bc, #MEMCFG_ADDR
-    out  (c), h               ;; next byte after HW_TYPE: 128k memory config
+    out  (c), h               ;; 128k memory config
 
-    ld   a, l                 ;; HW_TYPE
+    ld   a, l                 ;; 128k snapshot?
     or   a, a
     jr   z, context_switch_48k_snapshot
 

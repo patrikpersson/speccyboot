@@ -84,11 +84,9 @@
 ;; ----------------------------------------------------------------------------
 
 VRAM_TRAMPOLINE_START       = 0x4000
-VRAM_TRAMPOLINE_OUT         = VRAM_TRAMPOLINE_START
 VRAM_TRAMPOLINE_LD_A        = 0x4100
-VRAM_TRAMPOLINE_NOP         = 0x4200
-VRAM_TRAMPOLINE_EI_OR_NOP   = 0x4201
-VRAM_TRAMPOLINE_JP_FINAL    = 0x4202
+VRAM_TRAMPOLINE_EI_OR_NOP   = 0x4200
+VRAM_TRAMPOLINE_JP_FINAL    = 0x4201
 
 ;; ----------------------------------------------------------------------------
 ;; Register state, stored in VRAM along with the trampoline
