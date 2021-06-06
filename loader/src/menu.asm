@@ -114,62 +114,6 @@ pad_to_end_of_line:
     call print_char
     jr   pad_to_end_of_line
 
-;; ----------------------------------------------------------------------------
-;; Set up table of file name pointers in _rx_frame.
-;; Returns number of snapshots in the list in register E.
-;; ----------------------------------------------------------------------------
-
-    .area _CODE
-
-menu_setup:
-
-    ;; ========================================================================
-    ;; Scan through the loaded snapshot list, and build an array of pointers
-    ;; to NUL-terminated file names in rx_frame.
-    ;; ========================================================================
-
-    xor  a, a
-    ld   e, a
-    exx
-
-    ld   b, a
-    ld   c, a                  ;; BC==0, don't limit CPIR below
-    ld   hl, #snapshot_list
-    ld   de, #_rx_frame
-
-menu_setup_loop:
-
-    ld   a, (hl)        ;; double NUL means end of data
-    or   a, a
-    exx
-    ret  z
-
-    ld   a, e
-    inc  a
-    ret  z
-
-    inc  e
-    exx
-
-    ;; ------------------------------------------------------------------------
-    ;; store a pointer to the current file name
-    ;; ------------------------------------------------------------------------
-
-    ld   a, l
-    ld   (de), a
-    inc  de
-    ld   a, h
-    ld   (de), a
-    inc  de
-
-    ;; ------------------------------------------------------------------------
-    ;; advance HL to next
-    ;; ------------------------------------------------------------------------
-
-    xor  a, a
-    cpir
-    jr   menu_setup_loop
-
     ;; ========================================================================
     ;; subroutine: select snapshot matching keypress
     ;;
@@ -190,7 +134,7 @@ find_snapshot_for_key:
     ld   b, a
     ld   c, #0  ;; result (selected index)
 
-    ld   hl, #_rx_frame
+    ld   hl, #snapshot_list + 1
 find_snapshot_for_key_lp:
 
     ld   a, c
@@ -234,7 +178,7 @@ get_filename_pointer:
     ld   h, #0
     ld   l, a
     add  hl, hl
-    ld   bc, #_rx_frame
+    ld   bc, #snapshot_list + 1
     add  hl, bc
     ld   a, (hl)
     inc  hl
@@ -271,15 +215,10 @@ run_menu:
     ;; E = total number of snapshots (0..255)
     ;; ========================================================================
 
-    call menu_setup
-
     ld   c, #0
     ld   d, c
-
-    ld   a, e
-    or   a, a
-    ld   a, #FATAL_NO_SNAPSHOTS
-    jp   z, fail
+    ld   a, (snapshot_list)
+    ld   e, a
 
 menu_loop:
 

@@ -1,32 +1,95 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 #
 # speccyboot-update.py
 #
 # Simple script to update the 'stage2' second-stage loader,
 # used for serving .z80 snapshots over TFTP to SpeccyBoot.
 #
-# Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+# Part of the SpeccyBoot project <https://github.com/patrikpersson/speccyboot>
 
 # if you installed to another directory, you'll have to change this
-STAGE2DIR=/usr/local/share/speccyboot
+SPECCYBOOT_HOME = '/usr/local/share/speccyboot/'
 
 # if your TFTP server serves from another directory than the ones listed here,
-# please modify this variable
+# please modify this list
 
-TFTP_DIRS="/tftpboot /private/tftpboot /srv/tftp /var/lib/tftpboot ${HOME}/tftpboot /var/ftpd /var/tftp"
+TFTP_DIRS = [
+    '/tftpboot',
+    '/private/tftpboot',
+    '/srv/tftp',
+    '/var/lib/tftpboot',
+    '/var/ftpd',
+    '/var/tftp'
+]
 
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# Appends spboot.bin with a snapshot index, and writes the result as 'stage2'.
+#
+# The layout of the resulting binary is as follows:
+#
+# contents                     length
+# --------                     ------
+# spboot.bin                   (variable, code)
+# number of snapshots (N)      1 byte
+# array of filename pointers   2N
+# NUL-terminated filenames     (variable)
+# ----------------------------------------------------------------------------
 
-for DIR in ${TFTP_DIRS}; do
-  SPECCYBOOT=${DIR}/speccyboot
-  if [ -d ${SPECCYBOOT} ]; then
-    echo Updating SpeccyBoot index in ${SPECCYBOOT}
-    cd ${SPECCYBOOT}
-    rm -f stage2
-    cp ${STAGE2DIR}/spboot.bin stage2
-    chmod u+w stage2
-    ls -1 *.z80 | sort --ignore-case | tr '\n' '\0' >> stage2
-    printf '\0' >> stage2
-    chmod a-wx stage2
-  fi
-done
+import os
+import glob
+import sys
+
+FINAL_BINARY = 'stage2'
+
+sys.path.append(SPECCYBOOT_HOME)
+
+from speccyboot import stage2_load_address
+
+stage2_bytes = open(os.path.join(SPECCYBOOT_HOME, 'spboot.bin'), "rb").read()
+
+# ----------------------------------------------------------------------------
+
+def update_index_in_dir(dir):
+    os.chdir(dir)
+
+    try:
+        os.remove(FINAL_BINARY)
+    except FileNotFoundError:
+        pass
+
+    list = glob.glob('*.z80')
+    n = len(list)
+    if n == 0:
+        print("ERROR: no snapshots found in {} -- ignoring".format(dir))
+        return
+
+    list.sort()
+
+    # calculate addresses
+    nbr_snapshots_address = stage2_load_address + len(stage2_bytes)
+    array_address = nbr_snapshots_address + 1
+    filenames_address = array_address + n * 2
+
+    # calculate array contents
+    pointers = []
+    base = filenames_address
+    for filename in list:
+        pointers += [base]
+        base += len(filename) + 1           # +1 for terminating NUL
+
+    with open(FINAL_BINARY, "wb") as output:
+        output.write(stage2_bytes)
+        output.write(bytes([n]))
+        for p in pointers:
+            output.write(bytes([p % 256, p // 256]))
+        for filename in list:
+            output.write(filename.encode(encoding='ascii',errors='replace'))
+            output.write(bytes([0]))
+    
+    print("updated index: {} snapshots in {}".format(n,dir))
+
+# ----------------------------------------------------------------------------
+
+for tftp_dir in TFTP_DIRS:
+    if os.path.isdir(tftp_dir):
+        update_index_in_dir(os.path.join(tftp_dir, 'speccyboot'))
