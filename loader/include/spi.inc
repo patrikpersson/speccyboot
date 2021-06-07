@@ -76,12 +76,7 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 ;; ----------------------------------------------------------------------------
 ;; rst spi_write_byte
 ;;
-;; Write 8 bits to SPI from register C.
+;; Write 8 bits to SPI from register C. Defined in init.asm.
 ;; Destroys BC & AF; B will be zero on exit.
 ;; ----------------------------------------------------------------------------
 spi_write_byte = 0x20
-
-;; ----------------------------------------------------------------------------
-;; Partial implementation for RST above.
-;; ----------------------------------------------------------------------------
-    .globl spi_write_byte_cont

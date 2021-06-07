@@ -293,14 +293,6 @@ main_packet_done:
 
     jp    main_loop
 
-;; ----------------------------------------------------------------------------
-
-eth_broadcast_address:
-    .db   0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-
-eth_local_address:
-    .db   MAC_ADDR_0, MAC_ADDR_1, MAC_ADDR_2
-    .db   MAC_ADDR_3, MAC_ADDR_4, MAC_ADDR_5
 
 ;; ############################################################################
 ;; eth_init

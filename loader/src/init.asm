@@ -72,8 +72,8 @@
   ;; mask in "bank" in bits 0 and 1 of register ECON1
   ;; ------------------------------------------------------------------------
 
-  ld    l, #OPCODE_BFS + (ECON1 & REG_MASK)                         ;; 2 bytes
-  jr    enc28j60_select_bank_continued                              ;; 2 bytes
+  ld    l, #OPCODE_BFS + (ECON1 & REG_MASK)                        ;; 2 bytes
+  jr    enc28j60_select_bank_continued                             ;; 2 bytes
 
   ;; ========================================================================
   ;; RST 0x10 ENTRYPOINT: enc28j60_write_register16
@@ -102,11 +102,11 @@
 
   .org  0x18
   
-  ld    c, l
-  rst   spi_write_byte
-  ld    c, h
-  rst   spi_write_byte
-  jp    enc28j60_end_transaction_and_return
+  ld    c, l                                                    ;; 1 byte
+  rst   spi_write_byte                                          ;; 1 byte
+  ld    c, h                                                    ;; 1 byte
+  rst   spi_write_byte                                          ;; 1 byte
+  jp    enc28j60_end_transaction_and_return                     ;; 3 bytes
 
   ;; ========================================================================
   ;; RST 0x20 ENTRYPOINT: spi_write_byte
@@ -114,12 +114,14 @@
   
   .org  0x20
   
-  ld    b, #8
-  jp    spi_write_byte_cont
+  ld    b, #8                                            ;; 2 bytes
+  jr    spi_write_byte_cont                              ;; 2 bytes
 
-enc28j60_write_local_hwaddr_cont:
+enc28j60_write_local_hwaddr:
 
-  ld    hl, #eth_local_address
+  ld    e, #ETH_ADDRESS_SIZE                             ;; 2 bytes
+
+  .db   LD_HL_NN, <eth_local_address                     ;; 2 bytes + 1 below
 
   ;; FALL THROUGH to enc28j60_write_memory_small
 
@@ -129,8 +131,9 @@ enc28j60_write_local_hwaddr_cont:
 
   .org  0x28
   
+  .db   0     ;; one NOP byte, also high address byte of LD HL, #nn;  1 byte
   ld    d, #0                                                      ;; 2 bytes
-  jp    enc28j60_write_memory                                      ;; 3 bytes
+  jr    enc28j60_write_memory                                      ;; 2 bytes
 
   ;; ------------------------------------------------------------------------
   ;; continuation of enc28j60_select_bank (RST 0x08)
@@ -172,14 +175,60 @@ memory_compare_loop:
   ei
   ret
 
-  ;; ==========================================================================
-  ;; enc28j60_write_local_hwaddr
-  ;; ==========================================================================
+;; ############################################################################
+;; spi_write_byte_cont
+;; ############################################################################
 
-enc28j60_write_local_hwaddr:
+spi_write_byte_cont:
+    spi_write_bit_from_c
+    djnz  spi_write_byte_cont
 
-  ld    e, #ETH_ADDRESS_SIZE
-  jr    enc28j60_write_local_hwaddr_cont
+    ret
+
+;; ############################################################################
+;; enc28j60_write_memory
+;; ############################################################################
+
+enc28j60_write_memory:
+
+    ;; ------------------------------------------------------------------------
+    ;; start transaction: WBM
+    ;; ------------------------------------------------------------------------
+
+    ld    c, #OPCODE_WBM
+    rst   spi_write_byte
+
+    ;; ------------------------------------------------------------------------
+    ;; write DE bytes, starting at HL
+    ;; ------------------------------------------------------------------------
+
+00001$:
+    ld    c, (hl)  ;; read byte from data
+    inc   hl
+
+    rst   spi_write_byte   ;; preserves HL+DE, destroys AF+BC
+
+    dec   de
+    ld    a, d
+    or    a, e
+    jr    nz, 00001$
+
+    ;; ------------------------------------------------------------------------
+    ;; end transaction
+    ;; ------------------------------------------------------------------------
+
+    jp    enc28j60_end_transaction_and_return
+
+;; ===========================================================================
+;; MAC address data (placed here to ensure high byte of address is zero)
+;; ===========================================================================
+
+eth_broadcast_address:
+    .db   0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+
+eth_local_address:
+    .db   MAC_ADDR_0, MAC_ADDR_1, MAC_ADDR_2
+    .db   MAC_ADDR_3, MAC_ADDR_4, MAC_ADDR_5
 
   ;; ==========================================================================
   ;; continued initialization (from 0x0000)

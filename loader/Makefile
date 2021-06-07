@@ -29,7 +29,7 @@ endif
 # =============================================================================
 
 ASMMODULES   = bootp context_switch eth enc28j60
-ASMMODULES  += menu spi tftp udp_ip util z80_loader
+ASMMODULES  += menu tftp udp_ip util z80_loader
 
 # -----------------------------------------------------------------------------
 

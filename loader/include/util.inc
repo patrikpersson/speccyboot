@@ -72,6 +72,7 @@ LD_A_N             = 0x3e      ;; LD A, #n
 LD_B_N             = 0x06      ;; LD B, #n
 LD_BC_NN           = 0x01      ;; LD BC, #nn
 LD_DE_NN           = 0x11      ;; LD DE, #nn
+LD_HL_NN           = 0x21      ;; LD HL, #nn
 LD_IX_NN           = 0x21DD    ;; LD IX, #nn
 LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 EI                 = 0xFB      ;; EI

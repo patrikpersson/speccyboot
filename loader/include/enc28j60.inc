@@ -329,6 +329,7 @@ enc28j60_write8plus8 = 0x18
 
 ;; ----------------------------------------------------------------------------
 ;; Write a number of bytes to on-chip SRAM, continuing after previous write.
+;; Defined in init.asm.
 ;;
 ;; Call with HL=pointer to data, DE=length of data. Destroys AF, BC.
 ;;
