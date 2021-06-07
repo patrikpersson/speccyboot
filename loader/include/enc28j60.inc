@@ -222,15 +222,6 @@ RX_FRAME_SIZE = 20 + 8 + 4 + 512
     .globl eth_control_byte
 
 ;; ----------------------------------------------------------------------------
-;; Ensure that the bank in register E (0..3) is paged in. Page 0 is
-;; always paged in when outside of eth.c.
-;;
-;; Destroys AF, BC, HL.
-;; ----------------------------------------------------------------------------
-
-enc28j60_select_bank = 0x08
-
-;; ----------------------------------------------------------------------------
 ;; rst enc28j60_write_register16:
 ;;
 ;; Write a 16-bit register.
@@ -242,7 +233,16 @@ enc28j60_select_bank = 0x08
 ;; Destroys F, BC, DE.
 ;; ----------------------------------------------------------------------------
 
-enc28j60_write_register16 = 0x10
+enc28j60_write_register16 = 0x08
+
+;; ----------------------------------------------------------------------------
+;; Ensure that the bank in register E (0..3) is paged in. Page 0 is
+;; always paged in when outside of eth.c.
+;;
+;; Destroys AF, BC, HL.
+;; ----------------------------------------------------------------------------
+
+enc28j60_select_bank = 0x10
 
 ;; ----------------------------------------------------------------------------
 ;; Write an 8-bit opcode plus another 8-bit value. Defined in init.asm.

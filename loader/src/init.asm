@@ -56,30 +56,10 @@
   jr    init_continued       ;; 2 bytes
 
   ;; ========================================================================
-  ;; RST 0x08 ENTRYPOINT: enc28j60_select_bank
+  ;; RST 0x08 ENTRYPOINT: enc28j60_write_register16
   ;; ========================================================================
 
-  .org  0x08
-
-  ;; ------------------------------------------------------------------------
-  ;; clear bits 0 and 1 of register ECON1
-  ;; ------------------------------------------------------------------------
-
-  ld   hl, #0x0100 * 0x03 + OPCODE_BFC + (ECON1 & REG_MASK)        ;; 3 bytes
-  rst  enc28j60_write8plus8                                        ;; 1 byte
-
-  ;; ------------------------------------------------------------------------
-  ;; mask in "bank" in bits 0 and 1 of register ECON1
-  ;; ------------------------------------------------------------------------
-
-  ld    l, #OPCODE_BFS + (ECON1 & REG_MASK)                        ;; 2 bytes
-  jr    enc28j60_select_bank_continued                             ;; 2 bytes
-
-  ;; ========================================================================
-  ;; RST 0x10 ENTRYPOINT: enc28j60_write_register16
-  ;; ========================================================================
-
-  .org   0x10
+  .org   0x08
 
   ld     e, a
   inc    e
@@ -92,16 +72,38 @@
 
   ex     de, hl
 
-  nop
+  .db    JR_UNCONDITIONAL         ;; JR to 0x0018
 
-  ;; FALL THROUGH to RST 0x18 == enc28j60_write8plus8
+  ;; ========================================================================
+  ;; RST 0x10 ENTRYPOINT: enc28j60_select_bank
+  ;; ========================================================================
+
+  .org  0x10
+
+  .db    7         ;; RLCA (has no effect), and offset for JR above   1 byte
+
+  ;; ------------------------------------------------------------------------
+  ;; clear bits 0 and 1 of register ECON1
+  ;; ------------------------------------------------------------------------
+
+  ld   hl, #0x0100 * 0x03 + OPCODE_BFC + (ECON1 & REG_MASK)        ;; 3 bytes
+  rst  enc28j60_write8plus8                                        ;; 1 byte
+
+  ;; ------------------------------------------------------------------------
+  ;; mask in "bank" in bits 0 and 1 of register ECON1
+  ;; ------------------------------------------------------------------------
+
+  ld   l, #OPCODE_BFS + (ECON1 & REG_MASK)                         ;; 2 bytes
+  ld   h, e                                                        ;; 1 byte
+
+  ;; FALL THROUGH to enc28j60_write8plus8
 
   ;; ========================================================================
   ;; RST 0x18 ENTRYPOINT: enc28j60_write8plus8
   ;; ========================================================================
 
   .org  0x18
-  
+
   ld    c, l                                                    ;; 1 byte
   rst   spi_write_byte                                          ;; 1 byte
   ld    c, h                                                    ;; 1 byte
@@ -133,16 +135,21 @@ enc28j60_write_local_hwaddr:
   
   .db   0     ;; one NOP byte, also high address byte of LD HL, #nn;  1 byte
   ld    d, #0                                                      ;; 2 bytes
-  jr    enc28j60_write_memory                                      ;; 2 bytes
+
+  ;; ========================================================================
+  ;; enc28j60_write_memory entrypoint
+  ;; ========================================================================
+
+enc28j60_write_memory:
 
   ;; ------------------------------------------------------------------------
-  ;; continuation of enc28j60_select_bank (RST 0x08)
+  ;; start transaction: WBM
   ;; ------------------------------------------------------------------------
 
-enc28j60_select_bank_continued:
-  ld   h, e                                                        ;; 1 byte
-  rst  enc28j60_write8plus8                                        ;; 1 byte
-  ret                                                              ;; 1 byte
+  ld    c, #OPCODE_WBM                                             ;; 2 bytes
+  rst   spi_write_byte                                             ;; 1 byte
+
+  jr    enc28j60_write_memory_cont                                 ;; 2 bytes
 
   ;; ========================================================================
   ;; RST 0x30 ENTRYPOINT: memory_compare
@@ -186,23 +193,15 @@ spi_write_byte_cont:
     ret
 
 ;; ############################################################################
-;; enc28j60_write_memory
+;; enc28j60_write_memory_cont
 ;; ############################################################################
 
-enc28j60_write_memory:
-
-    ;; ------------------------------------------------------------------------
-    ;; start transaction: WBM
-    ;; ------------------------------------------------------------------------
-
-    ld    c, #OPCODE_WBM
-    rst   spi_write_byte
+enc28j60_write_memory_cont:
 
     ;; ------------------------------------------------------------------------
     ;; write DE bytes, starting at HL
     ;; ------------------------------------------------------------------------
 
-00001$:
     ld    c, (hl)  ;; read byte from data
     inc   hl
 
@@ -211,7 +210,7 @@ enc28j60_write_memory:
     dec   de
     ld    a, d
     or    a, e
-    jr    nz, 00001$
+    jr    nz, enc28j60_write_memory_cont
 
     ;; ------------------------------------------------------------------------
     ;; end transaction
