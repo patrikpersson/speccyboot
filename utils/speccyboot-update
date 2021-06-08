@@ -43,9 +43,7 @@ FINAL_BINARY = 'menu.bin'
 
 stage2_bytes = open(os.path.join(SPECCYBOOT_HOME, 'spboot.bin'), "rb").read()
 
-version_magic = stage2_bytes[2]
-
-version = "{}.{}".format(version_magic // 16, version_magic % 16)
+version = stage2_bytes[2]
 
 loading_address = stage2_bytes[0] + 256 * stage2_bytes[1]
 
@@ -88,7 +86,7 @@ def update_index_in_dir(dir):
             output.write(filename.encode(encoding='ascii',errors='replace'))
             output.write(bytes([0]))
     
-    print("updated index: {} snapshots in {}  (SpeccyBoot v{})".format(n,dir,version))
+    print("updated index: {} snapshots, SpeccyBoot v{} in {}".format(n,version,dir))
 
 # ----------------------------------------------------------------------------
 

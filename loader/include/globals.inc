@@ -36,11 +36,8 @@
 ;; Version information
 ;; ============================================================================
 
-VERSION_MAJOR  = 2
-VERSION_MINOR  = 1
+VERSION_STAGE1 = 3
 VERSION_LOADER = 0
-
-VERSION_MAGIC = VERSION_MAJOR << 4 | VERSION_MINOR
 
 ;; ----------------------------------------------------------------------------
 ;; Stack address (defined here so init.asm can find it via linker)

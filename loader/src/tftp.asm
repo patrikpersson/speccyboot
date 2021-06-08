@@ -308,7 +308,7 @@ tftp_zero_length_data:
     jr  nz, version_mismatch
     inc de
     ld  a, (de)
-    cp  a, #VERSION_MAGIC
+    cp  a, #VERSION_STAGE1
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
     jp  nz, version_mismatch

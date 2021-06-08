@@ -159,10 +159,8 @@ bootp_init:
     jp   ip_send
 
 title_str:
-    .ascii "SpeccyBoot "
-    .db   VERSION_MAJOR + '0'
-    .db   '.'
-    .db   VERSION_MINOR + '0'
+    .ascii "SpeccyBoot v"
+    .db   VERSION_STAGE1 + '0'
     .db   0
 
 ;; ############################################################################

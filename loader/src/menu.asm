@@ -55,7 +55,7 @@ KEY_DOWN      = '6'
 
 ;; position for loader version (one lower-case letter)
 
-VRAM_LOADER_VERSION = BITMAP_BASE + 14   ;; (0, 14)
+VRAM_LOADER_VERSION = BITMAP_BASE + 13   ;; (0, 13)
 
 ;; ============================================================================
 ;; Repeat time-outs: between the keypress and the first repetition, and for
