@@ -342,11 +342,13 @@ stage2_start:
 
   ;; --------------------------------------------------------------------------
   ;; Special mark for integrity check, as first five bytes in loaded binary:
-  ;; VERSION_MAGIC (magic number depending on version, 2 bytes)
+  ;; LOAD_ADDRESS (should match stage2_start, 2 bytes)
+  ;; VERSION_MAGIC (magic number depending on version, 1 byte)
   ;; JP to entry point (3 bytes)
   ;; --------------------------------------------------------------------------
 
-  .dw   VERSION_MAGIC
+  .dw   stage2_start
+  .db   VERSION_MAGIC
   jp    run_menu
 
   .area _SNAPSHOTLIST

@@ -42,7 +42,6 @@ OFILES       = init.rel $(ASMMODULES:%=%.rel)
 
 ROM          = speccyboot.rom
 STAGE2BIN    = spboot.bin
-LOADINFO     = speccyboot.py
 
 # -----------------------------------------------------------------------------
 
@@ -78,15 +77,14 @@ MAKEBINFLAGS = -p
 
 all: bin
 
-bin: $(ROM) $(STAGE2BIN) $(LOADINFO)
+bin: $(ROM) $(STAGE2BIN)
 
 clean:
-	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN) $(LOADINFO)
+	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
 
 install: $(ROM) $(STAGE2BIN) $(INSTALLDIR)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
 	install --mode=a+r $(STAGE2BIN) $(INSTALLDIR)
-	install --mode=a+r $(LOADINFO) $(INSTALLDIR)
 
 .SUFFIXES:
 
@@ -119,7 +117,3 @@ $(ROM): $(COMBINED)
 
 $(STAGE2BIN): $(COMBINED)
 	dd if=$< of=$@ bs=1 skip=${get_address}
-
-$(LOADINFO): $(COMBINED)
-	echo '# automatically generated: do not modify' > $@
-	echo 'stage2_load_address =' ${get_address} >> $@

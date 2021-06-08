@@ -39,13 +39,15 @@ import os
 import glob
 import sys
 
-FINAL_BINARY = 'stage2'
-
-sys.path.append(SPECCYBOOT_HOME)
-
-from speccyboot import stage2_load_address
+FINAL_BINARY = 'menu.bin'
 
 stage2_bytes = open(os.path.join(SPECCYBOOT_HOME, 'spboot.bin'), "rb").read()
+
+version_magic = stage2_bytes[2]
+
+version = "{}.{}".format(version_magic // 16, version_magic % 16)
+
+loading_address = stage2_bytes[0] + 256 * stage2_bytes[1]
 
 # ----------------------------------------------------------------------------
 
@@ -66,7 +68,7 @@ def update_index_in_dir(dir):
     list.sort()
 
     # calculate addresses
-    nbr_snapshots_address = stage2_load_address + len(stage2_bytes)
+    nbr_snapshots_address = loading_address + len(stage2_bytes)
     array_address = nbr_snapshots_address + 1
     filenames_address = array_address + n * 2
 
@@ -86,7 +88,7 @@ def update_index_in_dir(dir):
             output.write(filename.encode(encoding='ascii',errors='replace'))
             output.write(bytes([0]))
     
-    print("updated index: {} snapshots in {}".format(n,dir))
+    print("updated index: {} snapshots in {}  (SpeccyBoot v{})".format(n,dir,version))
 
 # ----------------------------------------------------------------------------
 

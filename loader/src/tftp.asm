@@ -298,16 +298,21 @@ tftp_zero_length_data:
     ;; check version signature and run the stage 2 loader
     ;; ========================================================================
 
-    ld  hl, (stage2_start)
-    ld  a, l
-    cp  a, #<VERSION_MAGIC
+    ld  de, #stage2_start
+    ld  a, (de)
+    cp  a, e
     jr  nz, version_mismatch
-    ld  a, h
-    cp  a, #>VERSION_MAGIC
+    inc de
+    ld  a, (de)
+    cp  a, #>stage2_start
+    jr  nz, version_mismatch
+    inc de
+    ld  a, (de)
+    cp  a, #VERSION_MAGIC
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
     jp  nz, version_mismatch
-    jp  stage2_start + 2
+    jp  stage2_start + 3
 
 tftp_receive_error:
 
@@ -326,7 +331,7 @@ tftp_receive_error:
     ;; ------------------------------------------------------------------------
 
 tftp_default_file:
-    .ascii 'stage2'               ;; trailing NUL pinched from following packet
+    .ascii 'menu.bin'             ;; trailing NUL pinched from following packet
 tftp_receive_error_packet:
     .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
 tftp_receive_ack_opcode:
