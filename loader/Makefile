@@ -28,17 +28,21 @@ endif
 # COMPONENTS
 # =============================================================================
 
-ASMMODULES   = bootp context_switch eth enc28j60
-ASMMODULES  += menu tftp udp_ip util z80_loader
+ASMFILES     = bootp.asm context_switch.asm eth.asm enc28j60.asm init.asm
+ASMFILES    += menu.asm tftp.asm udp_ip.asm util.asm z80_loader.asm
+
+INCFILES     = bootp.inc context_switch.inc eth.inc enc28j60.inc globals.inc
+INCFILES    += menu.inc tftp.inc udp_ip.inc util.inc spi.inc z80_loader.inc
 
 # -----------------------------------------------------------------------------
 
-OFILES       = init.rel $(ASMMODULES:%=%.rel)
+OFILES       = $(ASMFILES:%.asm=%.rel)
 
 # -----------------------------------------------------------------------------
 
 # ROM:       stage 1, binary file to be loaded into EEPROM (address 0x0000)
 # STAGE2BIN: stage 2, binary file to be loaded over TFTP by stage 1
+#                     (as part of menu.bin)
 
 ROM          = speccyboot.rom
 STAGE2BIN    = spboot.bin
@@ -62,10 +66,9 @@ INCLUDEDIR   = include
 TOOLSDIR     = ../utils
 OBJDIR       = obj
 
-VPATH        = $(OBJDIR)
-
 vpath %.asm  $(SRCDIR)
 vpath %.inc  $(INCLUDEDIR)
+vpath %.rel  $(OBJDIR)
 
 LINKFILE     = speccyboot.lk
 
@@ -103,7 +106,7 @@ COMBINED = $(OBJDIR)/combined.bin
 $(OBJDIR) $(INSTALLDIR):
 	mkdir -p $@
 
-%.rel: %.asm $(OBJDIR)
+%.rel: %.asm $(INCFILES) $(OBJDIR)
 	$(AS) $(ASFLAGS) -o $(OBJDIR)/$@ $<
 
 $(IHXFILE): $(OFILES)
@@ -113,7 +116,7 @@ $(COMBINED): $(IHXFILE)
 	$(MAKEBIN) $(MAKEBINFLAGS) $(IHXFILE) $@
 
 $(ROM): $(COMBINED)
-	dd if=$< of=$@ bs=1k count=8
+	dd if=$< of=$@ bs=1k count=8 status=none
 
 $(STAGE2BIN): $(COMBINED)
-	dd if=$< of=$@ bs=1 skip=${get_address}
+	dd if=$< of=$@ bs=1 skip=${get_address} status=none
