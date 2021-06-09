@@ -190,7 +190,7 @@ get_filename_pointer:
 
 ;; ============================================================================
 
-    .area _NONRESIDENT
+    .area _STAGE2_ENTRY
 
 run_menu:
 

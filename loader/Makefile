@@ -28,7 +28,8 @@ endif
 # COMPONENTS
 # =============================================================================
 
-ASMFILES     = bootp.asm context_switch.asm eth.asm enc28j60.asm init.asm
+ASMFILES     = init.asm
+ASMFILES    += bootp.asm context_switch.asm eth.asm enc28j60.asm
 ASMFILES    += menu.asm tftp.asm udp_ip.asm util.asm z80_loader.asm
 
 INCFILES     = bootp.inc context_switch.inc eth.inc enc28j60.inc globals.inc
@@ -51,7 +52,7 @@ STAGE2BIN    = spboot.bin
 
 # macro for getting the loading address of the stage2 binary
 
-get_address  = $(shell grep s__STAGE2 $(OBJDIR)/speccyboot.noi | cut -d' ' -f3 | sed -e 's/0x/obase=10;ibase=16; /g' | bc)
+get_address  = $(shell grep 's__STAGE2_ENTRY' $(OBJDIR)/speccyboot.noi | cut -d' ' -f3 | sed -e 's/0x/obase=10;ibase=16; /g' | bc)
 
 # =============================================================================
 # DIRECTORIES

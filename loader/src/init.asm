@@ -333,10 +333,12 @@ initialize_global_data:
 
   .area _DATA
 
-  .area _STAGE2        ;; this is where the stage 2 bootloader starts (RAM)
+  .area _STAGE2_ENTRY  ;; header for the stage 2 bootloader (RAM)
+  .area _STAGE2        ;; other, resident stage 2 code
   .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
-  .area _SNAPSHOTLIST  ;; area for loaded snapshot list (snapshots.lst)
-  .area _STAGE2
+  .area _SNAPSHOTLIST  ;; area for loaded snapshot list
+
+  .area _STAGE2_ENTRY
 
 stage2_start:
 
@@ -344,12 +346,16 @@ stage2_start:
   ;; Special mark for integrity check, as first five bytes in loaded binary:
   ;; LOAD_ADDRESS (should match stage2_start, 2 bytes)
   ;; VERSION_STAGE1 (version indicator for stage 1, 1 byte)
-  ;; JP to entry point (3 bytes)
   ;; --------------------------------------------------------------------------
 
   .dw   stage2_start
   .db   VERSION_STAGE1
-  jp    run_menu
+
+  ;; --------------------------------------------------------------------------
+  ;; If the version mark above checks out, execution continues here
+  ;; --------------------------------------------------------------------------
+
+  .area _STAGE2
 
   .area _SNAPSHOTLIST
 
