@@ -175,7 +175,7 @@ show_attr_char_address_known:
 ;; like load_byte_from_packet, but also decreases BC
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 load_byte_from_chunk:
 
