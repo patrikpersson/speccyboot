@@ -133,7 +133,7 @@ find_snapshot_for_key:
     ld   b, a
     ld   c, #0  ;; result (selected index)
 
-    ld   hl, #snapshot_list + 1
+    ld   hl, #snapshot_array
 find_snapshot_for_key_lp:
 
     ld   a, c
@@ -177,7 +177,7 @@ get_filename_pointer:
     ld   h, #0
     ld   l, a
     add  hl, hl
-    ld   bc, #snapshot_list + 1
+    ld   bc, #snapshot_array
     add  hl, bc
     ld   a, (hl)
     inc  hl
@@ -225,7 +225,7 @@ run_menu:
 
     ld   c, #0
     ld   d, c
-    ld   a, (snapshot_list)
+    ld   a, (nbr_snapshots)
     ld   e, a
 
 menu_loop:

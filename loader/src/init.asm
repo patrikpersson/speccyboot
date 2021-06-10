@@ -358,4 +358,7 @@ stage2_start:
 
   .area _SNAPSHOTLIST
 
-snapshot_list:
+nbr_snapshots:
+  .ds    1
+
+snapshot_array:

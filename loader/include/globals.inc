@@ -55,7 +55,14 @@ _font_data  = 0xfd00                  ;; full font, but overwritten by snapshot
     .globl stage2_start
 
 ;; ----------------------------------------------------------------------------
-;; Address of the snapshot list (first byte after stage 2 loader)
+;; Number of snapshots (one byte, directly after stage 2 loader)
 ;; ----------------------------------------------------------------------------
 
-    .globl snapshot_list
+    .globl nbr_snapshots
+
+;; ----------------------------------------------------------------------------
+;; Array of pointers to snapshot file names. The array size is nbr_snapshots.
+;; (one word, directly after nbr_snapshots)
+;; ----------------------------------------------------------------------------
+
+    .globl snapshot_array
