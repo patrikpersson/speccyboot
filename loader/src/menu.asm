@@ -133,24 +133,17 @@ find_snapshot_for_key:
     ld   b, a
     ld   c, #0  ;; result (selected index)
 
-    ld   hl, #snapshot_array
 find_snapshot_for_key_lp:
 
     ld   a, c
     inc  a
-    cp   a, e
-
+    cp   a, e          ;; ensure (C + 1) < E
     ret  nc
+    ld   a, c
 
-    push de
+    call get_filename_pointer
 
-    ld   e, (hl)
-    inc  hl
-    ld   d, (hl)
-    inc  hl
-    ld   a, (de)
-
-    pop  de
+    ld   a, (hl)
 
     cp   a, #'a'
     jr   c, not_lowercase_letter
