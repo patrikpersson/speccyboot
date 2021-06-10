@@ -145,6 +145,8 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
     .globl _retransmission_timeout
     .globl _end_of_critical_frame
 
+    .globl ethertype_ip
+
 ;; ============================================================================
 ;; Initialize Ethernet layer
 ;; ============================================================================
@@ -154,8 +156,9 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
 ;; Create an Ethernet frame for transmission. If a previous frame is
 ;; currently in transmission, block until that is done first.
 ;;
-;; HL = destination MAC address
-;; A = Ethertype flag (zero for IP, non-zero for ARP)
+;; BC: destination MAC address
+;; DE: pointer to Ethertype (2 bytes)
+;; HL: ENC28J60_TXBUF1_START for IP, ENC28J60_TXBUF1_START for ARP
 ;; ============================================================================
     .globl eth_create
 

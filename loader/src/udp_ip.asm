@@ -357,9 +357,10 @@ udp_create:
     ;; create IP packet
     ;; ----------------------------------------------------------------------
 
-    pop    hl             ;; destination MAC address
-
-    call   eth_create     ;; A is zero (means IP), after XOR A, A above
+    pop    bc             ;; destination MAC address
+    ld     de, #ethertype_ip
+    ld     hl, #ENC28J60_TXBUF1_START
+    call   eth_create
 
     ;; ----------------------------------------------------------------------
     ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));

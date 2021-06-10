@@ -457,9 +457,15 @@ eth_register_defaults:
 
 eth_create:
 
+    ;; ------------------------------------------------------------------------
+    ;; remember _current_txbuf (TXBUF1 for IP, TXBUF2 for ARP)
+    ;; ------------------------------------------------------------------------
+
+    ld    (_current_txbuf), hl
+
+    push  de
+    push  bc
     push  hl
-    or    a, a
-    ex    af, af'     ;; ethertype in Z flag in F' (set for IP, clear for ARP)
 
     ;; ------------------------------------------------------------------------
     ;; select default bank for ENC28J60
@@ -468,20 +474,7 @@ eth_create:
     ld    e, #0
     rst   enc28j60_select_bank
 
-    ;; ------------------------------------------------------------------------
-    ;; remember _current_txbuf depending on ethertype
-    ;; (TXBUF1 for IP, TXBUF2 for ARP)
-    ;; ------------------------------------------------------------------------
-
-    ex    af, af'          ;; bring back ethertype from F'
-
-    ld    hl, #ENC28J60_TXBUF1_START
-    jr    z, eth_create_txbuf_set
-    ld    hl, #ENC28J60_TXBUF2_START
-eth_create_txbuf_set:
-    ld    (_current_txbuf), hl
-
-    ex    af, af'          ;; keep ethertype in F'
+    pop   hl
 
     ;; ------------------------------------------------------------------------
     ;; set up EWRPT for writing packet data
@@ -521,11 +514,7 @@ eth_create_txbuf_set:
     ;; ------------------------------------------------------------------------
 
     ld    e, #ETH_SIZEOF_ETHERTYPE
-    ld    hl, #ethertype_ip
-    ex    af, af'          ;; bring back ethertype from AF'
-    jr    z, eth_create_ethertype_set
-    ld    hl, #ethertype_arp
-eth_create_ethertype_set:
+    pop   hl     ;; pop Ethertype pointer
     rst   enc28j60_write_memory_small
     ret
 
@@ -574,11 +563,9 @@ arp_receive:
     rst  memory_compare
     ret  nz   ;; if the packet is not for the local IP address, return
 
-    ;; set A to a non-zero value (to indicate an ARP frame to eth_create)
-    ;; D is always non-zero here, as DE points to RAM after memory_compare
-
-    ld   a, d
-    ld   hl, #eth_sender_address
+    ld   bc, #eth_sender_address
+    ld   de, #ethertype_arp
+    ld   hl, #ENC28J60_TXBUF2_START
     call eth_create
 
     ;; ARP header
