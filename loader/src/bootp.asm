@@ -30,7 +30,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module bootp
-    .optsdcc -mz80
 
     .include "bootp.inc"
 

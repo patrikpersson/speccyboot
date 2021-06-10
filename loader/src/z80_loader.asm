@@ -32,7 +32,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module z80_loader
-    .optsdcc -mz80
 
     .include "z80_loader.inc"
 

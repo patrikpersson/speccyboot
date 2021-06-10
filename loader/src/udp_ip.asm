@@ -31,7 +31,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module udp_ip
-    .optsdcc -mz80
 
     .include "udp_ip.inc"
 

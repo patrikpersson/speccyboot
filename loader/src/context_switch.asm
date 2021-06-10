@@ -32,7 +32,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module context_switch
-    .optsdcc -mz80
 
     .include "context_switch.inc"
 

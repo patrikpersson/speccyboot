@@ -31,7 +31,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module eth
-    .optsdcc -mz80
 
     .include "bootp.inc"
     .include "enc28j60.inc"

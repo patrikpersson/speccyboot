@@ -30,7 +30,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module tftp
-    .optsdcc -mz80
 
     .include "tftp.inc"
 

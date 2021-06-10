@@ -30,7 +30,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module enc28j60
-    .optsdcc -mz80
 
     .include "enc28j60.inc"
 

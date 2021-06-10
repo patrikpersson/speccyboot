@@ -30,7 +30,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module util
-    .optsdcc -mz80
 
     .include "util.inc"
 

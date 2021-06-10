@@ -31,7 +31,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .module menu
-    .optsdcc -mz80
 
     .include "menu.inc"
 
