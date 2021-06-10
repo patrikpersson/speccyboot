@@ -41,25 +41,6 @@
     .include "udp_ip.inc"
     .include "util.inc"
 
-;; ============================================================================
-;; BOOTP packet structure
-;; ============================================================================
-
-BOOTP_PART1_SIZE       = 8
-BOOTP_PART2_SIZE       = 20
-BOOTP_PART3_SIZE       = 6
-BOOTP_PART4_SIZE       = 266
-
-BOOTP_PACKET_SIZE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + BOOTP_PART4_SIZE)
-
-BOOTP_OFFSETOF_OP      = 0
-BOOTP_OFFSETOF_XID     = 4
-BOOTP_OFFSETOF_YIADDR  = BOOTP_PART1_SIZE + 8
-
-BOOTP_OFFSETOF_SNAME = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10)
-
-BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10 + 64)
-
 ;; ----------------------------------------------------------------------------
 ;; Location of local and server IP addresses (row 23, columns 6 and 22)
 ;; ----------------------------------------------------------------------------
@@ -68,100 +49,6 @@ LOCAL_IP_POS  = (BITMAP_BASE + 0x1000 + 7*32 + 1)
 SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 7*32 + 17)
 
     .area _CODE
-
-;; ############################################################################
-;; bootp_init
-;; ############################################################################
-
-bootp_init:
-
-    ;; ========================================================================
-    ;; Presentation
-    ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot x.y' at (0,0)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #title_str       ;; 'SpeccyBoot x.y'
-    ld    de, #BITMAP_BASE     ;; coordinates (0,0)
-
-    call  print_str
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'B' indicator (BOOTP): black ink, green paper, bright, flash
-    ;; ------------------------------------------------------------------------
-
-    ld    a, #'B'
-    ld    de, #BITMAP_BASE + 0x1000 + 7 *32   ;; (23, 0)
-    call  print_char
-
-    ld    hl, #ATTRS_BASE + 23 * 32           ;; (23, 0)
-    ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
-
-    ;; ========================================================================
-    ;; the BOOTREQUEST is built in steps:
-    ;; - 8 constant-valued bytes
-    ;; - 20 zero-valued bytes
-    ;; - 6 bytes of SpeccyBoot Ethernet address
-    ;; - 266 zero-valued bytes
-    ;; Total: 300 bytes (BOOTP_PACKET_SIZE)
-    ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; create UDP packet
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #UDP_PORT_BOOTP_CLIENT * 0x100    ;; network order
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
-    ld   h, #UDP_PORT_BOOTP_SERVER
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
-
-    ld   de, #UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
-    ld   hl, #eth_broadcast_address
-    ld   b, h     ;; works for IP broadcast too (4 x 0xff)
-    ld   c, l
-    call udp_create
-
-    ;; ------------------------------------------------------------------------
-    ;; part 1: 8 bytes of header (constants)
-    ;; ------------------------------------------------------------------------
-
-    ld   e, #BOOTP_PART1_SIZE
-    ld   hl, #bootrequest_header_data
-    rst  enc28j60_write_memory_small
-
-    ;; ------------------------------------------------------------------------
-    ;; part 2: 20 bytes of zeros
-    ;; use VRAM as source of 20 zero-valued bytes
-    ;; ------------------------------------------------------------------------
-
-    ld   e, #BOOTP_PART2_SIZE
-    ld   hl, #0x4800
-    push hl
-    rst  enc28j60_write_memory_small
-
-    ;; ------------------------------------------------------------------------
-    ;; part 3: 6 bytes of MAC address
-    ;; ------------------------------------------------------------------------
-
-    call enc28j60_write_local_hwaddr
-
-    ;; ------------------------------------------------------------------------
-    ;; part 4: 266 bytes of zeros
-    ;; use VRAM as source of 266 zero-valued bytes
-    ;; ------------------------------------------------------------------------
-
-    ld   de, #BOOTP_PART4_SIZE
-    pop  hl                       ;; HL is now 0x4800, zeros in VRAM
-    call enc28j60_write_memory
-
-    jp   ip_send
-
-title_str:
-    .ascii "SpeccyBoot v"
-    .db   VERSION_STAGE1 + '0'
-    .db   0
 
 ;; ############################################################################
 ;; bootp_receive

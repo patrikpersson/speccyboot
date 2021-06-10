@@ -93,12 +93,37 @@ END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
 
 _main:
 
+    ;; ========================================================================
+    ;; Presentation
+    ;; ========================================================================
+
     ;; ------------------------------------------------------------------------
-    ;; system initialization
+    ;; print 'SpeccyBoot x.y' at (0,0)
     ;; ------------------------------------------------------------------------
 
+    ld    hl, #title_str       ;; 'SpeccyBoot x.y'
+    ld    de, #BITMAP_BASE     ;; coordinates (0,0)
+
+    call  print_str
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'B' indicator (BOOTP): black ink, green paper, bright, flash
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #'B'
+    ld    de, #BITMAP_BASE + 0x1000 + 7 *32   ;; (23, 0)
+    call  print_char
+
+    ld    hl, #ATTRS_BASE + 23 * 32           ;; (23, 0)
+    ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
+
+    ;; ========================================================================
+    ;; system initialization
+    ;; ========================================================================
+
     call  eth_init
-    call  bootp_init
+    
+    bootp_init             ;; macro, no need to CALL
 
     ;; ========================================================================
     ;; main loop: receive packets and act on them
@@ -292,6 +317,11 @@ main_packet_done:
     rst   enc28j60_write_register16
 
     jp    main_loop
+
+title_str:
+    .ascii "SpeccyBoot v"
+    .db   VERSION_STAGE1 + '0'
+    .db   0
 
 
 ;; ############################################################################
