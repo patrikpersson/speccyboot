@@ -316,7 +316,6 @@ context_switch_snd_reg_loop:
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
     ld   b, #>SND_REG_SELECT
-    ld   a, (hl)
     out  (c), a
 
 context_switch_48k_snapshot:
