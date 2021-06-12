@@ -217,9 +217,14 @@ ip_receive_not_bootp:
 
     ld   a, (_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET)
     or   a  ;; a non-zero first octet
-    jp   nz, tftp_receive
+    ret  z
 
-    ret
+    ;; -------------------------------------------------------------------
+    ;; handle_tftp_packet is a macro, so as to avoid a function call
+    ;; -------------------------------------------------------------------
+
+    handle_tftp_packet
+
 
 ;; -----------------------------------------------------------------------
 ;; Helper: check IP checksum.

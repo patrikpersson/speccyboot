@@ -31,6 +31,34 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 ;;
 
+;; ============================================================================
+;; TFTP opcodes
+;; ============================================================================
+
+TFTP_OPCODE_RRQ           = 1
+TFTP_OPCODE_DATA          = 3
+TFTP_OPCODE_ACK           = 4
+TFTP_OPCODE_ERROR         = 5
+
+;; ============================================================================
+;; Sizes and offsets of individual fields
+;; ============================================================================
+
+TFTP_SIZE_OF_OPCODE       = 2
+TFTP_OFFSET_OF_OPCODE     = 0
+
+TFTP_OFFSET_OF_BLOCKNO    = 2
+TFTP_OFFSET_OF_ERROR_MSG  = 4
+
+TFTP_SIZE_OF_RRQ_OPTION   = 6
+
+;; ============================================================================
+;; Packet sizes
+;; ============================================================================
+
+TFTP_SIZE_OF_ACK_PACKET   = 4
+TFTP_SIZE_OF_ERROR_PACKET = 5
+
 ;; ----------------------------------------------------------------------------
 ;; TFTP DATA packets have a maximal size of 512 bytes, unless options are set
 ;; by the client (and this client won't)
@@ -49,6 +77,18 @@ TFTP_HEADER_SIZE     = 4
 ;; ----------------------------------------------------------------------------
 
 TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
+
+;; ----------------------------------------------------------------------------
+;; packet counter for TFTP
+;; ----------------------------------------------------------------------------
+
+    .globl _expected_tftp_block_no
+
+;; ----------------------------------------------------------------------------
+;; UDP port used by TFTP server
+;; ----------------------------------------------------------------------------
+
+    .globl _server_port
 
 ;; ----------------------------------------------------------------------------
 ;; UDP client-side port for UDP transfers (checked in udp_ip.asm)
@@ -81,10 +121,16 @@ TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
     .globl tftp_default_file
 
 ;; ----------------------------------------------------------------------------
-;; Called by UDP when a TFTP packet has been identified
+;; Packet data for a TFTP ERROR packet
 ;; ----------------------------------------------------------------------------
 
-    .globl tftp_receive
+    .globl tftp_receive_error_packet
+
+;; ----------------------------------------------------------------------------
+;; Data for a TFTP ACK opcode
+;; ----------------------------------------------------------------------------
+
+    .globl tftp_receive_ack_opcode
 
 ;; ----------------------------------------------------------------------------
 ;; Initiate a file transfer from server.
@@ -92,3 +138,243 @@ TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
 ;; HL: pointer to NUL-terminated file name
 ;; ----------------------------------------------------------------------------
     .globl tftp_read_request
+
+
+;; ----------------------------------------------------------------------------
+;; Macro: executed by UDP when a TFTP packet has been identified.
+;; Returns (RET or RET cc) when done.
+;; ----------------------------------------------------------------------------
+
+    .macro  handle_tftp_packet
+
+    ;; ------------------------------------------------------------------------
+    ;; check destination port (should be _tftp_client_port)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT
+    ld   de, #_tftp_client_port
+    ld   b, #2
+    rst  memory_compare
+    ret  nz
+
+    ;; ------------------------------------------------------------------------
+    ;; only accept DATA packets; anything else is a fatal error
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
+    xor  a, a
+    or   a, (hl)
+    inc  hl
+    jr   nz, tftp_receive_bad_reply
+    ld   a, (hl)
+    cp   a, #TFTP_OPCODE_DATA
+    jr   z, tftp_receive_got_data
+
+    ;; the only conceivable message type is now TFTP_OPCODE_ERROR
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_ERROR_MSG
+    ld   de, #TFTP_VRAM_ERROR_POS
+    call print_str
+
+tftp_receive_bad_reply:
+
+    ld   a, #FATAL_FILE_NOT_FOUND
+    jp   fail
+
+tftp_receive_got_data:
+
+    ;; ========================================================================
+    ;; check block number: acceptable cases are
+    ;; received == expected   (normal case: acknowledge and read)
+    ;; received == expected-1 (previous ACK lost: acknowledge, but do not read)
+    ;; ========================================================================
+
+    inc   hl
+    ld    d, (hl)    ;; stored in network order, so read D first
+    inc   hl
+    ld    e, (hl)    ;; DE is now the received block number, in host order
+
+    ld    hl, (_expected_tftp_block_no)
+
+    ;; ------------------------------------------------------------------------
+    ;; keep server-side port number in BC
+    ;; ------------------------------------------------------------------------
+
+    ld    bc, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+
+    ;; ------------------------------------------------------------------------
+    ;; special case: if received and expected both are 1,
+    ;; remember server port, and skip some checks
+    ;; ------------------------------------------------------------------------
+
+    ld    a, h        ;; are these
+    or    a, d        ;; both zero?
+    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+    ld    a, e        ;; are these
+    cp    a, l        ;; both the same value (specifically, 1) ?
+    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+    dec   a           ;; is A now 1?
+    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+
+    ;; this is the first packet, so note server port and accept the packet
+
+    ld    (_server_port), bc
+    jr    tftp_receive_blk_nbr_and_port_ok
+
+tftp_receive_check_blk_nbr:
+
+    ;; ------------------------------------------------------------------------
+    ;; received == expected ?
+    ;; ------------------------------------------------------------------------
+
+    or    a, a   ;; clear C flag
+    sbc   hl, de
+    jr    z, tftp_receive_blk_nbr_ok
+
+    ;; ------------------------------------------------------------------------
+    ;; received == expected-1 ?   means HL-DE == expected-received == 1
+    ;; ------------------------------------------------------------------------
+
+    dec   hl
+    ld    a, h
+    or    a, l
+    jr    nz, tftp_receive_error
+
+tftp_receive_blk_nbr_ok:
+
+    ;; ------------------------------------------------------------------------
+    ;; check server port number:
+    ;; must be the same as used for first packet
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, (_server_port)
+    ;; BC was loaded above, early on; holds server-side port nbr from packet
+    ;; C flag is clear from either SBC HL, DE (resulting in zero) or OR A, L
+    sbc   hl, bc
+    jr    nz, tftp_receive_error
+
+tftp_receive_blk_nbr_and_port_ok:
+
+    ;; ========================================================================
+    ;; reply with ACK packet
+    ;; ========================================================================
+
+    ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
+    call  udp_reply
+
+    ld    e, #TFTP_SIZE_OF_OPCODE
+    ld    hl, #tftp_receive_ack_opcode
+    rst   enc28j60_write_memory_small
+
+    ld    e, #TFTP_SIZE_OF_OPCODE
+    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
+    rst   enc28j60_write_memory_small
+
+    call  ip_send
+
+    ;; ========================================================================
+    ;; if expected block nbr == received, increase expected and accept the data
+    ;; ========================================================================
+
+    ld    hl, (_expected_tftp_block_no)
+
+    ld    de, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO)
+    ld    a, e
+    cp    a, h    ;; network order  
+    ret   nz
+    ld    a, d
+    cp    a, l
+    ret   nz
+
+    inc   hl
+    ld    (_expected_tftp_block_no), hl
+
+    ;; -----------------------------------------------------------------------
+    ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
+    ;; from the UDP length. Start with the low-order byte in network order;
+    ;; hence the "+1" below. Set BC to TFTP payload length, 0..512.
+    ;; -----------------------------------------------------------------------
+
+    ld  de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH + 1
+    ld  a, (de)                                      ;; UDP length, low byte
+    sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)  
+    ld  c, a                                         ;; TFTP length, low byte
+    dec de
+    ld  a, (de)                                      ;; UDP length, high byte
+    sbc a, #0
+    ld  b, a                                         ;; TFTP length, high byte
+
+    ;; ------------------------------------------------------------------------
+    ;; If a receive hook has been installed, jump there
+    ;; ------------------------------------------------------------------------
+
+    ld  hl, (_tftp_receive_hook)
+    ld  a, h
+    or  l
+    jr  z, 00002$
+    jp  (hl)
+
+00002$:
+
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld  de, (_tftp_write_pos)
+
+    ld  a, b
+    or  a, c                                   ;; check if BC == 0
+    ld  a, b                                   ;; but keep A == B
+    jr  z, tftp_zero_length_data               ;; stay clear of LDIR if BC == 0
+
+    ldir
+    ld  (_tftp_write_pos), de
+
+tftp_zero_length_data:
+
+    ;; ------------------------------------------------------------------------
+    ;; If a full TFTP packet was loaded, return.
+    ;; (BC above should be exactly 0x200 for all DATA packets except the last
+    ;; one, never larger; so we are done if A != 2 here)
+    ;; ------------------------------------------------------------------------
+
+    cp  a, #2
+    ret z
+
+    ;; ========================================================================
+    ;; This was the last packet of the stage 2 binary:
+    ;; check version signature and run the stage 2 loader
+    ;; ========================================================================
+
+    ld  hl, #stage2_start
+    ld  a, (hl)
+    cp  a, l
+    jr  nz, version_mismatch
+    inc hl
+    ld  a, (hl)
+    cp  a, #>stage2_start
+    jr  nz, version_mismatch
+    inc hl
+    ld  a, (hl)
+    cp  a, #VERSION_MAGIC
+version_mismatch:
+    ld  a, #FATAL_VERSION_MISMATCH
+    jp  nz, version_mismatch
+
+    ;; ------------------------------------------------------------------------
+    ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
+    ;; a LD b, b' instruction (binary 01xxxxxx) and harmless to execute.
+    ;; One INC HL is saved this way.
+    ;; ------------------------------------------------------------------------
+
+    jp  (hl)
+
+tftp_receive_error:
+
+    ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
+    call  udp_reply
+
+    ld    e, #TFTP_SIZE_OF_ERROR_PACKET
+    ld    hl, #tftp_receive_error_packet
+    rst   enc28j60_write_memory_small
+
+    jp    ip_send
+
+    .endm
