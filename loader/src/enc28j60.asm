@@ -141,13 +141,13 @@ enc28j60_read_memory:
     ;; Read one word to (de'), increase de', update checksum in hl'.   '
     ;;
     ;; Each iteration takes   4+4+10+6
-    ;;                       +7+448+112+4+7+6+4+4+7
-    ;;                       +7+448+112+4+7+6+4+4+15+4+4
+    ;;                       +17+7+448+112+10+4+7+6+4+4+7
+    ;;                       +17+7+448+112++10+4+7+6+4+4+15+4+4
     ;;                       +12
     ;;                     = 24 + 599 + 615 + 12
-    ;;                     = 1250 T-states
-    ;;                     = 3.57143ms @3.5MHz
-    ;;                    <=> 44800 bits/second
+    ;;                     = 1304 T-states
+    ;;                     = 0.372ms @3.5MHz
+    ;;                    <=> 42944 bits/second
 
 word_loop:
     ld   a, d                      ;; 4
@@ -155,12 +155,7 @@ word_loop:
     jp   z, word_loop_end          ;; 10
     dec  de                        ;; 6
 
-    ld   b, #8                     ;; 7
-word_byte1:
-
-    spi_read_bit_to_acc            ;; 448 (56*8)
-
-    djnz word_byte1                ;; 112 (13*8+8)
+    call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
 
     exx                            ;; 4
     ld    (de), a                  ;; 7
@@ -168,12 +163,7 @@ word_byte1:
     ld    c, a                     ;; 4
     exx                            ;; 4
 
-    ld   b, #8                     ;; 7
-word_byte2:
-
-    spi_read_bit_to_acc            ;; 448 (56*8)
-
-    djnz word_byte2                ;; 112 (13*8+8)
+    call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
 
     exx                            ;; 4
     ld    (de), a                  ;; 7
@@ -202,12 +192,7 @@ word_loop_end:
 
 odd_byte:
 
-    ld   b, #8
-odd_byte_loop:
-
-    spi_read_bit_to_acc
-
-    djnz odd_byte_loop
+    call read_byte_to_acc
 
     exx
     ld    (de), a
@@ -237,6 +222,20 @@ final:
     pop   hl
 
     jr    enc28j60_end_transaction_and_return
+
+;; ----------------------------------------------------------------------------
+;; subroutine: read one byte to accumulator
+;; B is zero on exit
+;; ----------------------------------------------------------------------------
+
+read_byte_to_acc:
+
+    ld   b, #8
+read_byte_to_acc_loop:
+    spi_read_bit_to_acc
+    djnz read_byte_to_acc_loop
+
+    ret
 
 ;; ############################################################################
 ;; enc28j60_add_to_checksum
