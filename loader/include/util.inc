@@ -103,12 +103,11 @@ ROW_LENGTH  = 32
 ;; codes for fatal_error() displayed as border colours
 ;; ----------------------------------------------------------------------------
 
-FATAL_INTERNAL_ERROR      = BLACK
 FATAL_VERSION_MISMATCH    = BLUE
 FATAL_NO_RESPONSE         = RED
-FATAL_FILE_NOT_FOUND      = YELLOW
-FATAL_INCOMPATIBLE        = CYAN
 FATAL_INVALID_BOOT_SERVER = MAGENTA
+FATAL_INTERNAL_ERROR      = CYAN
+FATAL_FILE_NOT_FOUND      = YELLOW
 
 ;; ----------------------------------------------------------------------------
 ;; 16-bit word increased by 2 (!) every 20 milliseconds
@@ -148,7 +147,7 @@ memory_compare = 0x30
     
 
 ;; ----------------------------------------------------------------------------
-;; Fills (BC-1) bytes with value A, from address HL on.
+;; Fills BC bytes with value A, from address HL on.
 ;; On return, HL points to the last byte in the filled area, and DE=HL+1.
 ;; BC==0. Z and C flags are unaffected.
 ;; ----------------------------------------------------------------------------

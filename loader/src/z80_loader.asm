@@ -367,15 +367,6 @@ s_chunk_header3:
 
     call load_byte_from_packet
 
-    cp   a, #3
-    jr   c, s_chunk_header3_incompatible
-    cp   a, #11
-    jr   c, s_chunk_header3_compatible
-s_chunk_header3_incompatible:
-    ld   a, #FATAL_INCOMPATIBLE
-    jp   fail
-s_chunk_header3_compatible:
-
     ;; Decide on a good value for write_pos; store in DE.
 
     ;;
