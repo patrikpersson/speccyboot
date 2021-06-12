@@ -75,50 +75,6 @@ CP_A_N               = 0xfe
 
 ;; ============================================================================
 
-    ;; ========================================================================
-    ;; subroutine: select snapshot matching keypress
-    ;;
-    ;; On entry:
-    ;;   E: number of snapshots in list
-    ;;   A: pressed key (ASCII)
-    ;;
-    ;; On exit:
-    ;;   C: index of selected snapshot
-    ;;
-    ;; Destroys AF, B, HL; preserves DE.
-    ;; ========================================================================
-
-    .area _NONRESIDENT
-
-find_snapshot_for_key:
-
-    ld   b, a
-    ld   c, #0  ;; result (selected index)
-
-find_snapshot_for_key_lp:
-
-    ld   a, c
-    inc  a
-    cp   a, e          ;; ensure (C + 1) < E
-    ret  nc
-
-    call get_filename_pointer
-
-    ld   a, (hl)
-
-    cp   a, #'a'
-    jr   c, not_lowercase_letter
-    and  a, #0xDF     ;; to upper case
-not_lowercase_letter:
-
-    cp   a, b
-    ret  nc
-
-    inc  c
-
-    jr   find_snapshot_for_key_lp
-
-
 ;; ############################################################################
 ;; subroutine: get filename pointer for index in C (0..255), return
 ;; pointer in HL. Destroys AF, preserves BC and DE.
@@ -230,9 +186,31 @@ redraw_menu_done:
     ;; select the first snapshot with that initial letter
     ;; ========================================================================
 
-    call find_snapshot_for_key
+    ld   b, a
+    ld   c, #0  ;; result (selected index)
 
-    jr   menu_adjust
+find_snapshot_for_key_lp:
+
+    ld   a, c
+    inc  a
+    cp   a, e          ;; ensure (C + 1) < E
+    jr   nc, menu_adjust
+
+    call get_filename_pointer
+
+    ld   a, (hl)
+
+    cp   a, #'a'
+    jr   c, not_lowercase_letter
+    and  a, #0xDF     ;; to upper case
+not_lowercase_letter:
+
+    cp   a, b
+    jr   nc, menu_adjust
+
+    inc  c
+
+    jr   find_snapshot_for_key_lp
 
     ;; ========================================================================
     ;; user hit DOWN: highlight next entry
