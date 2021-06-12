@@ -645,7 +645,7 @@ tftp_read_request:
 
     prepare_tftp_read_request
 
-    ;; FALL THROUGH to ip_end
+    ;; FALL THROUGH to ip_send
 
 ;; ############################################################################
 ;; ip_send

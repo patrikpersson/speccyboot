@@ -139,6 +139,7 @@ TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
 ;;
 ;; HL: pointer to NUL-terminated file name
 ;; ----------------------------------------------------------------------------
+
     .globl tftp_read_request
 
 
@@ -432,8 +433,12 @@ tftp_receive_error:
     add  hl, de
     ex   de, hl    ;; DE = UDP length
 
+    ;; HL now equals the filename length. Assume this is less than 256
+    ;; (no path component is included). This means that H==0, which is also
+    ;; the address page where eth_broadcast_address resides.
+
     ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    ld   hl, #eth_broadcast_address    ;; all we know at this point
+    ld   l, #<eth_broadcast_address    ;; all we know at this point
     call udp_create
 
     ;; append 16-bit TFTP opcode
@@ -455,6 +460,6 @@ tftp_receive_error:
     ld   e, #TFTP_SIZE_OF_RRQ_OPTION
     rst  enc28j60_write_memory_small
 
-    ;; continue execution into ip_send
+    ;; FALL THROUGH to ip_send
 
     .endm
