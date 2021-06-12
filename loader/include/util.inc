@@ -159,13 +159,6 @@ memory_compare = 0x30
 ;; ----------------------------------------------------------------------------
 ;; print_char
 ;;
-;; Prints a string, and pads the remainder of the line with spaces.
-;;
-;; If the string resides in snapshot_array (specifically, if H matches that
-;; page), then additional checks are made:
-;;  - the string is truncated to the end of the line
-;;  - the string is terminated by either NUL or '.' (otherwise only NUL)
-;;
 ;; A holds character to print
 ;; DE points to VRAM location
 ;; destroys AF and AF'; preserves BC, HL; DE is preserved and increased by one
@@ -179,9 +172,16 @@ memory_compare = 0x30
 ;; ----------------------------------------------------------------------------
 ;; print_str
 ;;
-;; HL holds NUL-terminated string to print
+;; Prints a string, and pads the remainder of the line with spaces.
+;;
+;; If the string resides in snapshot_array (specifically, if H matches that
+;; page), then additional checks are made:
+;;  - the string is truncated to the end of the line
+;;  - the string is terminated by either NUL or '.' (otherwise only NUL)
+;;
+;; HL points to the string to print
 ;; DE points to VRAM location
-;; destroys F; preserves BC; DE and HL are increased by string length
+;; destroys F and HL; preserves BC. DE will point to first cell of next line.
 ;; ----------------------------------------------------------------------------
 
     .globl print_str
