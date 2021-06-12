@@ -161,12 +161,13 @@ run_menu:
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, white paper, bright
+    ;; (same as menu background above)
     ;; ------------------------------------------------------------------------
 
-    ;; H already has the right value here
+    ;; A and H already have the right values here
 
     ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
-    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
+    ld    (hl), a
 
     ld   a, #VERSION_LOADER + 'a'
     ld   de, #VRAM_LOADER_VERSION
