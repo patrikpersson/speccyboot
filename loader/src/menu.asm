@@ -213,8 +213,7 @@ redraw_menu_done:
     pop  de
     pop  bc
 
-    ld   a, #BLACK + (WHITE << 3) + BRIGHT    ;; erase highlight
-    call menu_set_highlight
+    call menu_erase_highlight
 
     ld   a, l       ;; return value from wait_for_key above
 
@@ -356,10 +355,20 @@ menu_hit_enter:
 
 
 ;; ############################################################################
-;; subroutine: highlight current line to colour in register A
+;; subroutine: erase highlight of current line
 ;; ############################################################################
 
     .area _CODE
+
+menu_erase_highlight:
+
+    ld   a, #BLACK + (WHITE << 3) + BRIGHT
+
+    ;; FALL THROUGH to menu_set_highlight
+
+;; ############################################################################
+;; subroutine: highlight current line to colour in register A
+;; ############################################################################
 
 menu_set_highlight:
 
