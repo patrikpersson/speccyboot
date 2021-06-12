@@ -37,6 +37,7 @@
     .include "eth.inc"
     .include "globals.inc"
     .include "spi.inc"
+    .include "tftp.inc"
     .include "udp_ip.inc"
     .include "util.inc"
 
@@ -635,6 +636,16 @@ ethertype_ip:
     .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
     .db  0, 2                  ;; OPER: reply, 16 bits, network order
+
+;; ############################################################################
+;; ip_send
+;; ############################################################################
+
+tftp_read_request:
+
+    prepare_tftp_read_request
+
+    ;; FALL THROUGH to ip_end
 
 ;; ############################################################################
 ;; ip_send
