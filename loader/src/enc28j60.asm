@@ -128,7 +128,7 @@ enc28j60_read_memory:
     exx
 
     and   a, a        ;; reset initial C flag
-    ex    af, af'     ;; here's an apostrophe for syntax coloring...
+    ex    af, af'
 
     ld    c, #SPI_OUT
     ld    h, #0x40
@@ -138,7 +138,7 @@ enc28j60_read_memory:
     srl   d           ;; shift DE right (number of 16-bit words)
     rr    e
 
-    ;; Read one word to (de'), increase de', update checksum in hl'.   '
+    ;; Read one word to (de'), increase de', update checksum in hl'.
     ;;
     ;; Each iteration takes   4+4+10+6
     ;;                       +17+7+448+112+10+4+7+6+4+4+7
@@ -157,21 +157,15 @@ word_loop:
 
     call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
 
-    exx                            ;; 4
-    ld    (de), a                  ;; 7
-    inc   de                       ;; 6
     ld    c, a                     ;; 4
     exx                            ;; 4
 
     call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
 
-    exx                            ;; 4
-    ld    (de), a                  ;; 7
-    inc   de                       ;; 6
     ld    b, a                     ;; 4
-    ex    af, af'                  ;; 4'
+    ex    af, af'                  ;; 4
     adc   hl, bc                   ;; 15
-    ex    af, af'                  ;; 4'
+    ex    af, af'                  ;; 4
     exx                            ;; 4
 
     jr    word_loop                ;; 12
@@ -187,15 +181,13 @@ word_loop_end:
 
     exx
     ld    bc, #0
-    ex    af, af'   ;; '
+    ex    af, af'
     jr    final
 
 odd_byte:
 
     call read_byte_to_acc
 
-    exx
-    ld    (de), a
     ld    c, a
 
 ;; ----------------------------------------------------------------------------
@@ -203,7 +195,7 @@ odd_byte:
 ;; (used in eth.c)
 ;; ----------------------------------------------------------------------------
 ethertype_arp:
-    ex    af, af'   ;; '
+    ex    af, af'
     ld    b, #0
 
     adc   hl, bc
@@ -224,7 +216,9 @@ final:
     jr    enc28j60_end_transaction_and_return
 
 ;; ----------------------------------------------------------------------------
-;; subroutine: read one byte to accumulator
+;; subroutine: read one byte to accumulator, switch registers (EXX),
+;; store A in (DE), increase DE
+;;
 ;; B is zero on exit
 ;; ----------------------------------------------------------------------------
 
@@ -235,7 +229,11 @@ read_byte_to_acc_loop:
     spi_read_bit_to_acc
     djnz read_byte_to_acc_loop
 
-    ret
+    exx                            ;; 4
+    ld    (de), a                  ;; 7
+    inc   de                       ;; 6
+
+    ret                            ;; 10
 
 ;; ############################################################################
 ;; enc28j60_add_to_checksum

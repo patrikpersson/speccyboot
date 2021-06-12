@@ -407,7 +407,7 @@ menu_hit_enter:
 ;; subroutine: highlight current line to colour in register A
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 menu_set_highlight:
 
