@@ -344,11 +344,11 @@ stage2_start:
   ;; --------------------------------------------------------------------------
   ;; Special mark for integrity check, as first five bytes in loaded binary:
   ;; LOAD_ADDRESS (should match stage2_start, 2 bytes)
-  ;; VERSION_STAGE1 (version indicator for stage 1, 1 byte)
+  ;; VERSION_MAGIC (version indicator for stage 1, 1 byte)
   ;; --------------------------------------------------------------------------
 
   .dw   stage2_start
-  .db   VERSION_STAGE1
+  .db   VERSION_MAGIC
 
   ;; --------------------------------------------------------------------------
   ;; If the version mark above checks out, execution continues here

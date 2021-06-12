@@ -40,6 +40,13 @@ VERSION_STAGE1 = 3
 VERSION_LOADER = 0
 
 ;; ----------------------------------------------------------------------------
+;; The VERSION_MAGIC byte is encoded as a LD b, b' instruction,
+;; so it is harmless to execute as part of the jump to the stage 2 loader
+;; ----------------------------------------------------------------------------
+
+VERSION_MAGIC  = VERSION_STAGE1 | 0x40
+
+;; ----------------------------------------------------------------------------
 ;; Stack address (defined here so init.asm can find it via linker)
 ;; ----------------------------------------------------------------------------
 

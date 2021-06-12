@@ -43,7 +43,7 @@ FINAL_BINARY = 'menu.bin'
 
 stage2_bytes = open(os.path.join(SPECCYBOOT_HOME, 'spboot.bin'), "rb").read()
 
-version = stage2_bytes[2]
+version = stage2_bytes[2] & 0x3f
 
 loading_address = stage2_bytes[0] + 256 * stage2_bytes[1]
 

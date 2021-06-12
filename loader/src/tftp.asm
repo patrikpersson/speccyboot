@@ -297,21 +297,28 @@ tftp_zero_length_data:
     ;; check version signature and run the stage 2 loader
     ;; ========================================================================
 
-    ld  de, #stage2_start
-    ld  a, (de)
-    cp  a, e
+    ld  hl, #stage2_start
+    ld  a, (hl)
+    cp  a, l
     jr  nz, version_mismatch
-    inc de
-    ld  a, (de)
+    inc hl
+    ld  a, (hl)
     cp  a, #>stage2_start
     jr  nz, version_mismatch
-    inc de
-    ld  a, (de)
-    cp  a, #VERSION_STAGE1
+    inc hl
+    ld  a, (hl)
+    cp  a, #VERSION_MAGIC
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
     jp  nz, version_mismatch
-    jp  stage2_start + 3
+
+    ;; ------------------------------------------------------------------------
+    ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
+    ;; a LD b, b' instruction (binary 01xxxxxx) and harmless to execute.
+    ;; One INC HL is saved this way.
+    ;; ------------------------------------------------------------------------
+
+    jp  (hl)
 
 tftp_receive_error:
 
