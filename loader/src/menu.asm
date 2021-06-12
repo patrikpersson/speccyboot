@@ -46,8 +46,6 @@
 
 ;; ============================================================================
 
-DISPLAY_LINES = 20   ;; number of snapshot names displayed at a time
-
 KEY_ENTER     = 13
 KEY_UP        = '7'
 KEY_DOWN      = '6'
@@ -149,25 +147,6 @@ get_filename_pointer:
     .area _STAGE2_ENTRY
 
 run_menu:
-
-    ;; ------------------------------------------------------------------------
-    ;; set up menu colours
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #0x5840
-    ld   bc, #DISPLAY_LINES * 32 - 1
-    ld   a, #BLACK + (WHITE << 3) + BRIGHT
-    call fill_memory
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, bright
-    ;; (same as menu background above)
-    ;; ------------------------------------------------------------------------
-
-    ;; A and H already have the right values here
-
-    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
-    ld    (hl), a
 
     ld   a, #VERSION_LOADER + 'a'
     ld   de, #VRAM_LOADER_VERSION

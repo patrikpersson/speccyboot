@@ -343,8 +343,31 @@ tftp_zero_length_data:
 
     ;; ========================================================================
     ;; This was the last packet of the stage 2 binary:
-    ;; check version signature and run the stage 2 loader
+    ;; prepare menu screen, check version signature and run the stage 2 loader
     ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; set up menu colours
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x5840
+    ld   bc, #DISPLAY_LINES * 32 - 1
+    ld   a, #BLACK + (WHITE << 3) + BRIGHT
+    call fill_memory
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'S' indicator: black ink, white paper, bright
+    ;; (same as menu background above)
+    ;; ------------------------------------------------------------------------
+
+    ;; A and H already have the right values here
+
+    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
+    ld    (hl), a
+
+    ;; ------------------------------------------------------------------------
+    ;; check version signature
+    ;; ------------------------------------------------------------------------
 
     ld  hl, #stage2_start
     ld  a, (hl)
@@ -352,14 +375,10 @@ tftp_zero_length_data:
     jr  nz, version_mismatch
     inc hl
     ld  a, (hl)
-    cp  a, #>stage2_start
-    jr  nz, version_mismatch
-    inc hl
-    ld  a, (hl)
     cp  a, #VERSION_MAGIC
 version_mismatch:
     ld  a, #FATAL_VERSION_MISMATCH
-    jp  nz, version_mismatch
+    jp  nz, fail
 
     ;; ------------------------------------------------------------------------
     ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as

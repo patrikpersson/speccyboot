@@ -342,12 +342,12 @@ initialize_global_data:
 stage2_start:
 
   ;; --------------------------------------------------------------------------
-  ;; Special mark for integrity check, as first five bytes in loaded binary:
-  ;; LOAD_ADDRESS (should match stage2_start, 2 bytes)
-  ;; VERSION_MAGIC (version indicator for stage 1, 1 byte)
+  ;; Special mark for integrity check, as first two bytes in loaded binary:
+  ;; 1. lower byte of stage2_start
+  ;; 2. VERSION_MAGIC
   ;; --------------------------------------------------------------------------
 
-  .dw   stage2_start
+  .db   <stage2_start
   .db   VERSION_MAGIC
 
   ;; --------------------------------------------------------------------------
