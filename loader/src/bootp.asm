@@ -41,11 +41,11 @@
     .include "util.inc"
 
 ;; ----------------------------------------------------------------------------
-;; Location of local and server IP addresses (row 23, columns 6 and 22)
+;; Location of local and server IP addresses (row 23, columns 0 and 16)
 ;; ----------------------------------------------------------------------------
 
-LOCAL_IP_POS  = (BITMAP_BASE + 0x1000 + 7*32 + 1)
-SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 7*32 + 17)
+LOCAL_IP_POS  = (BITMAP_BASE + 0x1000 + 7*32 + 0)
+SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 7*32 + 16)
 
     .area _CODE
 
@@ -159,8 +159,8 @@ bootp_receive_more_octets:
 bootp_receive_sname_done:
 
     ;; ------------------------------------------------------------------------
-    ;; Send TFTP read request for filename in FILE field, or, if none given,
-    ;; use the default 'stage2'
+    ;; Send TFTP read request for filename in FILE field,
+    ;; or, if none given, use the default
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
@@ -171,26 +171,26 @@ bootp_receive_sname_done:
 00001$:
     call tftp_read_request
 
-    ld   de, #LOCAL_IP_POS
+    ;; ------------------------------------------------------------------------
+    ;; print 'L', local IP address, 'S', server IP address
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #'L'
+    ld    de, #LOCAL_IP_POS
+    call  print_char
+
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     call print_ip_addr
 
-    ;; HL and D both have the right values
-    ;; (TFTP address follows directly after local address)
-    ld   e, #<SERVER_IP_POS
+    ld    a, #'S'
+    ld    e, #<SERVER_IP_POS
+    call  print_char
+
     call print_ip_addr
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'L' indicator: black ink, white paper, bright
     ;; ------------------------------------------------------------------------
-
-    ld    a, #'L'
-    ld    de, #BITMAP_BASE + 0x1000 + 7 *32   ;; (23, 0)
-    call  print_char
-
-    ld    a, #'S'
-    ld    e, #<BITMAP_BASE + 0x1000 + 7 * 32 + 16  ;; (23, 16)
-    call  print_char
 
     ld    hl, #ATTRS_BASE + 23 * 32                ;; (23, 0)
     ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
