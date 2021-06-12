@@ -101,7 +101,6 @@ find_snapshot_for_key_lp:
     inc  a
     cp   a, e          ;; ensure (C + 1) < E
     ret  nc
-    ld   a, c
 
     call get_filename_pointer
 
@@ -121,7 +120,7 @@ not_lowercase_letter:
 
 
 ;; ############################################################################
-;; subroutine: get filename pointer for index in A (0..255), return
+;; subroutine: get filename pointer for index in C (0..255), return
 ;; pointer in HL. Destroys AF, preserves BC and DE.
 ;; ############################################################################
 
@@ -130,7 +129,7 @@ not_lowercase_letter:
 get_filename_pointer:
     push  bc
     ld   h, #0
-    ld   l, a
+    ld   l, c
     add  hl, hl
     ld   bc, #snapshot_array
     add  hl, bc
@@ -300,7 +299,6 @@ menu_not_top:
 
 menu_hit_enter:
 
-    ld   a, c
     call get_filename_pointer
 
     push hl     ;; push arg for tftp_read_request below
