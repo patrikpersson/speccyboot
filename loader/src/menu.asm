@@ -333,21 +333,29 @@ menu_hit_enter:
     ld   hl, #z80_loader_receive_hook
     ld   (_tftp_receive_hook), hl
 
+    ;; ------------------------------------------------------------------------
+    ;; Set up snapshot progress display.
+    ;;
+    ;; Lines 0..22 are set to WHITE on WHITE with FLASH on. The FLASH flag will
+    ;; not matter here (as background and foreground are the same), but is
+    ;; rotated in as bit 0 in the RLCA instruction below.
+    ;; ------------------------------------------------------------------------
+
     ld    hl, #0x5800      ;; clear attribute lines 0..22
     ld    bc, #0x2e0
-    ld    a, #WHITE + (WHITE << 3)
+    ld    a, #WHITE + (WHITE << 3) + FLASH
     call  fill_memory
 
     ld    c, #0x1f         ;; set attribute line 23 to bright
-    ld    a, #WHITE + (WHITE << 3) + BRIGHT
+    rlca                   ;; A is now  WHITE + (WHITE << 3) + BRIGHT
     ld    (hl), a
     ldir
 
-    ld    l, #14
+    ld    l, #14           ;; (16, 14)
     xor   a, a
     call  show_attr_digit
 
-    ld    l, #25
+    ld    l, #25           ;; (16, 25)
     ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
     call  show_attr_char_address_known
 
