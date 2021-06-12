@@ -175,18 +175,17 @@ redraw_menu_done:
     cp   a, #KEY_ENTER
     jr   z, menu_hit_enter
 
-    cp   a, #KEY_UP
-    jr   z, menu_hit_up
-
-    cp   a, #KEY_DOWN
+    sub  a, #KEY_DOWN
     jr   z, menu_hit_down
+    dec  a                ;; KEY_UP?
+    jr   z, menu_hit_up
 
     ;; ========================================================================
     ;; user hit something else than ENTER/UP/DOWN:
     ;; select the first snapshot with that initial letter
     ;; ========================================================================
 
-    ld   b, a
+    ld   b, l
     ld   c, #0  ;; result (selected index)
 
 find_snapshot_for_key_lp:
@@ -356,11 +355,11 @@ menu_set_highlight:
 
     push hl
     push af
-    ld   h, #2           ;; high byte of 0x2C2
+    ld   h, #>0x2C2
     ld   a, c
     sub  a, d
-    add  a, #0xC2
-    ld   l, a   ;; H is now zero
+    add  a, #<0x2C2
+    ld   l, a
     add  hl, hl
     add  hl, hl
     add  hl, hl
