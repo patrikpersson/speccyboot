@@ -544,11 +544,7 @@ _repcount:
   or   a, l
   ret  z
 
-  ld   a, (iy)
-  inc  iy
-
-  dec  bc
-  dec  hl
+  call load_byte_from_chunk
 
   ;; -------------------------------------------------------------------------
   ;; Check for the escape byte of a repetition sequence. If an uncompressed
