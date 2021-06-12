@@ -85,14 +85,39 @@ fill_memory:
     ret
 
 ;; ############################################################################
-;; _print_str
+;; print_str
 ;; ############################################################################
 
 print_str:
+
+    ld   a, h
+    cp   a, #>snapshot_array
+    jr   c, not_a_menu_entry
+
+    ld   a, e
+    and  a, #0x1f
+    ret  z
+
+    ld   a, (hl)
+    cp   a, #'.'
+    jr   z, pad_line_with_spaces
+
+not_a_menu_entry:
+
     ld   a, (hl)
     inc  hl
+
     or   a, a
-    ret  z
+    jr   z, pad_line_with_spaces
+
     call print_char
     jr   print_str
 
+pad_line_with_spaces:
+
+    ld   a, e
+    and  a, #0x1f
+    ret  z
+    ld   a, #' '
+    call print_char
+    jr   pad_line_with_spaces

@@ -77,42 +77,6 @@ CP_A_N               = 0xfe
 
 ;; ============================================================================
 
-    .area _CODE
-
-;; ----------------------------------------------------------------------------
-;; print_entry:
-;;
-;; call with
-;; HL = filename (terminated by NUL or '.')
-;; DE = VRAM address
-;;
-;; Returns with HL pointing to '.' or NUL,
-;; and DE pointing to first cell on next line
-;; Destroys AF, preserves BC.
-;; ----------------------------------------------------------------------------
-
-print_entry:
-    ld   a, e
-    and  a, #0x1f
-    ret  z
-    ld   a, (hl)
-    or   a, a
-    jr   z, pad_to_end_of_line
-    cp   a, #'.'
-    jr   z, pad_to_end_of_line
-    call print_char
-    inc  hl
-    jr   print_entry
-
-pad_to_end_of_line:
-
-    ld   a, e
-    and  a, #0x1f
-    ret  z
-    ld   a, #' '
-    call print_char
-    jr   pad_to_end_of_line
-
     ;; ========================================================================
     ;; subroutine: select snapshot matching keypress
     ;;
@@ -253,7 +217,7 @@ redraw_menu_loop:
     call get_filename_pointer
 
     inc  de    ;; skip first cell on each line
-    call print_entry
+    call print_str
 
     inc  c
     jr   redraw_menu_loop
