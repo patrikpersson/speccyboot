@@ -157,21 +157,13 @@ memory_compare = 0x30
 
 
 ;; ----------------------------------------------------------------------------
-;; Prints IP address, four octets of 1-3 digits, with a period between.
-;; DE = VRAM pointer
-;; HL = pointer IP address
-;; AF, BC are destroyed. DE and HL are increased.
-;; ----------------------------------------------------------------------------
-
-    .globl print_ip_addr
-
-
-;; ----------------------------------------------------------------------------
 ;; print_char
 ;;
 ;; A holds character to print
 ;; DE points to VRAM location
 ;; destroys AF and AF'; preserves BC, HL; DE is preserved and increased by one
+;;
+;; Defined in bootp.asm.
 ;; ----------------------------------------------------------------------------
 
     .globl print_char

@@ -172,23 +172,6 @@ bootp_receive_sname_done:
     call tftp_read_request
 
     ;; ------------------------------------------------------------------------
-    ;; print 'L', local IP address, 'S', server IP address
-    ;; ------------------------------------------------------------------------
-
-    ld    a, #'L'
-    ld    de, #LOCAL_IP_POS
-    call  print_char
-
-    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    call print_ip_addr
-
-    ld    a, #'S'
-    ld    e, #<SERVER_IP_POS
-    call  print_char
-
-    call print_ip_addr
-
-    ;; ------------------------------------------------------------------------
     ;; attributes for 'L' indicator: black ink, white paper, bright
     ;; ------------------------------------------------------------------------
 
@@ -201,5 +184,137 @@ bootp_receive_sname_done:
 
     ld    l, #<ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
     ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
+
+    ;; ------------------------------------------------------------------------
+    ;; print 'L', local IP address, 'S', server IP address
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #'L'
+    ld    de, #LOCAL_IP_POS
+    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    call print_ip_addr
+
+    ld    a, #'S'
+    ld    e, #<SERVER_IP_POS
+
+    ;; FALL THROUGH to print_ip_addr
+
+
+;; ############################################################################
+;; Prints IP address, four octets of 1-3 digits, with a  descriptive letter
+;; ('L' or 'S') and periods between octets.
+;; A = initial letter to print ('L' or 'S')
+;; DE = VRAM pointer
+;; HL = pointer to IP address
+;; AF, BC are destroyed. DE and HL are increased.
+;; ############################################################################
+
+    .area _CODE
+
+print_ip_addr:
+
+    call  print_char             ;; initial letter
+
+    ;; DE = VRAM pointer
+    ;; HL = IP address
+    ;; AF, BC = scratch
+
+    ld    b, #4       ;; loop counter, four octets
+00001$:
+    push  bc
+
+    ld    a, (hl)
+    inc   hl
+
+    cp    a, #10
+    jr    c, 00002$        ;; < 10? print only single digit
+
+    ld    b, #100
+    cp    a, b
+    call  nc, print_div    ;; no hundreds? skip entirely, not even a zero
+
+    ld    b, #10
+    call  print_div
+
+00002$:   ;; tens done
+
+    call  print_digit
+
+    pop   bc
+
+    ;; print period?
+    dec   b
+    ret   z
+
+    ld    a, #'.'
+    call  print_char
+    jr    00001$           ;; next octet
+
+;; ----------------------------------------------------------------------------
+;; Divides A by B, and prints as one digit. Returns remainder in A.
+;; Destroys AF'.  '
+;; ----------------------------------------------------------------------------
+
+print_div:
+    call  a_div_b
+
+    ex    af, af'            ;;'
+    ld    a, c
+
+    ;; FALL THROUGH to print_digit
+
+
+;; ############################################################################
+
+print_digit:
+    add  a, #'0'
+
+    ;; FALL THROUGH to print_char
+
+
+;; ############################################################################
+;; _print_char
+;; ############################################################################
+
+print_char:
+
+    push hl
+    push bc
+
+    add  a, #<((_font_data - 32 * 8) >> 3)
+    ld   l, a
+    ld   h, #>((_font_data - 32 * 8) >> 3)
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+
+    ld   b, #8
+    ld   c, d
+_print_char_loop:
+    ld   a, (hl)
+    ld   (de), a
+    inc  d
+    inc  hl
+    djnz _print_char_loop
+    ld   d, c
+
+    ex   af, af'            ;;'   bring back A after print_div
+
+    inc  e
+
+    pop  bc
+    pop  hl
+
+    ret  nz
+
+    ;; E became zero: means we reached the end of one of the 2K VRAM segments,
+    ;; skip to the next one
+
+    ld   a, d
+    add  a, #8
+    ld   d, a
+
+    ;; A is destroyed here, but this only matters to print_ip_addr, which
+    ;; never prints to the end of the line
 
     ret
