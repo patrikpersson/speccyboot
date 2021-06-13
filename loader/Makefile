@@ -86,7 +86,7 @@ all: bin
 bin: $(ROM) $(ROM8K) $(STAGE2BIN)
 
 clean:
-	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
+	rm -rf $(OBJDIR) $(ROM) $(ROM8K) $(STAGE2BIN)
 
 install: $(ROM) $(STAGE2BIN) $(INSTALLDIR)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
