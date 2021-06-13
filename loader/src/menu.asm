@@ -183,8 +183,8 @@ redraw_menu_loop:
     ;; select the first snapshot with that initial letter
     ;; ========================================================================
 
+    ld   c, b  ;; result (selected index) ; B==0 after menu_erase_highlight
     ld   b, l
-    ld   c, #0  ;; result (selected index)
 
 find_snapshot_for_key_lp:
 
@@ -341,6 +341,9 @@ menu_erase_highlight:
 
 ;; ############################################################################
 ;; subroutine: highlight current line to colour in register A
+;;
+;; destroys B, F; preserves DE, HL
+;; on return B==0 
 ;; ############################################################################
 
 menu_set_highlight:
