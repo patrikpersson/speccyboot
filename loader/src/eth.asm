@@ -231,13 +231,12 @@ main_packet:
     rst   enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
-    ;; Read the administrative Ethernet header (including some ENC28J60
-    ;; details) into the RX buffer. The source MAC address will be saved
-    ;; separately (below) before the RX buffer is used for IP/ARP data.
+    ;; Read the administrative Ethernet header (20 bytes, including some
+    ;; ENC28J60 details) into the RX buffer. The source MAC address will be
+    ;; saved separately (below) before the RX buffer is used for IP/ARP data.
     ;; ------------------------------------------------------------------------
 
-    ld    e, #ETH_ADM_HEADER_SIZE
-    call  enc28j60_read_memory_to_rxframe
+    call  enc28j60_read_20b_to_rxframe
 
     ;; ------------------------------------------------------------------------
     ;; update _next_frame
