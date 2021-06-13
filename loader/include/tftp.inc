@@ -74,10 +74,16 @@ TFTP_DATA_MAXSIZE    = 512
 TFTP_HEADER_SIZE     = 4
 
 ;; ----------------------------------------------------------------------------
-;; Position on screen for TFTP error display
+;; VRAM position for TFTP error display
 ;; ----------------------------------------------------------------------------
 
 TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
+
+;; ----------------------------------------------------------------------------
+;; VRAM position for loader version (one lower-case letter)
+;; ----------------------------------------------------------------------------
+
+VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
 
 ;; ----------------------------------------------------------------------------
 ;; packet counter for TFTP
@@ -386,6 +392,8 @@ version_mismatch:
     ;; a LD r, r' instruction (binary 01xxxxxx) and harmless to execute.
     ;; One INC HL is saved this way.
     ;; ------------------------------------------------------------------------
+
+    ld   de, #VRAM_LOADER_VERSION        ;; position for stage 2 version marker
 
     jp  (hl)
 

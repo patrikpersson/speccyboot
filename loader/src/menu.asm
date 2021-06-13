@@ -50,10 +50,6 @@ KEY_ENTER     = 13
 KEY_UP        = '7'
 KEY_DOWN      = '6'
 
-;; position for loader version (one lower-case letter)
-
-VRAM_LOADER_VERSION = BITMAP_BASE + 13   ;; (0, 13)
-
 ;; ============================================================================
 ;; Repeat time-outs: between the keypress and the first repetition, and for
 ;; any subsequent repetitions
@@ -108,7 +104,6 @@ run_menu:
     ;; ------------------------------------------------------------------------
 
     ld   a, #VERSION_LOADER + 'a'
-    ld   de, #VRAM_LOADER_VERSION
     call print_char
 
     ;; ------------------------------------------------------------------------
