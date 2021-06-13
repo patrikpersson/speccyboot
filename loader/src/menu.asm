@@ -132,32 +132,30 @@ menu_loop:
     push bc
     push de
 
+    ;; Set up B to be ((last index to display) + 1)
+
     ld   c, d     ;; C=first index
     ld   a, c
     add  a, #DISPLAY_LINES
     cp   a, e
-    jr   c, redraw_menu_limit
-    ld   a, e
-redraw_menu_limit:
-    ld   b, a     ;; B=last index + 1
+    ld   b, a
+    jr   c, redraw_menu_limit_set
+    ld   b, e
+redraw_menu_limit_set:
 
-    ld   de, #0x4040      ;; (2,0)
+    ld   de, #0x4041      ;; (2,0)
 
 redraw_menu_loop:
 
-    ld   a, c
-    cp   a, b
-    jr   nc, redraw_menu_done
-
     call get_filename_pointer
-
-    inc  de    ;; skip first cell on each line
     call print_str
 
+    inc  de    ;; skip first cell on each line
     inc  c
-    jr   redraw_menu_loop
 
-redraw_menu_done:
+    ld   a, c
+    cp   a, b
+    jr   c, redraw_menu_loop
 
     ;; ========================================================================
     ;; handle user input
