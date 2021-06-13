@@ -139,6 +139,13 @@ memory_compare = 0x30
 
 
 ;; ----------------------------------------------------------------------------
+;; Alternate entrypoint for fail: sets A to FATAL_NO_RESPONSE.
+;; ----------------------------------------------------------------------------
+
+    .globl fail_timeout
+
+
+;; ----------------------------------------------------------------------------
 ;; Divides A by B. Returns result in C and remainder in A.
 ;; C flag is always set. Z flag is always cleared.
 ;; ----------------------------------------------------------------------------

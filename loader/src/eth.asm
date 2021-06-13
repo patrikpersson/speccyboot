@@ -195,14 +195,12 @@ main_spin_loop:
 
     ld    a, b
     cp    a, #RETRANSMISSION_TIMEOUT_MAX
-    ld    a, #FATAL_NO_RESPONSE
-    jp    nc, fail
+    jp    nc, fail_timeout
 
     ;; ------------------------------------------------------------------------
     ;; double _retransmission_timeout
     ;; ------------------------------------------------------------------------
 
-    ld    a, b
     add   a, a          ;; double timeout
     ld    (_retransmission_timeout), a
 

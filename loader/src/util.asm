@@ -47,9 +47,16 @@ _timer_tick_count:
 
 ;; ############################################################################
 ;; fail
+;; fail_timeout
 ;; ############################################################################
 
     .area _CODE
+
+fail_timeout:
+
+    ld    a, #FATAL_NO_RESPONSE
+
+    ;; FALL THROUGH to fail
 
 fail:
 
