@@ -420,10 +420,6 @@ wait_key_repetition_loop:
     call scan_key
     jr   z, wait_key_no_repetition      ;; key released?
 
-    ld   a, (previous_key)
-    cp   a, c
-    jr   nz, wait_key_no_repetition
-
     ;; ------------------------------------------------------------------------
     ;; decide on a timeout, depending on whether this is the first repetition
     ;; ------------------------------------------------------------------------

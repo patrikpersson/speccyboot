@@ -383,7 +383,7 @@ version_mismatch:
 
     ;; ------------------------------------------------------------------------
     ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
-    ;; a LD b, b' instruction (binary 01xxxxxx) and harmless to execute.
+    ;; a LD r, r' instruction (binary 01xxxxxx) and harmless to execute.
     ;; One INC HL is saved this way.
     ;; ------------------------------------------------------------------------
 
