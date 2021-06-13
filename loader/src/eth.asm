@@ -287,13 +287,14 @@ main_packet:
     inc   hl
     ld    a, (hl)
     or    a, a
-    jr    z, main_packet_ip
+    jr    nz, main_packet_not_ip
+
+    call  ip_receive
+    xor   a, a                   ;; avoid matching ARP below
+
+main_packet_not_ip:
     cp    a, #6
     call  z, arp_receive
-    jr    main_packet_done
-
-main_packet_ip:
-    call  ip_receive
 
 main_packet_done:
 
