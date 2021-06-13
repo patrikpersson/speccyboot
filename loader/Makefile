@@ -41,11 +41,13 @@ OFILES       = $(ASMFILES:%.asm=%.rel)
 
 # -----------------------------------------------------------------------------
 
-# ROM:       stage 1, binary file to be loaded into EEPROM (address 0x0000)
+# ROM:       stage 1, 2K binary file to be loaded into EEPROM (address 0x0000)
+# ROM8K:     same as ROM, but 8K in size (to match Fuse's SpeccyBoot emulation)
 # STAGE2BIN: stage 2, binary file to be loaded over TFTP by stage 1
 #                     (as part of menu.bin)
 
 ROM          = speccyboot.rom
+ROM8K        = speccyboot-fuse.rom
 STAGE2BIN    = spboot.bin
 
 # -----------------------------------------------------------------------------
@@ -81,7 +83,7 @@ MAKEBINFLAGS = -p
 
 all: bin
 
-bin: $(ROM) $(STAGE2BIN)
+bin: $(ROM) $(ROM8K) $(STAGE2BIN)
 
 clean:
 	rm -rf $(OBJDIR) $(ROM) $(STAGE2BIN)
@@ -117,6 +119,9 @@ $(COMBINED): $(IHXFILE)
 	$(MAKEBIN) $(MAKEBINFLAGS) $(IHXFILE) $@
 
 $(ROM): $(COMBINED)
+	dd if=$< of=$@ bs=1k count=2 status=none
+
+$(ROM8K): $(COMBINED)
 	dd if=$< of=$@ bs=1k count=8 status=none
 
 $(STAGE2BIN): $(COMBINED)
