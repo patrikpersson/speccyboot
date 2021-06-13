@@ -351,19 +351,20 @@ tftp_zero_length_data:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #0x5840
+    ld   de, #0x5841
     ld   bc, #DISPLAY_LINES * 32 - 1
-    ld   a, #BLACK + (WHITE << 3) + BRIGHT
-    call fill_memory
+    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
+    ldir
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, white paper, bright
     ;; (same as menu background above)
     ;; ------------------------------------------------------------------------
 
-    ;; A and H already have the right values here
+    ;; H already has the right value here
 
     ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
-    ld    (hl), a
+    ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
 
     ;; ------------------------------------------------------------------------
     ;; check version signature

@@ -103,9 +103,20 @@ get_filename_pointer:
 
 run_menu:
 
+    ;; ------------------------------------------------------------------------
+    ;; display menu version marker
+    ;; ------------------------------------------------------------------------
+
     ld   a, #VERSION_LOADER + 'a'
     ld   de, #VRAM_LOADER_VERSION
     call print_char
+
+    ;; ------------------------------------------------------------------------
+    ;; prepare for receiving .z80 snapshot data
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #z80_loader_receive_hook
+    ld   (_tftp_receive_hook), hl
 
     ;; ========================================================================
     ;; main loop for the menu
@@ -183,7 +194,7 @@ redraw_menu_loop:
     ;; select the first snapshot with that initial letter
     ;; ========================================================================
 
-    ld   c, b  ;; result (selected index) ; B==0 after menu_erase_highlight
+    ld   c, b ;; C will hold the result (selected index); B==0 after menu_erase_highlight
     ld   b, l
 
 find_snapshot_for_key_lp:
@@ -279,28 +290,17 @@ menu_hit_enter:
     push hl     ;; push arg for tftp_read_request below
 
     ;; ------------------------------------------------------------------------
-    ;; prepare for receiving .z80 snapshot data
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #z80_loader_receive_hook
-    ld   (_tftp_receive_hook), hl
-
-    ;; ------------------------------------------------------------------------
     ;; Set up snapshot progress display.
-    ;;
-    ;; Lines 0..22 are set to WHITE on WHITE with FLASH on. The FLASH flag will
-    ;; not matter here (as background and foreground are the same), but is
-    ;; rotated in as bit 0 in the RLCA instruction below.
     ;; ------------------------------------------------------------------------
 
     ld    hl, #0x5800      ;; clear attribute lines 0..22
+    ld    de, #0x5801
     ld    bc, #0x2e0
-    ld    a, #WHITE + (WHITE << 3) + FLASH
-    call  fill_memory
+    ld    (hl), #WHITE + (WHITE << 3)
+    ldir
 
     ld    c, #0x1f         ;; set attribute line 23 to bright
-    rlca                   ;; A is now  WHITE + (WHITE << 3) + BRIGHT
-    ld    (hl), a
+    ld    (hl), #WHITE + (WHITE << 3) + BRIGHT
     ldir
 
     ld    l, #14           ;; (16, 14)

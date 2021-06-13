@@ -302,9 +302,10 @@ initialize_global_data:
   ;; clear bitmap VRAM
 
   ld    hl, #0x4000
+  ld    de, #0x4001
   ld    b, #0x18           ;; BC is now 0x1800 (BC was 0 after previous LDIR)
-  ld    a, l
-  call  fill_memory
+  ld    (hl), l
+  ldir
 
   ;; set attribute VRAM (+ paint stack) to PAPER WHITE + INK BLACK
 

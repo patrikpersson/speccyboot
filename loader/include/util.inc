@@ -154,15 +154,6 @@ memory_compare = 0x30
     
 
 ;; ----------------------------------------------------------------------------
-;; Fills BC bytes with value A, from address HL on.
-;; On return, HL points to the last byte in the filled area, and DE=HL+1.
-;; BC==0. Z and C flags are unaffected.
-;; ----------------------------------------------------------------------------
-
-    .globl fill_memory
-
-
-;; ----------------------------------------------------------------------------
 ;; print_char
 ;;
 ;; A holds character to print
