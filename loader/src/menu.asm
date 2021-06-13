@@ -133,7 +133,7 @@ run_menu:
 
 menu_loop:
 
-    ld   a, #WHITE + (BLUE << 3) + BRIGHT
+    ld   a, #BLACK + (GREEN << 3) + BRIGHT
     call menu_set_highlight
 
     ;; ========================================================================
