@@ -1,8 +1,8 @@
 # =============================================================================
 # Top-level Makefile for SpeccyBoot
-# Patrik Persson, 2009-
+# Patrik Persson 2009-
 #
-# Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+# Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 # -----------------------------------------------------------------------------
 #
 # Supported 'make' targets:
@@ -14,7 +14,7 @@
 
 
 BIN2WAV     = wavloader/bin2wav
-LOADER      = wavloader/loader.bin
+WAVLOADER   = wavloader/wavloader.bin
 STAGE1      = loader/speccyboot.rom
 STAGE2      = loader/spboot.bin
 WAV         = speccyboot.wav
@@ -26,8 +26,6 @@ all: $(WAV) tests_all
 install:
 	$(MAKE) -C utils install
 	$(MAKE) -C loader install
-
-$(WAV): $(STAGE1) $(BIN2WAV) $(LOADER)
 
 $(STAGE1) $(STAGE2):
 	$(MAKE) -C loader all
@@ -46,5 +44,5 @@ clean:
 
 # -------------------------------------------
 
-$(WAV): $(STAGE1) $(BIN2WAV) $(LOADER)
-	cat $(LOADER) $(STAGE1) | $(BIN2WAV) > $(WAV)
+$(WAV): $(STAGE1) $(BIN2WAV) $(WAVLOADER)
+	cat $(WAVLOADER) $(STAGE1) | $(BIN2WAV) > $(WAV)

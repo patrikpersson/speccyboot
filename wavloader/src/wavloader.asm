@@ -2,12 +2,12 @@
 ;; loader: Code to write a firmware image to EEPROM. The firmware image is
 ;;         expected to be located immediately after this loader in RAM.
 ;;
-;; Part of the SpeccyBoot project <http://speccyboot.sourceforge.net>
+;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
 ;; ----------------------------------------------------------------------------
 ;;
-;; Copyright (c) 2009-, Patrik Persson
-;; 
+;; Copyright (c) 2009-  Patrik Persson
+;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
 ;; files (the "Software"), to deal in the Software without
@@ -19,7 +19,7 @@
 ;;
 ;; The above copyright notice and this permission notice shall be
 ;; included in all copies or substantial portions of the Software.
-;; 
+;;
 ;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 ;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 ;; OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -56,7 +56,7 @@
 
   ;; Firmware parameters
 
-  FW_SIZE         = 0x2000
+  FW_SIZE         = 0x0800
   FW_DEST         = 0x0000
 
   ;; Spectrum ROM routines. Refer to
@@ -77,9 +77,7 @@
 
   ;; ==========================================================================
 
-  .area	_HEADER (ABS)
-  
-  .org 	0x7000
+  .area	_CODE
 
   ;; ensure the EEPROM is paged out, so it is safe to set switches to enable it
   ;; (useful when EEPROM contains garbage)
@@ -268,8 +266,6 @@ write_delay_loop:
   jr    nz, write_delay_loop
 
   ret
-
-  .area	_DATA
 
   ;; --------------------------------------------------------------------------  
   ;; Messages

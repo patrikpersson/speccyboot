@@ -1,0 +1,4 @@
+-mjwx
+-i obj/wavloader.ihx
+-b _CODE = 0x7000
+obj/wavloader.rel
