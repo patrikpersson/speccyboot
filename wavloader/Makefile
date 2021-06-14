@@ -48,7 +48,7 @@ $(LOADER): src/wavloader.asm $(OBJDIR)
 	$(AS) -o $(OBJDIR)/wavloader.rel $<
 	$(LD) -n -f $(LINKFILE)
 	$(MAKEBIN) -s 65536 -p $(OBJDIR)/wavloader.ihx $(OBJDIR)/$(LOADER).tmp
-	$(DD) if=$(OBJDIR)/$(LOADER).tmp of=$@ bs=1 skip=28672
+	$(DD) if=$(OBJDIR)/$(LOADER).tmp of=$@ bs=1 skip=24576
 
 # -----------------------------------------------------------------------------
 

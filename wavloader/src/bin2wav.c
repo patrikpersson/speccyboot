@@ -10,7 +10,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * Copyright (c) 2009, Patrik Persson
+ * Copyright (c) 2009-  Patrik Persson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -230,7 +230,7 @@ static void
 write_basic_loader(void)
 {
   /*
-   * A short BASIC snippet to load a code block at 0x7000 onwards, execute that
+   * A short BASIC snippet to load a code block at 0x6000 onwards, execute that
    * code, and stop.
    *
    * Details about BASIC program representation found chapter 24 of
@@ -238,22 +238,22 @@ write_basic_loader(void)
    *   "Sinclair ZX Spectrum BASIC Programming" (Steven Vickers),
    *   Sinclair Research Ltd, 1982
    *
-   *   http://www.worldofspectrum.org/ZXBasicManual/
+   *   https://www.worldofspectrum.org/ZXBasicManual/
    */
   
   static uint8_t basic_loader[] = {
     0, 10,                              /* line 10 */
     16, 0,                              /* length of line */
-    249, 192, '2', '8', '6', '7', '2',  /* RANDOMIZE USR 28672 */
-    14, 0, 0, 0, 112, 0,                /* integer 28672 */
-    ':',
+    249, 192, '2', '4', '5', '7', '6',  /* RANDOMIZE USR 24576 */
+    14, 0, 0, 0, 96, 0,                 /* integer 24576 */
+      ':',
     226,                                /* STOP */
     13,                                 /* ENTER */
     
     0, 20,                              /* line 20 */
     13, 0,                              /* length of line */
-    253, '2', '8', '6', '7', '1',       /* CLEAR 28671 */
-    14, 0, 0, 255, 111, 0,              /* integer 28671 */
+    253, '2', '4', '5', '7', '5',       /* CLEAR 24575 */
+    14, 0, 0, 255, 95, 0,               /* integer 24575 */
     13,                                 /* ENTER */
     
     0, 30,                              /* line 30 */
@@ -303,7 +303,7 @@ write_data_file(void)
     exit(1);
   }
   
-  write_header_block(HEADER_CODE, (uint16_t) bytes_read, "code", 0x7000, 0x8000);
+  write_header_block(HEADER_CODE, (uint16_t) bytes_read, "code", 0x6000, 0x8000);
   write_data_block(infile_buffer, (uint16_t) bytes_read);
 }
 
