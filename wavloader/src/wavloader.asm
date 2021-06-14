@@ -42,13 +42,15 @@
 
   ;; EEPROM write protection config
   
-  CONFIG_28C64    = 0x31      ;; '1'
-  CONFIG_28C256   = 0x32      ;; '2'
-  CONFIG_PLAIN    = 0x33      ;; '3'
+  CONFIG_28C16    = 0x31      ;; '1'
+  CONFIG_28C64    = 0x32      ;; '2'
+  CONFIG_28C256   = 0x33      ;; '3'
+  CONFIG_PLAIN    = 0x34      ;; '4'
   
-  ;; EEPROM parameters (256 pages, each 32 bytes)
+  ;; EEPROM parameters (64 pages, each 32 bytes)
 
   EEPROM_PAGESIZE = 0x20
+  NBR_PAGES       = 64
 
   ;; Keyboard input
 
@@ -104,16 +106,22 @@ wait_key_press:
   rra
   jr nc, pressed2
   rra
+  jr nc, pressed3
+  rra
   jr c, wait_key_press
 
   ld    a, #CONFIG_PLAIN
   jr    set_config
 
 pressed1:
-  ld    a, #CONFIG_28C64
+  ld    a, #CONFIG_28C16
   jr    set_config
 
 pressed2:
+  ld    a, #CONFIG_28C64
+  jr    set_config
+
+pressed3:
   ld    a, #CONFIG_28C256
 
 set_config:
@@ -138,66 +146,27 @@ set_config:
   ld    hl, #firmware_image
   ld    de, #FW_DEST
 
-  xor   a
+  ld    a, #NBR_PAGES / 2
+
+  ld    bc, #0x5800 + 14 * 32       ;; attribute line 14
+
 write_block_loop:
-  ex    af, af'   ;; keep loop counter in A'
 
-  ld    a, (config)
-  cp    #CONFIG_PLAIN
-  jr    z, wp_done
-  cp    #CONFIG_28C256
-  jr    z, wp_28c256
+  ex    af, af'
+  push  bc
 
-  ;; Perform the special write-lock sequence supported by some 8K EEPROMs
+  call  write_block
+  call  write_block
 
-  ld    a, #0xaa
-  ld    (0x1555), a
-  call  write_delay
-  
-  ld    a, #0x55
-  ld    (0x0aaa), a
-  call  write_delay
-  
-  ld    a, #0xa0
-  ld    (0x1555), a
-  call  write_delay
-  jr    wp_done
+  pop   bc
 
-wp_28c256:
-  ;; Perform the special write-lock sequence supported by some 32K EEPROMs
+  ld    a, #0x78
+  ld    (bc), a
+  inc   bc
 
-  ld    a, #EEPROM_IN_PG1
-  out   (ROMCS_CTL), a
-
-  ld    a, #0xaa
-  ld    (0x1555), a    ;; page 1 enabled => address on bus is 0x5555
-  call  write_delay
-
-  ld    a, #EEPROM_IN_PG0
-  out   (ROMCS_CTL), a
-  
-  ld    a, #0x55
-  ld    (0x2aaa), a
-  call  write_delay
-
-  ld    a, #EEPROM_IN_PG1
-  out   (ROMCS_CTL), a
-
-  ld    a, #0xaa
-  ld    (0x1555), a    ;; page 1 enabled => address on bus is 0x5555
-  call  write_delay
-
-  ld    a, #EEPROM_IN_PG0
-  out   (ROMCS_CTL), a
-
-wp_done:
-  ld    bc, #EEPROM_PAGESIZE
-  ldir
-  call  write_delay
-
-  ex    af, af'   ;; retrieve loop counter from A'
+  ex    af, af'
   dec   a
-  jr    nz, write_block_loop   ;; A goes from 0 to 0 => 256 iterations
+  jr    nz, write_block_loop
 
   ;; verify write operation
   
@@ -250,7 +219,86 @@ success:
 do_beep:
   ld    de, #0x0105         ;; 4s @1046.52Hz, 0.5s @130.815Hz
   jp    BEEPER
+
+  ;; --------------------------------------------------------------------------  
+  ;; Write one block (32 bytes)
+  ;; --------------------------------------------------------------------------  
+
+write_block:
+
+  ld    a, (config)
+  cp    #CONFIG_PLAIN
+  jr    z, wp_done
+  cp    #CONFIG_28C64
+  jr    z, wp_28c64
+  cp    #CONFIG_28C256
+  jr    z, wp_28c256
+
+  ;; Perform the special write-lock sequence supported by some 2K EEPROMs
+
+  ld    a, #0xaa
+  ld    (0x555), a
+  call  write_delay
   
+  ld    a, #0x55
+  ld    (0x02aa), a
+  call  write_delay
+  
+  ld    a, #0xa0
+  ld    (0x555), a
+  call  write_delay
+  jr    wp_done
+
+wp_28c64:
+
+  ;; Perform the special write-lock sequence supported by some 8K EEPROMs
+
+  ld    a, #0xaa
+  ld    (0x1555), a
+  call  write_delay
+  
+  ld    a, #0x55
+  ld    (0x0aaa), a
+  call  write_delay
+  
+  ld    a, #0xa0
+  ld    (0x1555), a
+  call  write_delay
+  jr    wp_done
+
+wp_28c256:
+  ;; Perform the special write-lock sequence supported by some 32K EEPROMs
+
+  ld    a, #EEPROM_IN_PG1
+  out   (ROMCS_CTL), a
+
+  ld    a, #0xaa
+  ld    (0x1555), a    ;; page 1 enabled => address on bus is 0x5555
+  call  write_delay
+
+  ld    a, #EEPROM_IN_PG0
+  out   (ROMCS_CTL), a
+  
+  ld    a, #0x55
+  ld    (0x2aaa), a
+  call  write_delay
+
+  ld    a, #EEPROM_IN_PG1
+  out   (ROMCS_CTL), a
+
+  ld    a, #0xaa
+  ld    (0x1555), a    ;; page 1 enabled => address on bus is 0x5555
+  call  write_delay
+
+  ld    a, #EEPROM_IN_PG0
+  out   (ROMCS_CTL), a
+
+wp_done:
+  ld    bc, #EEPROM_PAGESIZE
+  ldir
+
+  ;; FALL THROUGH to write_delay
+
   ;; --------------------------------------------------------------------------  
   ;; Delay for enough time for a write operation to complete (> 5ms)
   ;; --------------------------------------------------------------------------  
@@ -272,35 +320,41 @@ write_delay_loop:
   ;; --------------------------------------------------------------------------
   
 msg_press_key:
-  .ascii "SpeccyBoot installer"
-  .db   13
-  .ascii "--------------------"
-  .db   13, 13
+  .db   0x14, 1, 0x13, 1      ;; INVERSE 1, BRIGHT 1
+  .ascii " SpeccyBoot firmware installer  "
+  .db   0x14, 0, 0x13, 0      ;; INVERSE 0, BRIGHT 0
+  .db   13, 13, 13
   .ascii "select EEPROM configuration:"
   .db   13, 13
-  .ascii  "1. 28C64  with write protection"
+  .ascii  " 1. 28C16  with write protection"
   .db   13
-  .ascii  "2. 28C256 with write protection"
+  .ascii  " 2. 28C64  with write protection"
   .db   13
-  .ascii  "3. plain, no write protection"
+  .ascii  " 3. 28C256 with write protection"
+  .db   13
+  .ascii  " 4. plain, no write protection"
   .db   13, 13
-  .ascii  "press 1, 2 or 3: "
+  .ascii  ">> "
+  .db   0x12, 1, ' ', 0x12, 0, 0x08
 msg_press_key_end:
 
 msg_writing:
-  .db   13, 13
-  .ascii "* programming EEPROM"
-  .db   13
-  .ascii "  please wait..."
-  .db   13, 13
+  .db   13, 13, 13, 13
+  .ascii "programming EEPROM...       "
 msg_writing_end:
 
 msg_ok:
-  .ascii "* OK: installed & verified"
+  .db   0x11, 4, 0x13, 1      ;; INK 4, BRIGHT 1
+  .ascii " OK "
 msg_ok_end:
   
 msg_fail:
-  .ascii "* FAILED at address "
+  .db   13, 13
+  .ascii "     "
+  .db   0x10, 6, 0x11, 2, 0x13, 1, 0x12, 1      ;; INK 6, PAPER 2, BRIGHT 1, FLASH 1
+  .ascii " FAILED "
+  .db   0x10, 0, 0x11, 7, 0x13, 0, 0x12, 0      ;; INK 0, PAPER 7, BRIGHT 0, FLASH 0
+  .ascii " at address "
 msg_fail_end:
   
   ;; --------------------------------------------------------------------------  
