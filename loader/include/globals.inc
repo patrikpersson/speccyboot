@@ -61,7 +61,7 @@ VERSION_MAGIC  = VERSION_STAGE1 | 0x40
 ;; The BOOTP header is available here in part:
 ;;
 ;; 5b97..5bff       first 69 bytes of BOOTP packet, including
-;;                  OP, XID, YIADDR
+;;                  OP, XID, YIADDR, first byte of SNAME
 ;;
 ;; RX_FRAME_SIZE = 20 + 8 + 4 + 512 = 544=0x220 bytes
 ;; so _DATA segment can start at 0x5b7b + 0x220 = 0x5d9b

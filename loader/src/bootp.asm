@@ -88,7 +88,7 @@ bootp_receive:
     or   a, a
     jr   z, bootp_receive_sname_done
 
-    ld   hl, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
+    ld   l, #<_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     ld   b, #4  ;; four octets
 
 bootp_receive_octet_loop:
