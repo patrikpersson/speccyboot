@@ -884,6 +884,3 @@ receive_snapshot_no_evacuation:
     ld    (write_pos), de
 
     jr    receive_snapshot_byte_loop
-
-jp_ix_instr:
-    jp    (ix)

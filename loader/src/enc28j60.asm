@@ -218,7 +218,7 @@ final:
 
     pop   hl
 
-    jr    enc28j60_end_transaction_and_return
+    jr    do_end_transaction
 
 ;; ----------------------------------------------------------------------------
 ;; subroutine: read one byte to accumulator, switch registers (EXX),
@@ -311,17 +311,6 @@ enc28j60_read_register:
 
     djnz 00001$
 
-    ;; ------------------------------------------------------------------------
-    ;; end transaction
-    ;; ------------------------------------------------------------------------
+do_end_transaction:
 
-enc28j60_end_transaction_and_return:
-
-    ld  a, #SPI_IDLE
-    out (SPI_OUT), a
-    ld  a, #SPI_IDLE+SPI_CS
-    out (SPI_OUT), a
-
-    ld  a, c
-
-    ret
+    jp   enc28j60_end_transaction_and_return

@@ -107,7 +107,14 @@
   rst   spi_write_byte                                          ;; 1 byte
   ld    c, h                                                    ;; 1 byte
   rst   spi_write_byte                                          ;; 1 byte
-  jp    enc28j60_end_transaction_and_return                     ;; 3 bytes
+  jr    enc28j60_end_transaction_and_return                     ;; 2 bytes
+
+  ;; ========================================================================
+  ;; JP (IX)   (to squeeze something into this 2-byte code slot)
+  ;; ========================================================================
+  
+jp_ix_instr:
+  jp  (ix)                                                      ;; 2 bytes
 
   ;; ========================================================================
   ;; RST 0x20 ENTRYPOINT: spi_write_byte
@@ -215,7 +222,16 @@ enc28j60_write_memory_cont:
     ;; end transaction
     ;; ------------------------------------------------------------------------
 
-    jp    enc28j60_end_transaction_and_return
+enc28j60_end_transaction_and_return:
+
+    ld  a, #SPI_IDLE
+    out (SPI_OUT), a
+    ld  a, #SPI_IDLE+SPI_CS
+    out (SPI_OUT), a
+
+    ld  a, c
+
+    ret
 
 ;; ===========================================================================
 ;; MAC address data (placed here to ensure high byte of address is zero)

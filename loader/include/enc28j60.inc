@@ -380,7 +380,7 @@ enc28j60_write_memory_small = 0x28
 ;; ----------------------------------------------------------------------------
 ;; Helper:
 ;;
-;; end SPI transaction
+;; end SPI transaction (defined in init.asm)
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_end_transaction_and_return
