@@ -53,6 +53,30 @@ VERSION_MAGIC  = VERSION_STAGE1 | 0x40
 STACK_SIZE  = 0x20
 _stack_top  = 0x5b00 + STACK_SIZE
 
+;; ----------------------------------------------------------------------------
+;; Stored .z80 snapshot header
+;; placed on an explicit address to keep all headers in a single memory page
+;; size: Z80_HEADER_RESIDENT_SIZE = 0x37
+;; ----------------------------------------------------------------------------
+
+Z80_HEADER_RESIDENT_SIZE = 55  ;; no of bytes to keep in RAM
+
+stored_snapshot_header = _stack_top
+
+;; ----------------------------------------------------------------------------
+;; Packet data buffer for received data
+;; placed on an explicit address to keep all headers in a single memory page
+;; ----------------------------------------------------------------------------
+
+_rx_frame   = stored_snapshot_header + Z80_HEADER_RESIDENT_SIZE
+
+;; RX_FRAME_SIZE = 20 + 8 + 4 + 512 = 544=0x220 bytes
+;; so _DATA segment can start at 0x5b20 + 0x37 + 0x220 = 0x5d40
+
+;; ----------------------------------------------------------------------------
+;; RAM location for font data, copied from BASIC ROM
+;; ----------------------------------------------------------------------------
+
 _font_data  = 0xfd00                  ;; full font, but overwritten by snapshot
 
 ;; ----------------------------------------------------------------------------

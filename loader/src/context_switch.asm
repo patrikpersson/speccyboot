@@ -68,9 +68,6 @@ REG_R_ADJUSTMENT   = 0xF8
 memory_state:
     .ds   2
 
-stored_snapshot_header:
-    .ds   Z80_HEADER_RESIDENT_SIZE
-
 
 ;; ############################################################################
 ;; prepare_context
