@@ -46,32 +46,29 @@ VERSION_LOADER = 0
 
 VERSION_MAGIC  = VERSION_STAGE1 | 0x40
 
-;; ----------------------------------------------------------------------------
-;; Stack address (defined here so init.asm can find it via linker)
-;; ----------------------------------------------------------------------------
-
-STACK_SIZE  = 0x20
-_stack_top  = 0x5b00 + STACK_SIZE
-
-;; ----------------------------------------------------------------------------
-;; Stored .z80 snapshot header
-;; placed on an explicit address to keep all headers in a single memory page
-;; size: Z80_HEADER_RESIDENT_SIZE = 0x37
-;; ----------------------------------------------------------------------------
-
-Z80_HEADER_RESIDENT_SIZE = 55  ;; no of bytes to keep in RAM
-
-stored_snapshot_header = _stack_top
-
-;; ----------------------------------------------------------------------------
-;; Packet data buffer for received data
-;; placed on an explicit address to keep all headers in a single memory page
-;; ----------------------------------------------------------------------------
-
-_rx_frame   = stored_snapshot_header + Z80_HEADER_RESIDENT_SIZE
-
+;; ============================================================================
+;; to facilitate single-page addressing, page 0x5B is laid out as follows:
+;;
+;; 5b00..5b1f       stack, 0x20 bytes
+;; 5b20..5b27       IP config (2x IPv4 addresses, 8 bytes)
+;; 5b28..5b43       IP/UDP header template, 20+8 bytes
+;; 5b44..5b7a       stored .z80 snapshot header, 55 bytes
+;; 5b7b..5b8e       IP header (20 bytes)
+;; 5b8f..5b96       UDP header (8 bytes)
+;; 5b97..5b9a       TFTP DATA header (4 bytes)
+;; 5b9b..5bd1       .z80 snapshot header, 55 bytes
+;;
 ;; RX_FRAME_SIZE = 20 + 8 + 4 + 512 = 544=0x220 bytes
-;; so _DATA segment can start at 0x5b20 + 0x37 + 0x220 = 0x5d40
+;; so _DATA segment can start at 0x5b7b + 0x220 = 0x5d9b
+;; ============================================================================
+
+STACK_SIZE             = 0x20
+_stack_top             = 0x5b00 + STACK_SIZE
+
+_ip_config             = 0x5b20
+_header_template       = 0x5b28
+stored_snapshot_header = 0x5b44
+_rx_frame              = 0x5b7b
 
 ;; ----------------------------------------------------------------------------
 ;; RAM location for font data, copied from BASIC ROM

@@ -130,6 +130,8 @@ SNAPSHOT_FLAGS_COMPRESSED_MASK = 0x20
 ;; https://worldofspectrum.org/faq/reference/z80format.htm
 ;; ----------------------------------------------------------------------------
 
+Z80_HEADER_RESIDENT_SIZE         = 55  ;; no of bytes to keep in RAM
+
 Z80_HEADER_OFFSET_A              = 0
 Z80_HEADER_OFFSET_F              = 1
 Z80_HEADER_OFFSET_BC_HL          = 2

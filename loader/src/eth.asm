@@ -620,7 +620,7 @@ arp_receive:
 
     ;; TPA
 
-    ld   hl, #_rx_frame + ARP_OFFSET_SPA  ;; sender IP address, taken from SPA field in request
+    ld   l, #<_rx_frame + ARP_OFFSET_SPA  ;; sender IP address, taken from SPA field in request
     ld   e, #IPV4_ADDRESS_SIZE
     rst  enc28j60_write_memory_small
 

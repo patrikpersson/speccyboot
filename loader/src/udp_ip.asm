@@ -45,12 +45,6 @@
 
     .area _DATA
 
-_ip_config:
-    .ds    4 * 2
-
-_header_template:
-    .ds   IPV4_HEADER_SIZE + UDP_HEADER_SIZE
-
 _ip_checksum:
     .ds   2
 
@@ -182,7 +176,7 @@ ip_receive_options_done:
     call enc28j60_add_to_checksum
 
     ld   b, #1 ;; one word
-    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld   e, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
     call enc28j60_add_to_checksum
 
     call ip_receive_check_checksum
