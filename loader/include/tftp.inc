@@ -170,7 +170,7 @@ VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
     ;; only accept DATA packets; anything else is a fatal error
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
+    ld   l, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
     xor  a, a
     or   a, (hl)
     inc  hl
@@ -181,7 +181,7 @@ VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
 
     ;; the only conceivable message type is now TFTP_OPCODE_ERROR
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_ERROR_MSG
+    ld   l, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_ERROR_MSG
     ld   de, #TFTP_VRAM_ERROR_POS
     call print_str
 
