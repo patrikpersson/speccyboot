@@ -284,11 +284,25 @@ udp_create:
 
     exx                  ;; recall DE
 
-    ;; current_packet_length = udp_length + IPV4_HEADER_SIZE
+    ;; ----------------------------------------------------------------------
+    ;; Add IPV4_HEADER_SIZE to DE. This can safely be done as a byte addition
+    ;; (no carry needed), as DE has one of the following values:
+    ;;
+    ;; BOOTP boot request: UDP_HEADER_SIZE + BOOTP_PACKET_SIZE = 308 = 0x134
+    ;; TFTP read request: UDP_HEADER_SIZE
+    ;;                       + TFTP_SIZE_OF_RRQ_PREFIX
+    ;;                       + TFTP_SIZE_OF_RRQ_OPTION
+    ;;                    = 27 = 0x1b
+    ;; TFTP ACK: UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET = 8 + 4 = 0x0c
+    ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
+    ;;
+    ;; In all these cases, the lower byte (that is, E) is < 0xfc, so adding
+    ;; IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition is safe.
+    ;; ----------------------------------------------------------------------
 
-    ld    hl, #IPV4_HEADER_SIZE
-    add   hl, de
-    ex    de, hl                ;; DE is now total length, including IP header
+    ld    a, e
+    add   a, #IPV4_HEADER_SIZE
+    ld    e, a                 ;; DE is now total length, including IP header
 
     ;; ----------------------------------------------------------------------
     ;; prepare IP header in _header_template
