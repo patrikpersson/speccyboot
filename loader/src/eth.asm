@@ -581,7 +581,7 @@ arp_receive:
     ;; and that the packet was sent to this address
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     ld   a, (hl)
     or   a, a
     ret  z
@@ -615,7 +615,7 @@ arp_receive:
     ;; THA
 
     ld   e, #ETH_ADDRESS_SIZE
-    ld   hl, #_rx_frame + ARP_OFFSET_SHA  ;; sender MAC address, taken from SHA field in request
+    ld   l, #<_rx_frame + ARP_OFFSET_SHA  ;; sender MAC address, taken from SHA field in request
     rst  enc28j60_write_memory_small
 
     ;; TPA

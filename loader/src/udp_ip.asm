@@ -117,7 +117,7 @@ ip_receive_address_checked:
 
     ld   d, #0
     ld   e, a
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
+    ld   l, #<_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call enc28j60_read_memory
 
 ip_receive_options_done:
@@ -302,7 +302,7 @@ udp_create:
     ;; copy source IP address
 
     ld    de, #_header_template + 12   ;; source IP address
-    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld    l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     ld    bc, #4
     ldir
 
@@ -324,7 +324,7 @@ udp_create:
     ld     de, #_header_template
     call   enc28j60_add_to_checksum_hl
 
-    ld     de, #_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
+    ld     e, #<_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
     ld     a, l
     cpl
     ld     (de), a
