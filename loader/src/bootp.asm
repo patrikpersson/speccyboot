@@ -75,7 +75,7 @@ bootp_receive:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_YIADDR
-    ld   de, #_ip_config
+    ld   e, #<_ip_config
     ld   bc, #8
     ldir
 
