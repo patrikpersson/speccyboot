@@ -122,8 +122,8 @@ show_attr_digit:
 
 show_attr_digit_already_shifted:  ;; special target for below
 
-    and   a, #0x78           ;; binary 01111000
-    add   a, #<digit_font_data ;; all digits in a single 256b page
+    and   a, #0x78                ;; binary 01111000
+    add   a, #<digit_font_data    ;; all digits in a single 256b page
     ld    d, #>digit_font_data
     ld    e, a
 

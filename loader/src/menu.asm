@@ -241,13 +241,36 @@ menu_hit_up:
 
     dec  c
 
-    ;; ------------------------------------------------------------------------
-    ;; possibly adjust display offset
-    ;; ------------------------------------------------------------------------
-
 menu_adjust:
 
-    call ensure_visible
+    ;; ------------------------------------------------------------------------
+    ;; adjust D (display offset) to ensure
+    ;;   D <= C < E
+    ;; and
+    ;;   D <= C < D + DISPLAY_LINES
+    ;; ------------------------------------------------------------------------
+
+    ;; C < D? Reached top of display?
+
+    ld   a, c
+    cp   a, d
+    jr   nc, ensure_visible_not_top
+
+    ;; C < D: adjust D to ensure index C is visible
+
+    ld   d, c
+
+ensure_visible_not_top:
+
+    ;; reached end of display?
+
+    ld   a, c
+    sub  a, #DISPLAY_LINES - 1
+    jr   c, menu_loop
+    cp   a, d
+    jr   c, menu_loop
+
+    ld   d, a
 
     jr   menu_loop
 
@@ -297,42 +320,6 @@ menu_hit_enter:
     ;; ------------------------------------------------------------------------
 
     jp   main_loop
-
-
-;; ############################################################################
-;; subroutine: adjust D (display offset) to ensure
-;;   D <= C < E
-;; and
-;;   D <= C < D + DISPLAY_LINES
-;; ############################################################################
-
-    .area _CODE
-
-ensure_visible:
-
-    ;; C < D? Reached top of display?
-
-    ld   a, c
-    cp   a, d
-    jr   nc, ensure_visible_not_top
-
-    ;; C < D: adjust D to ensure index C is visible
-
-    ld   d, c
-
-ensure_visible_not_top:
-
-    ;; reached end of display?
-
-    ld   a, c
-    sub  a, #DISPLAY_LINES - 1
-    ret  c
-    cp   a, d
-    ret  c
-
-    ld   d, a
-    ret
-
 
 ;; ############################################################################
 ;; subroutine: erase highlight of current line
