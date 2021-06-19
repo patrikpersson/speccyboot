@@ -130,29 +130,27 @@ show_attr_digit_already_shifted:  ;; special target for below
     ld    h, #>ATTR_DIGIT_ROW
 
 show_attr_char_address_known:
-00001$:
 
     ld    a, (de)
     inc   de
     add   a, a
     ld    b, #6
-00002$:
+show_attr_char_pixel_loop:
     add   a, a
-    jr    c, 00004$
+    jr    c, show_attr_char_pixel_set
     ld    (hl), #WHITE + (WHITE << 3)
     .db   JP_C        ;; C always clear here => ignore the following two bytes
-00004$:
+show_attr_char_pixel_set:
     ld    (hl), #BLACK + (BLACK << 3)
-00003$:
     inc   hl
-    djnz  00002$
+    djnz  show_attr_char_pixel_loop
 
     ld    a, #(ROW_LENGTH-6)
     add   a, l
     ld    l, a
 
     cp    a, #ROW_LENGTH * 6
-    jr    c, 00001$
+    jr    c, show_attr_char_address_known
 
     ret
 
