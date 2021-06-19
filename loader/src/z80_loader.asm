@@ -681,15 +681,14 @@ _digits:
     push  af             ;; remember flags
     ld    (_digits), a
     ld    c, a
-    jr    nz, not_100k   ;; turned from 99->100?
 
-    ;; Number of kilobytes became zero in BCD:
+    ;; If Z is set, then the number of kilobytes became zero in BCD:
     ;; means it just turned from 99 to 100.
     ;; Print the digit '1' for hundreds.
 
-    ld    l, a
-    inc   a      ;; A is now 1
-    call  show_attr_digit
+    ld    l, a       ;; L := 0
+    ld    a, #1      ;; can't use INC A, since that changes Z flag
+    call  z, show_attr_digit
     ld    a, c
 
 not_100k:
@@ -699,7 +698,7 @@ not_100k:
 
     ;; Print tens (_x_)
 
-    rra
+    rra                  ;; shift once; routine below shifts three more times
     ld    l, #7
     call  show_attr_digit_already_shifted
 

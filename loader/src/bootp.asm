@@ -298,7 +298,7 @@ _print_char_loop:
     djnz _print_char_loop
     ld   d, c
 
-    ex   af, af'            ;;'   bring back A after print_div
+    ex   af, af'            ;;   bring back A after print_div
 
     inc  e
 
