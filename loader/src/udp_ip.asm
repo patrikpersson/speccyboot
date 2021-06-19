@@ -98,7 +98,7 @@ ip_receive_address_checked:
     ret  nz
 
     ;; ------------------------------------------------------------
-    ;; Read IP header, skip any options
+    ;; Read remaining IP header, skip any options
     ;; ------------------------------------------------------------
 
     ;; Read header size
