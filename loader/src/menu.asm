@@ -248,29 +248,7 @@ menu_hit_up:
 
 menu_adjust:
 
-    ;; reached top of display?
-
-    ld   a, c
-    cp   a, d
-    jr   nc, menu_not_top
-
-    ld   d, c
-
-    ;; fall through here: nothing useful will happen,
-    ;; but saves a JR menu_loop
-
-menu_not_top:
-
-    ;; reached end of display?
-
-    ld   a, d
-    add  a, #DISPLAY_LINES - 1
-    cp   a, c
-    jr   nc, menu_loop
-
-    ld   a, c
-    sub  a, #DISPLAY_LINES - 1
-    ld   d, a
+    call ensure_visible
 
     jr   menu_loop
 
@@ -320,6 +298,44 @@ menu_hit_enter:
     ;; ------------------------------------------------------------------------
 
     jp   main_loop
+
+
+;; ############################################################################
+;; subroutine: adjust D (display offset) to ensure
+;;   D <= C < E
+;; and
+;;   D <= C <= D + DISPLAY_LINES - 1
+;; ############################################################################
+
+    .area _CODE
+
+ensure_visible:
+
+    ;; reached top of display?
+
+    ld   a, c
+    cp   a, d
+    jr   nc, ensure_visible_not_top
+
+    ld   d, c
+
+    ;; fall through here: nothing useful will happen,
+    ;; but saves a RET
+
+ensure_visible_not_top:
+
+    ;; reached end of display?
+
+    ld   a, d
+    add  a, #DISPLAY_LINES - 1
+    cp   a, c
+    ret  nc
+
+    ld   a, c
+    sub  a, #DISPLAY_LINES - 1
+    ld   d, a
+
+    ret
 
 
 ;; ############################################################################
