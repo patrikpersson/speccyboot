@@ -281,7 +281,7 @@ menu_hit_enter:
     call  show_attr_digit
 
     ld    l, #25           ;; (16, 25)
-    ld    de, #_font_data + 8 * (75-32) + 1 ;; address of 'K' bits
+    ld    de, #_font_data + 8 * ('K'-' ') + 1 ;; address of 'K' bits
     call  show_attr_char_address_known
 
     ;; ------------------------------------------------------------------------
