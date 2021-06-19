@@ -188,23 +188,28 @@ ip_receive_udp_checksum_done:
     ;; Pass on to BOOTP/TFTP
     ;; ------------------------------------------------------------
 
-    ld   de, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
 
-    ;; BOOTP response?
+    ;; BOOTP or TFTP response?
+    ;;
+    ;; for BOOTP, the port has the value 0x4400
+    ;; (UDP_PORT_BOOTP_CLIENT, network order)
+    ;;
+    ;; for TFTP, port has the value 0x45rr, where 'rr' is a random value
+    ;; (that is, the high byte is UDP_PORT_TFTP_SERVER, as chosen in tftp.inc)
 
-    ld   a, e
-    or   a, a
+    ld   a, h
+    sub  a, #UDP_PORT_BOOTP_CLIENT
     jr   nz, ip_receive_not_bootp
-    ld   a, d
-    cp   a, #UDP_PORT_BOOTP_CLIENT
+    or   a, l
     jp   z, bootp_receive
+    ret
 
 ip_receive_not_bootp:
-
-    ;; TFTP response?
-
-    ld   hl, (_tftp_client_port)
-    sbc  hl, de     ;; C flag is clear from OR A, A above
+    dec  a             ;; UDP_PORT_TFTP_SERVER?
+    ret  nz
+    ld   a, (_tftp_client_port)
+    cp   a, l
     ret  nz
 
     ;; only accept TFTP if an IP address has been set

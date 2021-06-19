@@ -50,7 +50,7 @@ _server_port:
     .ds 2        ;; source port currently used by server
 
 _tftp_client_port:
-   .ds   2
+   .ds   1
 
 _tftp_write_pos:
    .ds   2

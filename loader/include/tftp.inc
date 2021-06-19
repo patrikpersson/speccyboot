@@ -99,6 +99,8 @@ VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
 
 ;; ----------------------------------------------------------------------------
 ;; UDP client-side port for UDP transfers (checked in udp_ip.asm)
+;; Only the low byte (Z80 order) / high byte (network order) is stored here;
+;; the other byte is always UDP_PORT_TFTP_SERVER.
 ;; ----------------------------------------------------------------------------
 
     .globl _tftp_client_port
@@ -157,20 +159,10 @@ VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
     .macro  handle_tftp_packet
 
     ;; ------------------------------------------------------------------------
-    ;; check destination port (should be _tftp_client_port)
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT
-    ld   de, #_tftp_client_port
-    ld   b, #2
-    rst  memory_compare
-    ret  nz
-
-    ;; ------------------------------------------------------------------------
     ;; only accept DATA packets; anything else is a fatal error
     ;; ------------------------------------------------------------------------
 
-    ld   l, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
     xor  a, a
     or   a, (hl)
     inc  hl
@@ -438,8 +430,8 @@ tftp_receive_error:
     ld   hl, #UDP_PORT_TFTP_SERVER * 0x0100    ;; network order
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
     ld   a, r
+    ld   (_tftp_client_port), a
     ld   l, a  ;; H is still UDP_PORT_TFTP_SERVER, so port number will not be zero
-    ld   (_tftp_client_port), hl
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ;; calculate length of filename
