@@ -102,8 +102,6 @@ kilobytes_loaded:
 ;;
 ;; ----------------------------------------------------------------------------
 
-    .area _STAGE2
-
 ;; ############################################################################
 ;; show_attr_digit
 ;;
@@ -114,7 +112,7 @@ kilobytes_loaded:
 ;; Destroys AF, B, DE, HL. Returns with L increased by 7.
 ;; ############################################################################
 
-ROM_DIGITS = 0x3D00 + 16 * 8 + 1 ;; address of '0' bits, first actual scan line
+    .area _CODE
 
 show_attr_digit:
 
@@ -125,16 +123,11 @@ show_attr_digit:
 show_attr_digit_already_shifted:  ;; special target for below
 
     and   a, #0x78           ;; binary 01111000
-    add   a, #<ROM_DIGITS    ;; all digits in a single 256b page
-    ld    d, #>ROM_DIGITS
+    add   a, #<digit_font_data ;; all digits in a single 256b page
+    ld    d, #>digit_font_data
     ld    e, a
 
     ld    h, #>ATTR_DIGIT_ROW
-
-    di    ;; SpeccyBoot is about to be paged out
-
-    ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT
-    out   (SPI_OUT), a
 
 show_attr_char_address_known:
 00001$:
@@ -160,10 +153,6 @@ show_attr_char_address_known:
 
     cp    a, #ROW_LENGTH * 6
     jr    c, 00001$
-
-    ld    a, #SPI_IDLE+SPI_CS       ;; page SpeccyBoot back in
-    out   (SPI_OUT), a
-    ei
 
     ret
 

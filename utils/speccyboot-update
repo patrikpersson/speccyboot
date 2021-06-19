@@ -45,7 +45,7 @@ stage2_bytes = open(os.path.join(SPECCYBOOT_HOME, 'spboot.bin'), "rb").read()
 
 version = stage2_bytes[1] & 0x3f
 
-loading_address = stage2_bytes[0] + 0x5D00
+loading_address = stage2_bytes[0] + 0x5E00
 
 # ----------------------------------------------------------------------------
 

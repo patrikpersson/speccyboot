@@ -92,7 +92,6 @@ get_filename_pointer:
     pop   bc
     ret
 
-
 ;; ============================================================================
 
     .area _STAGE2_ENTRY
@@ -339,7 +338,7 @@ ensure_visible_not_top:
 ;; subroutine: erase highlight of current line
 ;; ############################################################################
 
-    .area _CODE
+    .area _NONRESIDENT
 
 menu_erase_highlight:
 

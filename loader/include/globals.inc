@@ -62,18 +62,18 @@ VERSION_MAGIC  = VERSION_STAGE1 | 0x40
 ;;
 ;; 5b97..5bff       first 69 bytes of BOOTP packet, including
 ;;                  OP, XID, YIADDR, first byte of SNAME
-;;
-;; RX_FRAME_SIZE = 20 + 8 + 4 + 512 = 544=0x220 bytes
-;; so _DATA segment can start at 0x5b7b + 0x220 = 0x5d9b
 ;; ============================================================================
 
 STACK_SIZE             = 0x20
 _stack_top             = 0x5b00 + STACK_SIZE
 
-_ip_config             = 0x5b20
-_header_template       = 0x5b28
-stored_snapshot_header = 0x5b44
-_rx_frame              = 0x5b7b
+_ip_config             = 0x5b20             ;; size 8
+_header_template       = 0x5b28             ;; size 0x1c  (20+8)
+stored_snapshot_header = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
+_rx_frame              = 0x5b7b             ;; size 0x220 (RX_FRAME_SIZE)
+digit_font_data        = 0x5db9             ;; size 0x4e  (10*8 - 2)
+
+;; _DATA segment can start at 0x5db9 + 0x4e = 0x5e07
 
 ;; ----------------------------------------------------------------------------
 ;; RAM location for font data, copied from BASIC ROM
