@@ -111,11 +111,14 @@ _main:
     ;; ------------------------------------------------------------------------
 
     ld    a, #'B'
-    ld    de, #BITMAP_BASE + 0x1000 + 7 *32   ;; (23, 0)
+    ld    de, #BITMAP_BASE + 0x1000 + 7 *32                ;; (23, 0)
     call  print_char
 
-    ld    hl, #ATTRS_BASE + 23 * 32           ;; (23, 0)
-    ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
+    ;; Attribute byte (BLACK | (GREEN << 3) | BRIGHT | FLASH) == 0xE0,
+    ;; happens to coincide with low byte in the VRAM address
+
+    ld    hl, #ATTRS_BASE + 23 * 32                        ;; (23, 0) -- 0x5AE0
+    ld    (hl), l
 
     ;; ========================================================================
     ;; system initialization
