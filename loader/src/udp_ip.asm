@@ -110,7 +110,10 @@ ip_receive_address_checked:
     push af     ;; remember IP header size for later, carry == 0
 
     sub  a, #IPV4_HEADER_SIZE
-    jr   z, ip_receive_options_done
+
+    ;; -----------------------------------------------------------------------
+    ;; Handle IPv4 options, if any. Z==0 means IPv4 options found.
+    ;; -----------------------------------------------------------------------
 
     ;; To skip forward past any options, load additional header data
     ;; into UDP part of the buffer (overwritten soon afterwards)
@@ -118,9 +121,7 @@ ip_receive_address_checked:
     ld   d, #0
     ld   e, a
     ld   l, #<_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
-    call enc28j60_read_memory
-
-ip_receive_options_done:
+    call nz, enc28j60_read_memory
 
     ;; B == 0 here,
     ;; either from enc28j60_read_memory or memory_compare
