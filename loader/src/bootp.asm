@@ -83,7 +83,7 @@ bootp_receive:
     ;; Check SNAME field for a dotted-decimal IP address (four octets)
     ;; ========================================================================
 
-    ld   e, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_SNAME
+    ld   e, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_SNAME
     ld   a, (de)
     or   a, a
     jr   z, bootp_receive_sname_done
