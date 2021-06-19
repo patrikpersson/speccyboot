@@ -71,9 +71,9 @@ _ip_config             = 0x5b20             ;; size 8
 _header_template       = 0x5b28             ;; size 0x1c  (20+8)
 stored_snapshot_header = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
 _rx_frame              = 0x5b7b             ;; size 0x220 (RX_FRAME_SIZE)
-digit_font_data        = 0x5db9             ;; size 0x4e  (10*8 - 2)
+digit_font_data        = 0x5d9b             ;; size 0x4e  (10*8 - 2)
 
-;; _DATA segment can start at 0x5db9 + 0x4e = 0x5e07
+;; _DATA segment can start at 0x5d9b + 0x4e = 0x5de9
 
 ;; ----------------------------------------------------------------------------
 ;; RAM location for font data, copied from BASIC ROM
