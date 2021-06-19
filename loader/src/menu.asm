@@ -149,7 +149,7 @@ menu_loop:
     ld   b, e
 redraw_menu_limit_set:
 
-    ld   de, #0x4041      ;; (2,0)
+    ld   de, #0x4041      ;; (2,1)
 
 redraw_menu_loop:
 
@@ -304,37 +304,34 @@ menu_hit_enter:
 ;; subroutine: adjust D (display offset) to ensure
 ;;   D <= C < E
 ;; and
-;;   D <= C <= D + DISPLAY_LINES - 1
+;;   D <= C < D + DISPLAY_LINES
 ;; ############################################################################
 
     .area _CODE
 
 ensure_visible:
 
-    ;; reached top of display?
+    ;; C < D? Reached top of display?
 
     ld   a, c
     cp   a, d
     jr   nc, ensure_visible_not_top
 
-    ld   d, c
+    ;; C < D: adjust D to ensure index C is visible
 
-    ;; fall through here: nothing useful will happen,
-    ;; but saves a RET
+    ld   d, c
 
 ensure_visible_not_top:
 
     ;; reached end of display?
 
-    ld   a, d
-    add  a, #DISPLAY_LINES - 1
-    cp   a, c
-    ret  nc
-
     ld   a, c
     sub  a, #DISPLAY_LINES - 1
-    ld   d, a
+    ret  c
+    cp   a, d
+    ret  c
 
+    ld   d, a
     ret
 
 
