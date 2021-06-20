@@ -152,8 +152,20 @@ ip_receive_address_checked:
 
     call ip_receive_check_checksum
 
-    ;; Set IP checksum to htons(IP_PROTOCOL_UDP), for pseudo header
-    ld   hl, #(IP_PROTOCOL_UDP << 8)   ;; network order is big-endian
+    ;; ------------------------------------------------------------
+    ;; Initialize IP checksum to IP_PROTOCOL_UDP + UDP length
+    ;; (network order) for pseudo header. One assumption is made:
+    ;;
+    ;; - The UDP length is assumed to equal IP length - IP header
+    ;;   size. This should certainly be true in general, but
+    ;;   perhaps a creative IP stack could break this assumption.
+    ;;   It _seems_ to work fine, though...
+    ;; ------------------------------------------------------------
+
+    ld   a, #IP_PROTOCOL_UDP
+    add  a, e
+    ld   h, a
+    ld   l, d
     ld   (_ip_checksum), hl
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
@@ -168,16 +180,12 @@ ip_receive_address_checked:
     or   l
     jr   z, ip_receive_udp_checksum_done   ;; UDP checksum is optional
 
-    ;; Include IPv4 pseudo header in UDP checksum. The word for UDP protocol
-    ;; was already included (given as initial value above), so we do not add
+    ;; Include IPv4 pseudo header in UDP checksum. UDP protocol and length
+    ;; were already included (given as initial value above), so we do not add
     ;; it here.
 
     ld   b, #IPV4_ADDRESS_SIZE    ;; number of words (4 for two IP addresses)
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    call enc28j60_add_to_checksum
-
-    ld   b, #1 ;; one word
-    ld   e, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
     call enc28j60_add_to_checksum
 
     call ip_receive_check_checksum
