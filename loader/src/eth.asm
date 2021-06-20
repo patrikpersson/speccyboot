@@ -647,6 +647,7 @@ ethertype_ip:
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
     .db  0, 2                  ;; OPER: reply, 16 bits, network order
 
+
 ;; ############################################################################
 ;; ip_send
 ;; ############################################################################
@@ -655,7 +656,17 @@ tftp_read_request:
 
     prepare_tftp_read_request
 
-    ;; FALL THROUGH to ip_send
+    ;; FALL THROUGH to write_small_and_ip_send
+
+
+;; ############################################################################
+;; write_small_and_ip_send
+;; ############################################################################
+
+write_small_and_ip_send:
+
+    rst   enc28j60_write_memory_small
+
 
 ;; ############################################################################
 ;; ip_send

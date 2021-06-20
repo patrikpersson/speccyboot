@@ -269,9 +269,8 @@ tftp_receive_blk_nbr_and_port_ok:
 
     ld    e, #TFTP_SIZE_OF_OPCODE
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
-    rst   enc28j60_write_memory_small
 
-    call  ip_send
+    call  write_small_and_ip_send
 
     ;; ========================================================================
     ;; if expected block nbr == received, increase expected and accept the data
@@ -341,28 +340,8 @@ tftp_zero_length_data:
 
     ;; ========================================================================
     ;; This was the last packet of the stage 2 binary:
-    ;; prepare menu screen, check version signature and run the stage 2 loader
+    ;; check version signature and run the stage 2 loader
     ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; set up menu colours
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #0x5840
-    ld   de, #0x5841
-    ld   bc, #DISPLAY_LINES * 32 - 1
-    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
-    ldir
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, bright
-    ;; (same as menu background above)
-    ;; ------------------------------------------------------------------------
-
-    ;; H already has the right value here
-
-    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
-    ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
 
     ;; ------------------------------------------------------------------------
     ;; check version signature
@@ -385,8 +364,6 @@ version_mismatch:
     ;; One INC HL is saved this way.
     ;; ------------------------------------------------------------------------
 
-    ld   de, #VRAM_LOADER_VERSION        ;; position for stage 2 version marker
-
     jp  (hl)
 
 tftp_receive_error:
@@ -396,9 +373,8 @@ tftp_receive_error:
 
     ld    e, #TFTP_SIZE_OF_ERROR_PACKET
     ld    hl, #tftp_receive_error_packet
-    rst   enc28j60_write_memory_small
 
-    jp    ip_send
+    jp    write_small_and_ip_send
 
     .endm
 
@@ -478,8 +454,7 @@ tftp_receive_error:
 
     ld   hl, #tftp_rrq_option
     ld   e, #TFTP_SIZE_OF_RRQ_OPTION
-    rst  enc28j60_write_memory_small
 
-    ;; FALL THROUGH to ip_send
+    ;; FALL THROUGH to write_small_and_ip_send
 
     .endm
