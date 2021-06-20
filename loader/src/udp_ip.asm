@@ -166,6 +166,9 @@ ip_receive_address_checked:
     add  a, e
     ld   h, a
     ld   l, d
+    jr   nc, no_carry
+    inc  hl
+no_carry:
     ld   (_ip_checksum), hl
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
@@ -178,7 +181,8 @@ ip_receive_address_checked:
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_CHECKSUM)
     ld   a, h
     or   l
-    jr   z, ip_receive_udp_checksum_done   ;; UDP checksum is optional
+
+    ;; UDP checksum is optional: Z flag is set if no UDP checksum given
 
     ;; Include IPv4 pseudo header in UDP checksum. UDP protocol and length
     ;; were already included (given as initial value above), so we do not add
@@ -186,9 +190,7 @@ ip_receive_address_checked:
 
     ld   b, #IPV4_ADDRESS_SIZE    ;; number of words (4 for two IP addresses)
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    call enc28j60_add_to_checksum
-
-    call ip_receive_check_checksum
+    call nz, add_and_verify_checksum
 
 ip_receive_udp_checksum_done:
 
@@ -232,6 +234,17 @@ ip_receive_not_bootp:
 
     handle_tftp_packet
 
+
+;; -----------------------------------------------------------------------
+;; Add a number of bytes to IP checksum, then verify the resulting
+;; checksum.
+;; -----------------------------------------------------------------------
+
+add_and_verify_checksum:
+
+    call enc28j60_add_to_checksum
+
+    ;; FALL THROUGH to ip_receive_check_checksum
 
 ;; -----------------------------------------------------------------------
 ;; Helper: check IP checksum.
