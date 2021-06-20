@@ -90,14 +90,6 @@ ip_receive:
 ip_receive_address_checked:
 
     ;; ------------------------------------------------------------
-    ;; Check for UDP (everything else will be ignored)
-    ;; ------------------------------------------------------------
-
-    ld   a, (_rx_frame + IPV4_HEADER_OFFSETOF_PROT)
-    cp   a, #IP_PROTOCOL_UDP
-    ret  nz
-
-    ;; ------------------------------------------------------------
     ;; Read remaining IP header, skip any options
     ;; ------------------------------------------------------------
 
@@ -153,6 +145,14 @@ ip_receive_address_checked:
     call ip_receive_check_checksum
 
     ;; ------------------------------------------------------------
+    ;; Check for UDP (everything else will be ignored)
+    ;; ------------------------------------------------------------
+
+    ld   a, (_rx_frame + IPV4_HEADER_OFFSETOF_PROT)
+    cp   a, #IP_PROTOCOL_UDP
+    ret  nz
+
+    ;; ------------------------------------------------------------
     ;; Initialize IP checksum to IP_PROTOCOL_UDP + UDP length
     ;; (network order) for pseudo header. One assumption is made:
     ;;
@@ -162,12 +162,11 @@ ip_receive_address_checked:
     ;;   It _seems_ to work fine, though...
     ;; ------------------------------------------------------------
 
-    ld   a, #IP_PROTOCOL_UDP
     add  a, e
     ld   h, a
     ld   l, d
     jr   nc, no_carry
-    inc  hl
+    inc  l
 no_carry:
     ld   (_ip_checksum), hl
 
