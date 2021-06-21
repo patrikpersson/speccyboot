@@ -67,25 +67,6 @@ _tftp_receive_hook:
 
     .area _CODE
 
-    ;; ------------------------------------------------------------------------
-    ;; ACK is two bytes: 0, 4
-    ;; ERROR is five bytes: 0, 5, 0, 4, 0
-    ;; ------------------------------------------------------------------------
-
 tftp_default_file:
-    .ascii 'menu.bin'             ;; trailing NUL pinched from following packet
-tftp_receive_error_packet:
-    .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
-tftp_receive_ack_opcode:
-    .db   0, 4                        ;; illegal TFTP operation, network order
-    .db   0                           ;; no particular message
-
-    ;; ------------------------------------------------------------------------
-    ;; constant data for outgoing TFTP packets
-    ;; ------------------------------------------------------------------------
-
-tftp_rrq_option:
-    .ascii "octet"             ;; trailing NUL pinched from following packet
-tftp_rrq_prefix:
-    .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
-    .ascii "speccyboot/"       ;; no NUL necessary here
+    .ascii 'menu.bin'
+    .db    0

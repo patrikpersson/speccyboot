@@ -205,11 +205,6 @@ ethertype_arp:
 
     adc   hl, bc
 
-;; ----------------------------------------------------------------------------
-;; this instruction happens to be 0x0E, which is the ENC28J60H per-packet
-;; control byte (datasheet, section 7.1)
-;; ----------------------------------------------------------------------------
-eth_control_byte:
     ld    c, #0     ;; BC is now 0
 
 final:

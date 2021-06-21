@@ -158,19 +158,14 @@ enc28j60_write_memory:
   jr    enc28j60_write_memory_cont                                 ;; 2 bytes
 
   ;; ========================================================================
-  ;; RST 0x30 ENTRYPOINT: memory_compare
+  ;; RST 0x30 ENTRYPOINT: enc28j60_write_memory_inline
   ;; ========================================================================
-  
-  .org  0x30
- 
-memory_compare_loop:
-  ld   a, (de)
-  cp   a, (hl)
-  ret  nz
-  inc  de
-  inc  hl
-  djnz memory_compare_loop
-  ret
+
+    pop    hl
+    ld     e, (hl)
+    inc    hl
+    rst    enc28j60_write_memory_small
+    jp     (hl)
 
   ;; ========================================================================
   ;; RST 0x38 ENTRYPOINT: 50 Hz interrupt

@@ -69,22 +69,20 @@ ip_receive:
     ;; Check the IP destination address
     ;; ------------------------------------------------------------
 
-    ;; Check if a valid IP address has been set
+    ;; Check if a valid IP address has been set. Set Z as follows:
+    ;;
+    ;; Z == 0: an IP address has been set, check packet IP address
+    ;; Z == 1: no IP address has been set, ignore packet IP address
 
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    ld   a, (hl)
-    or   a                              ;; a non-zero first octet
-    jr   z, ip_receive_address_checked  ;; means no address has been set
-
-    ;; An IP address has been set. Is the packet sent to this address?
-    ;; If it is not, return immediately.
+    ld   a, (hl)                        ;; a non-zero first octet
+    or   a                              ;; means an address has been set
 
     ;; This means that once an IP address is set,
     ;; multicasts/broadcasts are ignored.
 
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_DST_ADDR
-    ld   b, #4
-    rst  memory_compare
+    call nz, memory_compare_4_bytes
     ret  nz
 
 ip_receive_address_checked:
@@ -115,8 +113,8 @@ ip_receive_address_checked:
     ld   l, #<_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call nz, enc28j60_read_memory
 
-    ;; B == 0 here,
-    ;; either from enc28j60_read_memory or memory_compare
+    ;; B == 0 here, either from
+    ;; enc28j60_read_20b_to_rxframe or memory_compare_4_bytes
 
     pop  af    ;; A now holds IP header size, carry == 0
 

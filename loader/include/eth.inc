@@ -174,12 +174,6 @@ RETRANSMISSION_TIMEOUT_MAX = 0x08
     .globl ip_send
 
 ;; ============================================================================
-;; Additional entry point for ip_send.
-;; Invokes enc28j60_write_memory_small first, then continues with ip_send.
-;; ============================================================================
-    .globl write_small_and_ip_send
-
-;; ============================================================================
 ;; main loop
 ;; ============================================================================
     .globl main_loop

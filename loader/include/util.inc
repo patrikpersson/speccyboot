@@ -117,8 +117,6 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 
 
 ;; ----------------------------------------------------------------------------
-;; rst memory_compare
-;;
 ;; Compare memory blocks pointed to by HL and DE. Register B indicates the
 ;; number of bytes to compare (so, max 256).
 ;;
@@ -128,7 +126,9 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 ;; A is destroyed.
 ;; ----------------------------------------------------------------------------
 
-memory_compare = 0x30
+     .globl memory_compare
+
+     .globl memory_compare_4_bytes          ;; sets B to 4
 
 
 ;; ----------------------------------------------------------------------------

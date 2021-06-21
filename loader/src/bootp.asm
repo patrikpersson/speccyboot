@@ -61,12 +61,10 @@ bootp_receive:
 
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_OP)
     cp   a, #BOOTREPLY
-    ret  nz
     ld   hl, #bootrequest_xid
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_XID
-    ld   b, #4
-    rst  memory_compare
-    ret  nz
+    call z, memory_compare_4_bytes
+    ret  nz   ;; will return if (a) not a BOOTREPLY or (b) XID does not match
 
     ;; ------------------------------------------------------------------------
     ;; Copy two IP addresses (8 bytes, local + server address) from packet to

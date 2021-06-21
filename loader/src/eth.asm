@@ -45,7 +45,6 @@
 ;; ARP header constants
 ;; ============================================================================
 
-ARP_HEADER_SIZE = 8         ;; ARP header size
 ARP_OFFSET_SHA =  8         ;; offset of SHA field in ARP header
 ARP_OFFSET_SPA = 14         ;; offset of SPA field in ARP header
 ARP_OFFSET_TPA = 24         ;; offset of TPA field in ARP header
@@ -273,7 +272,7 @@ main_packet:
     push  hl
     ld    de, #eth_local_address
     ld    b, #ETH_ADDRESS_SIZE
-    rst   memory_compare
+    call  memory_compare
     pop   hl
     jr    z, main_packet_done
 
@@ -531,9 +530,9 @@ eth_create:
     ;; write per-packet control byte  (0x0E; datasheet, section 7.1)
     ;; ------------------------------------------------------------------------
 
-    ld    e, #1
-    ld    hl, #eth_control_byte
-    rst   enc28j60_write_memory_small
+    rst   enc28j60_write_memory_inline
+
+    .db   1, 0x0e
 
     ;; ------------------------------------------------------------------------
     ;; write destination (remote) MAC address
@@ -578,9 +577,9 @@ arp_receive:
 
     ;; first check everything except OPER
 
-    ld   de, #arp_receive_reply_template
-    ld   b, #(ARP_HEADER_SIZE - 1)
-    rst  memory_compare
+    ld   de, #arp_header_template_start
+    ld   b, #(arp_header_template_end - arp_header_template_start - 1)
+    call memory_compare
     ret  nz   ;; if the receive packet does not match the expected header, return
 
     ;; HL now points to the low-order OPER byte, expected to be 1 (REQUEST)
@@ -599,8 +598,7 @@ arp_receive:
     ret  z
 
     ld   de , #_rx_frame + ARP_OFFSET_TPA
-    ld   b, #IPV4_ADDRESS_SIZE
-    rst  memory_compare
+    call memory_compare_4_bytes
     ret  nz   ;; if the packet is not for the local IP address, return
 
     ld   bc, #eth_sender_address
@@ -610,9 +608,24 @@ arp_receive:
 
     ;; ARP header
 
-    ld   e, #ARP_HEADER_SIZE
-    ld   hl, #arp_receive_reply_template
-    rst  enc28j60_write_memory_small
+    rst enc28j60_write_memory_inline
+
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline: ARP reply header
+    ;; -----------------------------------------------------------------------
+
+    .db  arp_header_template_end - arp_header_template_start         ;; length
+
+arp_header_template_start:
+    .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
+ethertype_ip:
+    .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
+    .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
+    .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
+    .db  0, 2                  ;; OPER: reply, 16 bits, network order
+arp_header_template_end:
+
+    ;; -----------------------------------------------------------------------
 
     ;; SHA: local MAC address
 
@@ -639,14 +652,6 @@ arp_receive:
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
     jr   eth_send
 
-arp_receive_reply_template:
-    .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
-ethertype_ip:
-    .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
-    .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
-    .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
-    .db  0, 2                  ;; OPER: reply, 16 bits, network order
-
 
 ;; ############################################################################
 ;; ip_send
@@ -656,16 +661,7 @@ tftp_read_request:
 
     prepare_tftp_read_request
 
-    ;; FALL THROUGH to write_small_and_ip_send
-
-
-;; ############################################################################
-;; write_small_and_ip_send
-;; ############################################################################
-
-write_small_and_ip_send:
-
-    rst   enc28j60_write_memory_small
+    ;; FALL THROUGH to ip_send
 
 
 ;; ############################################################################

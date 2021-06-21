@@ -219,7 +219,6 @@ RX_FRAME_SIZE = 20 + 8 + 4 + 512
 ;; ----------------------------------------------------------------------------
 
     .globl ethertype_arp
-    .globl eth_control_byte
 
 ;; ----------------------------------------------------------------------------
 ;; rst enc28j60_write_register16:
@@ -342,6 +341,7 @@ enc28j60_write8plus8 = 0x18
 ;; Call with HL=pointer to data, DE=length of data. Destroys AF, BC.
 ;;
 ;; On exit, DE==0, and HL points to the next byte after the written data.
+;; Z flag is cleared.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_write_memory
@@ -357,6 +357,7 @@ enc28j60_write8plus8 = 0x18
 ;; Destroys AF, BC, DE, HL.
 ;;
 ;; On exit, DE==0, and HL points to the next byte after eth_local_address.
+;; Z flag is cleared.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_write_local_hwaddr
@@ -373,9 +374,30 @@ enc28j60_write8plus8 = 0x18
 ;; Call with HL=pointer to data, E=length of data. Destroys AF, BC, DE.
 ;;
 ;; On exit, DE==0, and HL points to the next byte after the written data.
+;; Z flag is cleared.
 ;; ----------------------------------------------------------------------------
 
 enc28j60_write_memory_small = 0x28
+
+;; ----------------------------------------------------------------------------
+;; rst enc28j60_write_memory_inline
+;;
+;; Another entrypoint for enc28j60_write_memory, for inline data of 8-bit
+;; lengths.
+;;
+;; The data to send is read from after the RST call site, e.g.,
+;;    RST  enc28j60_write_memory_inline
+;;    .db  3        ;; number of bytes
+;;    .db  x, y, z  ;; inline data
+;;    ;; execution continues here
+;;
+;; Destroys AF, BC, DE, HL.
+;;
+;; On exit, DE==0, and HL points to the next byte after the written data.
+;; Z flag is cleared.
+;; ----------------------------------------------------------------------------
+
+enc28j60_write_memory_inline = 0x30
 
 ;; ----------------------------------------------------------------------------
 ;; Helper:

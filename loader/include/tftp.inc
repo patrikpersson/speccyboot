@@ -130,18 +130,6 @@ VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
     .globl tftp_default_file
 
 ;; ----------------------------------------------------------------------------
-;; Packet data for a TFTP ERROR packet
-;; ----------------------------------------------------------------------------
-
-    .globl tftp_receive_error_packet
-
-;; ----------------------------------------------------------------------------
-;; Data for a TFTP ACK opcode
-;; ----------------------------------------------------------------------------
-
-    .globl tftp_receive_ack_opcode
-
-;; ----------------------------------------------------------------------------
 ;; Initiate a file transfer from server.
 ;; Defined in eth.c, using macro prepare_tftp_read_request below.
 ;;
@@ -263,14 +251,25 @@ tftp_receive_blk_nbr_and_port_ok:
     ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
     call  udp_reply
 
-    ld    e, #TFTP_SIZE_OF_OPCODE
-    ld    hl, #tftp_receive_ack_opcode
-    rst   enc28j60_write_memory_small
+    rst   enc28j60_write_memory_inline
+
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline
+    ;; -----------------------------------------------------------------------
+
+    .db  ack_packet_end - ack_packet_start
+
+ack_packet_start:
+    .db   0, TFTP_OPCODE_ACK
+ack_packet_end:
+
+    ;; -----------------------------------------------------------------------
 
     ld    e, #TFTP_SIZE_OF_OPCODE
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
+    rst   enc28j60_write_memory_small
 
-    call  write_small_and_ip_send
+    call  ip_send
 
     ;; ========================================================================
     ;; if expected block nbr == received, increase expected and accept the data
@@ -371,20 +370,27 @@ tftp_receive_error:
     ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
     call  udp_reply
 
-    ld    e, #TFTP_SIZE_OF_ERROR_PACKET
-    ld    hl, #tftp_receive_error_packet
+    rst   enc28j60_write_memory_inline
 
-    jp    write_small_and_ip_send
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline
+    ;; -----------------------------------------------------------------------
+
+    .db  error_packet_end - error_packet_start
+
+error_packet_start:
+    .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
+    .db   0, 4                        ;; illegal TFTP operation, network order
+    .db   0                           ;; no particular message
+error_packet_end:
+
+    jp    ip_send
 
     .endm
 
 ;; ============================================================================
 ;; Macro: prepare (but do not send) a TFTP read request packet.
-;; Does not return, but expects to continue execution into ip_send.
 ;; ============================================================================
-
-    .globl tftp_rrq_option
-    .globl tftp_rrq_prefix
 
     .macro prepare_tftp_read_request
 
@@ -437,11 +443,23 @@ tftp_receive_error:
     ld   l, #<eth_broadcast_address    ;; all we know at this point
     call udp_create
 
-    ;; append 16-bit TFTP opcode
+    ;; append 16-bit TFTP opcode and path prefix
 
-    ld   e, #TFTP_SIZE_OF_RRQ_PREFIX
-    ld   hl, #tftp_rrq_prefix
-    rst  enc28j60_write_memory_small
+    rst  enc28j60_write_memory_inline
+
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline
+    ;; -----------------------------------------------------------------------
+
+    .db  rrq_prefix_end - rrq_prefix_start
+
+rrq_prefix_start:
+    .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
+    .ascii "speccyboot/"       ;; no NUL necessary here
+rrq_prefix_end:
+
+    ;; -----------------------------------------------------------------------
+
 
     ;; filename and length already stacked above
 
@@ -452,9 +470,17 @@ tftp_receive_error:
 
     ;; append option ("octet" mode)
 
-    ld   hl, #tftp_rrq_option
-    ld   e, #TFTP_SIZE_OF_RRQ_OPTION
+    rst  enc28j60_write_memory_inline
 
-    ;; FALL THROUGH to write_small_and_ip_send
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline
+    ;; -----------------------------------------------------------------------
+
+    .db  rrq_option_end - rrq_option_start
+
+rrq_option_start:
+    .ascii "octet"
+    .db    0
+rrq_option_end:
 
     .endm

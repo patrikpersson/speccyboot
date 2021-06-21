@@ -114,3 +114,23 @@ not_a_menu_entry:
     call print_char
     jr   print_str
 
+
+
+;; ############################################################################
+;; memory_compare
+;; memory_compare_4_bytes
+;; ############################################################################
+  
+    .area _CODE
+
+memory_compare_4_bytes:
+    ld   b, #4
+
+memory_compare:
+    ld   a, (de)
+    cp   a, (hl)
+    ret  nz
+    inc  de
+    inc  hl
+    djnz memory_compare
+    ret
