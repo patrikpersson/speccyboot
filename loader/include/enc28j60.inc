@@ -268,7 +268,7 @@ enc28j60_write8plus8 = 0x18
 ;;   (reg & mask) == expected_value
 ;;
 ;; If the condition is not fulfilled within a few seconds,
-;; fatal_error() is called.
+;; fatal_error() is called. Defined in eth.asm.
 ;;
 ;; Call with registers:
 ;;

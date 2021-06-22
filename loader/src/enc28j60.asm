@@ -43,31 +43,6 @@
     .area _CODE
 
 ;; ############################################################################
-;; enc28j60_poll_register
-;; ############################################################################
-
-enc28j60_poll_register:
-
-    ld     bc, #20000       ;; should give controller plenty of time to respond
-00001$:
-    push   bc
-    call   enc28j60_read_register
-    pop    bc
-
-    and    a, h
-    cp     a, l
-    ret    z
-
-    dec    bc
-    ld     a, b
-    or     a, c
-    jr     nz, 00001$
-
-    ld     a, #FATAL_INTERNAL_ERROR
-    jp     fail
-
-
-;; ############################################################################
 ;; enc28j60_read_20b_to_rxframe
 ;; ############################################################################
 
