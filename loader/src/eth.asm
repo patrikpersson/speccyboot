@@ -284,11 +284,10 @@ main_packet:
     ;; HL points to Ethertype after LDIR above
 
     ld    a, (hl)
-    cp    a, #8
+    sub   a, #8
     jr    nz, main_packet_done   ;; neither IP nor ARP -- ignore
     inc   hl
-    ld    a, (hl)
-    or    a, a
+    or    a, (hl)
     jr    nz, main_packet_not_ip
 
     call  ip_receive
