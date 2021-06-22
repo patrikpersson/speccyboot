@@ -48,7 +48,183 @@
 _ip_checksum:
     .ds   2
 
+;; ############################################################################
+;; Create UDP reply to the sender of the received packet currently processed.
+;; Source/destination ports are swapped.
+;;
+;; Call with DE=number of bytes in payload
+;; ############################################################################
+
     .area _CODE
+
+udp_reply:
+
+    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
+
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+
+    ld   hl, #eth_sender_address
+
+    ;; FALL THROUGH to udp_create
+
+
+;; ############################################################################
+;; _udp_create
+;; ############################################################################
+
+udp_create:
+
+    push  hl
+    push  de
+    push  bc
+
+    ;; ----------------------------------------------------------------------
+    ;; Set up a header template, to be filled in with proper data below.
+    ;; ----------------------------------------------------------------------
+
+    exx                  ;; remember DE for use below
+
+    ld    hl, #ip_header_defaults
+    ld    de, #_header_template
+    ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
+
+    ldir
+
+    exx                  ;; recall DE
+
+    ;; ----------------------------------------------------------------------
+    ;; Add IPV4_HEADER_SIZE to DE. This can safely be done as a byte addition
+    ;; (no carry needed), as DE has one of the following values:
+    ;;
+    ;; BOOTP boot request: UDP_HEADER_SIZE + BOOTP_PACKET_SIZE = 308 = 0x134
+    ;; TFTP read request: UDP_HEADER_SIZE
+    ;;                       + TFTP_SIZE_OF_RRQ_PREFIX
+    ;;                       + TFTP_SIZE_OF_RRQ_OPTION
+    ;;                    = 27 = 0x1b
+    ;; TFTP ACK: UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET = 8 + 4 = 0x0c
+    ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
+    ;;
+    ;; In all these cases, the lower byte (that is, E) is < 0xfc, so adding
+    ;; IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition is safe.
+    ;; ----------------------------------------------------------------------
+
+    ld    a, e
+    add   a, #IPV4_HEADER_SIZE
+    ld    e, a                 ;; DE is now total length, including IP header
+
+    ;; ----------------------------------------------------------------------
+    ;; prepare IP header in _header_template
+    ;; ----------------------------------------------------------------------
+
+    ld    hl, #_header_template + 2    ;; total length
+    ld    (hl), d       ;; total_length  (network order)
+    inc   hl
+    ld    (hl), e       ;; total_length, continued
+
+    ;; copy source IP address
+
+    ld    de, #_header_template + 12   ;; source IP address
+    ld    l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld    bc, #4
+    ldir
+
+    ;; copy destination IP address
+
+    pop   hl
+    ld    c, #4       ;; B == 0 after LDIR above
+    ;; keep DE from above: destination address follows immediately after source
+    ldir
+
+    ;; ----------------------------------------------------------------------
+    ;; compute checksum of IP header
+    ;; ----------------------------------------------------------------------
+
+    ld     h, b   ;; BC==0 here after LDIR above
+    ld     l, c
+
+    ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
+    ld     de, #_header_template
+    call   enc28j60_add_to_checksum_hl
+
+    ld     e, #<_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
+    ld     a, l
+    cpl
+    ld     (de), a
+    inc    de
+    ld     a, h
+    cpl
+    ld     (de), a
+
+    ;; ----------------------------------------------------------------------
+    ;; set UDP length (network order) and clear UDP checksum
+    ;; ----------------------------------------------------------------------
+
+    pop    de       ;; UDP length
+
+    ld     hl, #_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld     (hl), d
+    inc    hl
+    ld     (hl), e
+    inc    hl
+
+    xor    a, a
+    ld     (hl), a
+    inc    hl
+    ld     (hl), a
+
+    ;; ----------------------------------------------------------------------
+    ;; create IP packet
+    ;; ----------------------------------------------------------------------
+
+    pop    bc             ;; destination MAC address
+    ld     de, #ethertype_ip
+    ld     hl, #ENC28J60_TXBUF1_START
+    call   eth_create
+
+    ;; ----------------------------------------------------------------------
+    ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
+    ;; ----------------------------------------------------------------------
+
+    ld     e, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
+
+    ;; FALL THROUGH and continue execution in the IP header defaults
+
+;; ============================================================================
+;; IP header defaults
+;; https://en.wikipedia.org/wiki/IPv4#Header
+;;
+;; Warning: this is fragile.
+;;
+;; This is a table of IP header defaults, combined with the final parts
+;; of the code in udp_create and the initial parts of ip_receive.
+;;
+;; The length field is only a placeholder (the actual value is set at runtime).
+;; The ID field is arbitrary when the Don't Fragment flag is set, according to
+;; RFC 6864:
+;;
+;;   Originating sources MAY set the IPv4 ID field of
+;;   atomic datagrams to any value.
+;;
+;; https://datatracker.ietf.org/doc/html/rfc6864#section-4.1
+;; ============================================================================
+
+ip_header_defaults:                          ;; IP header meaning
+                                             ;; -----------------
+    ld     b, l                              ;; 0x45: version, IHL
+    nop                                      ;; 0x00: DSCP, EN
+
+    ld     hl, #_header_template             ;; 2 bytes IP length (placeholder)
+    rst    enc28j60_write_memory_small       ;; 2 bytes packet ID (arbitrary)
+
+    ld     b, b                              ;; 0x40: DO NOT FRAGMENT
+    nop                                      ;; 0x00: fragment offset 0
+
+    ret                                      ;; 0xC9: time-to-live = 201
+
+    ;; IP header data continues as the first three bytes of ip_receive below
 
 ;; ############################################################################
 ;; ip_receive
@@ -56,10 +232,13 @@ _ip_checksum:
 
 ip_receive:
 
+    ld    de, #0                             ;; protocol = IP_PROTOCOL_UDP
+                                             ;; checksum = 0 (temporary value
+                                             ;; for computation)
+
     ;; clear IP checksum
 
-    ld   hl, #0
-    ld   (_ip_checksum), hl
+    ld   (_ip_checksum), de
 
     ;; read a minimal IPv4 header
 
@@ -261,179 +440,3 @@ ip_receive_check_checksum:
 
     pop  af   ;; pop return address within ip_receive
     ret       ;; return to _caller_ of ip_receive
-
-
-;; ############################################################################
-;; Create UDP reply to the sender of the received packet currently processed.
-;; Source/destination ports are swapped.
-;;
-;; Call with DE=number of bytes in payload
-;; ############################################################################
-
-udp_reply:
-
-    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
-    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
-    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
-
-    ld   hl, #eth_sender_address
-
-    ;; FALL THROUGH to udp_create
-
-
-;; ############################################################################
-;; _udp_create
-;; ############################################################################
-
-udp_create:
-
-    push  hl
-    push  de
-    push  bc
-
-    ;; ----------------------------------------------------------------------
-    ;; Set up a header template, to be filled in with proper data below.
-    ;; ----------------------------------------------------------------------
-
-    exx                  ;; remember DE for use below
-
-    ld    hl, #ip_header_defaults
-    ld    de, #_header_template
-    ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
-
-    ldir
-
-    exx                  ;; recall DE
-
-    ;; ----------------------------------------------------------------------
-    ;; Add IPV4_HEADER_SIZE to DE. This can safely be done as a byte addition
-    ;; (no carry needed), as DE has one of the following values:
-    ;;
-    ;; BOOTP boot request: UDP_HEADER_SIZE + BOOTP_PACKET_SIZE = 308 = 0x134
-    ;; TFTP read request: UDP_HEADER_SIZE
-    ;;                       + TFTP_SIZE_OF_RRQ_PREFIX
-    ;;                       + TFTP_SIZE_OF_RRQ_OPTION
-    ;;                    = 27 = 0x1b
-    ;; TFTP ACK: UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET = 8 + 4 = 0x0c
-    ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
-    ;;
-    ;; In all these cases, the lower byte (that is, E) is < 0xfc, so adding
-    ;; IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition is safe.
-    ;; ----------------------------------------------------------------------
-
-    ld    a, e
-    add   a, #IPV4_HEADER_SIZE
-    ld    e, a                 ;; DE is now total length, including IP header
-
-    ;; ----------------------------------------------------------------------
-    ;; prepare IP header in _header_template
-    ;; ----------------------------------------------------------------------
-
-    ld    hl, #_header_template + 2    ;; total length
-    ld    (hl), d       ;; total_length  (network order)
-    inc   hl
-    ld    (hl), e       ;; total_length, continued
-
-    ;; copy source IP address
-
-    ld    de, #_header_template + 12   ;; source IP address
-    ld    l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    ld    bc, #4
-    ldir
-
-    ;; copy destination IP address
-
-    pop   hl
-    ld    c, #4       ;; B == 0 after LDIR above
-    ;; keep DE from above: destination address follows immediately after source
-    ldir
-
-    ;; ----------------------------------------------------------------------
-    ;; compute checksum of IP header
-    ;; ----------------------------------------------------------------------
-
-    ld     h, b   ;; BC==0 here after LDIR above
-    ld     l, c
-
-    ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
-    ld     de, #_header_template
-    call   enc28j60_add_to_checksum_hl
-
-    ld     e, #<_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
-    ld     a, l
-    cpl
-    ld     (de), a
-    inc    de
-    ld     a, h
-    cpl
-    ld     (de), a
-
-    ;; ----------------------------------------------------------------------
-    ;; set UDP length (network order) and clear UDP checksum
-    ;; ----------------------------------------------------------------------
-
-    pop    de       ;; UDP length
-
-    ld     hl, #_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    ld     (hl), d
-    inc    hl
-    ld     (hl), e
-    inc    hl
-
-    xor    a, a
-    ld     (hl), a
-    inc    hl
-    ld     (hl), a
-
-    ;; ----------------------------------------------------------------------
-    ;; create IP packet
-    ;; ----------------------------------------------------------------------
-
-    pop    bc             ;; destination MAC address
-    ld     de, #ethertype_ip
-    ld     hl, #ENC28J60_TXBUF1_START
-    call   eth_create
-
-    ;; ----------------------------------------------------------------------
-    ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
-    ;; ----------------------------------------------------------------------
-
-    ld     e, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
-    ld     hl, #_header_template
-    rst    enc28j60_write_memory_small
-    
-    ret
-
-;; ============================================================================
-;; IP header defaults
-;; https://en.wikipedia.org/wiki/IPv4#Header
-;;
-;; Four of these bytes are also used as BOOTREQUEST data. The length field
-;; is only a placeholder (the actual value is set at runtime). The ID field
-;; is arbitrary when the Don't Fragment flag is set, according to RFC 6864:
-;;
-;;   Originating sources MAY set the IPv4 ID field of
-;;   atomic datagrams to any value.
-;;
-;; https://datatracker.ietf.org/doc/html/rfc6864#section-4.1
-;;
-;; The BOOTP XID is similarly arbitrary, and happens to be taken from the
-;; flags, fragment offset, time-to-live, and protocol IP fields.
-;; ============================================================================
-
-ip_header_defaults:
-    .db   0x45, 0            ;; version, IHL, DSCP, EN
-
-bootrequest_header_data:
-    .db   BOOTREQUEST, 1     ;; IP: length      BOOTP: op, htype (10M Ethernet)
-    .db   6, 0               ;; IP: packet ID   BOOTP: hlen, hops
-
-bootrequest_xid:
-    .db   0x40, 0            ;; DO NOT FRAGMENT, fragment offset 0
-    .db   0x40               ;; time to live
-    .db   IP_PROTOCOL_UDP    ;; protocol
-
-    .dw   0                  ;; checksum (temporary value for computation)

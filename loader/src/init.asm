@@ -161,11 +161,24 @@ enc28j60_write_memory:
   ;; RST 0x30 ENTRYPOINT: enc28j60_write_memory_inline
   ;; ========================================================================
 
-    pop    hl
-    ld     e, (hl)
-    inc    hl
-    rst    enc28j60_write_memory_small
-    jp     (hl)
+  .org	0x30
+
+  pop    hl
+  ld     e, (hl)
+  inc    hl
+  rst    enc28j60_write_memory_small
+  jp     (hl)
+
+  ;; ========================================================================
+  ;; BOOTP header defaults
+  ;; ========================================================================
+
+bootrequest_header_data:
+  .db   1               ;; op, 1=BOOTREQUEST
+  .db   1               ;; htype (10M Ethernet)
+  .db   6               ;; hlen
+
+  ;; NOTE: a fourth zero byte is represented by a NOP below
 
   ;; ========================================================================
   ;; RST 0x38 ENTRYPOINT: 50 Hz interrupt
@@ -174,6 +187,14 @@ enc28j60_write_memory:
   ;; ========================================================================
 
   .org	0x38
+
+  nop              ;; zero byte, HOP field from BOOTP header above
+
+;; The BOOTP XID is arbitrary, and happens to be taken from the
+;; interrupt handler code below.
+
+bootrequest_xid:
+
   push  hl
   ld	  hl, (_timer_tick_count)
   inc	  hl
