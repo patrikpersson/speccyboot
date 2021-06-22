@@ -86,6 +86,14 @@ digit_font_data        = 0x5d9b             ;; size 0x4e  (10*8 - 2)
 _ip_checksum            = digit_font_data + 0 * 8 + 6   ;; 2 bytes
 
 ;; ----------------------------------------------------------------------------
+;; z80_loader.asm: digits (BCD) for progress display while loading a snapshot,
+;; and number of kilobytes expected (48 or 128)
+;; ----------------------------------------------------------------------------
+
+_digits                 = digit_font_data + 1 * 8 + 6   ;; 1 byte
+kilobytes_expected      = digit_font_data + 1 * 8 + 7   ;; 1 byte
+
+;; ----------------------------------------------------------------------------
 ;; eth.asm: points to the frame currently being created
 ;; ----------------------------------------------------------------------------
 

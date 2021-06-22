@@ -204,6 +204,9 @@ s_header:
     ;; check snapshot header
     ;; ------------------------------------------------------------------------
 
+    ld    a, #48                  ;; initial assumption, possibly revised below
+    ld    (kilobytes_expected), a
+
     ;; set DE to .z80 snapshot header size
     ;; (initially the snapshot v1 size, modified later below)
 
@@ -230,7 +233,7 @@ s_header:
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
 
-    ;; A is zero here (as expected by set_state_uncompressed)
+    ;; if Z is set, then A is zero (as expected by set_state_uncompressed)
 
     call z, set_state_uncompressed
     call nz, set_state_compressed
@@ -247,10 +250,6 @@ s_header_ext_hdr:
     jr    c, s_header_not_128k
     ld    a, #128
     ld    (kilobytes_expected), a
-    xor   a, a
-    ld    (progress_add_instr), a
-    ld    a, #4
-    ld    (progress_ratio), a
 
 s_header_not_128k:
 
@@ -548,7 +547,7 @@ store_byte:
   or   a, e
   jr   nz, s_chunk_write_data
 
-  jr   update_progress
+  jp   update_progress
 
   ;; -------------------------------------------------------------------------
   ;; a non-zero number of repetitions remain:
@@ -616,7 +615,7 @@ s_chunk_compressed_escape:
 
     ld    ix, #s_chunk_write_data
 
-    ;; FALL THROUGH to update_progress
+    jp    update_progress
 
 
 ;; ############################################################################
@@ -625,6 +624,8 @@ s_chunk_compressed_escape:
 ;; If the number of bytes loaded reached an even kilobyte,
 ;; increase kilobyte counter and update status display
 ;; ############################################################################
+
+    .area _CODE
 
 update_progress:
 
@@ -646,16 +647,12 @@ update_progress:
     ;; update the progress display
     ;; ========================================================================
 
-    ;; This instruction is patched with different values at runtime.
-
-    .db   LD_A_N
-_digits:
-    .db   0      ;; digits (BCD) for progress display while loading a snapshot
-
+    ld    hl, #_digits
+    ld    a, (hl)
     inc   a
     daa
     push  af             ;; remember flags
-    ld    (_digits), a
+    ld    (hl), a
     ld    c, a
 
     ;; If Z is set, then the number of kilobytes became zero in BCD:
@@ -690,21 +687,27 @@ not_10k:
     ;; ************************************************************************
 
     ld    hl, #kilobytes_loaded
+    ld    de, #kilobytes_expected
     inc   (hl)
+
+    ld    a, (de)
+    add   a, a                         ;; sets carry if this is a 128k snapshot
     ld    a, (hl)
 
     ;; ------------------------------------------------------------------------
-    ;; Scale loaded number of kilobytes to a value 0..32. By default, 48k
-    ;; snapshots are scaled * 2 / 3. For 128k snapshots, the add below is
-    ;; patched to a NOP, and the immediate constant for LD_B_N to 4.
+    ;; Scale loaded number of kilobytes to a value 0..32.
+    ;; 48k snapshots:   * 2 / 3
+    ;; 128k snapshots:  * 1 / 4 
     ;; ------------------------------------------------------------------------
 
-progress_add_instr:
-    add   a, a       ;; patched to NOP for 128k snapshots
+    ld    b, #4
 
-    .db   LD_B_N
-progress_ratio:
-    .db   3          ;; patched to 4 for 128k snapshots
+    jr    c, progress_128
+
+    add   a, a       ;; 48 snapshot: * 2 / 3
+    dec   b
+
+progress_128:
 
     call  a_div_b
     ld    a, c
@@ -723,10 +726,7 @@ progress_ratio:
     ;; if all data has been loaded, perform the context switch
     ;; ========================================================================
 
-    .db   LD_A_N
-kilobytes_expected:
-    .db   48         ;; initial assumption, possibly patched to 128 in s_header
-
+    ld    a, (de)
     cp    a, (hl)
     jp    z, context_switch             ;; in stage 1 loader (ROM)
 
