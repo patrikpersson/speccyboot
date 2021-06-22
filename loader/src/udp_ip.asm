@@ -259,8 +259,6 @@ ip_receive:
     call nz, memory_compare_4_bytes
     ret  nz
 
-ip_receive_address_checked:
-
     ;; ------------------------------------------------------------
     ;; Read remaining IP header, skip any options
     ;; ------------------------------------------------------------
@@ -362,8 +360,6 @@ no_carry:
     ld   b, #IPV4_ADDRESS_SIZE    ;; number of words (4 for two IP addresses)
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
     call nz, add_and_verify_checksum
-
-ip_receive_udp_checksum_done:
 
     ;; ------------------------------------------------------------
     ;; Pass on to BOOTP/TFTP
