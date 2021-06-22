@@ -263,25 +263,6 @@ enc28j60_write8plus8 = 0x18
     .globl enc28j60_read_register
 
 ;; ----------------------------------------------------------------------------
-;; Poll indicated ETH/MAC/MII register R until
-;;
-;;   (reg & mask) == expected_value
-;;
-;; If the condition is not fulfilled within a few seconds,
-;; fatal_error() is called. Defined in eth.asm.
-;;
-;; Call with registers:
-;;
-;; E=reg
-;; H=mask
-;; L=expected_value
-;;
-;; Destroys AF, BC
-;; ----------------------------------------------------------------------------
-
-    .globl enc28j60_poll_register
-
-;; ----------------------------------------------------------------------------
 ;; Read a number of bytes from on-chip SRAM, continuing from previous read.
 ;; The checksum is updated automatically.
 ;;

@@ -353,7 +353,7 @@ eth_init:
 
     ld    e, #ESTAT
     ld    hl, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
-    call  enc28j60_poll_register
+    call  poll_register
 
     ;; ========================================================================
     ;; set up initial register values for ENC28J60
@@ -756,7 +756,7 @@ perform_transmission:
 
       ld    e, #MIRDH
       ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
-      call  enc28j60_poll_register
+      call  poll_register
 
       ;; ----------------------------------------------------------------------
       ;; Errata, item 10:
@@ -798,14 +798,26 @@ perform_transmission:
       ;; H=ECON1_TXRTS from above, B=0 from _spi_write_byte
       ld    l, b
 
-      ;; FALL THROUGH to enc28j60_poll_register
+      ;; FALL THROUGH to poll_register
 
 
-;; ############################################################################
-;; enc28j60_poll_register
-;; ############################################################################
+;; ----------------------------------------------------------------------------
+;; Subroutine: poll indicated ETH/MAC/MII register R until
+;;
+;;   (reg & mask) == expected_value
+;;
+;; Fails if the condition is not fulfilled within a few seconds.
+;;
+;; Call with registers:
+;;
+;; E=reg
+;; H=mask
+;; L=expected_value
+;;
+;; Destroys AF, BC
+;; ----------------------------------------------------------------------------
 
-enc28j60_poll_register:
+poll_register:
 
     ld     bc, #20000       ;; should give controller plenty of time to respond
 00001$:
