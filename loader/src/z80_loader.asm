@@ -686,13 +686,16 @@ not_10k:
     ;; update progress bar
     ;; ************************************************************************
 
-    ld    hl, #kilobytes_loaded
-    ld    de, #kilobytes_expected
-    inc   (hl)
+    ;; kilobytes_loaded is located directly after kilobytes_expected, so
+    ;; use a single pointer
 
-    ld    a, (de)
+    ld    hl, #kilobytes_expected
+
+    ld    a, (hl)                      ;; load kilobytes_expected
+    inc   hl                           ;; now points to kilobytes_loaded
+    inc   (hl)                         ;; increase kilobytes_loaded
     add   a, a                         ;; sets carry if this is a 128k snapshot
-    ld    a, (hl)
+    ld    a, (hl)                      ;; kilobytes_loaded
 
     ;; ------------------------------------------------------------------------
     ;; Scale loaded number of kilobytes to a value 0..32.
@@ -726,7 +729,8 @@ progress_128:
     ;; if all data has been loaded, perform the context switch
     ;; ========================================================================
 
-    ld    a, (de)
+    ld    a, (hl)
+    dec   hl
     cp    a, (hl)
     jp    z, context_switch             ;; in stage 1 loader (ROM)
 

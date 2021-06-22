@@ -86,12 +86,12 @@ digit_font_data        = 0x5d9b             ;; size 0x4e  (10*8 - 2)
 _ip_checksum            = digit_font_data + 0 * 8 + 6   ;; 2 bytes
 
 ;; ----------------------------------------------------------------------------
-;; z80_loader.asm: digits (BCD) for progress display while loading a snapshot,
-;; and number of kilobytes expected (48 or 128)
+;; z80_loader.asm: expected and currently loaded no. of kilobytes,
+;; for progress display
 ;; ----------------------------------------------------------------------------
 
-_digits                 = digit_font_data + 1 * 8 + 6   ;; 1 byte
-kilobytes_expected      = digit_font_data + 1 * 8 + 7   ;; 1 byte
+kilobytes_expected      = digit_font_data + 1 * 8 + 6   ;; 1 byte
+kilobytes_loaded        = digit_font_data + 1 * 8 + 7   ;; 1 byte
 
 ;; ----------------------------------------------------------------------------
 ;; eth.asm: points to the frame currently being created
@@ -134,11 +134,10 @@ _tftp_receive_hook      = digit_font_data + 6 * 8 + 6   ;; 2 bytes
 _timer_tick_count       = digit_font_data + 7 * 8 + 6   ;; 2 bytes
 
 ;; ----------------------------------------------------------------------------
-;; z80_loader.asm: expected and currently loaded no. of kilobytes,
-;; for progress display
+;; z80_loader.asm: digits (BCD) for progress display while loading a snapshot
 ;; ----------------------------------------------------------------------------
 
-kilobytes_loaded        = digit_font_data + 8 * 8 + 6   ;; 1 byte
+_digits                 = digit_font_data + 8 * 8 + 6   ;; 1 byte
 
 ;; ----------------------------------------------------------------------------
 ;; tftp.asm: high byte of chosen UDP client port
