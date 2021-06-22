@@ -145,6 +145,128 @@ show_attr_char_pixel_set:
 
 
 ;; ############################################################################
+;; update_progress
+;;
+;; If the number of bytes loaded reached an even kilobyte,
+;; increase kilobyte counter and update status display
+;; ############################################################################
+
+    .area _CODE
+
+update_progress:
+
+    ;; check if DE is an integral number of kilobytes,
+    ;; return early otherwise
+
+    ld    a, d
+    and   a, #0x03
+    or    a, e
+    ret   nz
+
+    ;; ------------------------------------------------------------------------
+    ;; use alternate BC, DE, HL for scratch here
+    ;; ------------------------------------------------------------------------
+
+    exx
+
+    ;; ========================================================================
+    ;; update the progress display
+    ;; ========================================================================
+
+    ld    hl, #_digits
+    ld    a, (hl)
+    inc   a
+    daa
+    push  af             ;; remember flags
+    ld    (hl), a
+    ld    c, a
+
+    ;; If Z is set, then the number of kilobytes became zero in BCD:
+    ;; means it just turned from 99 to 100.
+    ;; Print the digit '1' for hundreds.
+
+    ld    l, a       ;; L := 0
+    ld    a, #1      ;; can't use INC A, since that changes Z flag
+    call  z, show_attr_digit
+    ld    a, c
+
+not_100k:
+    pop   de             ;; recall flags, old F is now in E
+    bit   #4, e          ;; was H flag set? Then the tens have increased
+    jr    z, not_10k
+
+    ;; Print tens (_x_)
+
+    rra                  ;; shift once; routine below shifts three more times
+    ld    l, #7
+    call  show_attr_digit_already_shifted
+
+not_10k:
+    ;; Print single-number digit (__x)
+
+    ld    a, c
+    ld    l, #14
+    call  show_attr_digit
+
+    ;; ************************************************************************
+    ;; update progress bar
+    ;; ************************************************************************
+
+    ;; kilobytes_loaded is located directly after kilobytes_expected, so
+    ;; use a single pointer
+
+    ld    hl, #kilobytes_expected
+
+    ld    a, (hl)                      ;; load kilobytes_expected
+    inc   hl                           ;; now points to kilobytes_loaded
+    inc   (hl)                         ;; increase kilobytes_loaded
+    add   a, a                         ;; sets carry if this is a 128k snapshot
+    ld    a, (hl)                      ;; kilobytes_loaded
+
+    ;; ------------------------------------------------------------------------
+    ;; Scale loaded number of kilobytes to a value 0..32.
+    ;; 48k snapshots:   * 2 / 3
+    ;; 128k snapshots:  * 1 / 4 
+    ;; ------------------------------------------------------------------------
+
+    ld    b, #4
+
+    jr    c, progress_128
+
+    add   a, a       ;; 48 snapshot: * 2 / 3
+    dec   b
+
+progress_128:
+
+    call  a_div_b
+    ld    a, c
+
+00002$:
+    or    a, a
+    jr    z, no_progress_bar
+
+    ld    bc, #PROGRESS_BAR_BASE-1
+    add   a, c
+    ld    c, a
+    ld    a, #(GREEN + (GREEN << 3))
+    ld    (bc), a
+
+    ;; ========================================================================
+    ;; if all data has been loaded, perform the context switch
+    ;; ========================================================================
+
+    ld    a, (hl)
+    dec   hl
+    cp    a, (hl)
+    jp    z, context_switch             ;; in stage 1 loader (ROM)
+
+no_progress_bar:
+
+    exx
+    ret
+
+
+;; ############################################################################
 ;; load_byte_from_chunk
 ;;
 ;; like load_byte_from_packet, but also decreases BC
@@ -616,128 +738,6 @@ s_chunk_compressed_escape:
     ld    ix, #s_chunk_write_data
 
     jp    update_progress
-
-
-;; ############################################################################
-;; update_progress
-;;
-;; If the number of bytes loaded reached an even kilobyte,
-;; increase kilobyte counter and update status display
-;; ############################################################################
-
-    .area _CODE
-
-update_progress:
-
-    ;; check if DE is an integral number of kilobytes,
-    ;; return early otherwise
-
-    ld    a, d
-    and   a, #0x03
-    or    a, e
-    ret   nz
-
-    ;; ------------------------------------------------------------------------
-    ;; use alternate BC, DE, HL for scratch here
-    ;; ------------------------------------------------------------------------
-
-    exx
-
-    ;; ========================================================================
-    ;; update the progress display
-    ;; ========================================================================
-
-    ld    hl, #_digits
-    ld    a, (hl)
-    inc   a
-    daa
-    push  af             ;; remember flags
-    ld    (hl), a
-    ld    c, a
-
-    ;; If Z is set, then the number of kilobytes became zero in BCD:
-    ;; means it just turned from 99 to 100.
-    ;; Print the digit '1' for hundreds.
-
-    ld    l, a       ;; L := 0
-    ld    a, #1      ;; can't use INC A, since that changes Z flag
-    call  z, show_attr_digit
-    ld    a, c
-
-not_100k:
-    pop   de             ;; recall flags, old F is now in E
-    bit   #4, e          ;; was H flag set? Then the tens have increased
-    jr    z, not_10k
-
-    ;; Print tens (_x_)
-
-    rra                  ;; shift once; routine below shifts three more times
-    ld    l, #7
-    call  show_attr_digit_already_shifted
-
-not_10k:
-    ;; Print single-number digit (__x)
-
-    ld    a, c
-    ld    l, #14
-    call  show_attr_digit
-
-    ;; ************************************************************************
-    ;; update progress bar
-    ;; ************************************************************************
-
-    ;; kilobytes_loaded is located directly after kilobytes_expected, so
-    ;; use a single pointer
-
-    ld    hl, #kilobytes_expected
-
-    ld    a, (hl)                      ;; load kilobytes_expected
-    inc   hl                           ;; now points to kilobytes_loaded
-    inc   (hl)                         ;; increase kilobytes_loaded
-    add   a, a                         ;; sets carry if this is a 128k snapshot
-    ld    a, (hl)                      ;; kilobytes_loaded
-
-    ;; ------------------------------------------------------------------------
-    ;; Scale loaded number of kilobytes to a value 0..32.
-    ;; 48k snapshots:   * 2 / 3
-    ;; 128k snapshots:  * 1 / 4 
-    ;; ------------------------------------------------------------------------
-
-    ld    b, #4
-
-    jr    c, progress_128
-
-    add   a, a       ;; 48 snapshot: * 2 / 3
-    dec   b
-
-progress_128:
-
-    call  a_div_b
-    ld    a, c
-
-00002$:
-    or    a, a
-    jr    z, no_progress_bar
-
-    ld    bc, #PROGRESS_BAR_BASE-1
-    add   a, c
-    ld    c, a
-    ld    a, #(GREEN + (GREEN << 3))
-    ld    (bc), a
-
-    ;; ========================================================================
-    ;; if all data has been loaded, perform the context switch
-    ;; ========================================================================
-
-    ld    a, (hl)
-    dec   hl
-    cp    a, (hl)
-    jp    z, context_switch             ;; in stage 1 loader (ROM)
-
-no_progress_bar:
-
-    exx
-    ret
 
 
 ;; ############################################################################
