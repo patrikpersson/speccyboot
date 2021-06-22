@@ -41,12 +41,6 @@
     .include "tftp.inc"
     .include "util.inc"
 
-;; ============================================================================
-
-    .area _DATA
-
-_ip_checksum:
-    .ds   2
 
 ;; ############################################################################
 ;; Create UDP reply to the sender of the received packet currently processed.

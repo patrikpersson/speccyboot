@@ -54,12 +54,6 @@ ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 
     .area _DATA
 
-_next_frame:
-    .ds 2        ;; position of next frame to read from the ENC28J60
-
-_current_txbuf:
-    .ds 2        ;; points to the frame currently being created
-
 eth_sender_address:
     .ds ETH_ADDRESS_SIZE
 

@@ -43,24 +43,7 @@
 
     .area _DATA
 
-_expected_tftp_block_no:
-    .ds 2        ;; next TFTP block we expect to receive
-
-_server_port:
-    .ds 2        ;; source port currently used by server
-
-_tftp_client_port:
-   .ds   1
-
 _tftp_write_pos:
-   .ds   2
-
-;; ----------------------------------------------------------------------------
-;; If non-NULL, this function is called for every received TFTP packet
-;; (instead of regular raw data file handling)
-;; ----------------------------------------------------------------------------
-
-_tftp_receive_hook:
    .ds   2
 
 ;; ============================================================================

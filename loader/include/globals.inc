@@ -75,6 +75,78 @@ digit_font_data        = 0x5d9b             ;; size 0x4e  (10*8 - 2)
 
 ;; _DATA segment can start at 0x5d9b + 0x4e = 0x5de9
 
+;; ============================================================================
+;; use the two-byte slots between digits to keep resident RAM to a minimum
+;; ============================================================================
+
+;; ----------------------------------------------------------------------------
+;; IP checksum
+;; ----------------------------------------------------------------------------
+
+_ip_checksum            = digit_font_data + 0 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; eth.asm: position of next frame to read from the ENC28J60
+;; ----------------------------------------------------------------------------
+
+_next_frame             = digit_font_data + 1 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; eth.asm: points to the frame currently being created
+;; ----------------------------------------------------------------------------
+
+_current_txbuf          = digit_font_data + 2 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; context_switch.asm: 16-bit word for memory configuration
+;;  low byte:  flag (zero means 48k, non-zero means 128k)
+;;  high byte: 128k memory configuration (0x7ffd)
+;; ----------------------------------------------------------------------------
+
+memory_state            = digit_font_data + 3 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; tftp.asm: next TFTP block we expect to receive
+;; ----------------------------------------------------------------------------
+
+_expected_tftp_block_no = digit_font_data + 4 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; tftp.asm: source port currently used by server
+;; ----------------------------------------------------------------------------
+
+_server_port            = digit_font_data + 5 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; tftp.asm: if non-NULL, this function is called for every received TFTP
+;; packet (instead of regular raw data file handling)
+;; ----------------------------------------------------------------------------
+
+_tftp_receive_hook      = digit_font_data + 6 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; util.asm: ick count, increased by 2 (!) by the 50Hz timer ISR in init.asm.
+;; Means that the high byte is increased every 2.56 seconds.
+;; ----------------------------------------------------------------------------
+
+_timer_tick_count       = digit_font_data + 7 * 8 + 6   ;; 2 bytes
+
+;; ----------------------------------------------------------------------------
+;; z80_loader.asm: expected and currently loaded no. of kilobytes,
+;; for progress display
+;; ----------------------------------------------------------------------------
+
+kilobytes_loaded        = digit_font_data + 8 * 8 + 6   ;; 1 byte
+
+;; ----------------------------------------------------------------------------
+;; tftp.asm: high byte of chosen UDP client port
+;; (low byte is always 0x45, network order)
+;; ----------------------------------------------------------------------------
+
+_tftp_client_port       = digit_font_data + 8 * 8 + 7   ;; 1 byte
+
+;; ============================================================================
+
 ;; ----------------------------------------------------------------------------
 ;; RAM location for font data, copied from BASIC ROM
 ;; ----------------------------------------------------------------------------

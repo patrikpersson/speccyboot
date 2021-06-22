@@ -54,17 +54,6 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
 ;; ============================================================================
 
-    .area _DATA
-
-;; ----------------------------------------------------------------------------
-;; expected and currently loaded no. of kilobytes, for progress display
-;; ----------------------------------------------------------------------------
-
-kilobytes_loaded:
-    .ds    1
-
-;; ============================================================================
-
 ;; ----------------------------------------------------------------------------
 ;; The Z80 snapshot state machine is implemented by one routine for each
 ;; state. The function returns whenever one of the following happens:

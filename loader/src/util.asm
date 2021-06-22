@@ -35,15 +35,6 @@
 
     .include "globals.inc"
 
-    .area _DATA
-
-;; ----------------------------------------------------------------------------
-;; Tick count, increased by 2 (!) by the 50Hz timer ISR in init.asm.
-;; Means that the high byte is increased every 2.56 seconds.
-;; ----------------------------------------------------------------------------
-
-_timer_tick_count:
-    .ds   2
 
 ;; ############################################################################
 ;; fail
