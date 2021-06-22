@@ -85,10 +85,10 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; create UDP packet
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #UDP_PORT_BOOTP_CLIENT * 0x100    ;; network order
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
-    ld   h, #UDP_PORT_BOOTP_SERVER
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   a, #UDP_PORT_BOOTP_CLIENT
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT + 1), a
+    dec  a  ;; UDP_PORT_BOOTP_SERVER = UDP_PORT_BOOTP_CLIENT - 1
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT + 1), a
 
     ld   de, #UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
     ld   hl, #eth_broadcast_address

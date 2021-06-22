@@ -265,21 +265,10 @@ main_packet:
     rst   enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
-    ;; ignore broadcasts from this host (duh)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #_rx_frame + ETH_ADM_OFFSETOF_SRC_ADDR
-    push  hl
-    ld    de, #eth_local_address
-    ld    b, #ETH_ADDRESS_SIZE
-    call  memory_compare
-    pop   hl
-    jr    z, main_packet_done
-
-    ;; ------------------------------------------------------------------------
     ;; remember source MAC address
     ;; ------------------------------------------------------------------------
 
+    ld    hl, #_rx_frame + ETH_ADM_OFFSETOF_SRC_ADDR
     ld    de, #eth_sender_address
     ld    bc, #ETH_ADDRESS_SIZE
     ldir
