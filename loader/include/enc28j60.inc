@@ -296,19 +296,10 @@ enc28j60_write8plus8 = 0x18
     .globl enc28j60_read_memory
 
 ;; ----------------------------------------------------------------------------
-;; Additional entrypoint to enc28j60_read_memory, with HL set to _rx_frame
-;; and D set to zero. Reads up to 255 bytes to _rx_frame.
+;; Additional entrypoint to enc28j60_read_memory, with HL set to _rx_frame.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_memory_to_rxframe
-
-;; ----------------------------------------------------------------------------
-;; Additional entrypoint to enc28j60_read_memory, with HL set to _rx_frame
-;; and DE set to 20 (useful or both IP header and the ENC28J60 administrative
-;; Ethernet header))
-;; ----------------------------------------------------------------------------
-
-    .globl enc28j60_read_20b_to_rxframe
 
 ;; ----------------------------------------------------------------------------
 ;; Add a number of 16-bit words to the IP-style checksum.

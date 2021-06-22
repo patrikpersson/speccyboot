@@ -52,10 +52,22 @@ ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 
 ;; ============================================================================
 
+ETH_ADM_HEADER_SIZE = 20
+
     .area _DATA
 
+;; ----------------------------------------------------------------------------
+;; ENC28J60 administrative header
+;; ----------------------------------------------------------------------------
+
+eth_adm_header:
+_next_frame:
+    .ds   2             ;; position of next frame to read from the ENC28J60
+    .ds   10
 eth_sender_address:
-    .ds ETH_ADDRESS_SIZE
+    .ds   ETH_ADDRESS_SIZE
+eth_adm_header_ethertype:
+    .ds   2
 
 ;; ============================================================================
 ;; RE-TRANSMISSION HANDLING
@@ -233,24 +245,20 @@ main_packet:
     ld    e, #0
     rst   enc28j60_select_bank
 
+breakpoint::
+
     ld    hl, (_next_frame)
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
     rst   enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
     ;; Read the administrative Ethernet header (20 bytes, including some
-    ;; ENC28J60 details) into the RX buffer. The source MAC address will be
-    ;; saved separately (below) before the RX buffer is used for IP/ARP data.
+    ;; ENC28J60 details).
     ;; ------------------------------------------------------------------------
 
-    call  enc28j60_read_20b_to_rxframe
-
-    ;; ------------------------------------------------------------------------
-    ;; update _next_frame
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, (_rx_frame + ETH_ADM_OFFSETOF_NEXT_PTR)
-    ld    (_next_frame), hl
+    ld    de, #ETH_ADM_HEADER_SIZE
+    ld    hl, #eth_adm_header
+    call  enc28j60_read_memory
 
     ;; ------------------------------------------------------------------------
     ;; decrease EPKTCNT (by setting bit PKTDEC in ECON2), so as to acknowledge
@@ -261,15 +269,6 @@ main_packet:
     rst   enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
-    ;; remember source MAC address
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #_rx_frame + ETH_ADM_OFFSETOF_SRC_ADDR
-    ld    de, #eth_sender_address
-    ld    bc, #ETH_ADDRESS_SIZE
-    ldir
-
-    ;; ------------------------------------------------------------------------
     ;; pass packet to IP or ARP, if ethertype matches
     ;; 0x0608 -> IP
     ;; 0x0008 -> ARP
@@ -277,11 +276,11 @@ main_packet:
 
     ;; HL points to Ethertype after LDIR above
 
-    ld    a, (hl)
+    ld    hl, (eth_adm_header_ethertype)
+    ld    a, l
     sub   a, #8
     jr    nz, main_packet_done   ;; neither IP nor ARP -- ignore
-    inc   hl
-    or    a, (hl)
+    or    a, h
     jr    nz, main_packet_not_ip
 
     call  ip_receive
@@ -551,7 +550,7 @@ arp_receive:
     ;; retrieve ARP payload
     ;; ------------------------------------------------------------------------
 
-    ld   e, #ARP_IP_ETH_PACKET_SIZE
+    ld   de, #ARP_IP_ETH_PACKET_SIZE
     call enc28j60_read_memory_to_rxframe
 
     ;; ------------------------------------------------------------------------

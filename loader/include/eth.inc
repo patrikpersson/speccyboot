@@ -121,16 +121,6 @@ ETH_FRAME_OPTIONAL = ENC28J60_TXBUF2_START
 
 ETH_ADDRESS_SIZE = 6
 
-;; ----------------------------------------------------------------------------
-;; ENC28J60 administrative header; temporarily loaded to rx_frame
-;; ----------------------------------------------------------------------------
-
-ETH_ADM_OFFSETOF_NEXT_PTR = 0
-ETH_ADM_OFFSETOF_SRC_ADDR = 12
-ETH_ADM_OFFSETOF_ETHERTYPE = 18
-
-ETH_ADM_HEADER_SIZE = 20
-
 ETH_HEADER_SIZE = 14
 
 ;; ----------------------------------------------------------------------------
