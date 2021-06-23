@@ -41,6 +41,8 @@
     .include "spi.inc"
     .include "util.inc"
 
+    .area _CODE
+
 ;; ============================================================================
 ;; The following code is copied to the five top-left character cells in VRAM
 ;; ============================================================================
