@@ -50,6 +50,59 @@ _tftp_write_pos:
 
     .area _CODE
 
+tftp_state_menu_loader:
+
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld  de, (_tftp_write_pos)
+
+    ld  a, b
+    or  a, c                                   ;; check if BC == 0
+    ld  a, b                                   ;; but keep A == B
+    jr  z, tftp_zero_length_data               ;; stay clear of LDIR if BC == 0
+
+    ldir
+    ld  (_tftp_write_pos), de
+
+tftp_zero_length_data:
+
+    ;; ------------------------------------------------------------------------
+    ;; If a full TFTP packet was loaded, return.
+    ;; (BC above should be exactly 0x200 for all DATA packets except the last
+    ;; one, never larger; so we are done if A != 2 here)
+    ;; ------------------------------------------------------------------------
+
+    cp  a, #2
+    ret z
+
+    ;; ========================================================================
+    ;; This was the last packet of the stage 2 binary:
+    ;; check version signature and run the stage 2 loader
+    ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; check version signature
+    ;; ------------------------------------------------------------------------
+
+    ld  hl, #stage2_start
+    ld  a, (hl)
+    cp  a, l
+    jr  nz, version_mismatch
+    inc hl
+    ld  a, (hl)
+    cp  a, #VERSION_MAGIC
+version_mismatch:
+    ld  a, #FATAL_VERSION_MISMATCH
+    jp  nz, fail
+
+    ;; ------------------------------------------------------------------------
+    ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
+    ;; a LD r, r' instruction (binary 01xxxxxx) and harmless to execute.
+    ;; One INC HL is saved this way.
+    ;; ------------------------------------------------------------------------
+
+    jp  (hl)
+
+
 tftp_default_file:
     .ascii 'menu.bin'
     .db    0

@@ -120,11 +120,10 @@ _expected_tftp_block_no = digit_font_data + 4 * 8 + 6   ;; 2 bytes
 _server_port            = digit_font_data + 5 * 8 + 6   ;; 2 bytes
 
 ;; ----------------------------------------------------------------------------
-;; tftp.asm: if non-NULL, this function is called for every received TFTP
-;; packet (instead of regular raw data file handling)
+;; tftp.asm: function called for every received TFTP packet
 ;; ----------------------------------------------------------------------------
 
-_tftp_receive_hook      = digit_font_data + 6 * 8 + 6   ;; 2 bytes
+tftp_state              = digit_font_data + 6 * 8 + 6   ;; 2 bytes
 
 ;; ----------------------------------------------------------------------------
 ;; util.asm: ick count, increased by 2 (!) by the 50Hz timer ISR in init.asm.

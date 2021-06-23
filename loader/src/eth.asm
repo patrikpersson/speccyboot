@@ -96,8 +96,6 @@ END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
 ;; Must be first in the _CODE segment, as init will execute right into it
 ;; ############################################################################
 
-_main:
-
     ;; ========================================================================
     ;; Set up resident digit font
     ;; ========================================================================
@@ -106,6 +104,13 @@ _main:
     ld    de, #digit_font_data
     ld    bc, #8 * 10 - 2
     ldir
+
+    ;; ========================================================================
+    ;; Set initial state for TFTP data handling
+    ;; ========================================================================
+
+    ld    hl, #tftp_state_menu_loader
+    ld    (tftp_state), hl
 
     ;; ========================================================================
     ;; Presentation
