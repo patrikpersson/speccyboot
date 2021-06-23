@@ -112,6 +112,12 @@ VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
     .globl _tftp_write_pos
 
 ;; ----------------------------------------------------------------------------
+;; Number of bytes remaining in current .z80 chunk (used by .z80 loader)
+;; ----------------------------------------------------------------------------
+
+    .globl _chunk_bytes_remaining
+
+;; ----------------------------------------------------------------------------
 ;; RAM pointer to routine to call on TFTP data. Initially points to
 ;; tftp_state_menu_loader, but modified by the .z80 loader to handle snapshots.
 ;;
@@ -308,11 +314,44 @@ ack_packet_end:
     ld  b, a                                         ;; TFTP length, high byte
 
     ;; ------------------------------------------------------------------------
-    ;; Jump to state handler
+    ;; Set up register for TFTP state handlers
     ;; ------------------------------------------------------------------------
 
-    ld  hl, (tftp_state)
-    jp  (hl)
+    ld   h, b
+    ld   l, c
+
+    ld   bc, (_chunk_bytes_remaining)
+    ld   de, (_tftp_write_pos)
+
+    ld   ix, (tftp_state)
+    ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+
+    ;; ========================================================================
+    ;; read bytes, call state functions
+    ;; ========================================================================
+
+tftp_state_loop:
+
+    ;; ------------------------------------------------------------------------
+    ;; if HL is zero, we are done
+    ;; ------------------------------------------------------------------------
+
+    ld    a, h
+    or    a, l
+    ret   z
+
+    ;; ------------------------------------------------------------------------
+    ;; call function pointed to by z80_loader_state
+    ;; there is no "CALL (IX)" instruction, so CALL a JP (IX) instead
+    ;; ------------------------------------------------------------------------
+
+    call  jp_ix_instr
+
+    ld    (tftp_state), ix
+    ld    (_chunk_bytes_remaining), bc
+    ld    (_tftp_write_pos), de
+
+    jr    tftp_state_loop
 
 tftp_receive_error:
 

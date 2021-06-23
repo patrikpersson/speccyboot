@@ -46,30 +46,31 @@
 _tftp_write_pos:
    .ds   2
 
+_chunk_bytes_remaining:
+   .ds   2
+
 ;; ============================================================================
 
     .area _CODE
 
 tftp_state_menu_loader:
 
+    ld  b, h
+    ld  c, l
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     ld  de, (_tftp_write_pos)
-
-    ld  a, b
-    or  a, c                                   ;; check if BC == 0
-    ld  a, b                                   ;; but keep A == B
-    jr  z, tftp_zero_length_data               ;; stay clear of LDIR if BC == 0
-
     ldir
     ld  (_tftp_write_pos), de
-
-tftp_zero_length_data:
 
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
     ;; (BC above should be exactly 0x200 for all DATA packets except the last
     ;; one, never larger; so we are done if A != 2 here)
     ;; ------------------------------------------------------------------------
+
+    ;; set number of bytes remaining to zero
+
+    ld  hl, #0   ;; TODO: this solves itself if we switch allocation for BC and HL
 
     cp  a, #2
     ret z

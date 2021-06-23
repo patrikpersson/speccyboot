@@ -130,7 +130,7 @@ run_menu:
     ;; prepare for receiving .z80 snapshot data
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #z80_loader_receive_hook
+    ld   hl, #s_header
     ld   (tftp_state), hl
 
     ;; ========================================================================

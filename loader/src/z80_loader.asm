@@ -341,7 +341,6 @@ load_byte_from_packet:
 
 s_header:
 
-    push de
     push hl
 
     ;; ------------------------------------------------------------------------
@@ -350,8 +349,7 @@ s_header:
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     ld   de, #stored_snapshot_header
-
-    ;; BC is set to Z80_HEADER_RESIDENT_SIZE in z80_loader_receive_hook below
+    ld   bc, #Z80_HEADER_RESIDENT_SIZE
 
     ldir
 
@@ -435,7 +433,7 @@ s_header_set_state:
     add  iy, de         ;; clears C flag, as DE is less than IY here
     sbc  hl, de         ;; C flag is zero here
 
-    pop  de
+    ld   de, #0x4000
 
     ret
 
@@ -771,71 +769,3 @@ s_chunk_compressed_escape:
     ld    ix, #s_chunk_write_data
 
     jp    update_progress
-
-
-;; ############################################################################
-;; z80_loader_receive_hook
-;; ############################################################################
-
-    .area _STAGE2
-
-z80_loader_receive_hook:
-
-    ;; ------------------------------------------------------------------------
-    ;; register allocation (shared in all states):
-    ;;
-    ;; IX: current state (pointer to function)
-    ;; IY: read pointer (pointer to somewhere in rx_frame)
-    ;; BC: number of bytes left to read in current chunk       (Bytes in Chunk)
-    ;; DE: write pointer (pointer to somewhere in RAM)            (DEstination)
-    ;; HL: number of bytes left to read from current TFTP packet
-    ;; I:  repetition value (valid during an ED ED repetition)
-    ;; ------------------------------------------------------------------------
-
-    .dw  LD_IX_NN            ;; LD IX, #nn
-z80_loader_state:
-    .dw  s_header            ;; initial state
-
-    ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-
-    ;; ------------------------------------------------------------------------
-    ;; set up HL, BC, DE
-    ;; ------------------------------------------------------------------------
-
-    ld   h, b
-    ld   l, c
-
-    .db  LD_BC_NN          ;; LD BC, #nn
-_chunk_bytes_remaining:
-    .dw  Z80_HEADER_RESIDENT_SIZE    ;; useful initial value for state S_HEADER
-
-    .db  LD_DE_NN          ;; LD DE, #nn
-write_pos:
-    .dw  0x4000            ;; default for single-chunk snapshots
-
-    ;; ========================================================================
-    ;; read bytes, evacuate when needed, call state functions
-    ;; ========================================================================
-
-receive_snapshot_byte_loop:
-
-    ;; ------------------------------------------------------------------------
-    ;; if HL is zero, we are done
-    ;; ------------------------------------------------------------------------
-
-    ld    a, h
-    or    a, l
-    ret   z
-
-    ;; ------------------------------------------------------------------------
-    ;; call function pointed to by z80_loader_state
-    ;; there is no "CALL (IX)" instruction, so CALL a JP (IX) instead
-    ;; ------------------------------------------------------------------------
-
-    call  jp_ix_instr
-
-    ld    (z80_loader_state), ix
-    ld    (_chunk_bytes_remaining), bc
-    ld    (write_pos), de
-
-    jr    receive_snapshot_byte_loop

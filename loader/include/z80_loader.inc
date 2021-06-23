@@ -31,11 +31,6 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
-;; ----------------------------------------------------------------------------
-;; TFTP read hook to relay received data the Z80 snapshot parser.
-;; Installed by menu.
-;; ----------------------------------------------------------------------------
-
-    .globl z80_loader_receive_hook
+    .globl s_header
     .globl show_attr_digit
     .globl show_attr_char_address_known
