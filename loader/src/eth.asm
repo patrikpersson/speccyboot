@@ -241,8 +241,6 @@ main_packet:
     ld    e, #0
     rst   enc28j60_select_bank
 
-breakpoint::
-
     ld    hl, (_next_frame)
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
     rst   enc28j60_write_register16

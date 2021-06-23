@@ -59,18 +59,11 @@ enc28j60_read_memory_to_rxframe:
 
 enc28j60_read_memory:
 
-    push  hl         ;; dst_addr
-
-    push  de         ;; number of bytes
-
-    ;; spi_start_transaction(ENC_OPCODE_RBM);
+    push  hl         ;; preserve HL
+    push  de         ;; number of bytes to read
 
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
-
-    ;;
-    ;; assume nbr_bytes at (IX + 0)
-    ;;
 
     ;;
     ;; register allocation:
@@ -79,7 +72,7 @@ enc28j60_read_memory:
     ;; ------------
     ;; B   inner (bit) loop counter, always in range 0..8
     ;; C   0x9f     for SPI access
-    ;; DE  outer (word) loop counter
+    ;; DE  outer (byte) loop counter
     ;; H   0x40     for SPI access
     ;; L   temp register for SPI reads
     ;;
@@ -94,19 +87,17 @@ enc28j60_read_memory:
 
     ex    de, hl    ;; DE now holds destination address
     ld    hl, (_ip_checksum)
-    exx
 
-    and   a, a        ;; reset initial C flag
-    ex    af, af'
+    exx                        ;; to primary bank
+
+    and   a, a                 ;; reset initial C flag
+    ex    af, af'              ;; to primary AF
 
     ld    c, #SPI_OUT
     ld    h, #0x40
 
     pop   de
-    push  de
-    srl   d           ;; shift DE right (number of 16-bit words)
-    rr    e
-
+ 
     ;; Read one word to (de'), increase de', update checksum in hl'.
     ;;
     ;; Each iteration takes   4+4+10+6
@@ -121,13 +112,18 @@ enc28j60_read_memory:
 word_loop:
     ld   a, d                      ;; 4
     or   e                         ;; 4
-    jp   z, word_loop_end          ;; 10
+    jr   z, word_loop_end_even     ;; 10
     dec  de                        ;; 6
 
     call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
 
     ld    c, a                     ;; 4
-    exx                            ;; 4
+    exx                            ;; 4    to primary
+
+    ld   a, d                      ;; 4
+    or   e                         ;; 4
+    jr   z, word_loop_end_odd      ;; 10
+    dec  de                        ;; 6
 
     call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
 
@@ -135,29 +131,19 @@ word_loop:
     ex    af, af'                  ;; 4
     adc   hl, bc                   ;; 15
     ex    af, af'                  ;; 4
-    exx                            ;; 4
+    exx                            ;; 4    to primary
 
     jr    word_loop                ;; 12
 
-word_loop_end:
+word_loop_end_even:
 
-    ;; If there is a single odd byte remaining, handle it
-
-    pop   af    ;; number of bytes, lowest bit now in C flag
-    jr    c, odd_byte
-
-    ;; No odd byte, add the remaining C flag
-
-    exx
-    ld    bc, #0
+    exx                            ;; to secondary
     ex    af, af'
     jr    final
 
-odd_byte:
+word_loop_end_odd:
 
-    call read_byte_to_acc
-
-    ld    c, a
+    exx                            ;; to secondary
 
 ;; ----------------------------------------------------------------------------
 ;; these two instructions happen to be 0x08, 0x06, which is the ARP ethertype
@@ -169,9 +155,8 @@ ethertype_arp:
 
     adc   hl, bc
 
-    ld    c, #0     ;; BC is now 0
-
 final:
+    ld    bc, #0
     adc   hl, bc    ;; add final carry
     ld    (_ip_checksum), hl
 
@@ -193,7 +178,7 @@ read_byte_to_acc_loop:
     spi_read_bit_to_acc
     djnz read_byte_to_acc_loop
 
-    exx                            ;; 4
+    exx                            ;; 4    to secondary
     ld    (de), a                  ;; 7
     inc   de                       ;; 6
 
