@@ -83,7 +83,7 @@ TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
 ;; VRAM position for loader version (one lower-case letter)
 ;; ----------------------------------------------------------------------------
 
-VRAM_LOADER_VERSION = BITMAP_BASE + 13          ;; (0, 13)
+VRAM_LOADER_VERSION = BITMAP_BASE + 0x0100 + 13          ;; (0, 13)
 
 ;; ----------------------------------------------------------------------------
 ;; packet counter for TFTP

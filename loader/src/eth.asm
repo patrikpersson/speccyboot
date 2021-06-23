@@ -120,8 +120,8 @@ END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
     ;; print 'SpeccyBoot x.y' at (0,0)
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #title_str       ;; 'SpeccyBoot x.y'
-    ld    de, #BITMAP_BASE     ;; coordinates (0,0)
+    ld    hl, #title_str                ;; 'SpeccyBoot x.y'
+    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
 
     call  print_str
 

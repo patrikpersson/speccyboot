@@ -44,8 +44,8 @@
 ;; Location of local and server IP addresses (row 23, columns 0 and 16)
 ;; ----------------------------------------------------------------------------
 
-LOCAL_IP_POS  = (BITMAP_BASE + 0x1000 + 7*32 + 0)
-SERVER_IP_POS = (BITMAP_BASE + 0x1000 + 7*32 + 16)
+LOCAL_IP_POS  = (BITMAP_BASE + 0x1100 + 7*32 + 0)
+SERVER_IP_POS = (BITMAP_BASE + 0x1100 + 7*32 + 16)
 
     .area _CODE
 
@@ -285,8 +285,9 @@ print_char:
     add  hl, hl
     add  hl, hl
     add  hl, hl
+    inc  hl
 
-    ld   b, #8
+    ld   b, #7
     ld   c, d
 _print_char_loop:
     ld   a, (hl)

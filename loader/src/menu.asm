@@ -169,7 +169,7 @@ menu_loop:
     ld   b, e
 redraw_menu_limit_set:
 
-    ld   de, #0x4041      ;; (2,1)
+    ld   de, #0x4141      ;; (2,1)
 
 redraw_menu_loop:
 
