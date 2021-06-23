@@ -263,6 +263,35 @@ progress_128:
 no_progress_bar:
 
     exx
+
+    ;; ========================================================================
+    ;; handle evacuation of resident data (0x5800..0x5fff)
+    ;; ========================================================================
+
+    ld    a, d
+
+    cp    a, #>RUNTIME_DATA
+    jr    z, start_storing_runtime_data
+
+    cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
+    ret   nz
+
+    ;; ------------------------------------------------------------------------
+    ;; use register R, bit 7 to indicate whether the evacuation is already
+    ;; done (R==0 after reset)
+    ;; ------------------------------------------------------------------------
+
+breakpoint::
+
+    ld    a, r
+    ret   m          ;; return if R bit 7 is 1
+    cpl              ;; R bit 7 was 0, is now 1
+    ld    r, a
+
+    call  prepare_context
+
+start_storing_runtime_data:
+    ld    d, #>EVACUATION_TEMP_BUFFER
     ret
 
 
@@ -793,63 +822,6 @@ receive_snapshot_byte_loop:
     ld    a, h
     or    a, l
     ret   z
-
-    ;; ------------------------------------------------------------------------
-    ;; check evacuation status only if low byte of E is zero
-    ;; ------------------------------------------------------------------------
-
-    ld    a, e
-    or    a, a
-    jr    nz, receive_snapshot_no_evacuation
-
-    ld    a, d     ;; A is now high byte of write_pos
-
-    ;; ------------------------------------------------------------------------
-    ;; reached RUNTIME_DATA (resident area)?
-    ;; ------------------------------------------------------------------------
-
-    cp    a, #>RUNTIME_DATA
-    jr    nz, receive_snapshot_not_entering_runtime_data
-
-    ;; ------------------------------------------------------------------------
-    ;; then store data in EVACUATION_TEMP_BUFFER instead,
-    ;; and enable evacuation
-    ;; ------------------------------------------------------------------------
-
-    ld    d, #>EVACUATION_TEMP_BUFFER
-    ld    a, #JR_NZ                                ;; evacuation is now enabled
-    ld    (evacuation_activation_instr), a
-
-    jr    receive_snapshot_no_evacuation
-
-receive_snapshot_not_entering_runtime_data:
-
-    ;; ------------------------------------------------------------------------
-    ;; is an evacuation about to be completed?
-    ;; ------------------------------------------------------------------------
-
-    cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
-evacuation_activation_instr:
-    jr    receive_snapshot_no_evacuation
-
-    ;; ------------------------------------------------------------------------
-    ;; then set write_pos := RUNTIME_DATA + RUNTIME_DATA_LENGTH,
-    ;; and disable evacuation
-    ;; ------------------------------------------------------------------------
-
-    ld    d, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH)
-
-    ;; evacuation (soon) done: change JR above to skip evacuation next time
-    ld    a, #JR_UNCONDITIONAL
-    ld    (evacuation_activation_instr), a
-
-    ;; ------------------------------------------------------------------------
-    ;; prepare context switch and copy the evacuated data to ENC28J60 RAM
-    ;; ------------------------------------------------------------------------
-
-    call  prepare_context
-
-receive_snapshot_no_evacuation:
 
     ;; ------------------------------------------------------------------------
     ;; call function pointed to by z80_loader_state

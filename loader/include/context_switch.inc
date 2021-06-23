@@ -116,7 +116,7 @@ RUNTIME_DATA_LENGTH         = 0x0800
 ;; ENC28J60.
 ;; ----------------------------------------------------------------------------
 
-EVACUATION_TEMP_BUFFER      = 0x7000
+EVACUATION_TEMP_BUFFER      = 0x6000
 
 ;; ----------------------------------------------------------------------------
 ;; Masks for meaning of snapshot_flags
