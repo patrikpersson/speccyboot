@@ -285,15 +285,14 @@ print_char:
     add  hl, hl
     add  hl, hl
     add  hl, hl
-    inc  hl
 
     ld   b, #7
     ld   c, d
 _print_char_loop:
+    inc  hl
     ld   a, (hl)
     ld   (de), a
     inc  d
-    inc  hl
     djnz _print_char_loop
     ld   d, c
 
