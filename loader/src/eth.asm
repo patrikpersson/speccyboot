@@ -121,14 +121,10 @@ _main:
     call  print_str
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'B' indicator (BOOTP): black ink, green paper, bright, flash
+    ;; flashing cursor (bottom left): black ink, green paper, bright, flash
     ;; ------------------------------------------------------------------------
 
-    ld    a, #'B'
-    ld    de, #BITMAP_BASE + 0x1000 + 7 *32                ;; (23, 0)
-    call  print_char
-
-    ;; Attribute byte (BLACK | (GREEN << 3) | BRIGHT | FLASH) == 0xE0,
+    ;; Attribute byte (BLACK | (GREEN << 3) | BRIGHT | FLASH) == 0xE0
     ;; happens to coincide with low byte in the VRAM address
 
     ld    hl, #ATTRS_BASE + 23 * 32                        ;; (23, 0) -- 0x5AE0
