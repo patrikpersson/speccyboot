@@ -60,8 +60,8 @@ def update_index_in_dir(dir):
     list = glob.glob('*.z80')
     n = len(list)
     if n == 0:
-        print("ERROR: no snapshots found in {} -- ignoring".format(dir))
-        return
+        print("(no snapshots found in {} -- ignoring)".format(dir))
+        return False
 
     list.sort()
 
@@ -86,10 +86,16 @@ def update_index_in_dir(dir):
             output.write(filename.encode(encoding='ascii',errors='replace'))
             output.write(bytes([0]))
     
-    print("updated index: {} snapshots, SpeccyBoot v{} in {}".format(n,version,dir))
+    print("updated index: {} snapshots, SpeccyBoot v{} menu.bin installed in {}".format(n,version,dir))
+    return True
 
 # ----------------------------------------------------------------------------
 
+any_found = False
 for tftp_dir in TFTP_DIRS:
     if os.path.isdir(tftp_dir):
-        update_index_in_dir(os.path.join(tftp_dir, 'speccyboot'))
+        any_found |= update_index_in_dir(tftp_dir)
+
+if not any_found:
+    print("ERROR: no snapshots found in any directory!")
+    sys.exit(1)

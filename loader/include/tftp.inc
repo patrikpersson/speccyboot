@@ -50,7 +50,7 @@ TFTP_OFFSET_OF_OPCODE     = 0
 TFTP_OFFSET_OF_BLOCKNO    = 2
 TFTP_OFFSET_OF_ERROR_MSG  = 4
 
-TFTP_SIZE_OF_RRQ_PREFIX   = 13
+TFTP_SIZE_OF_RRQ_PREFIX   = 2
 TFTP_SIZE_OF_RRQ_OPTION   = 6
 
 ;; ============================================================================
@@ -455,7 +455,6 @@ error_packet_end:
 
 rrq_prefix_start:
     .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
-    .ascii "speccyboot/"       ;; no NUL necessary here
 rrq_prefix_end:
 
     ;; -----------------------------------------------------------------------
