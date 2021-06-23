@@ -258,7 +258,7 @@ progress_128:
     ld    a, (hl)
     dec   hl
     cp    a, (hl)
-    jp    z, context_switch             ;; in stage 1 loader (ROM)
+    jp    z, context_switch
 
 no_progress_bar:
 
@@ -271,7 +271,7 @@ no_progress_bar:
     ld    a, d
 
     cp    a, #>RUNTIME_DATA
-    jr    z, start_storing_runtime_data
+    jp    z, start_storing_runtime_data
 
     cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
     ret   nz
@@ -281,14 +281,18 @@ no_progress_bar:
     ;; done (R==0 after reset)
     ;; ------------------------------------------------------------------------
 
-breakpoint::
-
     ld    a, r
     ret   m          ;; return if R bit 7 is 1
     cpl              ;; R bit 7 was 0, is now 1
     ld    r, a
 
-    call  prepare_context
+    ;; ------------------------------------------------------------------------
+    ;; use alternate BC, DE, HL for scratch here
+    ;; ------------------------------------------------------------------------
+
+    exx
+    prepare_context_switch
+    exx
 
 start_storing_runtime_data:
     ld    d, #>EVACUATION_TEMP_BUFFER
