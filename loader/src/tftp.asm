@@ -55,10 +55,7 @@ _chunk_bytes_remaining:
 
 tftp_state_menu_loader:
 
-    ld  b, h
-    ld  c, l
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ld  de, (_tftp_write_pos)
     ldir
     ld  (_tftp_write_pos), de
 
@@ -68,12 +65,8 @@ tftp_state_menu_loader:
     ;; one, never larger; so we are done if A != 2 here)
     ;; ------------------------------------------------------------------------
 
-    ;; set number of bytes remaining to zero
-
-    ld  hl, #0   ;; TODO: this solves itself if we switch allocation for BC and HL
-
     cp  a, #2
-    ret z
+    ret z           ;; BC==0 here, indicating that we are done
 
     ;; ========================================================================
     ;; This was the last packet of the stage 2 binary:

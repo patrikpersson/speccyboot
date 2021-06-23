@@ -302,14 +302,14 @@ start_storing_runtime_data:
 ;; ############################################################################
 ;; load_byte_from_chunk
 ;;
-;; like load_byte_from_packet, but also decreases BC
+;; like load_byte_from_packet, but also decreases HL
 ;; ############################################################################
 
     .area _CODE
 
 load_byte_from_chunk:
 
-    dec   bc
+    dec   hl
 
     ;; FALL THROUGH to load_byte_from_packet
 
@@ -323,7 +323,7 @@ load_byte_from_packet:
     ld   a, (iy)
     inc  iy
 
-    dec  hl
+    dec  bc
 
     ret
 
@@ -341,7 +341,7 @@ load_byte_from_packet:
 
 s_header:
 
-    push hl
+    push bc
 
     ;; ------------------------------------------------------------------------
     ;; keep .z80 header until prepare_context is called
@@ -371,16 +371,8 @@ s_header:
     jr   z, s_header_ext_hdr               ;; extended header?
 
     ;; ------------------------------------------------------------------------
-    ;; Not an extended header: expect a single 48k chunk. For a compressed
-    ;; chunk this value will be overkill (the compressed chunk is actually
-    ;; shorter). This is OK, since the context switch will kick in when the
-    ;; chunk is fully loaded anyway.
-    ;; ------------------------------------------------------------------------
-
-    ld   b, #0xC0   ;; BC == 0 from LDIR above, so BC == 0xC000 now
-
-    ;; ------------------------------------------------------------------------
-    ;; decide next state, depending on whether COMPRESSED flag is set
+    ;; Assume a single 48k chunk.
+    ;; Decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
@@ -425,14 +417,23 @@ s_header_not_128k:
 s_header_set_state:
 
     ;; ------------------------------------------------------------------------
-    ;; adjust IY and HL for header size
+    ;; adjust IY and BC for header size
     ;; ------------------------------------------------------------------------
 
-    pop  hl
+    pop  hl            ;; was pushed as BC above
 
-    add  iy, de         ;; clears C flag, as DE is less than IY here
-    sbc  hl, de         ;; C flag is zero here
+    add  iy, de        ;; clears C flag (as IY > DE)
+    sbc  hl, de        ;; so no carry here
 
+    ld   b, h
+    ld   c, l
+
+    ;; ------------------------------------------------------------------------
+    ;; Set up register defaults for a single 48k chunk. For a version 2+
+    ;; snapshot these values will be superseded in the chunk header.
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0xC000
     ld   de, #0x4000
 
     ret
@@ -449,7 +450,7 @@ s_header_set_state:
 s_chunk_header:
 
     call load_byte_from_packet
-    ld   c, a
+    ld   l, a
 
     ld   ix, #s_chunk_header2
 
@@ -467,7 +468,7 @@ s_chunk_header:
 s_chunk_header2:
 
     call load_byte_from_packet
-    ld   b, a
+    ld   h, a
 
     ld   ix, #s_chunk_header3
 
@@ -555,15 +556,15 @@ s_chunk_header3_set_page:
     ;; -----------------------------------------------------------------------
     ;; https://worldofspectrum.org/faq/reference/z80format.htm :
     ;;
-    ;; If length=0xffff, data is 16384 bytes long and not compressed
+    ;; If chunk length=0xffff, data is 16384 bytes long and not compressed
     ;; -----------------------------------------------------------------------
 
-    ld   a, b
-    and  a, c
+    ld   a, h
+    and  a, l
     inc  a
     jr   nz, set_state_compressed
 
-    ld   bc, #0x4000
+    ld   hl, #0x4000
 
     ;; NOTE: A is zero here (from the INC A) above, as expected
     ;; by set_state_uncompressed
@@ -660,16 +661,16 @@ _repcount:
   ;; reached end of current chunk?
   ;; -------------------------------------------------------------------------
 
-  ld   a, b
-  or   a, c
+  ld   a, h
+  or   a, l
   jr   z, chunk_done
 
   ;; -------------------------------------------------------------------------
   ;; reached end of loaded TFTP data?
   ;; -------------------------------------------------------------------------
 
-  ld   a, h
-  or   a, l
+  ld   a, b
+  or   a, c
   ret  z
 
   call load_byte_from_chunk

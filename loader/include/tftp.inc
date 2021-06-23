@@ -314,13 +314,17 @@ ack_packet_end:
     ld  b, a                                         ;; TFTP length, high byte
 
     ;; ------------------------------------------------------------------------
-    ;; Set up register for TFTP state handlers
+    ;; Set up registers for TFTP state handlers:
+    ;;
+    ;; BC: number of bytes left to read from TFTP packet (set above)
+    ;; DE: write pointer (destination somewhere in RAM)
+    ;; HL: number of bytes remaining in current chunk
+    ;; IX: current state
+    ;; IY: read pointer (TFTP packet data)
+    ;; I:  number of ED ED repetitions remaining
     ;; ------------------------------------------------------------------------
 
-    ld   h, b
-    ld   l, c
-
-    ld   bc, (_chunk_bytes_remaining)
+    ld   hl, (_chunk_bytes_remaining)
     ld   de, (_tftp_write_pos)
 
     ld   ix, (tftp_state)
@@ -333,11 +337,11 @@ ack_packet_end:
 tftp_state_loop:
 
     ;; ------------------------------------------------------------------------
-    ;; if HL is zero, we are done
+    ;; if BC is zero, we are done (no more data in packet)
     ;; ------------------------------------------------------------------------
 
-    ld    a, h
-    or    a, l
+    ld    a, b
+    or    a, c
     ret   z
 
     ;; ------------------------------------------------------------------------
@@ -348,7 +352,7 @@ tftp_state_loop:
     call  jp_ix_instr
 
     ld    (tftp_state), ix
-    ld    (_chunk_bytes_remaining), bc
+    ld    (_chunk_bytes_remaining), hl
     ld    (_tftp_write_pos), de
 
     jr    tftp_state_loop
