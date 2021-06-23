@@ -74,18 +74,6 @@ TFTP_DATA_MAXSIZE    = 512
 TFTP_HEADER_SIZE     = 4
 
 ;; ----------------------------------------------------------------------------
-;; VRAM position for TFTP error display
-;; ----------------------------------------------------------------------------
-
-TFTP_VRAM_ERROR_POS    = 0x4800                 ;; (8, 0)
-
-;; ----------------------------------------------------------------------------
-;; VRAM position for loader version (one lower-case letter)
-;; ----------------------------------------------------------------------------
-
-VRAM_LOADER_VERSION = BITMAP_BASE + 0x0100 + 13          ;; (0, 13)
-
-;; ----------------------------------------------------------------------------
 ;; packet counter for TFTP
 ;; ----------------------------------------------------------------------------
 
@@ -167,18 +155,9 @@ VRAM_LOADER_VERSION = BITMAP_BASE + 0x0100 + 13          ;; (0, 13)
     jr   nz, tftp_receive_bad_reply
     ld   a, (hl)
     cp   a, #TFTP_OPCODE_DATA
-    jr   z, tftp_receive_got_data
-
-    ;; the only conceivable message type is now TFTP_OPCODE_ERROR
-
-    ld   l, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_ERROR_MSG
-    ld   de, #TFTP_VRAM_ERROR_POS
-    call print_str
-
 tftp_receive_bad_reply:
-
     ld   a, #FATAL_FILE_NOT_FOUND
-    jp   fail
+    jp   nz, fail
 
 tftp_receive_got_data:
 

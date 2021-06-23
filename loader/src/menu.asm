@@ -92,6 +92,48 @@ get_filename_pointer:
     pop   bc
     ret
 
+;; ############################################################################
+;; print_str
+;;
+;; Prints a string.
+;;
+;; If the string resides in snapshot_array (specifically, if H matches that
+;; page), then additional checks are made:
+;;  - the string is truncated to the end of the line, and padded with spaces.
+;;  - the string is terminated by either NUL or '.' (otherwise only NUL)
+;;
+;; HL points to the string to print
+;; DE points to VRAM location
+;; destroys F and HL; preserves BC.
+;; DE will point to the NUL char, or, if HL is a snapshot_array entry,
+;; the first cell of next line.
+;; ############################################################################
+
+    .area _NONRESIDENT
+
+print_str:
+
+    ld   a, (hl)
+    cp   a, #'.'
+    jr   nz, no_padding
+    ld   a, #' '
+    .db  JR_NZ          ;; Z is set here, so this will skip the INC HL below
+
+no_padding:
+
+    inc  hl
+
+    or   a, a
+    ret  z
+
+    call print_char
+
+    ld   a, e
+    and  a, #0x1f
+    jr   nz, print_str
+
+    ret
+
 ;; ============================================================================
 
     .area _STAGE2_ENTRY
@@ -119,12 +161,13 @@ run_menu:
     ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
 
     ;; ------------------------------------------------------------------------
-    ;; display menu version marker
+    ;; print 'SpeccyBoot vxy' at (0,0)
     ;; ------------------------------------------------------------------------
 
-    ld   de, #VRAM_LOADER_VERSION        ;; position for stage 2 version marker
-    ld   a, #VERSION_LOADER + 'a'
-    call print_char
+    ld    hl, #title_str                ;; 'SpeccyBoot xvy'
+    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
+
+    call  print_str
 
     ;; ------------------------------------------------------------------------
     ;; prepare for receiving .z80 snapshot data
@@ -341,6 +384,16 @@ menu_hit_enter:
     ;; ------------------------------------------------------------------------
 
     jp   main_loop
+
+
+    .area _NONRESIDENT
+
+title_str:
+    .ascii "SpeccyBoot v"
+    .db   VERSION_STAGE1 + '0'
+    .db   VERSION_LOADER + 'a'
+    .db   0
+
 
 ;; ############################################################################
 ;; subroutine: erase highlight of current line

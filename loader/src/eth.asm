@@ -117,15 +117,6 @@ END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot x.y' at (0,0)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #title_str                ;; 'SpeccyBoot x.y'
-    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
-
-    call  print_str
-
-    ;; ------------------------------------------------------------------------
     ;; flashing cursor (bottom left): black ink, green paper, bright, flash
     ;; ------------------------------------------------------------------------
 
@@ -308,11 +299,6 @@ main_packet_done:
     rst   enc28j60_write_register16
 
     jr    jr_main_loop
-
-title_str:
-    .ascii "SpeccyBoot v"
-    .db   VERSION_STAGE1 + '0'
-    .db   0
 
 
 ;; ############################################################################

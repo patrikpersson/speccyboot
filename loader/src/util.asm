@@ -73,41 +73,6 @@ a_div_b_loop:
 
 
 ;; ############################################################################
-;; print_str
-;; ############################################################################
-
-    .area _CODE
-
-print_str:
-
-    ld   a, h
-    cp   a, #>snapshot_array
-    ld   a, (hl)
-    jr   c, not_a_menu_entry
-
-    ld   a, e
-    and  a, #0x1f
-    ret  z
-
-    ld   a, (hl)
-    cp   a, #'.'
-    jr   nz, not_a_menu_entry
-    ld   a, #' '
-    .db  JR_NZ          ;; Z is set here, so this will skip the INC HL below
-
-not_a_menu_entry:
-
-    inc  hl
-
-    or   a, a
-    ret  z
-
-    call print_char
-    jr   print_str
-
-
-
-;; ############################################################################
 ;; memory_compare
 ;; memory_compare_4_bytes
 ;; ############################################################################

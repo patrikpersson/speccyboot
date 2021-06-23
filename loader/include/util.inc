@@ -164,23 +164,3 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 ;; ----------------------------------------------------------------------------
 
     .globl print_char
-
-
-;; ----------------------------------------------------------------------------
-;; print_str
-;;
-;; Prints a string.
-;;
-;; If the string resides in snapshot_array (specifically, if H matches that
-;; page), then additional checks are made:
-;;  - the string is truncated to the end of the line, and padded with spaces.
-;;  - the string is terminated by either NUL or '.' (otherwise only NUL)
-;;
-;; HL points to the string to print
-;; DE points to VRAM location
-;; destroys F and HL; preserves BC.
-;; DE will point to the NUL char, or, if HL is a snapshot_array entry,
-;; the first cell of next line.
-;; ----------------------------------------------------------------------------
-
-    .globl print_str
