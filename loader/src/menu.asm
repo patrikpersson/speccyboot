@@ -362,14 +362,6 @@ menu_hit_enter:
     ld    (hl), #WHITE + (WHITE << 3) + BRIGHT
     ldir
 
-    ld    l, #14           ;; (16, 14)
-    xor   a, a
-    call  show_attr_digit
-
-    ld    l, #25           ;; (16, 25)
-    ld    de, #_font_data + 8 * ('K'-' ') + 1 ;; address of 'K' bits
-    call  show_attr_char_address_known
-
     ;; ------------------------------------------------------------------------
     ;; send a TFTP request for the snapshot
     ;; ------------------------------------------------------------------------

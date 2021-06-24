@@ -32,5 +32,3 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
     .globl s_header
-    .globl show_attr_digit
-    .globl show_attr_char_address_known

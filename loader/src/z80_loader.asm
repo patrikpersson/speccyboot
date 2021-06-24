@@ -47,7 +47,6 @@
 ;; ============================================================================
 
 Z80_ESCAPE         = 0xED     ;; escape byte in compressed chunks
-ATTR_DIGIT_ROW     = 0x5A00   ;; attribute VRAM address for kilobyte counter
 
 PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
@@ -91,58 +90,6 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 ;;
 ;; ----------------------------------------------------------------------------
 
-;; ############################################################################
-;; show_attr_digit
-;;
-;; subroutine: show huge digit in attributes, on row ATTR_DIGIT_ROW and down
-;; L: column (0..31)
-;; A: digit (0..9), bits 4-7 are ignored
-;;
-;; Destroys AF, B, DE, HL. Returns with L increased by 7.
-;; ############################################################################
-
-    .area _CODE
-
-show_attr_digit:
-
-    add   a, a
-    add   a, a
-    add   a, a
-
-show_attr_digit_already_shifted:  ;; special target for below
-
-    and   a, #0x78                ;; binary 01111000
-    add   a, #<digit_font_data    ;; all digits in a single 256b page
-    ld    d, #>digit_font_data
-    ld    e, a
-
-    ld    h, #>ATTR_DIGIT_ROW
-
-show_attr_char_address_known:
-
-    ld    a, (de)
-    inc   de
-    add   a, a
-    ld    b, #6
-show_attr_char_pixel_loop:
-    add   a, a
-    jr    c, show_attr_char_pixel_set
-    ld    (hl), #WHITE + (WHITE << 3)
-    .db   JP_C        ;; C always clear here => ignore the following two bytes
-show_attr_char_pixel_set:
-    ld    (hl), #BLACK + (BLACK << 3)
-    inc   hl
-    djnz  show_attr_char_pixel_loop
-
-    ld    a, #(ROW_LENGTH-6)
-    add   a, l
-    ld    l, a
-
-    cp    a, #ROW_LENGTH * 6
-    jr    c, show_attr_char_address_known
-
-    ret
-
 
 ;; ############################################################################
 ;; update_progress
@@ -185,12 +132,11 @@ update_progress:
     ;; means it just turned from 99 to 100.
     ;; Print the digit '1' for hundreds.
 
-    ld    l, a       ;; L := 0
-    ld    a, #1      ;; can't use INC A, since that changes Z flag
+    ld    l, #10
+    rla                        ;; make A := 1 without affecting Z
     call  z, show_attr_digit
     ld    a, c
 
-not_100k:
     pop   de             ;; recall flags, old F is now in E
     bit   #4, e          ;; was H flag set? Then the tens have increased
     jr    z, not_10k
@@ -198,15 +144,14 @@ not_100k:
     ;; Print tens (_x_)
 
     rra                  ;; shift once; routine below shifts three more times
-    ld    l, #7
+    ld    l, #17
     call  show_attr_digit_already_shifted
 
 not_10k:
     ;; Print single-number digit (__x)
 
     ld    a, c
-    ld    l, #14
-    call  show_attr_digit
+    call  show_attr_digit_right
 
     ;; ************************************************************************
     ;; update progress bar

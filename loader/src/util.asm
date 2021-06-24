@@ -51,9 +51,9 @@ fail_timeout:
 
 fail:
 
-  di
-  out (ULA_PORT), a
-  halt
+    di
+    out (ULA_PORT), a
+    halt
 
 ;; ############################################################################
 ;; a_div_b
@@ -89,4 +89,61 @@ memory_compare:
     inc  de
     inc  hl
     djnz memory_compare
+    ret
+
+
+;; ############################################################################
+;; show_attr_digit_right
+;; ############################################################################
+
+   .area _CODE
+
+show_attr_digit_right:
+
+    ld    l, #24
+
+   ;; FALL THROUGH to show_attr_digit
+
+
+;; ############################################################################
+;; show_attr_digit
+;; ############################################################################
+
+show_attr_digit:
+
+    add   a, a
+    add   a, a
+    add   a, a
+
+show_attr_digit_already_shifted:  ;; special target for below
+
+    and   a, #0x78                ;; binary 01111000
+    add   a, #<digit_font_data    ;; all digits in a single 256b page
+    ld    d, #>digit_font_data
+    ld    e, a
+
+    ld    h, #>ATTR_DIGIT_ROW
+
+show_attr_digit_row_loop:
+    ld    a, (de)
+    inc   de
+    ld    b, #7
+
+show_attr_char_pixel_loop:
+    add   a, a
+    jr    c, show_attr_char_pixel_set
+    ld    (hl), #WHITE + (WHITE << 3)
+    .db   JP_C        ;; C always clear here => ignore the following two bytes
+show_attr_char_pixel_set:
+    ld    (hl), #BLACK + (BLACK << 3)
+    inc   hl
+    djnz  show_attr_char_pixel_loop
+
+    ld    a, #(ROW_LENGTH-7)
+    add   a, l
+    ld    l, a
+
+    cp    a, #ROW_LENGTH * 6
+    jr    c, show_attr_digit_row_loop
+
     ret

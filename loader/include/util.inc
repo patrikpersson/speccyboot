@@ -100,6 +100,12 @@ ATTRS_BASE  = 0x5800
 ROW_LENGTH  = 32
 
 ;; ----------------------------------------------------------------------------
+;; attribute VRAM address for kilobyte counter
+;; ----------------------------------------------------------------------------
+
+ATTR_DIGIT_ROW = 0x5A00
+
+;; ----------------------------------------------------------------------------
 ;; codes for fatal_error() displayed as border colours
 ;; ----------------------------------------------------------------------------
 
@@ -164,3 +170,33 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 ;; ----------------------------------------------------------------------------
 
     .globl print_char
+
+;; ----------------------------------------------------------------------------
+;; show_attr_digit
+;;
+;; show huge digit in attributes, on row ATTR_DIGIT_ROW and down
+;;
+;; L: column (0..31)
+;; A: digit (0..9), bits 4-7 are ignored
+;;
+;; Destroys AF, B, DE, HL. Returns with L increased by 7.
+;; ----------------------------------------------------------------------------
+
+    .globl show_attr_digit
+
+;; ----------------------------------------------------------------------------
+;; alternate entrypoint for show_attr_digit:
+;;
+;; A: digit (0..9) shifted three bits left, in bits 3..6
+;; L: as in show_attr_digit
+;; ----------------------------------------------------------------------------
+
+    .globl show_attr_digit_already_shifted
+
+;; ----------------------------------------------------------------------------
+;; alternate entrypoint for show_attr_digit:
+;;
+;; L is set to the rightmost position.
+;; ----------------------------------------------------------------------------
+
+    .globl show_attr_digit_right
