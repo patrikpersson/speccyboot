@@ -110,9 +110,6 @@ enc28j60_read_memory:
     ;;                    <=> 42944 bits/second
 
 word_loop:
-    ld   a, d                      ;; 4
-    or   e                         ;; 4
-    jr   z, word_loop_end_even     ;; 10
     dec  de                        ;; 6
 
     call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
@@ -133,9 +130,9 @@ word_loop:
     ex    af, af'                  ;; 4
     exx                            ;; 4    to primary
 
-    jr    word_loop                ;; 12
-
-word_loop_end_even:
+    ld   a, d                      ;; 4
+    or   e                         ;; 4
+    jr   nz, word_loop             ;; 12
 
     exx                            ;; to secondary
     ex    af, af'
