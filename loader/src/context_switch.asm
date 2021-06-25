@@ -148,6 +148,15 @@ context_switch_im_set:
     out  (ULA_PORT), a
 
     ;; ------------------------------------------------------------------------
+    ;; initialize memory transfer from ENC28J60:
+    ;;
+    ;; write RBM opcode using RST here, while the stack pointer is still valid
+    ;; ------------------------------------------------------------------------
+
+    ld    c, #OPCODE_RBM
+    rst   spi_write_byte
+
+    ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
     ;; so we can avoid using VRAM for them:
     ;; - DE
@@ -187,14 +196,9 @@ context_switch_im_set:
     ld    i, a
 
     ;; ========================================================================
-    ;; restore application data temporarily stored in ENC28J60 RAM
-    ;; (while not using the stack)
+    ;; Restore application data temporarily stored in ENC28J60 RAM
+    ;; (while not using the stack). RBM opcode already written above.
     ;; ========================================================================
-
-    ld     bc, #0x0800 + OPCODE_RBM        ;; 8 bits, opcode RBM
-context_switch_restore_rbm_loop:
-    spi_write_bit_from_c                   ;; avoid using stack
-    djnz  context_switch_restore_rbm_loop
 
     ;; ------------------------------------------------------------------------
     ;; read RUNTIME_DATA_LENGTH bytes from current ERDPT to RUNTIME_DATA
