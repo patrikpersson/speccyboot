@@ -545,6 +545,8 @@ arp_receive:
 
     ;; first check everything except OPER
 
+    ;; HL is set to _rx_frame and preserved by enc28j60_read_memory_to_rxframe
+
     ld   de, #arp_header_template_start
     ld   b, #(arp_header_template_end - arp_header_template_start - 1)
     call memory_compare

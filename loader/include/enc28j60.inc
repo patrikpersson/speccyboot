@@ -270,7 +270,7 @@ enc28j60_write8plus8 = 0x18
 ;; HL = destination address (buffer to read data into)
 ;; DE = number of bytes to read
 ;;
-;; Saves HL. Destroys other registers, including alternate ones, except IX/IY.
+;; HL is preserved. Destroys AF, BC, DE, AF', BC', and HL'.
 ;; BC == 0 on exit.
 ;; ----------------------------------------------------------------------------
 

@@ -289,9 +289,11 @@ ip_receive:
     ;; Load UDP payload
     ;; ------------------------------------------------------------
 
-    pop  af    ;; A now holds IP header size, carry == 0
+    pop  af          ;; A now holds IP header size, carry == 0
 
-    ld   b, #0
+    ;; B is zero here from enc28j60_read_memory_to_rxframe,
+    ;; memory_compare_4_bytes, or enc28j60_read_memory
+
     ld   c, a        ;; BC now holds IP header size
 
     ;; compute T-N, where

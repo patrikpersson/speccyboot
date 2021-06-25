@@ -59,10 +59,7 @@ enc28j60_read_memory_to_rxframe:
 
 enc28j60_read_memory:
 
-    push  hl         ;; preserve HL
-
-    ld    c, #OPCODE_RBM
-    rst   spi_write_byte
+    push   hl                      ;; preserve HL
 
     ;;
     ;; register allocation:
@@ -87,9 +84,12 @@ enc28j60_read_memory:
     ld    hl, (_ip_checksum)
     exx                        ;; to primary bank
 
-    and   a, a                 ;; reset initial C flag
+    ld    c, #OPCODE_RBM
+    rst   spi_write_byte
+
+    ;; spi_write_byte clears carry flag, keep it that way
     ex    af, af'              ;; to primary AF
- 
+
 word_loop:
 
     call read_byte                 ;; 17 + 7 + 448 + 112 + 10
@@ -134,12 +134,16 @@ ethertype_arp:
     adc   hl, bc
 
 final:
-    jr    nc, no_final_carry
-    inc   hl
-no_final_carry:
+
+    ;; If we didn't ensure B == 0 on return, this could be done as
+    ;; JR NC, ... ; INC HL  saving one byte
+
+    ld    bc, #0
+    adc   hl, bc
+
     ld    (_ip_checksum), hl
 
-    pop   hl
+    pop   hl                       ;; bring back original HL
 
     jr    do_end_transaction
 
