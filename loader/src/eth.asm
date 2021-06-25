@@ -159,20 +159,10 @@ main_spin_loop:
     jr    nz, main_packet           ;; NZ means a packet has been received
 
     ;; ------------------------------------------------------------------------
-    ;; check for time-out
-    ;; ------------------------------------------------------------------------
-
-    ld    a, (_timer_tick_count + 1)       ;; high byte
-    or    a, a
-    jr    z, main_spin_loop                ;; no time-out -- keep spinning
-
-    ;; ------------------------------------------------------------------------
     ;; time-out detected: first, reset timer
     ;; ------------------------------------------------------------------------
 
-    xor   a, a      ;; better than ld hl, #0, as we can use A==0 below
-    ld    h, a
-    ld    l, a
+    ld    hl, #0
     ld    (_timer_tick_count), hl
 
     ;; ------------------------------------------------------------------------
@@ -183,8 +173,8 @@ main_spin_loop:
 
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
-    or    a, h                            ;; assuming A==0
-
+    ld    a, h
+    or    a, a
     call  nz, perform_transmission
 
 jr_main_loop:
