@@ -38,9 +38,17 @@
 
 ;; ############################################################################
 ;; fail
+;; fail_version_mismatch
 ;; ############################################################################
 
     .area _CODE
+
+fail_version_mismatch:
+    ld  a, #VERSION_STAGE1
+    call show_attr_digit_right
+    ld  a, #FATAL_VERSION_MISMATCH
+
+    ;; FALL THROUGH to fail
 
 fail:
 

@@ -84,7 +84,8 @@ tftp_state_menu_loader:
     inc hl
     ld  a, (hl)
     cp  a, #VERSION_MAGIC
-    jr  nz, version_mismatch
+version_mismatch:
+    jp  nz, fail_version_mismatch
 
     ;; ------------------------------------------------------------------------
     ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
@@ -93,13 +94,6 @@ tftp_state_menu_loader:
     ;; ------------------------------------------------------------------------
 
     jp  (hl)
-
-version_mismatch:
-    ld  a, #VERSION_STAGE1
-    call show_attr_digit_right
-    ld  a, #FATAL_VERSION_MISMATCH
-    jp  fail
-
 
 tftp_default_file:
     .ascii 'menu.bin'

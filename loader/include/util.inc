@@ -142,6 +142,12 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 
     .globl fail
 
+;; ----------------------------------------------------------------------------
+;; Alternate entrypoint for fail. Displays firmware version on screen and
+;; fails with error FATAL_VERSION_MISMATCH.
+;; ----------------------------------------------------------------------------
+
+    .globl fail_version_mismatch
 
 ;; ----------------------------------------------------------------------------
 ;; Divides A by B. Returns result in C and remainder in A.
