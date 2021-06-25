@@ -297,6 +297,13 @@ eth_init:
     ld    hl, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
     call  poll_register
 
+    ;; ------------------------------------------------------------------------
+    ;; ensure _next_frame gets a sensible value before any frame is loaded
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #ENC28J60_RXBUF_START
+    ld    (_next_frame), hl
+
     ;; ========================================================================
     ;; set up initial register values for ENC28J60
     ;; ========================================================================
@@ -307,7 +314,7 @@ eth_init_registers_loop:
 
     ld    a, (hl)  ;; register descriptor, 8 bits
     cp    a, #END_OF_TABLE
-    jr    z, eth_init_registers_done
+    ret   z
 
     inc   hl
     ld    d, a
@@ -346,12 +353,6 @@ eth_init_registers_loop:
     exx
 
     jr    eth_init_registers_loop
-
-eth_init_registers_done:
-
-    ld    hl, #ENC28J60_RXBUF_START
-    ld    (_next_frame), hl
-    ret
 
     ;; ------------------------------------------------------------------------
     ;; ETH register defaults for initialization
