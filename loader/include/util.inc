@@ -110,7 +110,6 @@ ATTR_DIGIT_ROW = 0x5A00
 ;; ----------------------------------------------------------------------------
 
 FATAL_VERSION_MISMATCH    = BLUE
-FATAL_NO_RESPONSE         = RED
 FATAL_INVALID_BOOT_SERVER = MAGENTA
 FATAL_INTERNAL_ERROR      = CYAN
 FATAL_FILE_NOT_FOUND      = YELLOW
@@ -142,13 +141,6 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 ;; ----------------------------------------------------------------------------
 
     .globl fail
-
-
-;; ----------------------------------------------------------------------------
-;; Alternate entrypoint for fail: sets A to FATAL_NO_RESPONSE.
-;; ----------------------------------------------------------------------------
-
-    .globl fail_timeout
 
 
 ;; ----------------------------------------------------------------------------

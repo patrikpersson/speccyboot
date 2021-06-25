@@ -42,11 +42,11 @@
 ;;
 ;; 0xXXXX+1 ... 0xYYYY  TX buffer 1: BOOTP/TFTP frames. Re-sent on time-out.
 ;;
-;; 0xYYYY+1 ... 0x13FF  TX buffer 2: ARP frames, where no reply is expected.
-;;                                   Never re-sent.
+;; 0xYYYY+1 ... 0x13FF  TX buffer 2: ARP frames, no reply expected,
+;;                                   never re-sent.
 ;;
 ;; 0x1400   ... 0x1FFF  Reserved for temporary storage during snapshot
-;;                      loading (see context_switch.c)
+;;                      loading (see context_switch.asm)
 
 ENC28J60_RXBUF_START    = 0x0000
 ENC28J60_EVACUATED_DATA = 0x1400
@@ -71,9 +71,9 @@ ETH_MAX_ARP_TX_PAYLOAD = 28
 ;;   8   (UDP header)
 ;; 516   (TFTP: 4 bytes header, 512 bytes data)
 ;; ---
-;; 644 bytes
+;; 574 bytes
 
-ETH_MAX_RX_FRAME_SIZE = ETH_HEADER_SIZE + 584
+ETH_MAX_RX_FRAME_SIZE = ETH_HEADER_SIZE + 574
 
 ;; Transmission buffer sizes:
 ;; Ethernet header, payload, and 8 bytes of administrative info stored
@@ -98,9 +98,7 @@ ETH_SIZEOF_ETHERTYPE = 2
 ;;                (BOOTP, TFTP).
 ;;
 ;; OPTIONAL       Not automatically re-transmitted. The timer is not affected
-;;                in any way. The frame may be silently dropped if the
-;;                on-chip storage is in use for other stuff -- see
-;;                eth_store_data().
+;;                in any way.
 ;;
 ;;                This means frames where we do NOT care about an answer
 ;;                (ARP replies).
@@ -127,12 +125,6 @@ ETH_HEADER_SIZE = 14
 ;; timeout handling
 ;; ----------------------------------------------------------------------------
 
-;; Timeouts for packet re-transmission, high byte only
-
-RETRANSMISSION_TIMEOUT_MIN = 0x01
-RETRANSMISSION_TIMEOUT_MAX = 0x08
-
-    .globl _retransmission_timeout
     .globl _end_of_critical_frame
 
     .globl ethertype_ip

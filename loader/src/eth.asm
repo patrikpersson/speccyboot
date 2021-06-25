@@ -70,17 +70,6 @@ eth_adm_header_ethertype:
     .ds   2
 
 ;; ============================================================================
-;; RE-TRANSMISSION HANDLING
-;;
-;; When ack_timer >= retransmission_timeout, and no acknowledgment received:
-;;   retransmit
-;;   double retransmission_timeout, up to 20.48s
-;; When acknowledgment received:
-;;   reset retransmission_timeout to 2.56s
-;; ============================================================================
-
-_retransmission_timeout:
-    .ds 1                   ;; high byte of time-out
 
 _end_of_critical_frame:
     .ds 2                   ;; written to ETXND for re-transmission
@@ -173,11 +162,9 @@ main_spin_loop:
     ;; check for time-out
     ;; ------------------------------------------------------------------------
 
-    ld    a, (_retransmission_timeout)
-    ld    b, a                             ;; remember for later
     ld    a, (_timer_tick_count + 1)       ;; high byte
-    cp    a, b
-    jr    c, main_spin_loop         ;; carry means no time-out -- keep spinning
+    or    a, a
+    jr    z, main_spin_loop                ;; no time-out -- keep spinning
 
     ;; ------------------------------------------------------------------------
     ;; time-out detected: first, reset timer
@@ -194,31 +181,11 @@ main_spin_loop:
     ;; as the TX buffers are placed at the end of the ENC28J60 address space.
     ;; ------------------------------------------------------------------------
 
-    ld    de, (_end_of_critical_frame)    ;; needed for later
-    or    a, d                   ;; assuming A==0
-    jr    z, main_spin_loop      ;; nothing to retransmit -- keep spinning
+    ld    hl, (_end_of_critical_frame)
+    ld    de, #ENC28J60_TXBUF1_START
+    or    a, h                            ;; assuming A==0
 
-    ;; ------------------------------------------------------------------------
-    ;; If _retransmission_timeout >= RETRANSMISSION_TIMEOUT_MAX, give up.
-    ;; ------------------------------------------------------------------------
-
-    ld    a, b
-    cp    a, #RETRANSMISSION_TIMEOUT_MAX
-    jp    nc, fail_timeout
-
-    ;; ------------------------------------------------------------------------
-    ;; double _retransmission_timeout
-    ;; ------------------------------------------------------------------------
-
-    add   a, a          ;; double timeout
-    ld    (_retransmission_timeout), a
-
-    ;; ------------------------------------------------------------------------
-    ;; re-send last critical (BOOTP/TFTP) frame
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #ENC28J60_TXBUF1_START
-    call  perform_transmission
+    call  nz, perform_transmission
 
 jr_main_loop:
 
@@ -680,9 +647,7 @@ eth_send:
     jr    nz, perform_transmission
 
     ;; ------------------------------------------------------------------------
-    ;; this is a critical frame:
-    ;;   update _end_of_critical_frame,
-    ;;   and reset retransmission timer
+    ;; this is a critical frame: update _end_of_critical_frame
     ;; ------------------------------------------------------------------------
 
     ld    (_end_of_critical_frame), hl
@@ -690,8 +655,6 @@ eth_send:
     ;; skip ld bc, 0 here: BC is 0x0E (ETH_HEADER_SIZE), which is close enough
 
     ld    (_timer_tick_count), bc
-    ld    a, #RETRANSMISSION_TIMEOUT_MIN
-    ld    (_retransmission_timeout), a
 
     ;; FALL THROUGH to perform_transmission
 
