@@ -101,7 +101,7 @@ memory_compare:
 
 show_attr_digit_right:
 
-    ld    l, #24
+    ld    l, #25
 
    ;; FALL THROUGH to show_attr_digit
 

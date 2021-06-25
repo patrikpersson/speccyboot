@@ -158,6 +158,10 @@ main_spin_loop:
     or    a, a
     jr    nz, main_packet           ;; NZ means a packet has been received
 
+    ld    a, (_timer_tick_count + 1)   ;; high byte
+    dec   a                            ;; A >= 1 means time-out
+    jr    c, main_spin_loop
+
     ;; ------------------------------------------------------------------------
     ;; time-out detected: first, reset timer
     ;; ------------------------------------------------------------------------
@@ -167,14 +171,13 @@ main_spin_loop:
 
     ;; ------------------------------------------------------------------------
     ;; If _end_of_critical_frame has the special value zero, no critical
-    ;; frame currently needs retransmission. Only need to check high byte here,
-    ;; as the TX buffers are placed at the end of the ENC28J60 address space.
+    ;; frame currently needs retransmission.
     ;; ------------------------------------------------------------------------
 
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
     ld    a, h
-    or    a, a
+    or    a, l
     call  nz, perform_transmission
 
 jr_main_loop:

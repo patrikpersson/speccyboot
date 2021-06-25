@@ -352,14 +352,10 @@ menu_hit_enter:
     ;; Set up snapshot progress display.
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #0x5800      ;; clear attribute lines 0..22
+    ld    hl, #0x5800      ;; clear attribute lines 0..23
     ld    de, #0x5801
-    ld    bc, #0x2e0
+    ld    bc, #0x300
     ld    (hl), #WHITE + (WHITE << 3)
-    ldir
-
-    ld    c, #0x1f         ;; set attribute line 23 to bright
-    ld    (hl), #WHITE + (WHITE << 3) + BRIGHT
     ldir
 
     ;; ------------------------------------------------------------------------
@@ -383,7 +379,6 @@ menu_hit_enter:
 title_str:
     .ascii "SpeccyBoot v"
     .db   VERSION_STAGE1 + '0'
-    .db   VERSION_LOADER + 'a'
     .db   0
 
 

@@ -77,6 +77,8 @@ LD_IX_NN           = 0x21DD    ;; LD IX, #nn
 LD_INDIRECT_HL_N   = 0x36      ;; LD (HL), #n
 EI                 = 0xFB      ;; EI
 
+LD_IX_LOW          = 0x2EDD    ;; LD IX-low, #n  (inofficial instruction)
+
 ;; ----------------------------------------------------------------------------
 ;; Spectrum attributes & VRAM addresses
 ;; ----------------------------------------------------------------------------

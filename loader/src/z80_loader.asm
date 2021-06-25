@@ -50,7 +50,6 @@ Z80_ESCAPE         = 0xED     ;; escape byte in compressed chunks
 
 PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
-
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -90,158 +89,24 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 ;;
 ;; ----------------------------------------------------------------------------
 
+;; ============================================================================
+;; Macro to set IX (current state). This is done by assigning only IX.low,
+;; and gives a relocation error if this is not possible.
+;; In that case, simply use LD IX, #TO instead.
+;; ============================================================================
 
-;; ############################################################################
-;; update_progress
-;;
-;; If the number of bytes loaded reached an even kilobyte,
-;; increase kilobyte counter and update status display
-;; ############################################################################
+    .macro switch_state FROM TO
 
-    .area _CODE
+    .dw  LD_IX_LOW
+    .db  <(TO)
 
-update_progress:
+    ;; If TO and FROM are not in the same RAM page, one of these will yield
+    ;; an error (due to the size being negative). Normally both are zero.
 
-    ;; check if DE is an integral number of kilobytes,
-    ;; return early otherwise
+    .ds  ((> TO) - (> FROM))
+    .ds  ((> FROM) - (> TO))
 
-    ld    a, d
-    and   a, #0x03
-    or    a, e
-    ret   nz
-
-    ;; ------------------------------------------------------------------------
-    ;; use alternate BC, DE, HL for scratch here
-    ;; ------------------------------------------------------------------------
-
-    exx
-
-    ;; ========================================================================
-    ;; update the progress display
-    ;; ========================================================================
-
-    ld    hl, #_digits
-    ld    a, (hl)
-    inc   a
-    daa
-    push  af             ;; remember flags
-    ld    (hl), a
-    ld    c, a
-
-    ;; If Z is set, then the number of kilobytes became zero in BCD:
-    ;; means it just turned from 99 to 100.
-    ;; Print the digit '1' for hundreds.
-
-    ld    l, #10
-    rla                        ;; make A := 1 without affecting Z
-    call  z, show_attr_digit
-    ld    a, c
-
-    pop   de             ;; recall flags, old F is now in E
-    bit   #4, e          ;; was H flag set? Then the tens have increased
-    jr    z, not_10k
-
-    ;; Print tens (_x_)
-
-    rra                  ;; shift once; routine below shifts three more times
-    ld    l, #17
-    call  show_attr_digit_already_shifted
-
-not_10k:
-    ;; Print single-number digit (__x)
-
-    ld    a, c
-    call  show_attr_digit_right
-
-    ;; ************************************************************************
-    ;; update progress bar
-    ;; ************************************************************************
-
-    ;; kilobytes_loaded is located directly after kilobytes_expected, so
-    ;; use a single pointer
-
-    ld    hl, #kilobytes_expected
-
-    ld    a, (hl)                      ;; load kilobytes_expected
-    inc   hl                           ;; now points to kilobytes_loaded
-    inc   (hl)                         ;; increase kilobytes_loaded
-    add   a, a                         ;; sets carry if this is a 128k snapshot
-    ld    a, (hl)                      ;; kilobytes_loaded
-
-    ;; ------------------------------------------------------------------------
-    ;; Scale loaded number of kilobytes to a value 0..32.
-    ;; 48k snapshots:   * 2 / 3
-    ;; 128k snapshots:  * 1 / 4 
-    ;; ------------------------------------------------------------------------
-
-    ld    b, #4
-
-    jr    c, progress_128
-
-    add   a, a       ;; 48 snapshot: * 2 / 3
-    dec   b
-
-progress_128:
-
-    call  a_div_b
-    ld    a, c
-
-00002$:
-    or    a, a
-    jr    z, no_progress_bar
-
-    ld    bc, #PROGRESS_BAR_BASE-1
-    add   a, c
-    ld    c, a
-    ld    a, #(GREEN + (GREEN << 3))
-    ld    (bc), a
-
-    ;; ========================================================================
-    ;; if all data has been loaded, perform the context switch
-    ;; ========================================================================
-
-    ld    a, (hl)
-    dec   hl
-    cp    a, (hl)
-    jp    z, context_switch
-
-no_progress_bar:
-
-    exx
-
-    ;; ========================================================================
-    ;; handle evacuation of resident data (0x5800..0x5fff)
-    ;; ========================================================================
-
-    ld    a, d
-
-    cp    a, #>RUNTIME_DATA
-    jp    z, start_storing_runtime_data
-
-    cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
-    ret   nz
-
-    ;; ------------------------------------------------------------------------
-    ;; use register R, bit 7 to indicate whether the evacuation is already
-    ;; done (R==0 after reset)
-    ;; ------------------------------------------------------------------------
-
-    ld    a, r
-    ret   m          ;; return if R bit 7 is 1
-    cpl              ;; R bit 7 was 0, is now 1
-    ld    r, a
-
-    ;; ------------------------------------------------------------------------
-    ;; use alternate BC, DE, HL for scratch here
-    ;; ------------------------------------------------------------------------
-
-    exx
-    prepare_context_switch
-    exx
-
-start_storing_runtime_data:
-    ld    d, #>EVACUATION_TEMP_BUFFER
-    ret
+    .endm
 
 
 ;; ############################################################################
@@ -275,14 +140,10 @@ load_byte_from_packet:
 ;; ############################################################################
 ;; State HEADER (initial):
 ;;
-;; Evacuates the header from the TFTP data block. Returns the length of the
-;; header (i.e., the offset of snapshot data within the TFTP data block)
-;;
-;; This function does some header parsing; it initializes compression_method
-;; and verifies compatibility.
+;; Evacuates the header from the TFTP data block and sets up the next state.
 ;; ############################################################################
 
-    .area _CODE
+    .area _NONRESIDENT
 
 s_header:
 
@@ -357,6 +218,7 @@ s_header_not_128k:
     ;; a chunk is expected next
     ;; ------------------------------------------------------------------------
 
+    ;; switch_state  s_header  s_chunk_header
     ld   ix, #s_chunk_header
 
 s_header_set_state:
@@ -394,13 +256,14 @@ s_header_set_state:
 ;; receive first byte in chunk header: low byte of chunk length
 ;; ############################################################################
 
-    .area _CODE
+    .area _STAGE2
 
 s_chunk_header:
 
     call load_byte_from_packet
     ld   l, a
 
+    ;; switch_state  s_chunk_header  s_chunk_header2
     ld   ix, #s_chunk_header2
 
     ret
@@ -419,7 +282,8 @@ s_chunk_header2:
     call load_byte_from_packet
     ld   h, a
 
-    ld   ix, #s_chunk_header3
+    switch_state  s_chunk_header2  s_chunk_header3
+    ;; ld   ix, #s_chunk_header3
 
     ret
 
@@ -434,7 +298,7 @@ s_chunk_header2:
 ;; https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 s_chunk_header3:
 
@@ -553,6 +417,195 @@ set_state_uncompressed:
     ld    (escape_check_branch + 1), a
     ld    ix, #s_chunk_write_data
 
+    ret
+
+
+;; ############################################################################
+;; state CHUNK_COMPRESSED_ESCAPE
+;; ############################################################################
+
+    .area _CODE
+
+s_chunk_compressed_escape:
+
+    call  load_byte_from_chunk
+
+    ld    ix, #s_chunk_repcount        ;; tentative next state
+
+    cp    a, #Z80_ESCAPE
+    ret   z
+
+    ;;
+    ;; False alarm: the escape byte was followed by a non-escape byte,
+    ;;              so this is not an escape sequence
+    ;;
+
+    ex    af, af'
+
+    ld    a, #Z80_ESCAPE
+    ld    (de), a
+    inc   de
+
+    call  update_progress
+
+    ex    af, af'
+
+    ld    (de), a
+    inc   de
+
+    ld    ix, #s_chunk_write_data
+
+    ;; FALL THROUGH to update_progress
+
+
+;; ############################################################################
+;; update_progress
+;;
+;; If the number of bytes loaded reached an even kilobyte,
+;; increase kilobyte counter and update status display
+;; ############################################################################
+
+update_progress:
+
+    ;; check if DE is an integral number of kilobytes,
+    ;; return early otherwise
+
+    ld    a, d
+    and   a, #0x03
+    or    a, e
+    ret   nz
+
+    ;; ------------------------------------------------------------------------
+    ;; use alternate BC, DE, HL for scratch here
+    ;; ------------------------------------------------------------------------
+
+    exx
+
+    ;; ========================================================================
+    ;; update the progress display
+    ;; ========================================================================
+
+    ld    hl, #_digits
+    ld    a, (hl)
+    inc   a
+    daa
+    push  af             ;; remember flags
+    ld    (hl), a
+    ld    c, a
+
+    ;; If Z is set, then the number of kilobytes became zero in BCD:
+    ;; means it just turned from 99 to 100.
+    ;; Print the digit '1' for hundreds.
+
+    ld    l, #11
+    rla                        ;; make A := 1 without affecting Z
+    call  z, show_attr_digit
+    ld    a, c
+
+    pop   de             ;; recall flags, old F is now in E
+    bit   #4, e          ;; was H flag set? Then the tens have increased
+    jr    z, not_10k
+
+    ;; Print tens (_x_)
+
+    rra                  ;; shift once; routine below shifts three more times
+    ld    l, #18
+    call  show_attr_digit_already_shifted
+
+not_10k:
+    ;; Print single-number digit (__x)
+
+    ld    a, c
+    call  show_attr_digit_right
+
+    ;; ************************************************************************
+    ;; update progress bar
+    ;; ************************************************************************
+
+    ;; kilobytes_loaded is located directly after kilobytes_expected, so
+    ;; use a single pointer
+
+    ld    hl, #kilobytes_expected
+
+    ld    a, (hl)                      ;; load kilobytes_expected
+    inc   hl                           ;; now points to kilobytes_loaded
+    inc   (hl)                         ;; increase kilobytes_loaded
+    add   a, a                         ;; sets carry if this is a 128k snapshot
+    ld    a, (hl)                      ;; kilobytes_loaded
+
+    ;; ------------------------------------------------------------------------
+    ;; Scale loaded number of kilobytes to a value 0..32.
+    ;; 48k snapshots:   * 2 / 3
+    ;; 128k snapshots:  * 1 / 4 
+    ;; ------------------------------------------------------------------------
+
+    ld    b, #4
+
+    jr    c, progress_128
+
+    add   a, a       ;; 48 snapshot: * 2 / 3
+    dec   b
+
+progress_128:
+
+    call  a_div_b
+    ld    a, c
+
+00002$:
+    or    a, a
+    jr    z, no_progress_bar
+
+    ld    bc, #PROGRESS_BAR_BASE-1
+    add   a, c
+    ld    c, a
+    ld    a, #(GREEN + (GREEN << 3))
+    ld    (bc), a
+
+    ;; ========================================================================
+    ;; if all data has been loaded, perform the context switch
+    ;; ========================================================================
+
+    ld    a, (hl)
+    dec   hl
+    cp    a, (hl)
+    jp    z, context_switch
+
+no_progress_bar:
+
+    exx
+
+    ;; ========================================================================
+    ;; handle evacuation of resident data (0x5800..0x5fff)
+    ;; ========================================================================
+
+    ld    a, d
+
+    cp    a, #>RUNTIME_DATA
+    jp    z, start_storing_runtime_data
+
+    cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
+    ret   nz
+
+    ;; ------------------------------------------------------------------------
+    ;; use register R, bit 7 to indicate whether the evacuation is already
+    ;; done (R==0 after reset)
+    ;; ------------------------------------------------------------------------
+
+    ld    a, r
+    ret   m          ;; return if R bit 7 is 1
+    cpl              ;; R bit 7 was 0, is now 1
+    ld    r, a
+
+    ;; ------------------------------------------------------------------------
+    ;; use alternate BC, DE, HL for scratch here
+    ;; ------------------------------------------------------------------------
+
+    exx
+    prepare_context_switch
+    exx
+
+start_storing_runtime_data:
+    ld    d, #>EVACUATION_TEMP_BUFFER
     ret
 
 
@@ -681,41 +734,3 @@ chunk_done:
 chunk_escape:
   ld   ix, #s_chunk_compressed_escape
   ret
-
-
-;; ############################################################################
-;; state CHUNK_COMPRESSED_ESCAPE
-;; ############################################################################
-
-    .area _STAGE2
-
-s_chunk_compressed_escape:
-
-    call  load_byte_from_chunk
-
-    ld    ix, #s_chunk_repcount        ;; tentative next state
-
-    cp    a, #Z80_ESCAPE
-    ret   z
-
-    ;;
-    ;; False alarm: the escape byte was followed by a non-escape byte,
-    ;;              so this is not an escape sequence
-    ;;
-
-    ex    af, af'
-
-    ld    a, #Z80_ESCAPE
-    ld    (de), a
-    inc   de
-
-    call  update_progress
-
-    ex    af, af'
-
-    ld    (de), a
-    inc   de
-
-    ld    ix, #s_chunk_write_data
-
-    jp    update_progress
