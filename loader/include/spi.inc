@@ -60,7 +60,11 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
     .endm
 
 ;; ----------------------------------------------------------------------------
-;; Macro: shift register C left one bit, and shift in a bit from SPI to bit 0
+;; Macro: shift register C left one bit, and shift in a bit from SPI to bit 0.
+;;
+;; Destroys AF
+;;
+;; 7 + 11 + 4 + 11 + 11 + 4 + 8 = 56 T-states
 ;; ----------------------------------------------------------------------------
 
     .macro  spi_read_bit_to_c

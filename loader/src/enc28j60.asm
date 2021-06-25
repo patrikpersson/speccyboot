@@ -60,7 +60,6 @@ enc28j60_read_memory_to_rxframe:
 enc28j60_read_memory:
 
     push  hl         ;; preserve HL
-    push  de         ;; number of bytes to read
 
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
@@ -68,61 +67,42 @@ enc28j60_read_memory:
     ;;
     ;; register allocation:
     ;;
+    ;;
     ;; primary bank
     ;; ------------
     ;; B   inner (bit) loop counter, always in range 0..8
-    ;; C   0x9f     for SPI access
+    ;; C   byte read from SPI
     ;; DE  outer (byte) loop counter
-    ;; H   0x40     for SPI access
-    ;; L   temp register for SPI reads
+    ;; HL  destination in RAM
     ;;
     ;; secondary bank
     ;; --------------
     ;; BC  temp register for one term in sum above
-    ;; DE  destination in RAM
     ;; HL  cumulative 16-bit one-complement sum
     ;;
     ;; F   C flag from previous checksum addition
     ;;
 
-    ex    de, hl    ;; DE now holds destination address
+    exx
     ld    hl, (_ip_checksum)
-
     exx                        ;; to primary bank
 
     and   a, a                 ;; reset initial C flag
     ex    af, af'              ;; to primary AF
-
-    ld    c, #SPI_OUT
-    ld    h, #0x40
-
-    pop   de
  
-    ;; Read one word to (de'), increase de', update checksum in hl'.
-    ;;
-    ;; Each iteration takes   4+4+10+6
-    ;;                       +17+7+448+112+10+4+7+6+4+4+7
-    ;;                       +17+7+448+112++10+4+7+6+4+4+15+4+4
-    ;;                       +12
-    ;;                     = 24 + 599 + 615 + 12
-    ;;                     = 1304 T-states
-    ;;                     = 0.372ms @3.5MHz
-    ;;                    <=> 42944 bits/second
-
 word_loop:
-    dec  de                        ;; 6
 
-    call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
+    call read_byte                 ;; 17 + 7 + 448 + 112 + 10
 
     ld    c, a                     ;; 4
     exx                            ;; 4    to primary
 
+    dec  de                        ;; 6
     ld   a, d                      ;; 4
     or   e                         ;; 4
     jr   z, word_loop_end_odd      ;; 10
-    dec  de                        ;; 6
 
-    call read_byte_to_acc          ;; 17 + 7 + 448 + 112 + 10
+    call read_byte                 ;; 17 + 7 + 448 + 112 + 10
 
     ld    b, a                     ;; 4
     ex    af, af'                  ;; 4
@@ -130,6 +110,7 @@ word_loop:
     ex    af, af'                  ;; 4
     exx                            ;; 4    to primary
 
+    dec  de                        ;; 6
     ld   a, d                      ;; 4
     or   e                         ;; 4
     jr   nz, word_loop             ;; 12
@@ -148,13 +129,14 @@ word_loop_end_odd:
 ;; ----------------------------------------------------------------------------
 ethertype_arp:
     ex    af, af'
-    ld    b, #0
+    ld    b, #0                    ;; padding byte for checksum
 
     adc   hl, bc
 
 final:
-    ld    bc, #0
-    adc   hl, bc    ;; add final carry
+    jr    nc, no_final_carry
+    inc   hl
+no_final_carry:
     ld    (_ip_checksum), hl
 
     pop   hl
@@ -162,24 +144,28 @@ final:
     jr    do_end_transaction
 
 ;; ----------------------------------------------------------------------------
-;; subroutine: read one byte to accumulator, switch registers (EXX),
-;; store A in (DE), increase DE
+;; Subroutine: read one byte. Call with primary bank selected.
 ;;
-;; B is zero on exit
+;; The byte is stored in (HL), A, and C.
+;;
+;; HL is increased, B :=0 and the secondary bank selected on exit.
 ;; ----------------------------------------------------------------------------
 
-read_byte_to_acc:
+read_byte:
 
     ld   b, #8
-read_byte_to_acc_loop:
-    spi_read_bit_to_acc
-    djnz read_byte_to_acc_loop
+read_byte_loop:
+    spi_read_bit_to_c
+    djnz read_byte_loop
 
-    exx                            ;; 4    to secondary
-    ld    (de), a                  ;; 7
-    inc   de                       ;; 6
+    ld   a, c
+    ld   (hl), c
+    inc  hl
 
-    ret                            ;; 10
+    exx
+
+    ret
+
 
 ;; ############################################################################
 ;; enc28j60_add_to_checksum

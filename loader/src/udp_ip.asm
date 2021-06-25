@@ -285,15 +285,13 @@ ip_receive:
     ld   l, #<_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call nz, enc28j60_read_memory
 
-    ;; B == 0 here, either from
-    ;; enc28j60_read_20b_to_rxframe or memory_compare_4_bytes
-
-    pop  af    ;; A now holds IP header size, carry == 0
-
     ;; ------------------------------------------------------------
     ;; Load UDP payload
     ;; ------------------------------------------------------------
 
+    pop  af    ;; A now holds IP header size, carry == 0
+
+    ld   b, #0
     ld   c, a        ;; BC now holds IP header size
 
     ;; compute T-N, where

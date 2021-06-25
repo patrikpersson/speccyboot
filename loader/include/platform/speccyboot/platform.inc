@@ -69,7 +69,7 @@ SPI_CS  = 0x08
 ;; requires C=0x9f, H=0x40. Destroys F, L.
 ;; ============================================================================
 
-    ;; Takes 12 + 12 + 8 + 4 + 4 + 12 + 4 = 56 T-states
+    ;; 11+4+11+11+8+4 = 49 T-states
 
     .macro  spi_read_bit_to_acc
     out   (c), h
