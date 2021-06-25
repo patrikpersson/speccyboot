@@ -87,7 +87,8 @@ enc28j60_read_memory:
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
 
-    ;; spi_write_byte clears carry flag, keep it that way
+    ;; spi_write_byte clears carry flag, so keep it
+
     ex    af, af'              ;; to primary AF
 
 word_loop:
@@ -97,9 +98,6 @@ word_loop:
     ld    c, a                     ;; 4
     exx                            ;; 4    to primary
 
-    dec  de                        ;; 6
-    ld   a, d                      ;; 4
-    or   e                         ;; 4
     jr   z, word_loop_end_odd      ;; 10
 
     call read_byte                 ;; 17 + 7 + 448 + 112 + 10
@@ -110,9 +108,6 @@ word_loop:
     ex    af, af'                  ;; 4
     exx                            ;; 4    to primary
 
-    dec  de                        ;; 6
-    ld   a, d                      ;; 4
-    or   e                         ;; 4
     jr   nz, word_loop             ;; 12
 
     exx                            ;; to secondary
@@ -152,7 +147,10 @@ final:
 ;;
 ;; The byte is stored in (HL), A, and C.
 ;;
-;; HL is increased, B :=0 and the secondary bank selected on exit.
+;; Primary HL is increased, B :=0, DE is decreased, and the secondary bank
+;; selected on exit.
+;;
+;; Sets Z flag if primary DE == 0.
 ;; ----------------------------------------------------------------------------
 
 read_byte:
@@ -161,6 +159,10 @@ read_byte:
 read_byte_loop:
     spi_read_bit_to_c
     djnz read_byte_loop
+
+    dec  de                        ;; 6
+    ld   a, d                      ;; 4
+    or   e                         ;; 4
 
     ld   a, c
     ld   (hl), c
