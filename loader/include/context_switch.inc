@@ -251,9 +251,8 @@ create_trampoline_loop:
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
-    jr   nz, evacuate_iff1_set
-    xor  a, a                                  ;; A is now NOP
-    ld   (VRAM_TRAMPOLINE_EI_OR_NOP), a
+    jr   nz, evacuate_iff1_set           ;; if A is zero
+    ld   (VRAM_TRAMPOLINE_EI_OR_NOP), a  ;; then it can be used as a NOP
 
 evacuate_iff1_set:
 

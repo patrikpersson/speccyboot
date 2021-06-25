@@ -348,7 +348,7 @@ no_carry:
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_CHECKSUM)
     ld   a, h
-    or   l
+    or   a, l
 
     ;; UDP checksum is optional: Z flag is set if no UDP checksum given
 
