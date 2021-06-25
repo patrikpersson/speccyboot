@@ -92,42 +92,32 @@ enc28j60_read_memory:
 
 word_loop:
 
-    call read_byte                 ;; 17 + 7 + 448 + 112 + 10
+    call read_byte
 
-    ld   c, a                      ;; 4
-    jr   z, add_zero_padding_byte  ;; 10
+    ld   c, b                      ;; 4
 
-    call read_byte                 ;; 17 + 7 + 448 + 112 + 10
+    ;; Padding byte handling for odd-sized payloads:
+    ;; if this was the last byte, then Z==1,
+    ;; the CALL NZ below is not taken, and B := 0 instead
 
-    ld    b, a                     ;; 4
-    ex    af, af'                  ;; 4
-    adc   hl, bc                   ;; 15
-    ex    af, af'                  ;; 4
+    ld   b, #0
+
+    call nz, read_byte
+
+    ex   af, af'                   ;; 4
+    adc  hl, bc                    ;; 15
+    ex   af, af'                   ;; 4
 
     jr   nz, word_loop             ;; 12
 
+    ;; -----------------------------------------------------------------------
+    ;; end of payload: add the final carry to HL
+    ;; -----------------------------------------------------------------------
+
     ex    af, af'
-    jr    final
-
-add_zero_padding_byte:
-
-;; ----------------------------------------------------------------------------
-;; these two instructions happen to be 0x08, 0x06, which is the ARP ethertype
-;; (used in eth.c)
-;; ----------------------------------------------------------------------------
-ethertype_arp:
-    ex    af, af'
-    ld    b, #0                    ;; padding byte for checksum
-
-    adc   hl, bc
-
-final:
-
-    ;; If we didn't ensure B == 0 on return, this could be done as
-    ;; JR NC, ... ; INC HL  saving one byte
-
-    ld    bc, #0
-    adc   hl, bc
+    jr    nc, no_final_carry
+    inc   hl
+no_final_carry:
 
     ld    (_ip_checksum), hl
 
@@ -135,10 +125,13 @@ final:
 
     jr    do_end_transaction
 
+ethertype_arp:
+   .db 8,6 ;; FIXME
+
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (HL), A, and C.
+;; The byte is stored in (primary HL), A, and secondary B.
 ;;
 ;; Primary HL is increased, B :=0, DE is decreased, and the secondary bank
 ;; selected again on exit.
@@ -165,6 +158,8 @@ read_byte_loop:
     ld   a, c
 
     exx
+
+    ld    b, a                     ;; 4
 
     ret
 

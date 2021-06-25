@@ -250,13 +250,13 @@ print_ip_addr:
 
 ;; ----------------------------------------------------------------------------
 ;; Divides A by B, and prints as one digit. Returns remainder in A.
-;; Destroys AF'.  '
+;; Destroys AF'.
 ;; ----------------------------------------------------------------------------
 
 print_div:
     call  a_div_b
 
-    ex    af, af'            ;;'
+    ex    af, af'
     ld    a, c
 
     ;; FALL THROUGH to print_digit
