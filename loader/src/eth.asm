@@ -170,8 +170,6 @@ main_spin_loop:
     ld    de, #ENC28J60_TXBUF1_START
     call  perform_transmission
 
-jr_main_loop:
-
     jr    main_loop
 
 main_packet:
@@ -248,7 +246,7 @@ main_packet_done:
     ld    a, #OPCODE_WCR + (ERXRDPTL & REG_MASK)
     rst   enc28j60_write_register16
 
-    jr    jr_main_loop
+    jr    main_loop
 
 
 ;; ############################################################################
