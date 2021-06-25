@@ -282,7 +282,7 @@ load_byte_from_packet:
 ;; and verifies compatibility.
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 s_header:
 
@@ -378,7 +378,11 @@ s_header_set_state:
     ;; snapshot these values will be superseded in the chunk header.
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #0xC000
+    ;; HL needs to be at least 0xC000, to ensure all bytes in the chunk are
+    ;; loaded. A larger value is OK, since the context switch will take over
+    ;; after 48k have been loaded anyway.
+
+    ld   h, #0xC0      ;; ensure HL >= 0xC000
     ld   de, #0x4000
 
     ret
@@ -390,7 +394,7 @@ s_header_set_state:
 ;; receive first byte in chunk header: low byte of chunk length
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 s_chunk_header:
 
@@ -408,7 +412,7 @@ s_chunk_header:
 ;; receive second byte in chunk header: high byte of chunk length
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 s_chunk_header2:
 
