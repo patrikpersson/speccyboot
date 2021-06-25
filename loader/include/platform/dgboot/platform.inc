@@ -60,23 +60,3 @@ SPI_CS  = 0x02
     nop
 
     .endm
-
-
-;; ============================================================================
-;; Imrich Konkol's DGBoot maps SPI IN and OUT to different registers;
-;; for this reason, C is loaded explicitly each time, resulting in
-;; some slight CPU overhead per bit.
-;; ============================================================================
-
-
-    .macro  spi_read_bit_to_acc
-    ld    c, #SPI_OUT           ;; added for DGBoot
-    out   (c), h
-    inc   h
-    out   (c), h
-    dec   h
-    ld    c, #SPI_IN            ;; added for DGBoot
-    in    l, (c)
-    rr    l
-    rla
-    .endm

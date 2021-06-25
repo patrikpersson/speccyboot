@@ -63,20 +63,3 @@ SPI_CS  = 0x08
     out   (c), e   ;; MEMCFG_ROM_48K
 
     .endm
-
-;; ============================================================================
-;; Macro: read one bit from SPI to accumulator,
-;; requires C=0x9f, H=0x40. Destroys F, L.
-;; ============================================================================
-
-    ;; 11+4+11+11+8+4 = 49 T-states
-
-    .macro  spi_read_bit_to_acc
-    out   (c), h
-    inc   h
-    out   (c), h
-    dec   h
-    in    l, (c)
-    rr    l
-    rla
-    .endm

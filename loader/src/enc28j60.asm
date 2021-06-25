@@ -82,7 +82,6 @@ enc28j60_read_memory:
 
     exx
     ld    hl, (_ip_checksum)
-    exx                        ;; to primary bank
 
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
@@ -95,10 +94,8 @@ word_loop:
 
     call read_byte                 ;; 17 + 7 + 448 + 112 + 10
 
-    ld    c, a                     ;; 4
-    exx                            ;; 4    to primary
-
-    jr   z, word_loop_end_odd      ;; 10
+    ld   c, a                      ;; 4
+    jr   z, add_zero_padding_byte  ;; 10
 
     call read_byte                 ;; 17 + 7 + 448 + 112 + 10
 
@@ -106,17 +103,13 @@ word_loop:
     ex    af, af'                  ;; 4
     adc   hl, bc                   ;; 15
     ex    af, af'                  ;; 4
-    exx                            ;; 4    to primary
 
     jr   nz, word_loop             ;; 12
 
-    exx                            ;; to secondary
     ex    af, af'
     jr    final
 
-word_loop_end_odd:
-
-    exx                            ;; to secondary
+add_zero_padding_byte:
 
 ;; ----------------------------------------------------------------------------
 ;; these two instructions happen to be 0x08, 0x06, which is the ARP ethertype
@@ -143,17 +136,19 @@ final:
     jr    do_end_transaction
 
 ;; ----------------------------------------------------------------------------
-;; Subroutine: read one byte. Call with primary bank selected.
+;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
 ;; The byte is stored in (HL), A, and C.
 ;;
 ;; Primary HL is increased, B :=0, DE is decreased, and the secondary bank
-;; selected on exit.
+;; selected again on exit.
 ;;
 ;; Sets Z flag if primary DE == 0.
 ;; ----------------------------------------------------------------------------
 
 read_byte:
+
+    exx                            ;; 4    to primary
 
     ld   b, #8
 read_byte_loop:
@@ -164,9 +159,10 @@ read_byte_loop:
     ld   a, d                      ;; 4
     or   e                         ;; 4
 
-    ld   a, c
     ld   (hl), c
     inc  hl
+
+    ld   a, c
 
     exx
 
