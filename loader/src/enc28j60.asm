@@ -112,21 +112,18 @@ word_loop:
 
     ;; -----------------------------------------------------------------------
     ;; end of payload: add the final carry to HL
+    ;; (also set B := 0, used by caller)
     ;; -----------------------------------------------------------------------
 
     ex    af, af'
-    jr    nc, no_final_carry
-    inc   hl
-no_final_carry:
+    ld    bc, #0
+    adc   hl, bc
 
     ld    (_ip_checksum), hl
 
     pop   hl                       ;; bring back original HL
 
     jr    do_end_transaction
-
-ethertype_arp:
-   .db 8,6 ;; FIXME
 
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.

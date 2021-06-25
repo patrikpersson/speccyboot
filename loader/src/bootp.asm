@@ -204,7 +204,7 @@ bootp_receive_sname_done:
 ;; A = initial letter to print ('L' or 'S')
 ;; DE = VRAM pointer
 ;; HL = pointer to IP address
-;; AF, BC are destroyed. DE and HL are increased.
+;; AF, AF', and BC are destroyed. DE and HL are increased.
 ;; ############################################################################
 
     .area _CODE
@@ -217,7 +217,13 @@ print_ip_addr:
     ;; HL = IP address
     ;; AF, BC = scratch
 
+    ;; useful two bytes for ETHERTYPE_ARP (used by eth.asm)
+
+ethertype_arp:
+
+    ex    af, af'
     ld    b, #4       ;; loop counter, four octets
+
 00001$:
     push  bc
 

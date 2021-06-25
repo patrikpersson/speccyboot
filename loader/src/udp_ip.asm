@@ -290,7 +290,9 @@ ip_receive:
     ;; ------------------------------------------------------------
 
     pop  af          ;; A now holds IP header size, carry == 0
-    ld   b, #0
+    
+    ;; B == 0 from enc28j60_read_memory or memory_compare_4_bytes
+
     ld   c, a        ;; BC now holds IP header size
 
     ;; compute T-N, where
