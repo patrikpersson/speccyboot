@@ -163,22 +163,12 @@ main_spin_loop:
     jr    c, main_spin_loop
 
     ;; ------------------------------------------------------------------------
-    ;; time-out detected: first, reset timer
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #0
-    ld    (_timer_tick_count), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; If _end_of_critical_frame has the special value zero, no critical
-    ;; frame currently needs retransmission.
+    ;; Re-transmit the last critical frame
     ;; ------------------------------------------------------------------------
 
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
-    ld    a, h
-    or    a, l
-    call  nz, perform_transmission
+    call  perform_transmission
 
 jr_main_loop:
 
@@ -646,11 +636,8 @@ eth_send:
 
     ld    (_end_of_critical_frame), hl
 
-    ;; skip ld bc, 0 here: BC is 0x0E (ETH_HEADER_SIZE), which is close enough
-
-    ld    (_timer_tick_count), bc
-
     ;; FALL THROUGH to perform_transmission
+
 
 ;; ############################################################################
 ;; perform_transmission:
@@ -685,6 +672,19 @@ perform_transmission:
       ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
       pop   hl   ;; end_address pushed above
       rst  enc28j60_write_register16
+
+    ;; ------------------------------------------------------------------------
+    ;; Reset retransmission timer. For simplicity, this is done here
+    ;; regardless of whether this is a critical frame or not, so it will
+    ;; be reset even for an ARP response. 
+    ;;
+    ;; In theory, an IP stack that keeps sending ARP requests more frequently
+    ;; than the retransmission timer (a couple of seconds) could inhibit
+    ;; retransmission. In practice, this is not expected to happen.
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #0
+    ld    (_timer_tick_count), hl
 
       ;; ----------------------------------------------------------------------
       ;; Poll for link to come up (if it has not already)
