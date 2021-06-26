@@ -289,6 +289,9 @@ print_char:
     add  a, #<((_font_data - 32 * 8) >> 3)
     ld   l, a
     ld   h, #>((_font_data - 32 * 8) >> 3)
+    jr   nc, no_inc
+    inc  h
+no_inc:
     add  hl, hl
     add  hl, hl
     add  hl, hl

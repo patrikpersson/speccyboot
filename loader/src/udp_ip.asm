@@ -42,6 +42,15 @@
     .include "util.inc"
 
 
+    .area _DATA
+
+;; ----------------------------------------------------------------------------
+;; IP checksum
+;; ----------------------------------------------------------------------------
+
+_ip_checksum:
+    .ds   2
+
 ;; ############################################################################
 ;; Create UDP reply to the sender of the received packet currently processed.
 ;; Source/destination ports are swapped.

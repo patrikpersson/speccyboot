@@ -341,7 +341,7 @@ initialize_global_data:
 
   ;; set attribute VRAM (+ paint stack) to PAPER WHITE + INK BLACK
 
-  ;; clear RAM up to stage2_start + 1  (+1 to get the right HL for _tftp_write_pos)
+  ;; clear RAM up to _font_data
   ld    (hl), #BLACK + (WHITE << 3)
   ld    bc, #0x300 + STACK_SIZE 
   ldir
@@ -350,8 +350,10 @@ initialize_global_data:
   out   (ULA_PORT), a
 
   ld    (hl), c
-  ld    bc, #stage2_start - _stack_top
+  ld    bc, #_font_data - _stack_top
   ldir
+
+  ld    h, #>stage2_start
 
   ld    (_tftp_write_pos), hl
 

@@ -72,7 +72,14 @@ eth_adm_header_ethertype:
 ;; ============================================================================
 
 _end_of_critical_frame:
-    .ds 2                   ;; written to ETXND for re-transmission
+    .ds   2                   ;; written to ETXND for re-transmission
+
+;; ----------------------------------------------------------------------------
+;; points to the frame currently being created
+;; ----------------------------------------------------------------------------
+
+_current_txbuf:
+    .ds   2
 
 ;; ============================================================================
 
@@ -84,15 +91,6 @@ END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
 ;; Main function: initiate BOOTP, receive frames and act on them
 ;; Must be first in the _CODE segment, as init will execute right into it
 ;; ############################################################################
-
-    ;; ========================================================================
-    ;; Set up resident digit font
-    ;; ========================================================================
-
-    ld    hl, #_font_data + ('0' - ' ') * 8 +1
-    ld    de, #digit_font_data
-    ld    bc, #8 * 10 - 2
-    ldir
 
     ;; ========================================================================
     ;; Set initial state for TFTP data handling

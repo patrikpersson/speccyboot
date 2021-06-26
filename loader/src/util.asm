@@ -36,6 +36,17 @@
     .include "globals.inc"
 
 
+;; ----------------------------------------------------------------------------
+;; Tick count, increased by 2 (!) by the 50Hz timer ISR in init.asm.
+;; Means that the high byte is increased every 2.56 seconds.
+;; ----------------------------------------------------------------------------
+
+    .area _DATA
+
+_timer_tick_count:
+    .ds   2
+
+
 ;; ############################################################################
 ;; a_div_b
 ;; ############################################################################
@@ -99,8 +110,8 @@ show_attr_digit:
 show_attr_digit_already_shifted:  ;; special target for below
 
     and   a, #0x78                ;; binary 01111000
-    add   a, #<digit_font_data    ;; all digits in a single 256b page
-    ld    d, #>digit_font_data
+    add   a, #<(_font_data + 16 * 8 + 1)    ;; all digits in a single 256b page
+    ld    d, #>(_font_data + 16 * 8 + 1)
     ld    e, a
 
     ld    h, #>ATTR_DIGIT_ROW
