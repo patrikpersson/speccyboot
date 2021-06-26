@@ -118,16 +118,23 @@ _digits:
 ;; In that case, simply use LD IX, #TO instead.
 ;; ============================================================================
 
-    .macro switch_state FROM TO
+    .macro switch_state_NOT_WORKING FROM TO
 
-    ;; .dw  LD_IX_LOW
-    ;; .db  <(TO)
+    .globl FROM
+    .globl TO
+
+    .dw  LD_IX_LOW
+    .db  <(TO)
 
     ;; If TO and FROM are not in the same RAM page, one of these will yield
     ;; an error (due to the size being negative). Normally both are zero.
 
-    ;; .ds  ((> TO) - (> FROM))
-    ;; .ds  ((> FROM) - (> TO))
+    .ds  ((>TO) - (>FROM))
+    .ds  ((>FROM) - (>TO))
+
+    .endm
+
+    .macro switch_state FROM TO
 
     ld   ix, #TO
 
@@ -478,8 +485,8 @@ s_chunk_compressed_escape:
 
     ;; tentative next state
 
-    ;; switch_state  s_chunk_compressed_escape  s_chunk_repcount
-    ld    ix, #s_chunk_repcount
+    switch_state  s_chunk_compressed_escape  s_chunk_repcount
+    ;; ld    ix, #s_chunk_repcount
 
     cp    a, #Z80_ESCAPE
     ret   z
@@ -502,7 +509,8 @@ s_chunk_compressed_escape:
     ld    (de), a
     inc   de
 
-    ld    ix, #s_chunk_write_data_compressed
+    switch_state  s_chunk_compressed_escape  s_chunk_write_data_compressed
+    ;; ld    ix, #s_chunk_write_data_compressed
 
     ;; FALL THROUGH to update_progress
 
@@ -669,7 +677,9 @@ s_chunk_repcount:
     call load_byte_from_chunk
 
     ld   (_repcount), a
-    ld   ix, #s_chunk_repvalue
+
+    switch_state  s_chunk_repcount  s_chunk_repvalue
+    ;; ld   ix, #s_chunk_repvalue
 
     ret
 
@@ -739,13 +749,13 @@ do_repetition:
   jr   store_byte
 
   ;; -------------------------------------------------------------------------
-  ;; Escape byte found: switch state,
-  ;; but only if current state is s_chunk_write_data_compressed
+  ;; Escape byte found: switch state
   ;; -------------------------------------------------------------------------
 
 chunk_escape:
 
-  ld   ix, #s_chunk_compressed_escape
+  switch_state  s_chunk_write_data_compressed  s_chunk_compressed_escape
+  ;; ld   ix, #s_chunk_compressed_escape
 
   ret
 
