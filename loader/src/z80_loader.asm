@@ -489,7 +489,7 @@ update_progress:
     ;; means it just turned from 99 to 100.
     ;; Print the digit '1' for hundreds.
 
-    ld    l, #11
+    ld    l, #10
     rla                        ;; make A := 1 without affecting Z
     call  z, show_attr_digit
     ld    a, c
@@ -501,7 +501,7 @@ update_progress:
     ;; Print tens (_x_)
 
     rra                  ;; shift once; routine below shifts three more times
-    ld    l, #18
+    ld    l, #17
     call  show_attr_digit_already_shifted
 
 not_10k:

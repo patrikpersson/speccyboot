@@ -352,11 +352,18 @@ menu_hit_enter:
     ;; Set up snapshot progress display.
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #0x5800      ;; clear attribute lines 0..23
+    ld    hl, #0x5800      ;; clear attribute lines 0..22
     ld    de, #0x5801
-    ld    bc, #0x300
+    ld    bc, #0x2e0
     ld    (hl), #WHITE + (WHITE << 3)
     ldir
+
+    ld    (hl), #WHITE + (WHITE << 3) + BRIGHT
+    ld    bc, #0x1f
+    ldir
+
+    xor   a, a
+    call  show_attr_digit_right
 
     ;; ------------------------------------------------------------------------
     ;; send a TFTP request for the snapshot
