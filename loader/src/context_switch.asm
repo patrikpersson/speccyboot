@@ -164,7 +164,7 @@ context_switch_im_set:
     ;; ------------------------------------------------------------------------
     ;; initialize memory transfer from ENC28J60:
     ;;
-    ;; write RBM opcode using RST here, while the stack pointer is still valid
+    ;; write RBM opcode while the stack pointer is still valid
     ;; ------------------------------------------------------------------------
 
     ld    c, #OPCODE_RBM
@@ -233,12 +233,10 @@ context_switch_restore_bits_loop:
     jr    nz, context_switch_restore_bytes_loop
 
     ;; ------------------------------------------------------------------------
-    ;; end SPI transaction
+    ;; we're done: put ENC28J60 in the reset state
     ;; ------------------------------------------------------------------------
 
-    ld  a, #SPI_IDLE
-    out (SPI_OUT), a
-    ld  a, #SPI_IDLE+SPI_CS
+    xor a, a
     out (SPI_OUT), a
 
     ;; ------------------------------------------------------------------------

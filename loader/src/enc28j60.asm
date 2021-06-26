@@ -92,17 +92,18 @@ enc28j60_read_memory:
 
 word_loop:
 
-    call read_byte
+    call spi_read_byte_to_memory
 
     ld   c, b                      ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
-    ;; the CALL NZ below is not taken, and B := 0 instead
+    ;; the CALL NZ below is not taken,
+    ;; and B == 0 in the checksum addition instead
 
     ld   b, #0
 
-    call nz, read_byte
+    call nz, spi_read_byte_to_memory
 
     ex   af, af'                   ;; 4
     adc  hl, bc                    ;; 15
@@ -130,13 +131,13 @@ word_loop:
 ;;
 ;; The byte is stored in (primary HL), A, and secondary B.
 ;;
-;; Primary HL is increased, B :=0, DE is decreased, and the secondary bank
+;; Primary HL is increased, DE is decreased, and the secondary bank
 ;; selected again on exit.
 ;;
 ;; Sets Z flag if primary DE == 0.
 ;; ----------------------------------------------------------------------------
 
-read_byte:
+spi_read_byte_to_memory:
 
     exx                            ;; 4    to primary
 
