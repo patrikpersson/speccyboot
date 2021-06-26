@@ -115,14 +115,50 @@ _repcount:
 
     .endm
 
+;; ############################################################################
+;; check_limits_and_load_byte
+;;
+;; Checks whether the current chunk or the loaded TFTP data have been consumed.
+;; If they have, returns with Z flag set (and possibly state changed).
+;; If they have not, reads another byte into A, and returns with Z cleared.
+;; ############################################################################
+
+    .area _CODE
+
+  ;; -------------------------------------------------------------------------
+  ;; Helper for end of current chunk: switch state
+  ;; -------------------------------------------------------------------------
+
+chunk_done:
+
+  ld   ix, #s_chunk_header
+  ret
+
+check_limits_and_load_byte:
+
+  ;; -------------------------------------------------------------------------
+  ;; reached end of current chunk?
+  ;; -------------------------------------------------------------------------
+
+  ld   a, h
+  or   a, l
+  jr   z, chunk_done
+
+  ;; -------------------------------------------------------------------------
+  ;; reached end of loaded TFTP data?
+  ;; -------------------------------------------------------------------------
+
+  ld   a, b
+  or   a, c
+  ret  z
+
+  ;; FALL THROUGH to load_byte_from_chunk
 
 ;; ############################################################################
 ;; load_byte_from_chunk
 ;;
 ;; like load_byte_from_packet, but also decreases HL
 ;; ############################################################################
-
-    .area _CODE
 
 load_byte_from_chunk:
 
@@ -424,8 +460,8 @@ s_chunk_compressed_escape:
 
     ;; tentative next state
 
-    switch_state  s_chunk_compressed_escape  s_chunk_repcount
-    ;; ld    ix, #s_chunk_repcount
+    ;; switch_state  s_chunk_compressed_escape  s_chunk_repcount
+    ld    ix, #s_chunk_repcount
 
     cp    a, #Z80_ESCAPE
     ret   z
@@ -608,7 +644,7 @@ start_storing_runtime_data:
 ;; state CHUNK_REPCOUNT
 ;; ############################################################################
 
-    .area _CODE
+    .area _STAGE2
 
 s_chunk_repcount:
 
@@ -651,23 +687,8 @@ s_chunk_write_data_compressed:
   or   a, a
   jr   nz, do_repetition
 
-  ;; -------------------------------------------------------------------------
-  ;; reached end of current chunk?
-  ;; -------------------------------------------------------------------------
-
-  ld   a, h
-  or   a, l
-  jr   z, chunk_done
-
-  ;; -------------------------------------------------------------------------
-  ;; reached end of loaded TFTP data?
-  ;; -------------------------------------------------------------------------
-
-  ld   a, b
-  or   a, c
+  call check_limits_and_load_byte
   ret  z
-
-  call load_byte_from_chunk
 
   ;; -------------------------------------------------------------------------
   ;; check for the escape byte of a repetition sequence
@@ -700,16 +721,6 @@ do_repetition:
   jr   store_byte
 
   ;; -------------------------------------------------------------------------
-  ;; End of current chunk: switch state
-  ;; -------------------------------------------------------------------------
-
-chunk_done:
-
-  ld   ix, #s_chunk_header
-
-  ret
-
-  ;; -------------------------------------------------------------------------
   ;; Escape byte found: switch state,
   ;; but only if current state is s_chunk_write_data_compressed
   ;; -------------------------------------------------------------------------
@@ -726,22 +737,7 @@ chunk_escape:
 
 s_chunk_write_data_uncompressed:
 
-  ;; -------------------------------------------------------------------------
-  ;; reached end of current chunk?
-  ;; -------------------------------------------------------------------------
+  call check_limits_and_load_byte
+  jr   nz, store_byte
 
-  ld   a, h
-  or   a, l
-  jr   z, chunk_done
-
-  ;; -------------------------------------------------------------------------
-  ;; reached end of loaded TFTP data?
-  ;; -------------------------------------------------------------------------
-
-  ld   a, b
-  or   a, c
-  ret  z
-
-  call load_byte_from_chunk
-
-  jr  store_byte
+  ret
