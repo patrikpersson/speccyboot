@@ -191,8 +191,8 @@ s_header:
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
 
-    ;; COMPRESSED flag set   =>  A != 0  =>  Z == 0
-    ;; COMPRESSED flag clear =>  A == 0  =>  Z == 1
+    ;; COMPRESSED flag set   =>  A != 0  =>  Z == 0  =>  s_chunk_write_data_compressed
+    ;; COMPRESSED flag clear =>  A == 0  =>  Z == 1  =>  s_chunk_write_data_uncompressed
 
     call set_compression_state
     jr   s_header_set_state
@@ -382,11 +382,11 @@ s_chunk_header3_set_page:
     ld   a, h
     and  a, l
     inc  a
-    jr   nz, set_state_compressed
 
-    ld   hl, #0x4000
+    ;; If chunk length is 0xffff, Z will now be set,
+    ;; and state s_chunk_write_data_uncompressed is selected
 
-    ;; Z flag is set, so state will be s_chunk_write_data_uncompressed
+    ;; Otherwise s_chunk_write_data_compressed is selected
 
     ;; FALL THROUGH to set_compression_state
 
@@ -394,19 +394,22 @@ s_chunk_header3_set_page:
 ;; ############################################################################
 ;; set_compression_state
 ;;
-;; Sets the next state depending on Z flag.
+;; Sets the next state depending on Z flag. If s_chunk_write_data_uncompressed
+;; is selected, HL (bytes left in chunk) is set to 0x4000.
 ;;
 ;; Z == 0: s_chunk_write_data_compressed
 ;; Z == 1: s_chunk_write_data_uncompressed
 ;; ############################################################################
 
 set_compression_state:
-
-    ld    ix, #s_chunk_write_data_uncompressed
-    ret   z
-set_state_compressed:
     ld    ix, #s_chunk_write_data_compressed
-    ret
+    ret   nz
+
+    switch_state  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
+    ;; ld    ix, #s_chunk_write_data_uncompressed
+
+    ld    hl, #0x4000
+    ret   z
 
 
 ;; ############################################################################
