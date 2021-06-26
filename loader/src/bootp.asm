@@ -161,8 +161,9 @@ bootp_receive_sname_done:
     ;; or, if none given, use the default
     ;; ------------------------------------------------------------------------
 
+    ;; at this point A is zero, either from the SNAME check or after JR NZ above
+
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
-    xor  a, a
     or   a, (hl)
     jr   nz, 00001$
     ld   hl, #tftp_default_file
