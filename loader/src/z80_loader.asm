@@ -50,6 +50,13 @@ Z80_ESCAPE         = 0xED     ;; escape byte in compressed chunks
 
 PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
+;; ----------------------------------------------------------------------------
+
+    .area _DATA
+
+_repcount:
+    .ds   1         ;; repetition count for ED ED sequences
+
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -183,8 +190,6 @@ s_header:
 
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
-
-    ;; if Z is set, then A is zero (as expected by set_state_uncompressed)
 
     call z, set_state_uncompressed
     call nz, set_state_compressed
@@ -379,34 +384,7 @@ s_chunk_header3_set_page:
 
     ld   hl, #0x4000
 
-    ;; NOTE: A is zero here (from the INC A) above, as expected
-    ;; by set_state_uncompressed
-
-    ;; FALL THROUGH, but skip two bytes of set_state_compressed
-    ;; so as to fall through to set_state_uncompressed
-
-    .db   JP_NZ      ;; Z is set from INC A, so skip the following two bytes
-
-;; ############################################################################
-;; set_state_compressed
-;; set_state_uncompressed
-;;
-;; When calling set_state_uncompressed, A must be zero. These functions do not
-;; affect any CPU flags.
-;;
-;; These functions patch the JR Z branch at escape_check_branch.
-;; For compressed data, the offset is set to branch to escape_check_branch.
-;; For uncompressed data, the offset is set to zero, to ensure that Z80_ESCAPE
-;; bytes are handled like any others.
-;; ############################################################################
-
-set_state_compressed:
-
-    ;; rewrite JR Z branch for compressed chunks (to react to Z80_ESCAPE bytes)
-
-    ld    a, #chunk_escape - escape_check_branch - 2
-
-    ;; FALL THROUGH
+    ;; FALL THROUGH to set_state_uncompressed
 
 ;; ############################################################################
 ;; set_state_uncompressed
@@ -414,9 +392,17 @@ set_state_compressed:
 
 set_state_uncompressed:
 
-    ld    (escape_check_branch + 1), a
-    ld    ix, #s_chunk_write_data
+    ld    ix, #s_chunk_write_data_uncompressed
+    ret
 
+;; ############################################################################
+;; set_state_compressed
+;; set_state_uncompressed
+;; ############################################################################
+
+set_state_compressed:
+
+    ld    ix, #s_chunk_write_data_compressed
     ret
 
 
@@ -453,7 +439,7 @@ s_chunk_compressed_escape:
     ld    (de), a
     inc   de
 
-    ld    ix, #s_chunk_write_data
+    ld    ix, #s_chunk_write_data_compressed
 
     ;; FALL THROUGH to update_progress
 
@@ -636,26 +622,22 @@ s_chunk_repvalue:
     call load_byte_from_chunk
     ld   i, a
 
-    ld   ix, #s_chunk_write_data
+    ld   ix, #s_chunk_write_data_compressed
 
-    ;; FALL THROUGH to s_chunk_write_data
+    ;; FALL THROUGH to s_chunk_write_data_compressed
 
 
 ;; ############################################################################
-;; state CHUNK_WRITE_DATA
+;; state CHUNK_WRITE_DATA_COMPRESSED
 ;; ############################################################################
 
-s_chunk_write_data:
+s_chunk_write_data_compressed:
 
   ;; -------------------------------------------------------------------------
-  ;; Check the repetition count. This is zero when no repetition is active,
-  ;; including when an uncompressed chunk is being loaded.
+  ;; Check the repetition count. This is zero when no repetition is active.
   ;; -------------------------------------------------------------------------
 
-  .db  LD_A_N             ;; LD A, #n
-_repcount:
-  .db  0
-
+  ld   a, (_repcount)
   or   a, a
   jr   nz, do_repetition
 
@@ -678,15 +660,10 @@ _repcount:
   call load_byte_from_chunk
 
   ;; -------------------------------------------------------------------------
-  ;; Check for the escape byte of a repetition sequence. If an uncompressed
-  ;; chunk is being loaded, the branch 'escape_check_branch' below is
-  ;; patched to a JR Z, 0, to ensure escape bytes are handled just like
-  ;; any other.
+  ;; check for the escape byte of a repetition sequence
   ;; -------------------------------------------------------------------------
 
   cp   a, #Z80_ESCAPE
-
-escape_check_branch:
   jr   z, chunk_escape
 
 store_byte:
@@ -717,13 +694,44 @@ do_repetition:
   ;; -------------------------------------------------------------------------
 
 chunk_done:
+
   ld   ix, #s_chunk_header
+
   ret
 
   ;; -------------------------------------------------------------------------
-  ;; Escape byte found: switch state
+  ;; Escape byte found: switch state,
+  ;; but only if current state is s_chunk_write_data_compressed
   ;; -------------------------------------------------------------------------
 
 chunk_escape:
+
   ld   ix, #s_chunk_compressed_escape
+
   ret
+
+;; ############################################################################
+;; state CHUNK_WRITE_DATA_UNCOMPRESSED
+;; ############################################################################
+
+s_chunk_write_data_uncompressed:
+
+  ;; -------------------------------------------------------------------------
+  ;; reached end of current chunk?
+  ;; -------------------------------------------------------------------------
+
+  ld   a, h
+  or   a, l
+  jr   z, chunk_done
+
+  ;; -------------------------------------------------------------------------
+  ;; reached end of loaded TFTP data?
+  ;; -------------------------------------------------------------------------
+
+  ld   a, b
+  or   a, c
+  ret  z
+
+  call load_byte_from_chunk
+
+  jr  store_byte
