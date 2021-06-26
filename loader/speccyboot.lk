@@ -2,6 +2,7 @@
 -i obj/speccyboot.ihx
 -b _CODE = 0x00c5
 -b _DATA = 0x5de9
+-b _STAGE2_ENTRY = 0x6400
 obj/init.rel
 obj/eth.rel
 obj/bootp.rel

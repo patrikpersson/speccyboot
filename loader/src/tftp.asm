@@ -79,13 +79,9 @@ tftp_state_menu_loader:
 
     ld  hl, #stage2_start
     ld  a, (hl)
-    cp  a, l
-    jr  nz, version_mismatch
-    inc hl
-    ld  a, (hl)
     cp  a, #VERSION_MAGIC
 version_mismatch:
-    jp  nz, fail_version_mismatch
+    jr  nz, fail_version_mismatch
 
     ;; ------------------------------------------------------------------------
     ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
@@ -98,3 +94,24 @@ version_mismatch:
 tftp_default_file:
     .ascii 'menu.bin'
     .db    0
+
+
+;; ############################################################################
+;; fail
+;; fail_version_mismatch
+;; ############################################################################
+
+    .area _CODE
+
+fail_version_mismatch:
+    ld  a, #VERSION_STAGE1
+    call show_attr_digit_right
+    ld  a, #FATAL_VERSION_MISMATCH
+
+    ;; FALL THROUGH to fail
+
+fail:
+
+    di
+    out (ULA_PORT), a
+    halt

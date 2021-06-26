@@ -357,6 +357,8 @@ initialize_global_data:
 
   ei
 
+;; ===========================================================================
+
   ;; --------------------------------------------------------------------------
   ;; Ordering of segments for the linker
   ;; --------------------------------------------------------------------------
@@ -365,31 +367,23 @@ initialize_global_data:
 
   .area _DATA
 
-  .area _STAGE2_ENTRY  ;; header for the stage 2 bootloader (RAM)
-  .area _STAGE2        ;; other, resident stage 2 code
-  .area _NONRESIDENT   ;; continues here, with stuff that need not be resident
-  .area _SNAPSHOTLIST  ;; area for loaded snapshot list
-
-  .area _STAGE2_ENTRY
+  .area _STAGE2_ENTRY      ;; header for the stage 2 bootloader (RAM)
 
 stage2_start:
 
   ;; --------------------------------------------------------------------------
-  ;; Special mark for integrity check, as first two bytes in loaded binary:
-  ;; 1. lower byte of stage2_start
-  ;; 2. VERSION_MAGIC
+  ;; Special mark for integrity check, as first byte in loaded binary:
+  ;; VERSION_MAGIC
   ;; --------------------------------------------------------------------------
 
-  .db   <stage2_start
   .db   VERSION_MAGIC
 
   ;; --------------------------------------------------------------------------
   ;; If the version mark above checks out, execution continues here
   ;; --------------------------------------------------------------------------
 
-  .area _STAGE2
-
-  .area _SNAPSHOTLIST
+  .area _NONRESIDENT          ;; continues here
+  .area _SNAPSHOTLIST         ;; area for loaded snapshot list
 
 nbr_snapshots:
   .ds    1

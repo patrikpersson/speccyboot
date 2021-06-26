@@ -644,7 +644,7 @@ start_storing_runtime_data:
 ;; state CHUNK_REPCOUNT
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 s_chunk_repcount:
 
@@ -660,7 +660,7 @@ s_chunk_repcount:
 ;; state CHUNK_REPVALUE
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 s_chunk_repvalue:
 

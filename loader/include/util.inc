@@ -141,6 +141,7 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 
 ;; ----------------------------------------------------------------------------
 ;; Set border to the value of register A, and halt the machine (DI+HALT).
+;; Defined in tftp.asm.
 ;; ----------------------------------------------------------------------------
 
     .globl fail
@@ -148,6 +149,7 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 ;; ----------------------------------------------------------------------------
 ;; Alternate entrypoint for fail. Displays firmware version on screen and
 ;; fails with error FATAL_VERSION_MISMATCH.
+;; Defined in tftp.asm.
 ;; ----------------------------------------------------------------------------
 
     .globl fail_version_mismatch
