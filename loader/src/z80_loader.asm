@@ -256,15 +256,15 @@ s_header_set_state:
 ;; receive first byte in chunk header: low byte of chunk length
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 s_chunk_header:
 
     call load_byte_from_packet
     ld   l, a
 
-    ;; switch_state  s_chunk_header  s_chunk_header2
-    ld   ix, #s_chunk_header2
+    switch_state  s_chunk_header  s_chunk_header2
+    ;; ld   ix, #s_chunk_header2
 
     ret
 
