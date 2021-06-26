@@ -191,8 +191,10 @@ s_header:
     ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
 
-    call z, set_state_uncompressed
-    call nz, set_state_compressed
+    ;; COMPRESSED flag set   =>  A != 0  =>  Z == 0
+    ;; COMPRESSED flag clear =>  A == 0  =>  Z == 1
+
+    call set_compression_state
     jr   s_header_set_state
 
 s_header_ext_hdr:
@@ -384,24 +386,25 @@ s_chunk_header3_set_page:
 
     ld   hl, #0x4000
 
-    ;; FALL THROUGH to set_state_uncompressed
+    ;; Z flag is set, so state will be s_chunk_write_data_uncompressed
+
+    ;; FALL THROUGH to set_compression_state
+
 
 ;; ############################################################################
-;; set_state_uncompressed
+;; set_compression_state
+;;
+;; Sets the next state depending on Z flag.
+;;
+;; Z == 0: s_chunk_write_data_compressed
+;; Z == 1: s_chunk_write_data_uncompressed
 ;; ############################################################################
 
-set_state_uncompressed:
+set_compression_state:
 
     ld    ix, #s_chunk_write_data_uncompressed
-    ret
-
-;; ############################################################################
-;; set_state_compressed
-;; set_state_uncompressed
-;; ############################################################################
-
+    ret   z
 set_state_compressed:
-
     ld    ix, #s_chunk_write_data_compressed
     ret
 
