@@ -222,7 +222,7 @@ print_ip_addr:
 
 ethertype_arp:
 
-    ex    af, af'
+    ex    af, af'     ;; doesn't matter here, but makes up ETHERTYPE_ARP
     ld    b, #4       ;; loop counter, four octets
 
 00001$:

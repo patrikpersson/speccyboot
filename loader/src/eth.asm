@@ -212,8 +212,6 @@ main_packet:
     ;; 0x0008 -> ARP
     ;; ------------------------------------------------------------------------
 
-    ;; HL points to Ethertype after LDIR above
-
     ld    hl, (eth_adm_header_ethertype)
     ld    a, l
     sub   a, #8
