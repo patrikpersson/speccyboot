@@ -170,18 +170,18 @@ bootp_receive_sname_done:
     call tftp_read_request
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'L' indicator: black ink, white paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #ATTRS_BASE + 23 * 32                ;; (23, 0)
-    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
-    ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
     ;; ------------------------------------------------------------------------
 
-    ld    l, #<ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
     ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'L' indicator: black ink, white paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ld    l, (hl)                                  ;; (23, 0)
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
     ;; ------------------------------------------------------------------------
     ;; print 'L', local IP address, 'S', server IP address
