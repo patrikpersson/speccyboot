@@ -278,19 +278,6 @@ enc28j60_write8plus8 = 0x18
 
 
 ;; ----------------------------------------------------------------------------
-;; Reads one byte over SPI. Registers in alternate register bank are used, with
-;; the exception of B:
-;;
-;; The byte is stored in HL', A, and B (not B' !).
-;;
-;; HL' is increased, DE' is decreased.
-;;
-;; Sets Z flag if DE' == 0. Defined in enc28j60.asm.
-;; ----------------------------------------------------------------------------
-
-    .globl spi_read_byte_to_memory
-
-;; ----------------------------------------------------------------------------
 ;; Add a number of 16-bit words to the IP-style checksum.
 ;;
 ;; On entry:

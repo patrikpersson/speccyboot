@@ -65,15 +65,15 @@ enc28j60_read_memory:
     ;; register allocation:
     ;;
     ;;
-    ;; primary bank
-    ;; ------------
+    ;; primary bank (in spi_read_byte_to_memory)
+    ;; -----------------------------------------
     ;; B   inner (bit) loop counter, always in range 0..8
     ;; C   byte read from SPI
     ;; DE  outer (byte) loop counter
     ;; HL  destination in RAM
     ;;
-    ;; secondary bank
-    ;; --------------
+    ;; secondary bank (in loop)
+    ;; ------------------------
     ;; BC  temp register for one term in sum above
     ;; HL  cumulative 16-bit one-complement sum
     ;;
@@ -94,16 +94,18 @@ word_loop:
 
     call spi_read_byte_to_memory
 
-    ld   c, b                      ;; 4
+    ld   c, a                     ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
     ;; the CALL NZ below is not taken,
     ;; and B == 0 in the checksum addition instead
 
-    ld   b, #0
+    ld   a, #0         ;; take care not to modify Z flag
 
     call nz, spi_read_byte_to_memory
+
+    ld   b, a                      ;; 4
 
     ex   af, af'                   ;; 4
     adc  hl, bc                    ;; 15
@@ -129,7 +131,7 @@ word_loop:
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (primary HL), A, and secondary B.
+;; The byte is stored in (primary HL) and A.
 ;;
 ;; Primary HL is increased, DE is decreased, and the secondary bank
 ;; selected again on exit.
@@ -156,8 +158,6 @@ read_byte_loop:
     ld   a, c
 
     exx
-
-    ld    b, a                     ;; 4
 
     ret
 

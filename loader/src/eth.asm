@@ -148,25 +148,22 @@ main_loop:
     ld    e, #1       ;; bank 1 for EPKTCNT
     rst   enc28j60_select_bank
 
-main_spin_loop:
-
     ld    e, #EPKTCNT
     call  enc28j60_read_register
 
     or    a, a
-    jr    nz, main_packet           ;; NZ means a packet has been received
+    jr    nz, main_packet              ;; NZ means a packet has been received
+
+    ;; ------------------------------------------------------------------------
+    ;; Re-transmit the last critical frame if timer expired
+    ;; ------------------------------------------------------------------------
 
     ld    a, (_timer_tick_count + 1)   ;; high byte
-    dec   a                            ;; A >= 1 means time-out
-    jr    c, main_spin_loop
-
-    ;; ------------------------------------------------------------------------
-    ;; Re-transmit the last critical frame
-    ;; ------------------------------------------------------------------------
+    or    a, a                         ;; A >= 1 means time-out
 
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
-    call  perform_transmission
+    call  nz, perform_transmission
 
     jr    main_loop
 
