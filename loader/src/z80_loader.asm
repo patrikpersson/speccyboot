@@ -120,14 +120,16 @@ _digits:
 
     .macro switch_state FROM TO
 
-    .dw  LD_IX_LOW
-    .db  <(TO)
+    ;; .dw  LD_IX_LOW
+    ;; .db  <(TO)
 
     ;; If TO and FROM are not in the same RAM page, one of these will yield
     ;; an error (due to the size being negative). Normally both are zero.
 
-    .ds  ((> TO) - (> FROM))
-    .ds  ((> FROM) - (> TO))
+    ;; .ds  ((> TO) - (> FROM))
+    ;; .ds  ((> FROM) - (> TO))
+
+    ld   ix, #TO
 
     .endm
 

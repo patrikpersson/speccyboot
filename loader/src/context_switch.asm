@@ -243,8 +243,7 @@ context_switch_restore_bits_loop:
     ;; Restore BC, HL, F
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #VRAM_REGSTATE_BC_HL_F
-    ld    sp, hl
+    ld    sp, #VRAM_REGSTATE_BC_HL_F
     pop   bc
     pop   hl
     pop   af        ;; A gets wrong value here, but this is fixed in trampoline

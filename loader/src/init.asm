@@ -268,7 +268,8 @@ init_continued:
 
   ;; --------------------------------------------------------------------------
   ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
-  ;; This sequence differs between SpeccyBoot and DGBoot.
+  ;; This sequence differs between SpeccyBoot and DGBoot, but preserves HL
+  ;; in both cases.
   ;; --------------------------------------------------------------------------
 
   platform_init
@@ -282,11 +283,9 @@ init_continued:
   ;; since DE points to contended memory, each iteration will take longer
   ;; time than that in reality. Stick with this safe overkill.
   ;; --------------------------------------------------------------------------
-  
-do_copy_trampoline:
 
+  ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
-  ld    de, #_stack_top
   push  de
   ld    bc, #0x83F4
 
