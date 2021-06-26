@@ -422,7 +422,10 @@ s_chunk_compressed_escape:
 
     call  load_byte_from_chunk
 
-    ld    ix, #s_chunk_repcount        ;; tentative next state
+    ;; tentative next state
+
+    switch_state  s_chunk_compressed_escape  s_chunk_repcount
+    ;; ld    ix, #s_chunk_repcount
 
     cp    a, #Z80_ESCAPE
     ret   z
@@ -605,7 +608,7 @@ start_storing_runtime_data:
 ;; state CHUNK_REPCOUNT
 ;; ############################################################################
 
-    .area _STAGE2
+    .area _CODE
 
 s_chunk_repcount:
 
