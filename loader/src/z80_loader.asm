@@ -631,7 +631,8 @@ s_chunk_repvalue:
     call load_byte_from_chunk
     ld   i, a
 
-    ld   ix, #s_chunk_write_data_compressed
+    switch_state  s_chunk_repvalue  s_chunk_write_data_compressed
+    ;; ld   ix, #s_chunk_write_data_compressed
 
     ;; FALL THROUGH to s_chunk_write_data_compressed
 
