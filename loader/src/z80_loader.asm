@@ -694,16 +694,9 @@ store_byte:
   ld   (de), a
   inc  de
 
-  ;; -------------------------------------------------------------------------
-  ;; update progress if DE reached a kilobyte boundary
-  ;; -------------------------------------------------------------------------
+  call update_progress
 
-  ld   a, d
-  and  a, #0x03
-  or   a, e
-  jr   nz, s_chunk_write_data
-
-  jp   update_progress
+  jp   (ix)
 
   ;; -------------------------------------------------------------------------
   ;; a non-zero number of repetitions remain:
