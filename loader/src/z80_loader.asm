@@ -123,14 +123,12 @@ _digits:
     .globl FROM
     .globl TO
 
-    .dw  LD_IX_LOW
-    .db  <(TO)
-
-    ;; If TO and FROM are not in the same RAM page, one of these will yield
-    ;; an error (due to the size being negative). Normally both are zero.
-
-    .ds  ((>TO) - (>FROM))
-    .ds  ((>FROM) - (>TO))
+      .if  (>(FROM))-(>(TO))
+          ld   ix, #TO
+      .else
+          .dw  LD_IX_LOW
+          .db  <(TO)
+      .endif
 
     .endm
 
@@ -423,7 +421,6 @@ s_chunk_header3_default_page:
 
     ld   a, -1(iy)        ;; byte just loaded: chunk bank id
     sub  a, #3
-    or   a, #MEMCFG_ROM_48K    ;; needed for digits while loading
 
     exx
     ld   bc, #MEMCFG_ADDR
