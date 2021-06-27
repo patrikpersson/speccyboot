@@ -306,7 +306,7 @@ init_continued:
   ;; pressed, executes BASIC.
   ;; --------------------------------------------------------------------------
 
-ram_trampoline::
+ram_trampoline:
 
   ld    a, #PAGE_OUT         ;; page out SpeccyBoot, keep ETH in reset
   out   (SPI_OUT), a
