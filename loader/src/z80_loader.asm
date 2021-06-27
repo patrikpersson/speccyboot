@@ -86,27 +86,30 @@ _digits:
 ;;
 ;; States:
 ;;  
-;;                        HEADER                       (parse snapshot header)
+;;                        HEADER
 ;;                           |
 ;; (for v.1 snapshots) /-----+-----\ (for v.2+ snapshots)
 ;;                     |           |
 ;;                     |           v  
-;;                     |      CHUNK_HEADER <--\        (load low byte
-;;                     |           |          |         of chunk length)
-;;                     v           v          |
-;;                     |      CHUNK_HEADER2   |        (load high byte
-;;                     |           |          |         of chunk length)
-;;                     |           v          ^
-;;                     |      CHUNK_HEADER3   |        (load byte: page id)
-;;                     |           |          |
-;;                     \-----+-----/          |
-;;                           |                |
-;;                           v                |
-;;          /-------> CHUNK_WRITE_DATA --->---/        (write bytes to RAM)
+;;                     |      CHUNK_HEADER <-----------------------\
+;;                     |           |                               |
+;;                     v           v                               |
+;;                     |      CHUNK_HEADER2                        |
+;;                     |           |                               |
+;;                     |           v                               ^
+;;                     |      CHUNK_HEADER3                        |
+;;                     |           |                               |
+;;                     \--v--------/                               |
+;;                        |                                        |
+;;                        |                                        |
+;;                        +---> CHUNK_WRITE_DATA_UNCOMPRESSED -->--+
+;;                        |                                        |
+;;                        v                                        |
+;;          /-------> CHUNK_WRITE_DATA_COMPRESSED --------->-------/ 
 ;;          |            |        ^
 ;;          |            v        |
-;;          ^      CHUNK_COMPRESSED_ESCAPE             (handle ED ED
-;;          |                 |                         compressed sequences)
+;;          ^      CHUNK_COMPRESSED_ESCAPE
+;;          |                 |
 ;;          |                 v
 ;;     CHUNK_REPVAL <-- CHUNK_REPCOUNT
 ;;
@@ -368,66 +371,78 @@ s_chunk_header2:
 
 s_chunk_header3:
 
-    ;; use DE for scratch here: it will get its proper value below
-
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-    ld   e, a
+    ;; =======================================================================
+    ;; This state selects a value for DE (0x4000, 0x8000, 0xC000).
+    ;; For a 128k snapshot, a matching 128k memory configuration is also set.
+    ;; =======================================================================
 
     call load_byte_from_packet
 
-    ;; Decide on a good value for write_pos; store in DE.
-
-    ;;
-    ;; Need to handle page 5 separately -- if we do not use the address range
-    ;; 0x4000..0x7fff, the evacuation stuff will not work.
-    ;;
-
-    cp   a, #8                       ;; means page 5 (0x4000..0x7fff)
-    ld   d, #0x40
-    jr   z, s_chunk_header3_set_page
-
-    ;;
-    ;; Page 1 is handled differently in 48k and 128k snapshots:
+    ;; -----------------------------------------------------------------------
+    ;; The loaded byte is an id in range 3..10, as described here:
     ;; https://worldofspectrum.org/faq/reference/z80format.htm
     ;;
-    ;; In a 48k snapshot, page 1 is loaded at 0x8000.
-    ;; In a 128k snapshot, page 1 is loaded at 0xc800, and the
-    ;; memory configuration set accordingly.
-    ;;
+    ;; Map this to a 128k page ID in range 0..7.
+    ;; -----------------------------------------------------------------------
 
-    cp   a, #4                       ;; means page 1 (0x8000..0xbfff)
-    ld   d, #0x80
-    ld   a, e
-    jr   nz, s_chunk_header3_default_page
-
-    cp   a, #SNAPSHOT_128K               ;; is this a 128k snapshot?
-    jr   c, s_chunk_header3_set_page     ;; if not, we are done here
-
-s_chunk_header3_default_page:
-
-    ;;
-    ;; This is either
-    ;;   (a) page 5 in a 48k snapshot, or
-    ;;   (b) a page in a 128k snapshot
-    ;;
-    ;; In either case, the page is set up to be loaded at 0xc000.
-    ;;
-
-    cp   a, #SNAPSHOT_128K
-    ld   d, #0xc0
-    jr   c, s_chunk_header3_set_page
-
-    ;; If this is a 128k snapshot, switch memory bank
-
-    ld   a, -1(iy)        ;; byte just loaded: chunk bank id
     sub  a, #3
+
+    ;; -----------------------------------------------------------------------
+    ;; Need to handle page 5 separately -- if we do not use the address range
+    ;; 0x4000..0x7fff, the evacuation stuff will not work.
+    ;; -----------------------------------------------------------------------
+
+    ld   d, #0x40
+    cp   a, #5
+    jr   z, s_chunk_header3_set_comp_mode
+
+    ;; -----------------------------------------------------------------------
+    ;; Remaining handling is done differently for 48k and 128 snapshots.
+    ;; -----------------------------------------------------------------------
+
+    ld   e, a              ;; save page ID (0..7)
+
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+    cp   a, #SNAPSHOT_128K ;; is this a 128k snapshot?
+
+    ld   a, e              ;; restore page ID (0..7)
+
+    ld   d, #0xc0
+
+    jr   nc, s_chunk_header3_128k_banking
+
+    ;; -----------------------------------------------------------------------
+    ;; This is a 48k snapshot:
+    ;; 
+    ;;   A == 1  means bank 1, to be mapped to 0x8000
+    ;;   A == 2  means bank 2, to be mapped to 0xC000
+    ;;
+    ;; (other pages not expected in 48 snapshots)
+    ;; -----------------------------------------------------------------------
+
+    dec  e                                      ;; was this page 1?
+    jr   nz, s_chunk_header3_set_comp_mode      ;; then 0xC000 is fine
+
+    ld   d, #0x80
+    jr   s_chunk_header3_set_comp_mode  ;; skip memory config for 48k snapshot
+
+s_chunk_header3_128k_banking::
+
+    ;; -----------------------------------------------------------------------
+    ;; This is one of banks 0..4 or 6..7 in 128k snapshot:
+    ;;
+    ;; map the page to 0xc000, and set memory configuration accordingly
+    ;; (memory configuration has no effect on a 48k machine)
+    ;;
+    ;; https://worldofspectrum.org/faq/reference/128kreference.htm
+    ;; -----------------------------------------------------------------------
 
     exx
     ld   bc, #MEMCFG_ADDR
     out  (c), a
     exx
 
-s_chunk_header3_set_page:
+s_chunk_header3_set_comp_mode:
 
     ld   e, #0
 
