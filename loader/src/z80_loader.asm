@@ -400,14 +400,11 @@ s_chunk_header3:
     ;; Remaining handling is done differently for 48k and 128 snapshots.
     ;; -----------------------------------------------------------------------
 
+    ld   d, #0xc0
     ld   e, a              ;; save page ID (0..7)
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
     cp   a, #SNAPSHOT_128K ;; is this a 128k snapshot?
-
-    ld   a, e              ;; restore page ID (0..7)
-
-    ld   d, #0xc0
 
     jr   nc, s_chunk_header3_128k_banking
 
@@ -436,10 +433,10 @@ s_chunk_header3_128k_banking:
     ;; https://worldofspectrum.org/faq/reference/128kreference.htm
     ;; -----------------------------------------------------------------------
 
-    exx
+    push bc
     ld   bc, #MEMCFG_ADDR
-    out  (c), a
-    exx
+    out  (c), e
+    pop  bc
 
 s_chunk_header3_set_comp_mode:
 
