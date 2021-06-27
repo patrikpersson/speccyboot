@@ -332,8 +332,7 @@ initialize_global_data:
 
   ;; clear bitmap VRAM
 
-  ld    hl, #0x4000
-  ld    de, #0x4001
+  ld    de, #0x4001        ;; HL is 0x4000 here (after previous LDIR)
   ld    b, #0x18           ;; BC is now 0x1800 (BC was 0 after previous LDIR)
   ld    (hl), l
   ldir
