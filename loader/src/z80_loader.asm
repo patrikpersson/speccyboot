@@ -426,13 +426,12 @@ s_chunk_header3:
     ld   d, #0x80
     jr   s_chunk_header3_set_comp_mode  ;; skip memory config for 48k snapshot
 
-s_chunk_header3_128k_banking::
+s_chunk_header3_128k_banking:
 
     ;; -----------------------------------------------------------------------
     ;; This is one of banks 0..4 or 6..7 in 128k snapshot:
     ;;
     ;; map the page to 0xc000, and set memory configuration accordingly
-    ;; (memory configuration has no effect on a 48k machine)
     ;;
     ;; https://worldofspectrum.org/faq/reference/128kreference.htm
     ;; -----------------------------------------------------------------------
