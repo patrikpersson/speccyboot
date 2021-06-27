@@ -282,12 +282,17 @@ init_continued:
   ;; 200ms = 709380 T-states = 33780 (0x83F4) LDIR iterations. However,
   ;; since DE points to contended memory, each iteration will take longer
   ;; time than that in reality. Stick with this safe overkill.
+  ;;
+  ;; Some more iterations are also added to ensure L ends up being zero
+  ;; (useful later).
+  ;;
+  ;; NOTE: this is fragile and assumes ram_trampoline == 0x0087. 
   ;; --------------------------------------------------------------------------
 
   ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
   push  de
-  ld    bc, #0x83F4
+  ld    bc, #0x8479
 
   ldir
   
@@ -301,7 +306,7 @@ init_continued:
   ;; pressed, executes BASIC.
   ;; --------------------------------------------------------------------------
 
-ram_trampoline:
+ram_trampoline::
 
   ld    a, #PAGE_OUT         ;; page out SpeccyBoot, keep ETH in reset
   out   (SPI_OUT), a
@@ -314,7 +319,7 @@ ram_trampoline:
 
   jp    nc, 0              ;; if Caps Shift was pressed, go to BASIC
 
-  ld    hl, #0x3d00        ;; address of font data in ROM1
+  ld    h, #0x3d           ;; 0x3d00 == address of font data in ROM1; L is zero here
   ld    de, #_font_data    ;; address of font buffer in RAM
   ld    b, #3              ;; BC is now 0x300  (BC was 0 after previous LDIR)
   ldir
