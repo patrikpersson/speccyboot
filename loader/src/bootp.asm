@@ -286,15 +286,13 @@ print_char:
     push hl
     push bc
 
-    add  a, #<((_font_data - 32 * 8) >> 3)
+    ld   bc, #(_font_data - 32 * 8)
     ld   l, a
-    ld   h, #>((_font_data - 32 * 8) >> 3)
-    jr   nc, no_inc
-    inc  h
-no_inc:
+    ld   h, c   ;; 0
     add  hl, hl
     add  hl, hl
     add  hl, hl
+    add  hl, bc
 
     ld   b, #7
     ld   c, d

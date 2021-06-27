@@ -509,7 +509,7 @@ s_chunk_compressed_escape:
     ld    (de), a
     inc   de
 
-    switch_state  s_chunk_compressed_escape  s_chunk_write_data_compressed
+    switch_state  s_chunk_repcount  s_chunk_write_data_compressed
     ;; ld    ix, #s_chunk_write_data_compressed
 
     ;; FALL THROUGH to update_progress
