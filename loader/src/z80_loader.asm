@@ -732,7 +732,7 @@ store_byte:
 
   call update_progress
 
-  jp   (ix)
+  jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
 
   ;; -------------------------------------------------------------------------
   ;; a non-zero number of repetitions remain:
