@@ -311,16 +311,4 @@ _print_char_loop:
     pop  bc
     pop  hl
 
-    ret  nz
-
-    ;; E became zero: means we reached the end of one of the 2K VRAM segments,
-    ;; skip to the next one
-
-    ld   a, d
-    add  a, #8
-    ld   d, a
-
-    ;; A is destroyed here, but this only matters to print_ip_addr, which
-    ;; never prints to the end of the line
-
     ret

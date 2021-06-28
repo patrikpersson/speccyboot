@@ -128,6 +128,17 @@ no_padding:
 
     call print_char
 
+    jr   nz, no_end_of_segment
+
+    ;; E became zero: means we reached the end of one of the 2K VRAM segments,
+    ;; skip to the next one
+
+    ld   a, d
+    add  a, #8
+    ld   d, a
+
+no_end_of_segment:
+
     ld   a, e
     and  a, #0x1f
     jr   nz, print_str
@@ -384,7 +395,7 @@ menu_hit_enter:
     .area _NONRESIDENT
 
 title_str:
-    .ascii "SpeccyBoot v"
+    .ascii "SpeccyBoot "
     .db   VERSION_STAGE1 + '0'
     .db   0
 
