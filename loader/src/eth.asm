@@ -282,10 +282,12 @@ eth_init:
     call  poll_register
 
     ;; ------------------------------------------------------------------------
-    ;; ensure _next_frame gets a sensible value before any frame is loaded
+    ;; HL is 0x0101 (from poll_register above),
+    ;; and needs to be 0x0000 (ENC28J60_RXBUF_START)
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #ENC28J60_RXBUF_START
+    dec   h
+    dec   l
     ld    (_next_frame), hl
 
     ;; ========================================================================

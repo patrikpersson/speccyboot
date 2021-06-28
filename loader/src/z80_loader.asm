@@ -419,7 +419,7 @@ update_progress:
 
     ;; Print tens (_x_)
 
-    rra                  ;; shift once; routine below shifts three more times
+    rra
     ld    l, #17
     call  show_attr_digit_already_shifted
 
