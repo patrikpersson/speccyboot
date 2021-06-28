@@ -125,7 +125,7 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 
 
 ;; ----------------------------------------------------------------------------
-;; Useful constant-byte value (used by eth.asm)
+;; Useful constant-byte value (used by eth.asm, defined in init.asm)
 ;; ----------------------------------------------------------------------------
 
     .globl ethertype_arp

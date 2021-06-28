@@ -67,12 +67,6 @@ a_div_b_loop:
   
     .area _CODE
 
-ethertype_arp:
-
-    .db  0x08
-
-    ;; followed by 0x06 (LD B, #n) below
-
 ;; ############################################################################
 ;; memory_compare
 ;; memory_compare_4_bytes

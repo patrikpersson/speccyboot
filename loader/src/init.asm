@@ -110,8 +110,16 @@
   jr    enc28j60_end_transaction_and_return                     ;; 2 bytes
 
   ;; ========================================================================
-  ;; (2-byte code slot remains)
+  ;; (one-byte code slot remains)
   ;; ========================================================================
+
+  nop                                                           ;; 1 byte
+
+ethertype_arp:
+
+  .db   0x08                                                    ;; 1 byte
+
+    ;; followed by 0x06 (LD B, #n) below
 
   ;; ========================================================================
   ;; RST 0x20 ENTRYPOINT: spi_write_byte
