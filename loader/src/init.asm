@@ -209,7 +209,7 @@ bootrequest_xid:
 ;; ############################################################################
 
 spi_write_byte_cont:
-    spi_write_bit_from_c
+    SPI_WRITE_BIT_FROM  c
     djnz  spi_write_byte_cont
 
     ret

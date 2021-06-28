@@ -47,13 +47,13 @@ PAGE_OUT = 0x20          ;; mask for paging out SpeccyBoot, paging in BASIC ROM
 SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 
 ;; ----------------------------------------------------------------------------
-;; Macro: write bit 7 from register C to SPI, then shift C left one bit.
+;; Macro: write bit 7 from REG to SPI, then shift REG left one bit.
 ;; C and Z are cleared after this (as INC A does not generate any carry)
 ;; ----------------------------------------------------------------------------
 
-    .macro  spi_write_bit_from_c
+    .macro  SPI_WRITE_BIT_FROM   REG
     ld    a, #SPI_IDLE+SPI_IDLE          ;; shifted back left below
-    rl    c
+    rl    REG
     rra
     out   (SPI_OUT), a
     inc   a
@@ -61,21 +61,22 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
     .endm
 
 ;; ----------------------------------------------------------------------------
-;; Macro: shift register C left one bit, and shift in a bit from SPI to bit 0.
+;; Macro: shift REG left one bit, and shift in a bit from SPI to bit 0.
+;;        REG can be (HL).
 ;;
 ;; Destroys AF
 ;;
 ;; 7 + 11 + 4 + 11 + 11 + 4 + 8 = 56 T-states
 ;; ----------------------------------------------------------------------------
 
-    .macro  spi_read_bit_to_c
+    .macro  SPI_READ_BIT_TO   REG
     ld    a, #SPI_IDLE
     out   (SPI_OUT), a
     inc   a
     out   (SPI_OUT), a
     in    a, (SPI_IN)
     rra
-    rl    c
+    rl    REG
     .endm
 
 ;; ----------------------------------------------------------------------------

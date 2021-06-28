@@ -68,7 +68,6 @@ enc28j60_read_memory:
     ;; primary bank (in spi_read_byte_to_memory)
     ;; -----------------------------------------
     ;; B   inner (bit) loop counter, always in range 0..8
-    ;; C   byte read from SPI
     ;; DE  outer (byte) loop counter
     ;; HL  destination in RAM
     ;;
@@ -145,17 +144,15 @@ spi_read_byte_to_memory:
 
     ld   b, #8
 read_byte_loop:
-    spi_read_bit_to_c
+    SPI_READ_BIT_TO  (hl)
     djnz read_byte_loop
 
     dec  de                        ;; 6
     ld   a, d                      ;; 4
     or   e                         ;; 4
 
-    ld   (hl), c
+    ld   a, (hl)
     inc  hl
-
-    ld   a, c
 
     exx
 

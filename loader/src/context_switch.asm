@@ -223,10 +223,9 @@ context_switch_restore_bytes_loop:
 
     ld    b, #8                      ;; one byte
 context_switch_restore_bits_loop:
-    spi_read_bit_to_c
+    SPI_READ_BIT_TO  (hl)
     djnz  context_switch_restore_bits_loop
 
-    ld    (hl), c
     inc   hl
     ld    a, h
     cp    a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH) ;; integral number of pages
