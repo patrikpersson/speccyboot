@@ -512,7 +512,7 @@ no_progress_bar:
     ;; ------------------------------------------------------------------------
 
     exx
-    prepare_context_switch
+    SETUP_CONTEXT_SWITCH
     exx
 
 start_storing_runtime_data:

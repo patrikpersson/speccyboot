@@ -206,7 +206,7 @@ REG_R_ADJUSTMENT                 = 0xF8
 ;; copy runtime data to ENC28J60 SRAM
 ;; ============================================================================
 
-    .macro  prepare_context_switch
+    .macro  SETUP_CONTEXT_SWITCH
 
     ;; ========================================================================
     ;; Prepare VRAM trampoline.
@@ -352,9 +352,10 @@ prepare_context_48k:
     ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
     ;; -----------------------------------------------------------------------
 
-
     ld   de, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
+
 prepare_context_set_bank:
+
     ld   (VRAM_REGSTATE_PC), hl
     ld   (memory_state), de
 
