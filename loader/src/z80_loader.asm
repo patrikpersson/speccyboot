@@ -415,15 +415,13 @@ update_progress:
 
     pop   de             ;; recall flags, old F is now in E
     bit   #4, e          ;; was H flag set? Then the tens have increased
-    jr    z, not_10k
 
     ;; Print tens (_x_)
 
     rra
     ld    l, #17
-    call  show_attr_digit_already_shifted
+    call  nz, show_attr_digit_already_shifted
 
-not_10k:
     ;; Print single-number digit (__x)
 
     ld    a, c
