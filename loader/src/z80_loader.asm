@@ -613,14 +613,23 @@ s_chunk_header3:
     jr   nz, s_chunk_header3_set_comp_mode      ;; then 0xC000 is fine
 
     ld   d, #0x80
-    jr   s_chunk_header3_set_comp_mode  ;; skip memory config for 48k snapshot
+
+    ;; -----------------------------------------------------------------------
+    ;; FALL THROUGH to 128k memory configuration here:
+    ;;
+    ;; E==0, so page 0 will be paged in at 0xC000 (which is the same page
+    ;; selected in init.asm and in context switch). Shouldn't matter much
+    ;; anyway, since DE will now be 0x8000, and the 0xC000..0xFFFF addresses
+    ;; shouldn't be touched.
+    ;;
+    ;; The memory configuration will be updated in the context switch anyway.
+    ;; -----------------------------------------------------------------------
 
 s_chunk_header3_128k_banking:
 
     ;; -----------------------------------------------------------------------
     ;; This is one of banks 0..4 or 6..7 in 128k snapshot:
-    ;;
-    ;; map the page to 0xc000, and set memory configuration accordingly
+    ;; set memory configuration accordingly
     ;;
     ;; https://worldofspectrum.org/faq/reference/128kreference.htm
     ;; -----------------------------------------------------------------------

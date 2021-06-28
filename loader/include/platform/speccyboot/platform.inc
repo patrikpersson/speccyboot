@@ -51,6 +51,8 @@ SPI_CS  = 0x08
     ;; the access to 0x1ffd would be mapped to 0x7ffd, overwriting the
     ;; 128k configuration. On a 48k machine neither access has any effect.
 
+    ;; This will map page 0 to address 0xC000.
+
     ;; Set the ROM selection bit in both registers to page in the 48k
     ;; BASIC ROM (ROM1 on the 128k, ROM3 on +2A/+3).
 

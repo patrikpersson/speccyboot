@@ -339,6 +339,20 @@ evacuate_iff1_set:
     cp   a, #SNAPSHOT_128K
     jr   nc, prepare_context_set_bank
 prepare_context_48k:
+
+    ;; -----------------------------------------------------------------------
+    ;; Memory configuration for a 48k snapshot on a 128k machine. Bits are
+    ;; set as follows:
+    ;;
+    ;; Bits 0..2 := 0:  page 0 at 0xC000
+    ;; Bit 3     := 0:  normal screen (page 5)
+    ;; Bit 4     := 1:  48k BASIC ROM
+    ;; Bit 5     := 1:  lock memory paging
+    ;;
+    ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
+    ;; -----------------------------------------------------------------------
+
+
     ld   de, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
 prepare_context_set_bank:
     ld   (VRAM_REGSTATE_PC), hl
