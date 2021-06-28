@@ -265,7 +265,6 @@ enc28j60_write8plus8 = 0x18
 ;; DE = number of bytes to read
 ;;
 ;; HL is preserved. Destroys AF, BC, DE, AF', BC', and HL'.
-;; BC == 0 on exit.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_memory

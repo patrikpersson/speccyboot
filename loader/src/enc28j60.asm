@@ -74,6 +74,7 @@ enc28j60_read_memory:
     ;; secondary bank (in loop)
     ;; ------------------------
     ;; BC  temp register for one term in sum above
+    ;; DE  0 (zero)
     ;; HL  cumulative 16-bit one-complement sum
     ;;
     ;; F   C flag from previous checksum addition
@@ -81,6 +82,7 @@ enc28j60_read_memory:
 
     exx
     ld    hl, (_ip_checksum)
+    ld    de, #0
 
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
@@ -90,9 +92,7 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1394 T-states = 398.286us @3.5MHz
-    ;;   <=>
-    ;; 40kb/s
+    ;; Each iteration (16 bits) takes 1391 T-states <=> 40kb/s
     ;; -----------------------------------------------------------------------
 
 word_loop:
@@ -107,7 +107,7 @@ word_loop:
     ;; and B == 0 in the checksum addition instead
 
     ;; take care not to modify Z flag
-    ld   a, #0                        ;; 7
+    ld   a, e                         ;; 4
 
     call nz, spi_read_byte_to_memory  ;; 17+655
 
@@ -121,12 +121,10 @@ word_loop:
 
     ;; -----------------------------------------------------------------------
     ;; end of payload: add the final carry to HL
-    ;; (also set B := 0, used by caller)
     ;; -----------------------------------------------------------------------
 
     ex    af, af'
-    ld    bc, #0
-    adc   hl, bc
+    adc   hl, de
 
     ld    (_ip_checksum), hl
 

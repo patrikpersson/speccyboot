@@ -275,10 +275,10 @@ ip_receive:
     ;; Read header size
 
     ld   a, (_rx_frame + IPV4_HEADER_OFFSETOF_VERSION_AND_LENGTH)
-    and  a, #0x0f
     add  a, a
-    add  a, a
-    push af     ;; remember IP header size for later, carry == 0
+    add  a, a         ;; the IP version is shifted out; no masking needed
+
+    push af     ;; remember IP header size for later
 
     sub  a, #IPV4_HEADER_SIZE
 
@@ -295,29 +295,28 @@ ip_receive:
     call nz, enc28j60_read_memory
 
     ;; ------------------------------------------------------------
-    ;; Load UDP payload
+    ;; compute payload length (excluding IP header)
     ;; ------------------------------------------------------------
 
-    pop  af          ;; A now holds IP header size, carry == 0
-    
-    ;; B == 0 from enc28j60_read_memory or memory_compare_4_bytes
-
-    ld   c, a        ;; BC now holds IP header size
+    pop  bc          ;; B now holds IP header size
 
     ;; compute T-N, where
     ;;   T is the total packet length
     ;;   N is the number of bytes currently read (IP header + options)
 
     ld   hl, (_rx_frame + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
-    ld   a, l
-    ld   l, h
-    ld   h, a        ;; byteswap from network to host order
-    sbc  hl, bc      ;; carry is 0 from POP AF above
+    ld   a, h    ;; HL is in network order, so this is the low byte
+    sub  a, b
+    ld   e, a
+    ld   d, l
+    jr   nc, no_carry_in_header_size_subtraction
+    dec  d
+no_carry_in_header_size_subtraction:
 
-    ex   de, hl      ;; DE now holds UDP length
+    ;; DE now holds UDP length (host order)
 
     ;; ------------------------------------------------------------
-    ;; if IP header checksum is ok, load packet data
+    ;; check IP header checksum
     ;; ------------------------------------------------------------
 
     call ip_receive_check_checksum
@@ -347,6 +346,10 @@ ip_receive:
     inc  l
 no_carry:
     ld   (_ip_checksum), hl
+
+    ;; ------------------------------------------------------------
+    ;; Load UDP payload
+    ;; ------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call enc28j60_read_memory
