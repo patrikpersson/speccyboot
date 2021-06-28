@@ -370,6 +370,8 @@ initialize_global_data:
 
   .area _CODE
 
+  .area _LAST_PART_OF_ROM  ;; stuff that goes at the end of ROM (mostly 0x7XX)
+
   .area _DATA
 
   .area _STAGE2_ENTRY      ;; header for the stage 2 bootloader (RAM)
