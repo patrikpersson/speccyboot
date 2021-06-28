@@ -64,12 +64,6 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     .globl  bootp_receive
 
 ;; ----------------------------------------------------------------------------
-;; Useful constant-byte values (used by eth.asm)
-;; ----------------------------------------------------------------------------
-
-    .globl ethertype_arp
-
-;; ----------------------------------------------------------------------------
 ;; Macro:
 ;;
 ;; send a BOOTREQUEST for client configuration

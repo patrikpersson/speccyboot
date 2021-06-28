@@ -218,11 +218,6 @@ print_ip_addr:
     ;; HL = IP address
     ;; AF, BC = scratch
 
-    ;; useful two bytes for ETHERTYPE_ARP (used by eth.asm)
-
-ethertype_arp:
-
-    ex    af, af'     ;; doesn't matter here, but makes up ETHERTYPE_ARP
     ld    b, #4       ;; loop counter, four octets
 
 00001$:

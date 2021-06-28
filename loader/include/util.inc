@@ -125,6 +125,12 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 
 
 ;; ----------------------------------------------------------------------------
+;; Useful constant-byte value (used by eth.asm)
+;; ----------------------------------------------------------------------------
+
+    .globl ethertype_arp
+
+;; ----------------------------------------------------------------------------
 ;; Compare memory blocks pointed to by HL and DE. Register B indicates the
 ;; number of bytes to compare (so, max 256).
 ;;
