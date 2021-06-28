@@ -121,7 +121,7 @@ _digits:
 ;; address byte). In other cases, simply use LD IX, #TO instead.
 ;; ============================================================================
 
-    .macro switch_state FROM TO
+    .macro SWITCH_STATE FROM TO
 
     .dw  LD_IX_LOW
     .db  <(TO)
@@ -286,7 +286,7 @@ s_header_not_128k:
     ;; a chunk is expected next
     ;; ------------------------------------------------------------------------
 
-    ;; switch_state  s_header  s_chunk_header
+    ;; SWITCH_STATE  s_header  s_chunk_header
     ld   ix, #s_chunk_header
 
 s_header_set_state:
@@ -330,7 +330,7 @@ s_chunk_compressed_escape:
 
     ;; tentative next state
 
-    ;; switch_state  s_chunk_compressed_escape  s_chunk_repcount
+    ;; SWITCH_STATE  s_chunk_compressed_escape  s_chunk_repcount
     ld    ix, #s_chunk_repcount
 
     cp    a, #Z80_ESCAPE
@@ -344,18 +344,27 @@ s_chunk_compressed_escape:
     ex    af, af'
 
     ld    a, #Z80_ESCAPE
-    ld    (de), a
-    inc   de
 
-    call  update_progress
+    call  store_byte_and_update_progress
 
     ex    af, af'
 
+    SWITCH_STATE  s_chunk_repcount  s_chunk_write_data_compressed
+    ;; ld    ix, #s_chunk_write_data_compressed
+
+    ;; FALL THROUGH to store_byte_and_update_progress
+
+
+;; ############################################################################
+;; store_byte_and_update_progress
+;;
+;; Store byte A in *(DE++), and continue with update_progress
+;; ############################################################################
+
+store_byte_and_update_progress:
+
     ld    (de), a
     inc   de
-
-    switch_state  s_chunk_repcount  s_chunk_write_data_compressed
-    ;; ld    ix, #s_chunk_write_data_compressed
 
     ;; FALL THROUGH to update_progress
 
@@ -524,7 +533,7 @@ s_chunk_header:
     call load_byte_from_packet
     ld   l, a
 
-    switch_state  s_chunk_header  s_chunk_header2
+    SWITCH_STATE  s_chunk_header  s_chunk_header2
     ;; ld   ix, #s_chunk_header2
 
     ret
@@ -543,7 +552,7 @@ s_chunk_header2:
     call load_byte_from_packet
     ld   h, a
 
-    switch_state  s_chunk_header2  s_chunk_header3
+    SWITCH_STATE  s_chunk_header2  s_chunk_header3
     ;; ld   ix, #s_chunk_header3
 
     ret
@@ -675,7 +684,7 @@ set_compression_state:
     ld    ix, #s_chunk_write_data_compressed
     ret   nz
 
-    switch_state  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
+    SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
     ;; ld    ix, #s_chunk_write_data_uncompressed
 
     ld    hl, #0x4000
@@ -706,7 +715,7 @@ s_chunk_repcount:
 
     ld   (_repcount), a
 
-    switch_state  s_chunk_repcount  s_chunk_repvalue
+    SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
     ;; ld   ix, #s_chunk_repvalue
 
     ret
@@ -723,7 +732,7 @@ s_chunk_repvalue:
     call load_byte_from_chunk
     ld   i, a
 
-    switch_state  s_chunk_repvalue  s_chunk_write_data_compressed
+    SWITCH_STATE  s_chunk_repvalue  s_chunk_write_data_compressed
     ;; ld   ix, #s_chunk_write_data_compressed
 
     ;; FALL THROUGH to s_chunk_write_data_compressed
@@ -755,10 +764,7 @@ s_chunk_write_data_compressed:
 
 store_byte:
 
-  ld   (de), a
-  inc  de
-
-  call update_progress
+  call store_byte_and_update_progress
 
   jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
 
@@ -782,7 +788,7 @@ do_repetition:
 
 chunk_escape:
 
-  ;; switch_state  s_chunk_write_data_compressed  s_chunk_compressed_escape
+  ;; SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
   ld   ix, #s_chunk_compressed_escape
 
   ret
