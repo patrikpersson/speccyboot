@@ -766,6 +766,8 @@ store_byte:
 
   call store_byte_and_update_progress
 
+jp_ix_instr:
+
   jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
 
   ;; -------------------------------------------------------------------------

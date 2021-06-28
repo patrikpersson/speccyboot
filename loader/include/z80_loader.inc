@@ -31,4 +31,8 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
+;; ----------------------------------------------------------------------------
+;; TFTP loader hook, to initiate .z80 snapshot loading
+;; ----------------------------------------------------------------------------
+
     .globl s_header

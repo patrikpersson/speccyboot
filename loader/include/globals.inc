@@ -110,7 +110,8 @@ DISPLAY_LINES = 20
 
 
 ;; ----------------------------------------------------------------------------
-;; A JP (IX) instruction, used as a CALL target from z80_loader
+;; A JP (IX) instruction, used as a CALL target, to emulate a CALL (IX)
+;; (defined in z80_loader.asm)
 ;; ----------------------------------------------------------------------------
 
     .globl jp_ix_instr

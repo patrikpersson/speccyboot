@@ -110,11 +110,8 @@
   jr    enc28j60_end_transaction_and_return                     ;; 2 bytes
 
   ;; ========================================================================
-  ;; JP (IX)   (to squeeze something into this 2-byte code slot)
+  ;; (2-byte code slot remains)
   ;; ========================================================================
-  
-jp_ix_instr:
-  jp  (ix)                                                      ;; 2 bytes
 
   ;; ========================================================================
   ;; RST 0x20 ENTRYPOINT: spi_write_byte
