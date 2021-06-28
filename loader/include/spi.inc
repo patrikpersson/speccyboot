@@ -52,12 +52,14 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 ;; ----------------------------------------------------------------------------
 
     .macro  SPI_WRITE_BIT_FROM   REG
+
     ld    a, #SPI_IDLE+SPI_IDLE          ;; shifted back left below
     rl    REG
     rra
     out   (SPI_OUT), a
     inc   a
     out   (SPI_OUT), a
+
     .endm
 
 ;; ----------------------------------------------------------------------------
@@ -65,19 +67,19 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 ;;        REG can be (HL).
 ;;
 ;; Destroys AF
-;;
-;; 7 + 11 + 4 + 11 + 11 + 4 + 8 = 56 T-states
 ;; ----------------------------------------------------------------------------
 
     .macro  SPI_READ_BIT_TO   REG
-    ld    a, #SPI_IDLE
-    out   (SPI_OUT), a
-    inc   a
-    out   (SPI_OUT), a
-    in    a, (SPI_IN)
-    rra
-    rl    REG
-    .endm
+
+    ld    a, #SPI_IDLE                  ;;  7
+    out   (SPI_OUT), a                  ;; 11
+    inc   a                             ;;  4
+    out   (SPI_OUT), a                  ;; 11
+    in    a, (SPI_IN)                   ;; 11
+    rra                                 ;;  4
+    rl    REG                           ;; 15    for REG=(HL)
+
+    .endm                               ;; 63 T-states
 
 ;; ----------------------------------------------------------------------------
 ;; rst spi_write_byte

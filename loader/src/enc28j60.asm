@@ -89,28 +89,35 @@ enc28j60_read_memory:
 
     ex    af, af'              ;; to primary AF
 
+    ;; -----------------------------------------------------------------------
+    ;; Each iteration (16 bits) takes 1394 T-states = 398.286us @3.5MHz
+    ;;   <=>
+    ;; 40kb/s
+    ;; -----------------------------------------------------------------------
+
 word_loop:
 
-    call spi_read_byte_to_memory
+    call spi_read_byte_to_memory      ;; 17+655
 
-    ld   c, a                     ;; 4
+    ld   c, a                         ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
     ;; the CALL NZ below is not taken,
     ;; and B == 0 in the checksum addition instead
 
-    ld   a, #0         ;; take care not to modify Z flag
+    ;; take care not to modify Z flag
+    ld   a, #0                        ;; 7
 
-    call nz, spi_read_byte_to_memory
+    call nz, spi_read_byte_to_memory  ;; 17+655
 
-    ld   b, a                      ;; 4
+    ld   b, a                         ;; 4
 
-    ex   af, af'                   ;; 4
-    adc  hl, bc                    ;; 15
-    ex   af, af'                   ;; 4
+    ex   af, af'                      ;; 4
+    adc  hl, bc                       ;; 15
+    ex   af, af'                      ;; 4
 
-    jr   nz, word_loop             ;; 12
+    jr   nz, word_loop                ;; 12
 
     ;; -----------------------------------------------------------------------
     ;; end of payload: add the final carry to HL
@@ -140,23 +147,25 @@ word_loop:
 
 spi_read_byte_to_memory:
 
-    exx                            ;; 4    to primary
+    exx                            ;;  4
 
-    ld   b, #8
+    ld   b, #8                     ;;  7
 read_byte_loop:
-    SPI_READ_BIT_TO  (hl)
-    djnz read_byte_loop
+    SPI_READ_BIT_TO  (hl)          ;; 63 * 8
+    djnz read_byte_loop            ;; 13 * 7 + 8
 
-    dec  de                        ;; 6
-    ld   a, d                      ;; 4
-    or   e                         ;; 4
+    dec  de                        ;;  6
+    ld   a, d                      ;;  4
+    or   e                         ;;  4
 
-    ld   a, (hl)
-    inc  hl
+    ld   a, (hl)                   ;;  7
+    inc  hl                        ;;  6
 
-    exx
+    exx                            ;;  4
 
-    ret
+    ret                            ;; 10
+
+                                   ;; 655 T-states
 
 
 ;; ############################################################################
