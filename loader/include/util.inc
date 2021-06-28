@@ -30,12 +30,16 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
-MAC_ADDR_0 = 0xba
-MAC_ADDR_1 = 0xdb
-MAC_ADDR_2 = 0xad
-MAC_ADDR_3 = 0xc0
-MAC_ADDR_4 = 0xff
-MAC_ADDR_5 = 0xee
+;; ----------------------------------------------------------------------------
+;; These MAC address bytes must match the bytes in init.asm
+;; ----------------------------------------------------------------------------
+
+MAC_ADDR_0 = 0x4e
+MAC_ADDR_1 = 0x23
+MAC_ADDR_2 = 0xe7
+MAC_ADDR_3 = 0x1b
+MAC_ADDR_4 = 0x7a
+MAC_ADDR_5 = 0xb3
 
 TICK_PER_SECOND   = 50
 

@@ -221,9 +221,17 @@ spi_write_byte_cont:
 
 ;; ############################################################################
 ;; enc28j60_write_memory_cont
+;;
+;; these bytes also double as Ethernet address:
+;; 4E:23:E7:1B:7A:B3
+;;
+;; The lower two bits of the first byte are 01, so this is a locally
+;; administered address:
+;; https://en.wikipedia.org/wiki/MAC_address#Ranges_of_group_and_locally_administered_addresses
 ;; ############################################################################
 
 enc28j60_write_memory_cont:
+eth_local_address:
 
     ;; ------------------------------------------------------------------------
     ;; write DE bytes, starting at HL
@@ -261,10 +269,6 @@ enc28j60_end_transaction_and_return:
 eth_broadcast_address:
     .db   0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 
-eth_local_address:
-    .db   MAC_ADDR_0, MAC_ADDR_1, MAC_ADDR_2
-    .db   MAC_ADDR_3, MAC_ADDR_4, MAC_ADDR_5
-
   ;; ==========================================================================
   ;; continued initialization (from 0x0000)
   ;; ==========================================================================
@@ -291,14 +295,13 @@ init_continued:
   ;; Some more iterations are also added to ensure L ends up being zero
   ;; (useful later).
   ;;
-  ;; NOTE: this is fragile and assumes ram_trampoline == 0x0087. 
+  ;; NOTE: this is fragile and assumes ram_trampoline == 0x0081. 
   ;; --------------------------------------------------------------------------
 
   ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
   push  de
-  ld    bc, #0x8479
-
+  ld    bc, #0x847f
   ldir
   
   ret   ;; jump to _stack_top
