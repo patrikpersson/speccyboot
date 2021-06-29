@@ -236,9 +236,10 @@ s_header:
     ;; check snapshot header version
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
-    ld   a, h
-    or   a, l
+    ld   l, #<(_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
+    ld   a, (hl)
+    inc  hl
+    or   a, (hl)
     jr   z, s_header_ext_hdr               ;; extended header?
 
     ;; ------------------------------------------------------------------------
@@ -246,19 +247,19 @@ s_header:
     ;; Decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
-    ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
-    and  a, #SNAPSHOT_FLAGS_COMPRESSED_MASK
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS
+    bit  5, (hl)    ;; COMPRESSED flag set?
 
-    ;; COMPRESSED flag set   =>  A != 0  =>  Z == 0  =>  s_chunk_write_data_compressed
-    ;; COMPRESSED flag clear =>  A == 0  =>  Z == 1  =>  s_chunk_write_data_uncompressed
+    ;; COMPRESSED flag set   =>  Z == 0  =>  s_chunk_write_data_compressed
+    ;; COMPRESSED flag clear =>  Z == 1  =>  s_chunk_write_data_uncompressed
 
     call set_compression_state
 
-    ;; HL needs to be at least 0xC000, to ensure all bytes in the chunk are
-    ;; loaded. A larger value is OK, since the context switch will take over
-    ;; after 48k have been loaded anyway.
+    ;; Ensure HL is at least 0xC000, so all bytes in the chunk are loaded.
+    ;; A larger value is OK, since the context switch will take over after 48k
+    ;; have been loaded anyway.
 
-    ld   h, #0xC0      ;; ensure HL >= 0xC000
+    ld   h, #0xC0
 
     jr   s_header_set_state
 
@@ -307,16 +308,16 @@ s_header_set_state:
 
     add  iy, de
 
-    ;; Set up BC as (0x0200 - DE). B is currently 0 (after initial LDIR above).
+    ;; Set up BC as (0x0200 - E). B is currently 0 (after initial LDIR above).
 
     xor  a, a
-    sub  a, e       ;; no carry expected
+    sub  a, e       ;; no carry expected, as E is at most 54 (0x36)
     ld   c, a
     inc  b          ;; B is now 1
 
     ;; ------------------------------------------------------------------------
-    ;; Set up DE for a single 48k chunk. For a version 2+ snapshot this value
-    ;; will be superseded in the chunk header.
+    ;; Set up DE for a single 48k chunk, to be loaded at 0x4000. For a version
+    ;; 2+ snapshot this address will be superseded in s_chunk_header3.
     ;; ------------------------------------------------------------------------
 
     ld   de, #0x4000
