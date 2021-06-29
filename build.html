@@ -47,17 +47,26 @@
 
         <ul>
 
-          <li>I chose to use the
-            <a href="http://www.olimex.com/dev/enc28j60-h.html">Olimex
+          <li>
+            <p>I chose to use the
+            <a href="https://www.olimex.com/Products/Modules/Ethernet/ENC28J60-H/">Olimex
             ENC28J60-H development board</a> for the Ethernet subsystem. This is
             not only easier, it also helps to avoid disturbances from my abysmal
             soldering skills. (The ENC28J60 data sheet recommends surface
-            mounting at least some components, and this is done on the ENC28J60-H board.)</li>
+            mounting at least some components, and this is done on the ENC28J60-H board.)
+          </p>
+
+          <p>
+            (There now seems to be
+            <a href="https://www.olimex.com/Products/Modules/Ethernet/MOD-ENC28J60/">a newer development board,
+              MOD-ENC28J60</a>, that is both cheaper and easier to connect. I haven't tried it.)
+          </p>
+          </li>
 
           <li>The jumper JP1, when closed, disables the EEPROM (useful when it
             contains garbage).</li>
 
-          <li>You may use this hardware design as you wish. Feel free to build
+          <li>Use this hardware design as you wish. Feel free to build
           and sell devices based on this design; if they look good, I'd like to
           buy one!</li>
 
@@ -67,18 +76,12 @@
 
         <table>
         <tr><th>Component</th><th>Approx. cost (EUR)</th></tr>
-        <tr><td>ENC28J60-H development board</td><td>15</td></tr>
+        <tr><td>MOD-ENC28J60 or ENC28J60-H development board</td><td>6&ndash;14</td></tr>
         <tr><td>28C16 EEPROM</td><td>2</td></tr>
         <tr><td>Other (74HCT32N OR gates, 74HCT139N decoder, 74HCT244N buffer, 74HCT273N
           flip-flop, 5V + 3.3V regulators)</td><td>2</td></tr>
-        <tr><td><b>Total</b></td><td><b>&asymp; 20</b></td></tr>
+        <tr><td><b>Total</b></td><td><b>&asymp; 10&ndash;18</b></td></tr>
         </table>
-
-        <p>If you want to use the ENC28J60 chip as-is (rather than the Olimex
-        board), you will have to add a few more external components (such as an
-        Ethernet connector, obviously). This will also reduce the total component
-        cost to about <b>EUR 10</b>. Refer to the ENC28J60 data sheet for
-        details.</p>
 
         <h3>DGBoot: an alternate design for the Didaktik Gama</h3>
 
@@ -96,8 +99,7 @@
 
         <p>The DGBoot design was kindly contributed by Imrich Konkol. More
         information, including schematics, is available in <a
-        href="http://sindik.at/?p=929448">his blog</a>. It's all in Slovak, but
-        Google Translate is always an option.</p>
+        href="http://sindik.at/?p=929448">his blog</a> (Slovak).</p>
 
         <hr>
 
@@ -105,13 +107,15 @@
           <h2>Building the firmware</h2>
           </a>
 
-        <pre class="code">sudo apt install git build-essential sdcc
+        <pre class="code">sudo apt install git build-essential sdcc python3
 git clone https://github.com/patrikpersson/speccyboot.git
 cd speccyboot
 make</pre>
 
-        <p>This should work in any recent Debian or Ubuntu Linux distribution. Some releases of sdcc have problems compiling some of the macros
-        in the SpeccyBoot source code. I use sdcc 3.8.0 (the standard option in Ubuntu 20.04).</p>
+        <p>This should work in any recent Debian or Ubuntu Linux distribution.
+          The sdcc compiler itself is not used, only the Z80 assembler and linker,
+          but this is the easiest way to install them.
+        I use the sdcc 3.8.0 package (the standard option in Ubuntu 20.04).</p>
 
         <p>When the build completes, you should have a file named
         <span class="code">speccyboot.wav</span> in your working directory. This WAV file includes
@@ -130,8 +134,8 @@ make</pre>
 
         <table>
           <tr><th>Address range</th><th>Contents</th></tr>
-          <tr><td>0&ndash;8191</td><td>SpeccyBoot firmware, built with <span class="code">make DGBOOT=1</span></td></tr>
-              <tr><td>8192&ndash;16383</td><td>0xFF</td></tr>
+          <tr><td>0&ndash;2047</td><td>SpeccyBoot firmware, built with <span class="code">make DGBOOT=1</span></td></tr>
+              <tr><td>2048&ndash;16383</td><td>0xFF</td></tr>
               <tr><td>16384&ndash;32767</td><td>Didaktik Gama '89 ROM</td></tr>
         </table>
 

@@ -73,17 +73,17 @@ tftp-root=/var/tftp</pre>
 
     <h3>Preparing a directory of snapshots</h3>
 
-    <p>Your .z80 snapshots need to be stored in a particular
-      directory to be found by SpeccyBoot and the TFTP server.</p>
-
-    <p>Create a directory named <span class="code">speccyboot</span> in your TFTP
-      servers's main directory. (Given the <span class="code">dnsmasq</span>
-      configuration above, that would be <span class="code">/var/tftp</span>;
+    <p>Your .z80 snapshots need to be made accessible to your TFTP server.
+      Different TFTP servers use different directories, so check your documentation.
+      (In the <span class="code">dnsmasq</span> example
+      configuration above, this directory is <span class="code">/var/tftp</span>;
       other TFTP servers likely use something else.)
+    </p>
+    <p>
       Copy your .z80 snapshots to
-      this <span class="code">speccyboot</span> directory:</p>
+      this directory:</p>
 
-    <pre class="code">SNAPDIR=/var/tftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="scriptcomment"># &lt;-- adapt this path to match your setup</span>
+    <pre class="code">SNAPDIR=/var/tftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="scriptcomment"># &lt;-- adapt this path to match your setup</span>
 sudo mkdir -p $SNAPDIR
 sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAPDIR</pre>
 
@@ -92,8 +92,8 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
     <p>After you have created the directory above, and whenever
     you add or remove a snapshot to/from this directory,
     you will need to update the SpeccyBoot binary <code>menu.bin</code>.
-    This is a menu application combined with a
-    (case-insensitively sorted) list of snapshots.
+    (This is a menu application combined with a
+    list of snapshots, and is required for snapshot loading to work.)
 
     <p>The Python script <span class="code">speccyboot-update</span>
     generates a <code>menu.bin</code> file for you. It is located in the <code>utils</code>
@@ -144,7 +144,7 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
         <td><div style="background-color:#f0f;color:#fff">magenta</div></td>
         <td>invalid hostname</td>
         <td>
-          <p>The BOOTP reply included a symbolic hostname for the TFTP server.</p>
+          <p>The BOOTP server's reply included a symbolic hostname for the TFTP server (in field <code>sname</code>).</p>
         </td>
         <td>
           <p>Ensure that the BOOTP <code>sname</code> field is an IP address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal (quad-dotted) notation</a>, on form w.x.y.z.)</p>
@@ -152,11 +152,9 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
       </tr>
       <tr>
         <td><div style="background-color:#0ff">cyan</div></td>
-        <td>incompatible snapshot</td>
-        <td>
-          <p>The selected snapshot is incompatible with SpeccyBoot.</p>
-          <p>Snapshots for standard Spectrum 48k and 128k machines are supported, but snapshots made specifically for +2A/+2B/+3 machines or clones are not.</p>
-        </td>
+        <td>hardware failure</td>
+        <td>The ENC28J60 controller does not seem to respond to SPI communication.</td>
+        <td>Check your SpeccyBoot hardware.</td>
       </tr>
       <tr>
         <td><div style="background-color:#ff0">yellow</div></td>
@@ -165,12 +163,6 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
         <td>
           Check your TFTP configuration and re-run <code>speccyboot-update</code>.
         </td>
-      </tr>
-      <tr>
-        <td><div style="background-color:#eee">white</div></td>
-        <td>hardware failure</td>
-        <td>The ENC28J60 controller does not seem to respond to SPI communication.</td>
-        <td>Check your SpeccyBoot hardware.</td>
       </tr>
     </table>
 
