@@ -1,3 +1,24 @@
+SpeccyBoot 3 (June X, 2021):
+
+* Optimized footprint, to fit everything except the menu application and
+  initial .z80 header parsing into 2K ROM.
+
+-------------------------------------------------------------------------------
+
+v2.0 (May 20, 2021):
+
+* Major refactoring to squeeze SpeccyBoot into a 2K (E(E)P)ROM/FRAM.
+* Rewritten entirely in Z80 assembly language. (No C compiler used anymore.)
+
+-------------------------------------------------------------------------------
+
+v1.8 (April 24, 2021):
+
+* DHCP option 67 (boot file name).
+* IP address display.
+
+-------------------------------------------------------------------------------
+
 v1.7 (April 10, 2021):
 
 * Made DHCP server more RFC compliant (added support for options 66, 150)
