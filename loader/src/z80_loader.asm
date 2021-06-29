@@ -215,8 +215,6 @@ load_byte_from_packet:
 
 s_header:
 
-    push bc
-
     ;; ------------------------------------------------------------------------
     ;; keep .z80 header until prepare_context is called
     ;; ------------------------------------------------------------------------
@@ -228,11 +226,14 @@ s_header:
     ldir
 
     ;; ------------------------------------------------------------------------
-    ;; check snapshot header
+    ;; let C hold the number of kilobytes expected
     ;; ------------------------------------------------------------------------
 
-    ld    a, #48                  ;; initial assumption, possibly revised below
-    ld    (kilobytes_expected), a
+    ld    c, #48                  ;; initial assumption, possibly revised below
+
+    ;; ------------------------------------------------------------------------
+    ;; check snapshot header
+    ;; ------------------------------------------------------------------------
 
     ;; set DE to .z80 snapshot header size
     ;; (initially the snapshot v1 size, modified later below)
@@ -245,7 +246,7 @@ s_header:
     jr   z, s_header_ext_hdr               ;; extended header?
 
     ;; ------------------------------------------------------------------------
-    ;; Assume a single 48k chunk.
+    ;; Assume a single 48k chunk, without header.
     ;; Decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
@@ -267,8 +268,7 @@ s_header_ext_hdr:
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_HW_TYPE)
     cp    a, #SNAPSHOT_128K
     jr    c, s_header_not_128k
-    ld    a, #128
-    ld    (kilobytes_expected), a
+    ld    c, #128
 
 s_header_not_128k:
 
@@ -292,16 +292,24 @@ s_header_not_128k:
 s_header_set_state:
 
     ;; ------------------------------------------------------------------------
+    ;; store number of kilobytes expected
+    ;; ------------------------------------------------------------------------
+
+    ld   a, c
+    ld   (kilobytes_expected), a
+
+    ;; ------------------------------------------------------------------------
     ;; adjust IY and BC for header size
     ;; ------------------------------------------------------------------------
 
-    pop  hl            ;; was pushed as BC above
+    add  iy, de
 
-    add  iy, de        ;; clears C flag (as IY > DE)
-    sbc  hl, de        ;; so no carry here
+    ;; Set up BC as (0x0200 - DE). B is currently 0 (after LDIR above).
 
-    ld   b, h
-    ld   c, l
+    xor  a, a
+    sub  a, e
+    ld   c, a
+    inc  b
 
     ;; ------------------------------------------------------------------------
     ;; Set up register defaults for a single 48k chunk. For a version 2+
