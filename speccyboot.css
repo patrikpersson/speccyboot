@@ -154,14 +154,14 @@ ol.steps > li > ul > li > p
 }
 
 div.biglink {
-  font-size: 18pt;
-  line-height: 18pt;
+  font-size: 14pt;
+  line-height: 14pt;
   text-align: center;
   padding: 8px 0;
   transform-origin: 50% 100%;
 
   display: block;
-  color: #000;
+  color: #666;
   background-color: #fff;
   border-top: 1px solid #fff;
   margin: 0;
