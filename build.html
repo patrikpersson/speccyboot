@@ -59,7 +59,8 @@
           <p>
             (There now seems to be
             <a href="https://www.olimex.com/Products/Modules/Ethernet/MOD-ENC28J60/">a newer development board,
-              MOD-ENC28J60</a>, that is both cheaper and easier to connect. I haven't tried it.)
+              MOD-ENC28J60</a>, that appears to be both cheaper and easier to connect.
+              I haven't tried it, but it looks interesting.)
           </p>
           </li>
 
@@ -143,7 +144,16 @@ make</pre>
 
         <a name="install">
           <h2>Installing the firmware on the device</h2>
-          </a>
+        </a>
+
+        <p>
+          If you have an (E)EPROM programmer, you can use that, of course.
+          (In that case you can safely leave out the EEPROM write logic from the hardware too.)
+        </p>
+
+        <p>
+          Otherwise use the Spectrum to install the firmware, as follows:
+        </p>
 
         <ol>
           <li>Boot to BASIC.</li>
@@ -151,7 +161,7 @@ make</pre>
             <li>If you have a previous version of the SpeccyBoot firmware on
               the device, hold CAPS SHIFT pressed while resetting or powering
               on your Spectrum.</li>
-            <li>Otherwise, close JP1 to disable EEPROM, and power on your
+            <li>Otherwise, turn off your Spectrum, close JP1 to disable EEPROM, and then power on your
               Spectrum.</li>
           </ul>
           <li>Load the file <span class="code">speccyboot.wav</span>, produced by building the
