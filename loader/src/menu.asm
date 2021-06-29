@@ -246,7 +246,9 @@ redraw_menu_loop:
     pop  de
     pop  bc
 
-    call menu_erase_highlight
+
+    ld   a, #BLACK + (WHITE << 3) + BRIGHT
+    call menu_set_highlight
 
     ld   a, l       ;; return value from wait_for_key above
 
@@ -400,17 +402,7 @@ title_str:
     .db   0
 
 
-;; ############################################################################
-;; subroutine: erase highlight of current line
-;; ############################################################################
-
     .area _NONRESIDENT
-
-menu_erase_highlight:
-
-    ld   a, #BLACK + (WHITE << 3) + BRIGHT
-
-    ;; FALL THROUGH to menu_set_highlight
 
 ;; ############################################################################
 ;; subroutine: highlight current line to colour in register A
