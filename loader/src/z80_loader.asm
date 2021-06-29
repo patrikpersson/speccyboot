@@ -226,19 +226,15 @@ s_header:
     ldir
 
     ;; ------------------------------------------------------------------------
-    ;; let C hold the number of kilobytes expected
+    ;; let C hold the number of kilobytes expected, and DE the .z80 header size
     ;; ------------------------------------------------------------------------
 
-    ld    c, #48                  ;; initial assumption, possibly revised below
-
-    ;; ------------------------------------------------------------------------
-    ;; check snapshot header
-    ;; ------------------------------------------------------------------------
-
-    ;; set DE to .z80 snapshot header size
-    ;; (initially the snapshot v1 size, modified later below)
-
+    ld   c, #48
     ld   de, #Z80_HEADER_OFFSET_EXT_LENGTH
+
+    ;; ------------------------------------------------------------------------
+    ;; check snapshot header version
+    ;; ------------------------------------------------------------------------
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
     ld   a, h
@@ -257,6 +253,13 @@ s_header:
     ;; COMPRESSED flag clear =>  A == 0  =>  Z == 1  =>  s_chunk_write_data_uncompressed
 
     call set_compression_state
+
+    ;; HL needs to be at least 0xC000, to ensure all bytes in the chunk are
+    ;; loaded. A larger value is OK, since the context switch will take over
+    ;; after 48k have been loaded anyway.
+
+    ld   h, #0xC0      ;; ensure HL >= 0xC000
+
     jr   s_header_set_state
 
 s_header_ext_hdr:
@@ -304,23 +307,18 @@ s_header_set_state:
 
     add  iy, de
 
-    ;; Set up BC as (0x0200 - DE). B is currently 0 (after LDIR above).
+    ;; Set up BC as (0x0200 - DE). B is currently 0 (after initial LDIR above).
 
     xor  a, a
-    sub  a, e
+    sub  a, e       ;; no carry expected
     ld   c, a
-    inc  b
+    inc  b          ;; B is now 1
 
     ;; ------------------------------------------------------------------------
-    ;; Set up register defaults for a single 48k chunk. For a version 2+
-    ;; snapshot these values will be superseded in the chunk header.
+    ;; Set up DE for a single 48k chunk. For a version 2+ snapshot this value
+    ;; will be superseded in the chunk header.
     ;; ------------------------------------------------------------------------
 
-    ;; HL needs to be at least 0xC000, to ensure all bytes in the chunk are
-    ;; loaded. A larger value is OK, since the context switch will take over
-    ;; after 48k have been loaded anyway.
-
-    ld   h, #0xC0      ;; ensure HL >= 0xC000
     ld   de, #0x4000
 
     ret
