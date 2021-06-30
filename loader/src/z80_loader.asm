@@ -125,7 +125,7 @@ _digits:
 ;; address byte). In other cases, simply use LD IX, #TO instead.
 ;; ============================================================================
 
-    .macro SWITCH_STATE FROM TO
+    .macro SWITCH_STATE_FICKLE FROM TO
 
     .globl FROM       ;; ensure these can be checked in the linker's map output
     .globl TO
@@ -146,6 +146,9 @@ _digits:
 
     .endm
 
+    .macro SWITCH_STATE FROM TO
+    ld   ix, #TO
+    .endm
 
 ;; ############################################################################
 ;; check_limits_and_load_byte
@@ -380,8 +383,8 @@ s_chunk_header:
     call load_byte_from_packet
     ld   l, a
 
-    ;; SWITCH_STATE  s_chunk_header  s_chunk_header2
-    ld   ix, #s_chunk_header2
+    SWITCH_STATE  s_chunk_header  s_chunk_header2
+    ;; ld   ix, #s_chunk_header2
 
     ret
 

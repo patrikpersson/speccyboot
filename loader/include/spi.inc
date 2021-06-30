@@ -71,15 +71,15 @@ SPI_IDLE = SPI_RST       ;; SPI idle, MOSI=0, RST high, CS low, SCK low
 
     .macro  SPI_READ_BIT_TO   REG
 
-    ld    a, #SPI_IDLE                  ;;  7
-    out   (SPI_OUT), a                  ;; 11
-    inc   a                             ;;  4
-    out   (SPI_OUT), a                  ;; 11
-    in    a, (SPI_IN)                   ;; 11
-    rra                                 ;;  4
-    rl    REG                           ;; 15    for REG=(HL)
+    ld    a, #SPI_IDLE                ;;  7
+    out   (SPI_OUT), a                ;; 11
+    inc   a                           ;;  4
+    out   (SPI_OUT), a                ;; 11
+    in    a, (SPI_IN)                 ;; 11
+    rra                               ;;  4
+    rl    REG                         ;; 15 for REG=(HL), 8 for plain register
 
-    .endm                               ;; 63 T-states
+    .endm                             ;; 56 or 63 T-states
 
 ;; ----------------------------------------------------------------------------
 ;; rst spi_write_byte

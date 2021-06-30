@@ -68,6 +68,7 @@ enc28j60_read_memory:
     ;; primary bank (in spi_read_byte_to_memory)
     ;; -----------------------------------------
     ;; B   inner (bit) loop counter, always in range 0..8
+    ;; C   scratch
     ;; DE  outer (byte) loop counter
     ;; HL  destination in RAM
     ;;
@@ -92,12 +93,12 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1391 T-states <=> 40kb/s
+    ;; Each iteration (16 bits) takes 1341 T-states <=> ~ 42kb/s
     ;; -----------------------------------------------------------------------
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+655
+    call spi_read_byte_to_memory      ;; 17+630
 
     ld   c, a                         ;; 4
 
@@ -109,7 +110,7 @@ word_loop:
     ;; take care not to modify Z flag
     ld   a, e                         ;; 4   A := 0
 
-    call nz, spi_read_byte_to_memory  ;; 17+655
+    call nz, spi_read_byte_to_memory  ;; 17+630
 
     ld   b, a                         ;; 4
 
@@ -151,22 +152,23 @@ spi_read_byte_to_memory:
     exx                            ;;  4
 
     ld   b, #8                     ;;  7
-read_byte_loop:
-    SPI_READ_BIT_TO  (hl)          ;; 63 * 8
-    djnz read_byte_loop            ;; 13 * 7 + 8
+
+    call read_bits_to_c            ;; 17 + 557
+
+    ld   (hl), c                   ;;  7
 
     dec  de                        ;;  6
     ld   a, d                      ;;  4
     or   e                         ;;  4
 
-    ld   a, (hl)                   ;;  7
+    ld   a, c                      ;;  4
     inc  hl                        ;;  6
 
     exx                            ;;  4
 
     ret                            ;; 10
 
-                                   ;; 655 T-states
+                                   ;; 630 T-states
 
 
 ;; ############################################################################
@@ -221,17 +223,20 @@ enc28j60_read_register:
     ;; ------------------------------------------------------------------------
 
     ld   b, d
+    call read_bits_to_c
 
-enc28j60_read_register_loop:
+    jr   do_end_transaction
 
-    ld    a, #SPI_IDLE
-    out   (SPI_OUT), a
-    inc   a
-    out   (SPI_OUT), a
-    in    a, (SPI_IN)
-    rra
-    rl    c
+;; ===========================================================================
+;; helper: read_bits_to_c
+;;
+;; Reads B (typically 8) bits into C. Destroys AF.
+;;
+;; Reading 8 bits takes 557 T-states.
+;; ===========================================================================
 
-    djnz  enc28j60_read_register_loop
+read_bits_to_c:
 
-    jr    do_end_transaction
+    SPI_READ_BIT_TO   c        ;; 56 * B
+    djnz  read_bits_to_c       ;; 13 * (B-1) + 8
+    ret                        ;; 10
