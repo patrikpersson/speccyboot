@@ -246,8 +246,8 @@ print_ip_addr:
 ;; ----------------------------------------------------------------------------
 ;; Examines A and prints one or two digits.
 ;;
-;; If A >= 100, prints 1 or 2 (hundreds).
-;; Then prints tens.
+;; If A >= 100, prints 1 or 2 (hundreds). No 0 will be printed.
+;; Then prints tens, unconditionally.
 ;; Returns with A == (original A) % 10, in range 0..9.
 ;; ----------------------------------------------------------------------------
 
