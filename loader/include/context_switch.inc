@@ -276,7 +276,7 @@ evacuate_iff1_set:
 
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_A
     ld   de, #VRAM_REGSTATE_A
-    ld   bc, #6                  ;; A + F + BC + HL
+    ld   c, #6                   ;; B==0 here; set counter for A + F + BC + HL
 
     ldi                          ;; only one byte (A), BC is now 5
 
