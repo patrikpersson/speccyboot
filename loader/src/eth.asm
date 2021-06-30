@@ -681,64 +681,64 @@ perform_transmission:
     ld    c, b
     ld    (_timer_tick_count), bc
 
-      ;; ----------------------------------------------------------------------
-      ;; Poll for link to come up (if it has not already)
-      ;;
-      ;; NOTE: this code assumes the MIREGADR/MICMD registers to be configured
-      ;;       for continuous scanning of PHSTAT2 -- see eth_init
-      ;; ----------------------------------------------------------------------
+    ;; ----------------------------------------------------------------------
+    ;; Poll for link to come up (if it has not already)
+    ;;
+    ;; NOTE: this code assumes the MIREGADR/MICMD registers to be configured
+    ;;       for continuous scanning of PHSTAT2 -- see eth_init
+    ;; ----------------------------------------------------------------------
 
-      ld    e, #2             ;; bank 2 for MIRDH
-      rst   enc28j60_select_bank
+    ld    e, #2             ;; bank 2 for MIRDH
+    rst   enc28j60_select_bank
 
-      ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
+    ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
 
-      ld    de, #(MIRDH & REG_MASK) + (16 << 8)  ;; MIRDH is a MAC_MII register
-      ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
-      call  poll_register
+    ld    de, #(MIRDH & REG_MASK) + (16 << 8)  ;; MIRDH is a MAC_MII register
+    ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
+    call  poll_register
 
-      ;; ----------------------------------------------------------------------
-      ;; Errata, item 10:
-      ;;
-      ;; Reset transmit logic before transmitting a frame:
-      ;; set bit TXRST in ECON1, then clear it
-      ;; ----------------------------------------------------------------------
+    ;; ----------------------------------------------------------------------
+    ;; Errata, item 10:
+    ;;
+    ;; Reset transmit logic before transmitting a frame:
+    ;; set bit TXRST in ECON1, then clear it
+    ;; ----------------------------------------------------------------------
 
-      ld    e, #0    ;; bank of ECON1
-      rst   enc28j60_select_bank
+    ld    e, #0    ;; bank of ECON1
+    rst   enc28j60_select_bank
 
-      ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
-      rst   enc28j60_write8plus8
+    ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
+    rst   enc28j60_write8plus8
 
-      ;; keep H == ECON1_TXRST
-      ld    l, #OPCODE_BFC + (ECON1 & REG_MASK)
-      rst   enc28j60_write8plus8
+    ;; keep H == ECON1_TXRST
+    ld    l, #OPCODE_BFC + (ECON1 & REG_MASK)
+    rst   enc28j60_write8plus8
 
-      ;; ----------------------------------------------------------------------
-      ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
-      ;; ----------------------------------------------------------------------
+    ;; ----------------------------------------------------------------------
+    ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
+    ;; ----------------------------------------------------------------------
 
-      ld    hl, #0x0100 * EIE_TXIE + OPCODE_BFC + (EIE & REG_MASK)
-      rst   enc28j60_write8plus8
+    ld    hl, #0x0100 * EIE_TXIE + OPCODE_BFC + (EIE & REG_MASK)
+    rst   enc28j60_write8plus8
 
-      ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + OPCODE_BFC + (EIR & REG_MASK)
-      rst   enc28j60_write8plus8
+    ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + OPCODE_BFC + (EIR & REG_MASK)
+    rst   enc28j60_write8plus8
 
-      ld    hl, #0x0100 * (ESTAT_TXABRT) + OPCODE_BFC + (ESTAT & REG_MASK)
-      rst   enc28j60_write8plus8
+    ld    hl, #0x0100 * (ESTAT_TXABRT) + OPCODE_BFC + (ESTAT & REG_MASK)
+    rst   enc28j60_write8plus8
 
-      ;; ----------------------------------------------------------------------
-      ;; set ECON1.TXRTS, and poll it until it clears
-      ;; ----------------------------------------------------------------------
+    ;; ----------------------------------------------------------------------
+    ;; set ECON1.TXRTS, and poll it until it clears
+    ;; ----------------------------------------------------------------------
 
-      ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
-      rst   enc28j60_write8plus8
+    ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
+    rst   enc28j60_write8plus8
 
-      ld    de, #(ECON1 & REG_MASK) + (8 << 8)      ;; ECON1 is an ETH register
-      ;; keep H==ECON1_TXRTS from above, B==0 from _spi_write_byte
-      ld    l, b
+    ld    de, #(ECON1 & REG_MASK) + (8 << 8)      ;; ECON1 is an ETH register
+    ;; keep H==ECON1_TXRTS from above, B==0 from _spi_write_byte
+    ld    l, b
 
-      ;; FALL THROUGH to poll_register
+    ;; FALL THROUGH to poll_register
 
 
 ;; ----------------------------------------------------------------------------
