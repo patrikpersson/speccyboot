@@ -61,9 +61,9 @@ _repcount:
 ;; expected and currently loaded no. of kilobytes, for progress display
 ;; ----------------------------------------------------------------------------
 
-kilobytes_expected:
-    .ds   1
 kilobytes_loaded:
+    .ds   1
+kilobytes_expected:
     .ds   1
 
 ;; ----------------------------------------------------------------------------
@@ -475,13 +475,13 @@ update_progress:
     ;; update progress bar
     ;; ************************************************************************
 
-    ;; kilobytes_loaded is located directly after kilobytes_expected, so
+    ;; kilobytes_loaded is located directly before kilobytes_expected, so
     ;; use a single pointer
 
     ld    hl, #kilobytes_expected
 
     ld    a, (hl)                      ;; load kilobytes_expected
-    inc   hl                           ;; now points to kilobytes_loaded
+    dec   hl                           ;; now points to kilobytes_loaded
     inc   (hl)                         ;; increase kilobytes_loaded
     add   a, a                         ;; sets carry if this is a 128k snapshot
     ld    a, (hl)                      ;; kilobytes_loaded
@@ -518,9 +518,9 @@ progress_128:
     ;; if all data has been loaded, perform the context switch
     ;; ========================================================================
 
-    ld    a, (hl)
-    dec   hl
-    cp    a, (hl)
+    ld    a, (hl)                      ;; kilobytes_loaded
+    inc   hl
+    cp    a, (hl)                      ;; kilobytes_expected
     jp    z, context_switch
 
 no_progress_bar:
