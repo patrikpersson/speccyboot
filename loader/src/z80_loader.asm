@@ -523,7 +523,7 @@ progress_128:
     ld    a, (hl)                      ;; kilobytes_loaded
     inc   hl
     cp    a, (hl)                      ;; kilobytes_expected
-    jp    z, context_switch
+    jr    z, perform_context_switch
 
 no_progress_bar:
 
@@ -562,6 +562,9 @@ no_progress_bar:
 start_storing_runtime_data:
     ld    d, #>EVACUATION_TEMP_BUFFER
     ret
+
+perform_context_switch:
+    PERFORM_CONTEXT_SWITCH
 
 
 ;; ############################################################################
