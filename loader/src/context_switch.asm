@@ -40,20 +40,7 @@
     .include "globals.inc"
     .include "spi.inc"
     .include "util.inc"
-
-
-    .area _DATA
-
-;; ----------------------------------------------------------------------------
-;; 16-bit word for memory configuration
-;;  low byte:  flag (zero means 48k, non-zero means 128k)
-;;  high byte: 128k memory configuration (0x7ffd)
-;; ----------------------------------------------------------------------------
-
-memory_state:
-    .ds   2
-
-;; ----------------------------------------------------------------------------
+    .include "z80_loader.inc"
 
     .area _CODE
 
@@ -106,13 +93,13 @@ context_switch:
     ;; and check whether this is a 48k or 128k snapshot
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (memory_state)
+    ld   hl, (kilobytes_expected_and_memory_config)
     ld   bc, #MEMCFG_ADDR
     out  (c), h               ;; 128k memory config
 
     ld   a, l                 ;; 128k snapshot?
-    or   a, a
-    jr   z, context_switch_48k_snapshot
+    add  a, a                 ;; if L is 128, this sets carry flag
+    jr   nc, context_switch_48k_snapshot
 
     ;; ------------------------------------------------------------------------
     ;; 128k snapshot: restore sound registers

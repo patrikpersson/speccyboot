@@ -58,13 +58,17 @@ _repcount:
     .ds   1         ;; repetition count for ED ED sequences
 
 ;; ----------------------------------------------------------------------------
-;; expected and currently loaded no. of kilobytes, for progress display
+;; Three bytes located together, so two of them can be accessed in a single
+;; 16-bit word (kilobytes_loaded+expected, or kilobytes_expected+ram_config)
 ;; ----------------------------------------------------------------------------
 
 kilobytes_loaded:
-    .ds   1
+    .ds   1          ;; currently loaded no. of kilobytes, for progress display
+kilobytes_expected_and_memory_config:
 kilobytes_expected:
-    .ds   1
+    .ds   1          ;; expected no. of kilobytes (48 or 128)
+ram_config:
+    .ds   1          ;; 128k RAM configuration (to be written to I/O 0x7ffd)
 
 ;; ----------------------------------------------------------------------------
 ;; digits (BCD) for progress display while loading a snapshot
@@ -214,6 +218,7 @@ load_byte_from_packet:
     .area _NONRESIDENT
 
 s_header:
+breakpoint::
 
     ;; ------------------------------------------------------------------------
     ;; keep .z80 header until prepare_context is called
@@ -227,7 +232,8 @@ s_header:
 
     ;; ------------------------------------------------------------------------
     ;; BC: .z80 header size
-    ;; DE: memory configuration (value for 0x7ffd in H, 128k flag in L)
+    ;; D: memory configuration value for 0x7ffd
+    ;; E: number of kilobytes expected (48 or 128)
     ;; ------------------------------------------------------------------------
 
     ld   c, #Z80_HEADER_OFFSET_EXT_LENGTH      ;; B==0 here
@@ -244,7 +250,7 @@ s_header:
     ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
     ;; -----------------------------------------------------------------------
 
-    ld   de, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8
+    ld   de, #((MEMCFG_ROM_48K + MEMCFG_LOCK) << 8)  + 48
 
     ;; ------------------------------------------------------------------------
     ;; check snapshot header version
@@ -286,8 +292,7 @@ s_header:
 s_header_ext_hdr:
 
     ;; ========================================================================
-    ;; snapshot version 2+:
-    ;; if a 128k snapshot, load HW_TYPE into E, and memory config into D
+    ;; snapshot version 2+: is it for a 128k machine?
     ;; ========================================================================
 
     ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
@@ -296,7 +301,12 @@ s_header_ext_hdr:
     cp   a, #SNAPSHOT_128K
     jr   c, s_header_not_128k
 
-    ex   de, hl
+    ;; ------------------------------------------------------------------------
+    ;; 128k snapshot detected: load memory config into D, and set E to 128
+    ;; ------------------------------------------------------------------------
+
+    ld   d, h
+    ld   e, #128
 
 s_header_not_128k:
 
@@ -322,22 +332,11 @@ s_header_not_128k:
 s_header_set_state:
 
     ;; ------------------------------------------------------------------------
-    ;; store memory configuration
+    ;; Store memory configuration. NOTE: this assumes ram_config to be located
+    ;; immediately after kilobytes_expected in RAM.
     ;; ------------------------------------------------------------------------
 
-    ld   (memory_state), de
-
-    ;; ------------------------------------------------------------------------
-    ;; store number of kilobytes expected
-    ;; ------------------------------------------------------------------------
-
-    ld   a, e
-    or   a, a
-    ld   a, #48
-    jr   z, s_header_48k
-    ld   a, #128
-s_header_48k:
-    ld   (kilobytes_expected), a
+    ld   (kilobytes_expected), de
 
     ;; ------------------------------------------------------------------------
     ;; adjust IY and BC for header size
@@ -471,9 +470,9 @@ update_progress:
     ld    a, c
     call  show_attr_digit_right
 
-    ;; ************************************************************************
+    ;; ========================================================================
     ;; update progress bar
-    ;; ************************************************************************
+    ;; ========================================================================
 
     ;; kilobytes_loaded is located directly before kilobytes_expected, so
     ;; use a single pointer
