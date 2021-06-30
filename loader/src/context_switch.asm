@@ -107,21 +107,17 @@ context_switch:
     ;; something useful afterwards)
     ;; ------------------------------------------------------------------------
 
-breakpoint::
-
-    ld   e, #15
+    ld   e, #16
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
 context_switch_snd_reg_loop:
+    dec  e
     ld   b, #>SND_REG_SELECT
     out  (c), e
     ld   b, #>SND_REG_VALUE
     ld   a, (hl)
     dec  hl
     out  (c), a
-    dec  e
-    ld   a, e
-    inc  a
-    jr   nz, context_switch_snd_reg_loop
+    jr   nz, context_switch_snd_reg_loop     ;; Z set by DEC E above when done
 
     ld   a, (hl)              ;; now points to Z80_HEADER_OFFSET_HW_STATE_FFFD
     ld   b, #>SND_REG_SELECT
