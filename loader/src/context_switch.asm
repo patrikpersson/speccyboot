@@ -220,7 +220,7 @@ context_switch_restore_bits_loop:
     jr    nz, context_switch_restore_bytes_loop
 
     ;; ------------------------------------------------------------------------
-    ;; we're done: put ENC28J60 in the reset state
+    ;; we're done with the ENC28J60: put it in the reset state
     ;; ------------------------------------------------------------------------
 
     xor a, a
@@ -248,6 +248,6 @@ context_switch_restore_bits_loop:
     ;; Set up final register state for trampoline
     ;; ------------------------------------------------------------------------
 
-    ld    a, #0x20      ;; page out SpeccyBoot, pull reset on ENC28J60 low
+    ld    a, #0x20      ;; page out SpeccyBoot, keep ENC28J60 in reset
 
     jp    VRAM_TRAMPOLINE_START
