@@ -152,14 +152,13 @@ udp_create:
     ld     de, #_header_template
     call   enc28j60_add_to_checksum_hl
 
-    ld     e, #<_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM
     ld     a, l
     cpl
-    ld     (de), a
-    inc    de
+    ld     l, a
     ld     a, h
     cpl
-    ld     (de), a
+    ld     h, a
+    ld     (_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM), hl
 
     ;; ----------------------------------------------------------------------
     ;; set UDP length (network order) and clear UDP checksum
