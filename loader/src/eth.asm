@@ -676,8 +676,10 @@ perform_transmission:
     ;; retransmission. In practice, this is not expected to happen.
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #0
-    ld    (_timer_tick_count), hl
+    ;; B == 0 after enc28j60_write_register16 above
+
+    ld    c, b
+    ld    (_timer_tick_count), bc
 
       ;; ----------------------------------------------------------------------
       ;; Poll for link to come up (if it has not already)
@@ -733,7 +735,7 @@ perform_transmission:
       rst   enc28j60_write8plus8
 
       ld    de, #(ECON1 & REG_MASK) + (8 << 8)      ;; ECON1 is an ETH register
-      ;; H=ECON1_TXRTS from above, B=0 from _spi_write_byte
+      ;; keep H==ECON1_TXRTS from above, B==0 from _spi_write_byte
       ld    l, b
 
       ;; FALL THROUGH to poll_register
