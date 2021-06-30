@@ -296,7 +296,7 @@ evacuate_iff1_set:
 
     ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_BC_HL
 
-    ld   e, #<VRAM_REGSTATE_BC_HL_F
+    ld   e, b       ;; <VRAM_REGSTATE_BC_HL_F ; B==0 here
     ldir
 
     ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_SP)
