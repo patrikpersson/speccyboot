@@ -218,7 +218,6 @@ load_byte_from_packet:
     .area _NONRESIDENT
 
 s_header:
-breakpoint::
 
     ;; ------------------------------------------------------------------------
     ;; keep .z80 header until prepare_context is called
@@ -532,7 +531,7 @@ no_progress_bar:
     ld    a, d
 
     cp    a, #>RUNTIME_DATA
-    jp    z, start_storing_runtime_data
+    jr    z, start_storing_runtime_data
 
     cp    a, #>(EVACUATION_TEMP_BUFFER + RUNTIME_DATA_LENGTH)
     ret   nz
