@@ -102,23 +102,28 @@ context_switch:
     jr   nc, context_switch_48k_snapshot
 
     ;; ------------------------------------------------------------------------
-    ;; 128k snapshot: restore sound registers
+    ;; 128k snapshot: restore sound registers, in reverse order
+    ;; (makes index equal to loop counter, and ensures HL points to
+    ;; something useful afterwards)
     ;; ------------------------------------------------------------------------
 
-    ld   de, #16   ;; D := 0; E := 16
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND
+breakpoint::
+
+    ld   e, #15
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
 context_switch_snd_reg_loop:
     ld   b, #>SND_REG_SELECT
-    out  (c), d
+    out  (c), e
     ld   b, #>SND_REG_VALUE
     ld   a, (hl)
-    inc  hl
+    dec  hl
     out  (c), a
-    inc  d
     dec  e
+    ld   a, e
+    inc  a
     jr   nz, context_switch_snd_reg_loop
 
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_FFFD)
+    ld   a, (hl)              ;; now points to Z80_HEADER_OFFSET_HW_STATE_FFFD
     ld   b, #>SND_REG_SELECT
     out  (c), a
 
