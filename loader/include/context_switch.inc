@@ -284,7 +284,7 @@ evacuate_iff1_set:
     ;; write F
     ;; ------------------------------------------------------------------------
 
-    ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_F
+    ;; HL now points to Z80_HEADER_OFFSET_F
 
     ld   de, #VRAM_REGSTATE_F
 
@@ -294,7 +294,7 @@ evacuate_iff1_set:
     ;; write BC, HL, SP, PC
     ;; ------------------------------------------------------------------------
 
-    ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_BC_HL
+    ;; HL now points to Z80_HEADER_OFFSET_BC_HL
 
     ld   e, b       ;; <VRAM_REGSTATE_BC_HL_F ; B==0 here
     ldir

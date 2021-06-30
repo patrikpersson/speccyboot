@@ -146,7 +146,7 @@ parse_byte_complete:
 
     ld   a, b
     dec  a
-    jr   nz , #parse_invalid_address
+    jr   nz, parse_invalid_address
 
 bootp_receive_more_octets:
     djnz bootp_receive_octet_loop
@@ -226,19 +226,11 @@ print_ip_addr:
     ld    a, (hl)
     inc   hl
 
-    cp    a, #10
-    jr    c, 00002$        ;; < 10? print only single digit
+    cp    a, #10           ;; < 10? print only single digit
 
-    ld    b, #100
-    cp    a, b
-    call  nc, print_div    ;; no hundreds? skip entirely, not even a zero
+    call  nc, print_hundreds_and_tens
 
-    ld    b, #10
-    call  print_div
-
-00002$:   ;; tens done
-
-    call  print_digit
+    call  print_digit      ;; last digit
 
     pop   bc
 
@@ -249,6 +241,26 @@ print_ip_addr:
     ld    a, #'.'
     call  print_char
     jr    00001$           ;; next octet
+
+
+;; ----------------------------------------------------------------------------
+;; Examines A and prints one or two digits.
+;;
+;; If A >= 100, prints 1 or 2 (hundreds).
+;; Then prints tens.
+;; Returns with A == (original A) % 10, in range 0..9.
+;; ----------------------------------------------------------------------------
+
+print_hundreds_and_tens:
+
+    ld    b, #100
+    cp    a, b
+    call  nc, print_div    ;; no hundreds? skip entirely, not even a zero
+
+    ld    b, #10
+
+    ;; FALL THROUGH to print_div
+
 
 ;; ----------------------------------------------------------------------------
 ;; Divides A by B, and prints as one digit. Returns remainder in A.
