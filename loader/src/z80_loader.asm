@@ -332,11 +332,10 @@ s_header_not_128k:
 s_header_set_state:
 
     ;; ------------------------------------------------------------------------
-    ;; Store memory configuration. NOTE: this assumes ram_config to be located
-    ;; immediately after kilobytes_expected in RAM.
+    ;; store memory configuration and number of kilobytes expected
     ;; ------------------------------------------------------------------------
 
-    ld   (kilobytes_expected), de
+    ld   (kilobytes_expected_and_memory_config), de
 
     ;; ------------------------------------------------------------------------
     ;; adjust IY and BC for header size

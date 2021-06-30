@@ -129,13 +129,14 @@ context_switch_48k_snapshot:
     ;; ------------------------------------------------------------------------
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
-    im   0
-    and  a, #3
-    jr   z, context_switch_im_set
     im   1
-    dec  a
-    jr   z, context_switch_im_set
+    rra                              ;; bit 0 set means IM 1 (there is no IM 3)
+    jr   c, context_switch_im_set
     im   2
+    rra                              ;; bit 1 set means IM 2 (same reason)
+    jr   c, context_switch_im_set
+    im   0
+
 context_switch_im_set:
 
     ;; ------------------------------------------------------------------------
