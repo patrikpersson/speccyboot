@@ -708,7 +708,8 @@ perform_transmission:
       ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
       rst   enc28j60_write8plus8
 
-      ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFC + (ECON1 & REG_MASK)
+      ;; keep H == ECON1_TXRST
+      ld    l, #OPCODE_BFC + (ECON1 & REG_MASK)
       rst   enc28j60_write8plus8
 
       ;; ----------------------------------------------------------------------
