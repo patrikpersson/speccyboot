@@ -646,25 +646,25 @@ eth_send:
 
 perform_transmission:
 
-      ;; ----------------------------------------------------------------------
-      ;; set up registers:  ETXST := start_address, ETXND := end_address
-      ;; ----------------------------------------------------------------------
+    ;; ----------------------------------------------------------------------
+    ;; set up registers:  ETXST := start_address, ETXND := end_address
+    ;; ----------------------------------------------------------------------
 
-      push  hl   ;; remember HL=end_address
-      push  de
+    push  hl   ;; remember HL=end_address
+    push  de
 
-      ld    e, #0     ;; bank of ETXST and ETXND
-      rst   enc28j60_select_bank
+    ld    e, #0     ;; bank of ETXST and ETXND
+    rst   enc28j60_select_bank
 
-      pop   hl
-      ;; keep end_address on stack
+    pop   hl
+    ;; keep end_address on stack
 
-      ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
-      rst   enc28j60_write_register16
+    ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
+    rst   enc28j60_write_register16
 
-      ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
-      pop   hl   ;; end_address pushed above
-      rst  enc28j60_write_register16
+    ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
+    pop   hl   ;; end_address pushed above
+    rst  enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
     ;; Reset retransmission timer. For simplicity, this is done here
