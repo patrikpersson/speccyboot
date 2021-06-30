@@ -104,10 +104,10 @@ word_loop:
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
     ;; the CALL NZ below is not taken,
-    ;; and B == 0 in the checksum addition instead
+    ;; and A == B == 0 in the checksum addition instead
 
     ;; take care not to modify Z flag
-    ld   a, e                         ;; 4
+    ld   a, e                         ;; 4   A := 0
 
     call nz, spi_read_byte_to_memory  ;; 17+655
 
@@ -130,7 +130,10 @@ word_loop:
 
     pop   hl                       ;; bring back original HL
 
-    jr    do_end_transaction
+do_end_transaction:
+
+    jp   enc28j60_end_transaction_and_return
+
 
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
@@ -206,26 +209,20 @@ checksum_loop:
 enc28j60_read_register:
 
     ;; ------------------------------------------------------------------------
-    ;; start transaction: RCR
+    ;; start transaction: RCR = 0x00
     ;; ------------------------------------------------------------------------
 
-    ld    a, e
-    and   a, #REG_MASK       ;; opcode RCR = 0x00
-    ld    c, a
+    ld    c, e
     rst   spi_write_byte
 
     ;; ------------------------------------------------------------------------
-    ;; for MAC and MII registers, read and ignore a dummy byte
+    ;; Set B to either 8 or 16, since reading MAC and MII registers requires
+    ;; ignoring a dummy byte
     ;; ------------------------------------------------------------------------
 
-    ld    a, e
-    add   a, a   ;; bit 7 in descriptor set? then this is a MAC or MII register
+    ld   b, d
 
-    ld   b, #8
-    jr   nc, 00001$
-    ld   b, #16  ;; for MAC/MII registers, read 2 bytes, keep the last one
-    
-00001$:
+enc28j60_read_register_loop:
 
     ld    a, #SPI_IDLE
     out   (SPI_OUT), a
@@ -235,8 +232,6 @@ enc28j60_read_register:
     rra
     rl    c
 
-    djnz 00001$
+    djnz  enc28j60_read_register_loop
 
-do_end_transaction:
-
-    jp   enc28j60_end_transaction_and_return
+    jr    do_end_transaction

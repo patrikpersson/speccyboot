@@ -148,7 +148,7 @@ main_loop:
     ld    e, #1       ;; bank 1 for EPKTCNT
     rst   enc28j60_select_bank
 
-    ld    e, #EPKTCNT
+    ld    de, #(EPKTCNT & REG_MASK) + (8 << 8)    ;; EPKTCNT is an ETH register
     call  enc28j60_read_register
 
     or    a, a
@@ -277,7 +277,7 @@ eth_init:
     ;; poll ESTAT until ESTAT_CLKRDY is set
     ;; ------------------------------------------------------------------------
 
-    ld    e, #ESTAT
+    ld    de, #(ESTAT & REG_MASK) + (8 << 8)        ;; ESTAT is an ETH register
     ld    hl, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
     call  poll_register
 
@@ -691,7 +691,7 @@ perform_transmission:
 
       ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
 
-      ld    e, #MIRDH
+      ld    de, #(MIRDH & REG_MASK) + (16 << 8)  ;; MIRDH is a MAC_MII register
       ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
       call  poll_register
 
@@ -731,7 +731,7 @@ perform_transmission:
       ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
       rst   enc28j60_write8plus8
 
-      ld    e, #ECON1
+      ld    de, #(ECON1 & REG_MASK) + (8 << 8)      ;; ECON1 is an ETH register
       ;; H=ECON1_TXRTS from above, B=0 from _spi_write_byte
       ld    l, b
 
@@ -747,7 +747,7 @@ perform_transmission:
 ;;
 ;; Call with registers:
 ;;
-;; E=reg
+;; DE=register, as for enc28j60_read_register
 ;; H=mask
 ;; L=expected_value
 ;;

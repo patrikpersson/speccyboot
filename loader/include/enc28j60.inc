@@ -249,7 +249,10 @@ enc28j60_write8plus8 = 0x18
 ;; ----------------------------------------------------------------------------
 ;; Read value of indicated ETH/MAC/MII register.
 ;;
-;; On entry, E should hold the register descriptor for the register to read.
+;; On entry:
+;;   E: register (0..0x1f) to read
+;;   D: 8 for an ETH register, 16 for MAC/MII
+;;
 ;; Returns the read value in A.
 ;; Destroys AF, BC. B will be zero on exit.
 ;; ----------------------------------------------------------------------------

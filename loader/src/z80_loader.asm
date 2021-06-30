@@ -380,8 +380,8 @@ s_chunk_header:
     call load_byte_from_packet
     ld   l, a
 
-    SWITCH_STATE  s_chunk_header  s_chunk_header2
-    ;; ld   ix, #s_chunk_header2
+    ;; SWITCH_STATE  s_chunk_header  s_chunk_header2
+    ld   ix, #s_chunk_header2
 
     ret
 
