@@ -342,7 +342,12 @@ s_header_set_state:
 
     add  iy, bc
 
+    ;; ------------------------------------------------------------------------
+    ;; Safely assume that the TFTP packet is 0x200 bytes in length, as the RFC
+    ;; guarantees this for all packets but the last one.
+    ;;
     ;; Set up BC as (0x0200 - C). B is currently 0 (after initial LDIR above).
+    ;; ------------------------------------------------------------------------
 
     xor  a, a
     sub  a, c       ;; no carry expected, as C is at most 54 (0x36)
