@@ -226,21 +226,41 @@ s_header:
     ldir
 
     ;; ------------------------------------------------------------------------
-    ;; let C hold the number of kilobytes expected, and DE the .z80 header size
+    ;; BC: .z80 header size
+    ;; DE: memory configuration (value for 0x7ffd in H, 128k flag in L)
     ;; ------------------------------------------------------------------------
 
-    ld   c, #48
-    ld   de, #Z80_HEADER_OFFSET_EXT_LENGTH
+    ld   c, #Z80_HEADER_OFFSET_EXT_LENGTH      ;; B==0 here
+
+    ;; -----------------------------------------------------------------------
+    ;; Memory configuration for a 48k snapshot on a 128k machine. Bits are
+    ;; set as follows:
+    ;;
+    ;; Bits 0..2 := 0:  page 0 at 0xC000
+    ;; Bit 3     := 0:  normal screen (page 5)
+    ;; Bit 4     := 1:  48k BASIC ROM
+    ;; Bit 5     := 1:  lock memory paging
+    ;;
+    ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
+    ;; -----------------------------------------------------------------------
+
+    ld   de, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8
 
     ;; ------------------------------------------------------------------------
     ;; check snapshot header version
     ;; ------------------------------------------------------------------------
 
-    ld   l, #<(_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
-    ld   a, (hl)
-    inc  hl
-    or   a, (hl)
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
+    ld   a, h
+    or   a, l
     jr   z, s_header_ext_hdr               ;; extended header?
+
+    ;; ------------------------------------------------------------------------
+    ;; This is a v1 snapshot. Store PC value in Z80_HEADER_OFFSET_EXT_PC,
+    ;; to read it unambiguously in context_switch.
+    ;; ------------------------------------------------------------------------
+
+    ld   (stored_snapshot_header + Z80_HEADER_OFFSET_EXT_PC), hl
 
     ;; ------------------------------------------------------------------------
     ;; Assume a single 48k chunk, without header.
@@ -265,26 +285,32 @@ s_header:
 
 s_header_ext_hdr:
 
-    ;; ------------------------------------------------------------------------
-    ;; extended header: adjust expected no. of kilobytes for a 128k snapshot
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
+    ;; snapshot version 2+:
+    ;; if a 128k snapshot, load HW_TYPE into E, and memory config into D
+    ;; ========================================================================
 
-    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_HW_TYPE)
-    cp    a, #SNAPSHOT_128K
-    jr    c, s_header_not_128k
-    ld    c, #128
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+
+    ld   a, l
+    cp   a, #SNAPSHOT_128K
+    jr   c, s_header_not_128k
+
+    ex   de, hl
 
 s_header_not_128k:
 
     ;; ------------------------------------------------------------------------
-    ;; adjust header length, keep in DE
+    ;; adjust header length, keep in BC
+    ;;
+    ;; A byte addition is sufficient, as the sum will always be <= 0xF2
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
-    add   hl, de
-    inc   hl
-    inc   hl
-    ex    de, hl
+    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
+    add   a, c
+    inc   a
+    inc   a
+    ld    c, a
 
     ;; ------------------------------------------------------------------------
     ;; a chunk is expected next
@@ -296,22 +322,33 @@ s_header_not_128k:
 s_header_set_state:
 
     ;; ------------------------------------------------------------------------
+    ;; store memory configuration
+    ;; ------------------------------------------------------------------------
+
+    ld   (memory_state), de
+
+    ;; ------------------------------------------------------------------------
     ;; store number of kilobytes expected
     ;; ------------------------------------------------------------------------
 
-    ld   a, c
+    ld   a, e
+    or   a, a
+    ld   a, #48
+    jr   z, s_header_48k
+    ld   a, #128
+s_header_48k:
     ld   (kilobytes_expected), a
 
     ;; ------------------------------------------------------------------------
     ;; adjust IY and BC for header size
     ;; ------------------------------------------------------------------------
 
-    add  iy, de
+    add  iy, bc
 
-    ;; Set up BC as (0x0200 - E). B is currently 0 (after initial LDIR above).
+    ;; Set up BC as (0x0200 - C). B is currently 0 (after initial LDIR above).
 
     xor  a, a
-    sub  a, e       ;; no carry expected, as E is at most 54 (0x36)
+    sub  a, c       ;; no carry expected, as C is at most 54 (0x36)
     ld   c, a
     inc  b          ;; B is now 1
 

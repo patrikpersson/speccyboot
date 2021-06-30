@@ -75,7 +75,6 @@
 ;;    ld  a, #N
 ;;    jp  0x4200
 ;; 0x4200:
-;;    nop           (for symmetry of JPs)
 ;;    ei / nop      (depending on whether interrupts are to be enabled)
 ;;    jp  NN
 ;;
@@ -297,7 +296,7 @@ evacuate_iff1_set:
     ldi                          ;; only one byte (F), BC is now 4
 
     ;; ------------------------------------------------------------------------
-    ;; write BC and HL
+    ;; write BC, HL, SP, PC
     ;; ------------------------------------------------------------------------
 
     ;; HL now points to stored_snapshot_header + Z80_HEADER_OFFSET_BC_HL
@@ -308,56 +307,12 @@ evacuate_iff1_set:
     ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_SP)
     ld   (VRAM_REGSTATE_SP), hl
 
-    ;; ========================================================================
-    ;; Set up 48k/128k flag, 128k memory configuration, PC value
-    ;; ========================================================================
+    ;; Z80_HEADER_OFFSET_EXT_PC is the field for v.2+ snapshots. For v.1
+    ;; snapshots, it is explicitly set in z80_loader (state s_header), so it
+    ;; is always valid here, regardless of snapshot version.
 
-    ;; ------------------------------------------------------------------------
-    ;; check snapshot version (is PC == 0?)
-    ;; set up 128k flag + memory config in DE, snapshot PC in HL
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_PC)
-    ld   a, h
-    or   a, l      ;; extended snapshot (version 2+) ?
-    jr   nz, prepare_context_48k     ;; non-zero PC means version 1, always 48k
-
-    ;; ------------------------------------------------------------------------
-    ;; snapshot version 2+:
-    ;; load HW_TYPE into E, and memory config into D
-    ;; ------------------------------------------------------------------------
-
-    ld   de, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
     ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_EXT_PC)
-
-    ;; ------------------------------------------------------------------------
-    ;; Check HW_TYPE: only use 128k memory config from snapshot if this is
-    ;; actually a 128k snapshot
-    ;; ------------------------------------------------------------------------
-
-    ld   a, e
-    cp   a, #SNAPSHOT_128K
-    jr   nc, prepare_context_set_bank
-prepare_context_48k:
-
-    ;; -----------------------------------------------------------------------
-    ;; Memory configuration for a 48k snapshot on a 128k machine. Bits are
-    ;; set as follows:
-    ;;
-    ;; Bits 0..2 := 0:  page 0 at 0xC000
-    ;; Bit 3     := 0:  normal screen (page 5)
-    ;; Bit 4     := 1:  48k BASIC ROM
-    ;; Bit 5     := 1:  lock memory paging
-    ;;
-    ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
-    ;; -----------------------------------------------------------------------
-
-    ld   de, #(MEMCFG_ROM_48K + MEMCFG_LOCK) << 8  ;; config for a 48k snapshot
-
-prepare_context_set_bank:
-
     ld   (VRAM_REGSTATE_PC), hl
-    ld   (memory_state), de
 
     ;; ========================================================================
     ;; write evacuated data to ENC28J60 RAM
