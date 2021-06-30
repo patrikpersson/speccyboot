@@ -127,6 +127,9 @@ _digits:
 
     .macro SWITCH_STATE FROM TO
 
+    .globl FROM       ;; ensure these can be checked in the linker's map output
+    .globl TO
+
     .dw  LD_IX_LOW
     .db  <(TO)
 
@@ -365,10 +368,286 @@ s_header_set_state:
 
 
 ;; ############################################################################
+;; state CHUNK_HEADER:
+;;
+;; receive first byte in chunk header: low byte of chunk length
+;; ############################################################################
+
+    .area _LAST_PART_OF_ROM
+
+s_chunk_header:
+
+    call load_byte_from_packet
+    ld   l, a
+
+    SWITCH_STATE  s_chunk_header  s_chunk_header2
+    ;; ld   ix, #s_chunk_header2
+
+    ret
+
+
+;; ############################################################################
+;; state CHUNK_HEADER2:
+;;
+;; receive second byte in chunk header: high byte of chunk length
+;; ############################################################################
+
+    .area _LAST_PART_OF_ROM
+
+s_chunk_header2:
+
+    call load_byte_from_packet
+    ld   h, a
+
+    SWITCH_STATE  s_chunk_header2  s_chunk_header3
+    ;; ld   ix, #s_chunk_header3
+
+    ret
+
+;; ############################################################################
+;; state CHUNK_HEADER3:
+;;
+;; receive third byte in chunk header:
+;; ID of the page the chunk belongs to (range is 3..10)
+;;
+;; See:
+;; https://www.worldofspectrum.org/faq/reference/z80format.htm
+;; https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
+;; ############################################################################
+
+    .area _LAST_PART_OF_ROM
+
+s_chunk_header3:
+
+    ;; =======================================================================
+    ;; This state selects a value for DE (0x4000, 0x8000, 0xC000).
+    ;; For a 128k snapshot, a matching 128k memory configuration is also set.
+    ;; =======================================================================
+
+    call load_byte_from_packet
+
+    ;; -----------------------------------------------------------------------
+    ;; The loaded byte is an id in range 3..10, as described here:
+    ;; https://worldofspectrum.org/faq/reference/z80format.htm
+    ;;
+    ;; Map this to a 128k page ID in range 0..7.
+    ;; -----------------------------------------------------------------------
+
+    sub  a, #3
+
+    ;; -----------------------------------------------------------------------
+    ;; Need to handle page 5 separately -- if we do not use the address range
+    ;; 0x4000..0x7fff, the evacuation stuff will not work.
+    ;; -----------------------------------------------------------------------
+
+    ld   d, #0x40
+    cp   a, #5
+    jr   z, s_chunk_header3_set_comp_mode
+
+    ;; -----------------------------------------------------------------------
+    ;; Remaining handling is done differently for 48k and 128 snapshots.
+    ;; -----------------------------------------------------------------------
+
+    ld   d, #0xc0
+    ld   e, a              ;; save page ID (0..7)
+
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+    cp   a, #SNAPSHOT_128K ;; is this a 128k snapshot?
+
+    jr   nc, s_chunk_header3_128k_banking
+
+    ;; -----------------------------------------------------------------------
+    ;; This is a 48k snapshot:
+    ;; 
+    ;;   A == 1  means bank 1, to be mapped to 0x8000
+    ;;   A == 2  means bank 2, to be mapped to 0xC000
+    ;;
+    ;; (other pages not expected in 48 snapshots)
+    ;; -----------------------------------------------------------------------
+
+    dec  e                                      ;; was this page 1?
+    jr   nz, s_chunk_header3_set_comp_mode      ;; then 0xC000 is fine
+
+    ld   d, #0x80
+
+    ;; -----------------------------------------------------------------------
+    ;; FALL THROUGH to 128k memory configuration here:
+    ;;
+    ;; E==0, so page 0 will be paged in at 0xC000 (which is the same page
+    ;; selected in init.asm and in context switch). Shouldn't matter much
+    ;; anyway, since DE will now be 0x8000, and the 0xC000..0xFFFF addresses
+    ;; shouldn't be touched.
+    ;;
+    ;; The memory configuration will be updated in the context switch anyway.
+    ;; -----------------------------------------------------------------------
+
+s_chunk_header3_128k_banking:
+
+    ;; -----------------------------------------------------------------------
+    ;; This is one of banks 0..4 or 6..7 in 128k snapshot:
+    ;; set memory configuration accordingly
+    ;;
+    ;; https://worldofspectrum.org/faq/reference/128kreference.htm
+    ;; -----------------------------------------------------------------------
+
+    push bc
+    ld   bc, #MEMCFG_ADDR
+    out  (c), e
+    pop  bc
+
+s_chunk_header3_set_comp_mode:
+
+    ld   e, #0
+
+    ;; -----------------------------------------------------------------------
+    ;; https://worldofspectrum.org/faq/reference/z80format.htm :
+    ;;
+    ;; If chunk length=0xffff, data is 16384 bytes long and not compressed
+    ;; -----------------------------------------------------------------------
+
+    ld   a, h
+    and  a, l
+    inc  a
+
+    ;; If chunk length is 0xffff, Z will now be set,
+    ;; and state s_chunk_write_data_uncompressed is selected
+
+    ;; Otherwise s_chunk_write_data_compressed is selected
+
+    ;; FALL THROUGH to set_compression_state
+
+
+;; ############################################################################
+;; set_compression_state
+;;
+;; Sets the next state depending on Z flag. If s_chunk_write_data_uncompressed
+;; is selected, HL (bytes left in chunk) is set to 0x4000.
+;;
+;; Z == 0: s_chunk_write_data_compressed
+;; Z == 1: s_chunk_write_data_uncompressed
+;; ############################################################################
+
+set_compression_state:
+    ld    ix, #s_chunk_write_data_compressed
+    ret   nz
+
+    SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
+    ;; ld    ix, #s_chunk_write_data_uncompressed
+
+    ld    hl, #0x4000
+    ret
+
+
+;; ############################################################################
+;; state CHUNK_WRITE_DATA_UNCOMPRESSED
+;; ############################################################################
+
+s_chunk_write_data_uncompressed:
+
+  call check_limits_and_load_byte
+  jr   nz, store_byte
+
+  ret
+
+
+;; ############################################################################
+;; state CHUNK_REPCOUNT
+;; ############################################################################
+
+    .area _LAST_PART_OF_ROM
+
+s_chunk_repcount:
+
+    call load_byte_from_chunk
+
+    ld   (_repcount), a
+
+    SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
+    ;; ld   ix, #s_chunk_repvalue
+
+    ret
+
+
+;; ############################################################################
+;; state CHUNK_REPVALUE
+;; ############################################################################
+
+    .area _LAST_PART_OF_ROM
+
+s_chunk_repvalue:
+
+    call load_byte_from_chunk
+    ld   i, a
+
+    SWITCH_STATE  s_chunk_repvalue  s_chunk_write_data_compressed
+    ;; ld   ix, #s_chunk_write_data_compressed
+
+    ;; FALL THROUGH to s_chunk_write_data_compressed
+
+
+;; ############################################################################
+;; state CHUNK_WRITE_DATA_COMPRESSED
+;; ############################################################################
+
+s_chunk_write_data_compressed:
+
+  ;; -------------------------------------------------------------------------
+  ;; Check the repetition count. This is zero when no repetition is active.
+  ;; -------------------------------------------------------------------------
+
+  ld   a, (_repcount)
+  or   a, a
+  jr   nz, do_repetition
+
+  call check_limits_and_load_byte
+  ret  z
+
+  ;; -------------------------------------------------------------------------
+  ;; check for the escape byte of a repetition sequence
+  ;; -------------------------------------------------------------------------
+
+  cp   a, #Z80_ESCAPE
+  jr   z, chunk_escape
+
+store_byte:
+
+  call store_byte_and_update_progress
+
+jp_ix_instr:
+
+  jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
+
+  ;; -------------------------------------------------------------------------
+  ;; a non-zero number of repetitions remain:
+  ;; decrease repetition count and write the repetition value to memory
+  ;; -------------------------------------------------------------------------
+
+do_repetition:
+
+  dec  a
+  ld   (_repcount), a
+
+  ld   a, i
+
+  jr   store_byte
+
+  ;; -------------------------------------------------------------------------
+  ;; Escape byte found: switch state
+  ;; -------------------------------------------------------------------------
+
+chunk_escape:
+
+  SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
+  ;; ld   ix, #s_chunk_compressed_escape
+
+  ret
+
+
+;; ############################################################################
 ;; state CHUNK_COMPRESSED_ESCAPE
 ;; ############################################################################
 
-    .area _CODE
+    .area _LAST_PART_OF_ROM
 
 s_chunk_compressed_escape:
 
@@ -376,8 +655,8 @@ s_chunk_compressed_escape:
 
     ;; tentative next state
 
-    ;; SWITCH_STATE  s_chunk_compressed_escape  s_chunk_repcount
-    ld    ix, #s_chunk_repcount
+    SWITCH_STATE  s_chunk_compressed_escape  s_chunk_repcount
+    ;; ld    ix, #s_chunk_repcount
 
     cp    a, #Z80_ESCAPE
     ret   z
@@ -565,279 +844,3 @@ start_storing_runtime_data:
 
 perform_context_switch:
     PERFORM_CONTEXT_SWITCH
-
-
-;; ############################################################################
-;; state CHUNK_HEADER:
-;;
-;; receive first byte in chunk header: low byte of chunk length
-;; ############################################################################
-
-    .area _LAST_PART_OF_ROM
-
-s_chunk_header:
-
-    call load_byte_from_packet
-    ld   l, a
-
-    SWITCH_STATE  s_chunk_header  s_chunk_header2
-    ;; ld   ix, #s_chunk_header2
-
-    ret
-
-
-;; ############################################################################
-;; state CHUNK_HEADER2:
-;;
-;; receive second byte in chunk header: high byte of chunk length
-;; ############################################################################
-
-    .area _LAST_PART_OF_ROM
-
-s_chunk_header2:
-
-    call load_byte_from_packet
-    ld   h, a
-
-    SWITCH_STATE  s_chunk_header2  s_chunk_header3
-    ;; ld   ix, #s_chunk_header3
-
-    ret
-
-;; ############################################################################
-;; state CHUNK_HEADER3:
-;;
-;; receive third byte in chunk header:
-;; ID of the page the chunk belongs to (range is 3..10)
-;;
-;; See:
-;; https://www.worldofspectrum.org/faq/reference/z80format.htm
-;; https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
-;; ############################################################################
-
-    .area _LAST_PART_OF_ROM
-
-s_chunk_header3:
-
-    ;; =======================================================================
-    ;; This state selects a value for DE (0x4000, 0x8000, 0xC000).
-    ;; For a 128k snapshot, a matching 128k memory configuration is also set.
-    ;; =======================================================================
-
-    call load_byte_from_packet
-
-    ;; -----------------------------------------------------------------------
-    ;; The loaded byte is an id in range 3..10, as described here:
-    ;; https://worldofspectrum.org/faq/reference/z80format.htm
-    ;;
-    ;; Map this to a 128k page ID in range 0..7.
-    ;; -----------------------------------------------------------------------
-
-    sub  a, #3
-
-    ;; -----------------------------------------------------------------------
-    ;; Need to handle page 5 separately -- if we do not use the address range
-    ;; 0x4000..0x7fff, the evacuation stuff will not work.
-    ;; -----------------------------------------------------------------------
-
-    ld   d, #0x40
-    cp   a, #5
-    jr   z, s_chunk_header3_set_comp_mode
-
-    ;; -----------------------------------------------------------------------
-    ;; Remaining handling is done differently for 48k and 128 snapshots.
-    ;; -----------------------------------------------------------------------
-
-    ld   d, #0xc0
-    ld   e, a              ;; save page ID (0..7)
-
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-    cp   a, #SNAPSHOT_128K ;; is this a 128k snapshot?
-
-    jr   nc, s_chunk_header3_128k_banking
-
-    ;; -----------------------------------------------------------------------
-    ;; This is a 48k snapshot:
-    ;; 
-    ;;   A == 1  means bank 1, to be mapped to 0x8000
-    ;;   A == 2  means bank 2, to be mapped to 0xC000
-    ;;
-    ;; (other pages not expected in 48 snapshots)
-    ;; -----------------------------------------------------------------------
-
-    dec  e                                      ;; was this page 1?
-    jr   nz, s_chunk_header3_set_comp_mode      ;; then 0xC000 is fine
-
-    ld   d, #0x80
-
-    ;; -----------------------------------------------------------------------
-    ;; FALL THROUGH to 128k memory configuration here:
-    ;;
-    ;; E==0, so page 0 will be paged in at 0xC000 (which is the same page
-    ;; selected in init.asm and in context switch). Shouldn't matter much
-    ;; anyway, since DE will now be 0x8000, and the 0xC000..0xFFFF addresses
-    ;; shouldn't be touched.
-    ;;
-    ;; The memory configuration will be updated in the context switch anyway.
-    ;; -----------------------------------------------------------------------
-
-s_chunk_header3_128k_banking:
-
-    ;; -----------------------------------------------------------------------
-    ;; This is one of banks 0..4 or 6..7 in 128k snapshot:
-    ;; set memory configuration accordingly
-    ;;
-    ;; https://worldofspectrum.org/faq/reference/128kreference.htm
-    ;; -----------------------------------------------------------------------
-
-    push bc
-    ld   bc, #MEMCFG_ADDR
-    out  (c), e
-    pop  bc
-
-s_chunk_header3_set_comp_mode:
-
-    ld   e, #0
-
-    ;; -----------------------------------------------------------------------
-    ;; https://worldofspectrum.org/faq/reference/z80format.htm :
-    ;;
-    ;; If chunk length=0xffff, data is 16384 bytes long and not compressed
-    ;; -----------------------------------------------------------------------
-
-    ld   a, h
-    and  a, l
-    inc  a
-
-    ;; If chunk length is 0xffff, Z will now be set,
-    ;; and state s_chunk_write_data_uncompressed is selected
-
-    ;; Otherwise s_chunk_write_data_compressed is selected
-
-    ;; FALL THROUGH to set_compression_state
-
-
-;; ############################################################################
-;; set_compression_state
-;;
-;; Sets the next state depending on Z flag. If s_chunk_write_data_uncompressed
-;; is selected, HL (bytes left in chunk) is set to 0x4000.
-;;
-;; Z == 0: s_chunk_write_data_compressed
-;; Z == 1: s_chunk_write_data_uncompressed
-;; ############################################################################
-
-set_compression_state:
-    ld    ix, #s_chunk_write_data_compressed
-    ret   nz
-
-    SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
-    ;; ld    ix, #s_chunk_write_data_uncompressed
-
-    ld    hl, #0x4000
-    ret   z
-
-
-;; ############################################################################
-;; state CHUNK_WRITE_DATA_UNCOMPRESSED
-;; ############################################################################
-
-s_chunk_write_data_uncompressed:
-
-  call check_limits_and_load_byte
-  jr   nz, store_byte
-
-  ret
-
-
-;; ############################################################################
-;; state CHUNK_REPCOUNT
-;; ############################################################################
-
-    .area _LAST_PART_OF_ROM
-
-s_chunk_repcount:
-
-    call load_byte_from_chunk
-
-    ld   (_repcount), a
-
-    SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
-    ;; ld   ix, #s_chunk_repvalue
-
-    ret
-
-
-;; ############################################################################
-;; state CHUNK_REPVALUE
-;; ############################################################################
-
-    .area _LAST_PART_OF_ROM
-
-s_chunk_repvalue:
-
-    call load_byte_from_chunk
-    ld   i, a
-
-    SWITCH_STATE  s_chunk_repvalue  s_chunk_write_data_compressed
-    ;; ld   ix, #s_chunk_write_data_compressed
-
-    ;; FALL THROUGH to s_chunk_write_data_compressed
-
-
-;; ############################################################################
-;; state CHUNK_WRITE_DATA_COMPRESSED
-;; ############################################################################
-
-s_chunk_write_data_compressed:
-
-  ;; -------------------------------------------------------------------------
-  ;; Check the repetition count. This is zero when no repetition is active.
-  ;; -------------------------------------------------------------------------
-
-  ld   a, (_repcount)
-  or   a, a
-  jr   nz, do_repetition
-
-  call check_limits_and_load_byte
-  ret  z
-
-  ;; -------------------------------------------------------------------------
-  ;; check for the escape byte of a repetition sequence
-  ;; -------------------------------------------------------------------------
-
-  cp   a, #Z80_ESCAPE
-  jr   z, chunk_escape
-
-store_byte:
-
-  call store_byte_and_update_progress
-
-jp_ix_instr:
-
-  jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
-
-  ;; -------------------------------------------------------------------------
-  ;; a non-zero number of repetitions remain:
-  ;; decrease repetition count and write the repetition value to memory
-  ;; -------------------------------------------------------------------------
-
-do_repetition:
-
-  dec  a
-  ld   (_repcount), a
-
-  ld   a, i
-
-  jr   store_byte
-
-  ;; -------------------------------------------------------------------------
-  ;; Escape byte found: switch state
-  ;; -------------------------------------------------------------------------
-
-chunk_escape:
-
-  ;; SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
-  ld   ix, #s_chunk_compressed_escape
-
-  ret
