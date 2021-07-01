@@ -151,9 +151,7 @@ spi_read_byte_to_memory:
 
     exx                            ;;  4
 
-    ld   b, #8                     ;;  7
-
-    call read_bits_to_c            ;; 17 + 557
+    call spi_read_byte_to_c        ;; 17 + 7 + 557
 
     ld   (hl), c                   ;;  7
 
@@ -226,6 +224,11 @@ enc28j60_read_register:
     call read_bits_to_c
 
     jr   do_end_transaction
+
+spi_read_byte_to_c:
+    ld   b, #8                 ;;  7
+
+    ;; FALL THROUGH to read_bits_to_c
 
 ;; ===========================================================================
 ;; helper: read_bits_to_c

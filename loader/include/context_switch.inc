@@ -457,13 +457,14 @@ context_switch_im_set:
     ;; ------------------------------------------------------------------------
 
     ld    hl, #RUNTIME_DATA
+    ld    sp, #spi_restore_stack_top
 context_switch_restore_bytes_loop:
 
-    ld    b, #8                      ;; one byte
-context_switch_restore_bits_loop:
-    SPI_READ_BIT_TO  (hl)
-    djnz  context_switch_restore_bits_loop
+    call  spi_read_byte_to_c
 
+context_switch_spi_return:         ;; return address for ROM-based stack below
+
+    ld    (hl), c
     inc   hl
     ld    a, h
     cp    a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH) ;; integral number of pages
@@ -501,5 +502,12 @@ context_switch_restore_bits_loop:
     ld    a, #0x20      ;; page out SpeccyBoot, keep ENC28J60 in reset
 
     jp    VRAM_TRAMPOLINE_START
+
+;; ===========================================================================
+;; Simple stack (one return address) to allow CALLs with stack pointer in ROM.
+;; ===========================================================================
+
+    .dw   context_switch_spi_return
+spi_restore_stack_top:
 
     .endm

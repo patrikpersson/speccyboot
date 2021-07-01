@@ -302,6 +302,13 @@ enc28j60_write8plus8 = 0x18
 
     .globl enc28j60_add_to_checksum_hl
 
+;; ----------------------------------------------------------------------------
+;; Reads one byte (8 bits) from SPI to register C.
+;; Destroys AF, B. B==0 on exit.
+;; ----------------------------------------------------------------------------
+
+    .globl spi_read_byte_to_c
+
 
 ;; ----------------------------------------------------------------------------
 ;; Write a number of bytes to on-chip SRAM, continuing after previous write.
