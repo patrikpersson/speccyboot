@@ -374,16 +374,9 @@ error_packet_end:
 
     ld    (tftp_state), hl
 
-    ;; ------------------------------------------------------------------------
-    ;; reset _expected_tftp_block_no to 1
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #1
-    ld   (_expected_tftp_block_no), hl
-
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
     ;; create UDP packet
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
 
     ;; set UDP ports
 
@@ -409,7 +402,16 @@ error_packet_end:
 
     push de        ;; remember filename length for later
 
-    ld   hl, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
+    ;; ------------------------------------------------------------------------
+    ;; reset _expected_tftp_block_no to 1
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #1
+    ld   (_expected_tftp_block_no), hl
+
+    ;; H==0 here
+
+    ld   l, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
     add  hl, de
     ex   de, hl    ;; DE = UDP length
 
@@ -418,7 +420,7 @@ error_packet_end:
     ;; the address page where eth_broadcast_address resides.
 
     ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    ld   l, #<eth_broadcast_address    ;; all we know at this point
+    ld   l, #<eth_broadcast_address    ;; all we know at this point; H==0 here
     call udp_create
 
     ;; append 16-bit TFTP opcode and path prefix
