@@ -161,12 +161,13 @@ bootp_receive_sname_done:
     ;; or, if none given, use the default
     ;; ------------------------------------------------------------------------
 
-    ;; at this point A is zero, either from the SNAME check or after JR NZ above
+    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
-    or   a, (hl)
+    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
+    ld   a, (de)
+    or   a, a
     jr   nz, 00001$
-    ld   hl, #tftp_default_file
+    ld   de, #tftp_default_file
 00001$:
     call tftp_read_request
 

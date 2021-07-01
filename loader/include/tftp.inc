@@ -126,7 +126,8 @@ TFTP_HEADER_SIZE     = 4
 ;; Initiate a file transfer from server.
 ;; Defined in eth.c, using macro prepare_tftp_read_request below.
 ;;
-;; HL: pointer to NUL-terminated file name
+;; DE: pointer to NUL-terminated file name
+;; HL: pointer to TFTP state handler
 ;; ----------------------------------------------------------------------------
 
     .globl tftp_read_request
@@ -365,7 +366,13 @@ error_packet_end:
 
     .macro prepare_tftp_read_request
 
-    push hl
+    push de
+
+    ;; ------------------------------------------------------------------------
+    ;; Set initial state for TFTP data handling
+    ;; ------------------------------------------------------------------------
+
+    ld    (tftp_state), hl
 
     ;; ------------------------------------------------------------------------
     ;; reset _expected_tftp_block_no to 1

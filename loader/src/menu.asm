@@ -180,13 +180,6 @@ run_menu:
 
     call  print_str
 
-    ;; ------------------------------------------------------------------------
-    ;; prepare for receiving .z80 snapshot data
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #s_header
-    ld   (tftp_state), hl
-
     ;; ========================================================================
     ;; main loop for the menu
     ;;
@@ -379,12 +372,13 @@ menu_hit_enter:
     call  show_attr_digit_right
 
     ;; ------------------------------------------------------------------------
-    ;; send a TFTP request for the snapshot
+    ;; send a TFTP request for the snapshot, expect .z80 snapshot data
     ;; ------------------------------------------------------------------------
 
     call eth_init
 
-    pop  hl
+    pop  de
+    ld   hl, #s_header                       ;; state for .z80 snapshot loading
     call tftp_read_request
 
     ;; ------------------------------------------------------------------------
