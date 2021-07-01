@@ -47,6 +47,7 @@ TFTP_OPCODE_ERROR         = 5
 TFTP_SIZE_OF_OPCODE       = 2
 TFTP_OFFSET_OF_OPCODE     = 0
 
+TFTP_SIZE_OF_BLOCKNO      = 2
 TFTP_OFFSET_OF_BLOCKNO    = 2
 TFTP_OFFSET_OF_ERROR_MSG  = 4
 
@@ -255,7 +256,7 @@ ack_packet_end:
 
     ;; -----------------------------------------------------------------------
 
-    ld    e, #TFTP_SIZE_OF_OPCODE
+    ld    e, #TFTP_SIZE_OF_BLOCKNO
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
     rst   enc28j60_write_memory_small
 
@@ -280,28 +281,28 @@ ack_packet_end:
 
     ;; -----------------------------------------------------------------------
     ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
-    ;; from the UDP length. Start with the low-order byte in network order;
-    ;; hence the "+1" below. Set BC to TFTP payload length, 0..512.
+    ;; from the UDP length. Start with the low-order byte in network order.
+    ;; Set BC to TFTP payload length, 0..512.
     ;; -----------------------------------------------------------------------
 
-    ld  de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH + 1
-    ld  a, (de)                                      ;; UDP length, low byte
-    sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)  
-    ld  c, a                                         ;; TFTP length, low byte
-    dec de
-    ld  a, (de)                                      ;; UDP length, high byte
-    sbc a, #0
-    ld  b, a                                         ;; TFTP length, high byte
+    ld  hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH)
+    ld  a, h                                           ;; UDP length, low byte
+    sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)
+    ld  c, a                                          ;; TFTP length, low byte
+    ld  b, l                                         ;; TFTP length, high byte
+    jr  nc, no_carry_in_tftp_length
+    dec b
+no_carry_in_tftp_length:
 
     ;; ------------------------------------------------------------------------
-    ;; Set up registers for TFTP state handlers:
+    ;; Set up remaining registers for TFTP state handlers:
     ;;
-    ;; BC: number of bytes left to read from TFTP packet (set above)
+    ;; BC: number of bytes left to read from TFTP packet (already set above)
     ;; DE: write pointer (destination somewhere in RAM)
     ;; HL: number of bytes remaining in current chunk
     ;; IX: current state
     ;; IY: read pointer (TFTP packet data)
-    ;; I:  number of ED ED repetitions remaining
+    ;; I:  number of ED ED repetitions remaining (set in z80_loader)
     ;; ------------------------------------------------------------------------
 
     ld   hl, (_chunk_bytes_remaining)
