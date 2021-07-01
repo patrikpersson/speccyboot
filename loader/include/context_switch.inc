@@ -449,7 +449,8 @@ context_switch_im_set:
 
     ;; ========================================================================
     ;; Restore application data temporarily stored in ENC28J60 RAM
-    ;; (while not using the stack). RBM opcode already written above.
+    ;; (while using a minimal, read-only stack in ROM).
+    ;; RBM opcode already written above.
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
