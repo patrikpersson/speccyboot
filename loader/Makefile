@@ -30,7 +30,7 @@ endif
 
 ASMFILES     = init.asm
 ASMFILES    += context_switch.asm enc28j60.asm
-ASMFILES    += menu.asm stack.asm tftp.asm util.asm z80_loader.asm
+ASMFILES    += menu.asm stack.asm util.asm z80_loader.asm
 
 INCFILES     = bootp.inc context_switch.inc eth.inc enc28j60.inc globals.inc
 INCFILES    += menu.inc tftp.inc udp_ip.inc util.inc spi.inc z80_loader.inc

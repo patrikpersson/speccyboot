@@ -124,20 +124,16 @@ TFTP_HEADER_SIZE     = 4
     .globl tftp_default_file
 
 ;; ----------------------------------------------------------------------------
-;; Initiate a file transfer from server.
-;; Defined in eth.c, using macro prepare_tftp_read_request below.
-;;
-;; DE: pointer to NUL-terminated file name
-;; HL: pointer to TFTP state handler
-;; ----------------------------------------------------------------------------
-
-    .globl tftp_read_request
-
-;; ----------------------------------------------------------------------------
 ;; TFTP initial state: load menu.bin into RAM
 ;; ----------------------------------------------------------------------------
 
     .globl tftp_state_menu_loader
+
+;; ----------------------------------------------------------------------------
+;; Request snapshot to be loaded over TFTP. DE points to .z80 file name.
+;; ----------------------------------------------------------------------------
+
+    .globl tftp_load_file
 
 ;; ============================================================================
 ;; Macro: executed by UDP when a TFTP packet has been identified.
@@ -365,7 +361,7 @@ error_packet_end:
 ;; Macro: prepare (but do not send) a TFTP read request packet.
 ;; ============================================================================
 
-    .macro prepare_tftp_read_request
+    .macro PREPARE_TFTP_READ_REQUEST
 
     push de
 

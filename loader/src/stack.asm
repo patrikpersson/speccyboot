@@ -39,6 +39,7 @@
     .include "tftp.inc"
     .include "udp_ip.inc"
     .include "util.inc"
+    .include "z80_loader.inc"
 
 ;; ============================================================================
 ;; ARP header constants
@@ -62,6 +63,10 @@ ETH_ADM_HEADER_SIZE = 20
 
     .area _DATA
 
+;; ============================================================================
+;; Ethernet
+;; ============================================================================
+
 ;; ----------------------------------------------------------------------------
 ;; ENC28J60 administrative header
 ;; ----------------------------------------------------------------------------
@@ -75,7 +80,7 @@ eth_sender_address:
 eth_adm_header_ethertype:
     .ds   2
 
-;; ============================================================================
+;; ----------------------------------------------------------------------------
 
 _end_of_critical_frame:
     .ds   2                   ;; written to ETXND for re-transmission
@@ -87,12 +92,55 @@ _end_of_critical_frame:
 _current_txbuf:
     .ds   2
 
+;; ============================================================================
+;; IP
+;; ============================================================================
+
 ;; ----------------------------------------------------------------------------
 ;; IP checksum
 ;; ----------------------------------------------------------------------------
 
 _ip_checksum:
     .ds   2
+
+;; ============================================================================
+;; TFTP
+;; ============================================================================
+
+_tftp_write_pos:
+   .ds   2
+
+_chunk_bytes_remaining:
+   .ds   2
+
+;; ----------------------------------------------------------------------------
+;; next TFTP block we expect to receive
+;; ----------------------------------------------------------------------------
+
+_expected_tftp_block_no:
+    .ds   2
+
+;; ----------------------------------------------------------------------------
+;; source port currently used by server
+;; ----------------------------------------------------------------------------
+
+_server_port:
+    .ds   2
+
+;; ----------------------------------------------------------------------------
+;; function called for every received TFTP packet
+;; ----------------------------------------------------------------------------
+
+tftp_state:
+    .ds    2
+
+;; ----------------------------------------------------------------------------
+;; high byte of chosen UDP client port
+;; (low byte is always 0x45, network order)
+;; ----------------------------------------------------------------------------
+
+_tftp_client_port:
+    .ds    1
 
 ;; ============================================================================
 
@@ -843,7 +891,7 @@ ip_receive_not_bootp:
 
 tftp_read_request:
 
-    prepare_tftp_read_request
+    PREPARE_TFTP_READ_REQUEST
 
     ;; FALL THROUGH to ip_send
 
@@ -1248,9 +1296,193 @@ ip_receive_check_checksum:
 
 ;; ----------------------------------------------------------------------------
 ;; Called by UDP when a BOOTP packet has been received.
-;; If a BOOTREPLY with an IP address is found, call tftp_read_request().
+;; If a BOOTREPLY with an IP address is found,
+;; continue with tftp_request_snapshot; otherwise return.
 ;; ----------------------------------------------------------------------------
 
 bootp_receive:
 
     HANDLE_BOOTP_PACKET
+
+    ;; ========================================================================
+    ;; A BOOTREPLY was received
+    ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; Send TFTP read request for filename in FILE field,
+    ;; or, if none given, use the default
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'S' indicator: black ink, green paper, bright, flash
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'L' indicator: black ink, white paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ld    l, (hl)                                  ;; (23, 0)
+    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
+
+
+    ;; FALL THROUGH to tftp_request_snapshot
+
+
+;; ############################################################################
+;; tftp_load_file
+;; ############################################################################
+
+tftp_load_file:
+
+    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+
+    ld   a, (de)
+    or   a, a
+    jr   nz, bootp_receive_not_default
+
+    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
+    ld   de, #tftp_default_file                   ;; 'menu.bin'
+
+bootp_receive_not_default:
+
+    call tftp_read_request
+
+    ;; ------------------------------------------------------------------------
+    ;; print 'L', local IP address, 'S', server IP address
+    ;; ------------------------------------------------------------------------
+
+    ld    a, #'L'
+    ld    de, #LOCAL_IP_POS
+    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    call print_ip_addr
+
+    ld    a, #'S'
+    ld    e, #<SERVER_IP_POS
+
+    ;; FALL THROUGH to print_ip_addr
+
+
+;; ############################################################################
+;; Subroutine:
+;; prints IP address, four octets of 1-3 digits, with a descriptive letter
+;; ('L' or 'S') and periods between octets.
+;; A = initial letter to print ('L' or 'S')
+;; DE = VRAM pointer
+;; HL = pointer to IP address
+;; AF, AF', and BC are destroyed. DE and HL are increased.
+;; ############################################################################
+
+print_ip_addr:
+
+    call  print_char             ;; initial letter
+
+    ;; DE = VRAM pointer
+    ;; HL = IP address
+    ;; AF, BC = scratch
+
+    ld    b, #4       ;; loop counter, four octets
+
+00001$:
+    push  bc
+
+    ld    a, (hl)
+    inc   hl
+
+    cp    a, #10           ;; < 10? print only single digit
+
+    call  nc, print_hundreds_and_tens
+
+    call  print_digit      ;; last digit
+
+    pop   bc
+
+    ;; print period?
+    dec   b
+    ret   z
+
+    ld    a, #'.'
+    call  print_char
+    jr    00001$           ;; next octet
+
+
+;; ----------------------------------------------------------------------------
+;; Examines A and prints one or two digits.
+;;
+;; If A >= 100, prints 1 or 2 (hundreds). No 0 will be printed.
+;; Then prints tens, unconditionally.
+;; Returns with A == (original A) % 10, in range 0..9.
+;; ----------------------------------------------------------------------------
+
+print_hundreds_and_tens:
+
+    ld    b, #100
+    cp    a, b
+    call  nc, print_div    ;; no hundreds? skip entirely, not even a zero
+
+    ld    b, #10
+
+    ;; FALL THROUGH to print_div
+
+
+;; ----------------------------------------------------------------------------
+;; Divides A by B, and prints as one digit. Returns remainder in A.
+;; Destroys AF'.
+;; ----------------------------------------------------------------------------
+
+print_div:
+    call  a_div_b
+
+    ex    af, af'
+    ld    a, c
+
+    ;; FALL THROUGH to print_digit
+
+
+;; ############################################################################
+
+print_digit:
+    add  a, #'0'
+
+    ;; FALL THROUGH to print_char
+
+
+;; ############################################################################
+;; _print_char
+;; ############################################################################
+
+print_char:
+
+    push hl
+    push bc
+
+    ld   bc, #(_font_data - 32 * 8)
+    ld   l, a
+    ld   h, c   ;; 0
+    add  hl, hl
+    add  hl, hl
+    add  hl, hl
+    add  hl, bc
+
+    ld   b, #7
+    ld   c, d
+_print_char_loop:
+    inc  hl
+    ld   a, (hl)
+    ld   (de), a
+    inc  d
+    djnz _print_char_loop
+    ld   d, c
+
+    ex   af, af'            ;;   bring back A after print_div
+
+    inc  e
+
+    pop  bc
+    pop  hl
+
+    ret

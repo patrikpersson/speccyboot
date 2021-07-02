@@ -8,6 +8,5 @@ obj/stack.rel
 obj/context_switch.rel
 obj/enc28j60.rel
 obj/menu.rel
-obj/tftp.rel
 obj/util.rel
 obj/z80_loader.rel

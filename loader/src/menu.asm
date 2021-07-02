@@ -372,14 +372,13 @@ menu_hit_enter:
     call  show_attr_digit_right
 
     ;; ------------------------------------------------------------------------
-    ;; send a TFTP request for the snapshot, expect .z80 snapshot data
+    ;; send a TFTP request for the snapshot
     ;; ------------------------------------------------------------------------
 
     call eth_init
 
     pop  de
-    ld   hl, #s_header                       ;; state for .z80 snapshot loading
-    call tftp_read_request
+    call tftp_load_file
 
     ;; ------------------------------------------------------------------------
     ;; let the main loop handle the response
