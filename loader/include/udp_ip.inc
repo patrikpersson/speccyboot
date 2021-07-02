@@ -94,13 +94,13 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 
 ;; ----------------------------------------------------------------------------
 ;; Called by eth.c when an Ethernet frame holding an IP packet has been
-;; received.
+;; received. Defined in eth.c.
 ;; ----------------------------------------------------------------------------
 
     .globl ip_receive
 
 ;; ----------------------------------------------------------------------------
-;; Create UDP packet (IP + UDP headers).
+;; Create UDP packet (IP + UDP headers). Defined in eth.c.
 ;;
 ;; HL: points to destination MAC address
 ;; BC: points to destination IP address
@@ -111,7 +111,7 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 
 ;; ----------------------------------------------------------------------------
 ;; Create UDP reply to the sender of the received packet currently processed.
-;; Source/destination ports are swapped.
+;; Source/destination ports are swapped. Defined in eth.c.
 ;;
 ;; Call with DE=number of bytes in payload
 ;; ----------------------------------------------------------------------------

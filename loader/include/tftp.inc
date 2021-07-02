@@ -144,7 +144,7 @@ TFTP_HEADER_SIZE     = 4
 ;; Returns (RET or RET cc) when done.
 ;; ============================================================================
 
-    .macro  handle_tftp_packet
+    .macro  HANDLE_TFTP_PACKET
 
     ;; ------------------------------------------------------------------------
     ;; only accept DATA packets; anything else is a fatal error
@@ -357,7 +357,7 @@ error_packet_start:
     .db   0                           ;; no particular message
 error_packet_end:
 
-    jp    ip_send
+    jr    ip_send
 
     .endm
 

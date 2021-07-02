@@ -1,7 +1,6 @@
-;; Module eth:
+;; Module stack:
 ;;
-;; Ethernet implementation using the Microchip ENC28J60 Ethernet host.
-;; Also handles ARP (RFC 826).
+;; Integrated stack for Ethernet, IP, ARP, UDP, BOOTP, TFTP.
 ;;
 ;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
@@ -79,6 +78,13 @@ _end_of_critical_frame:
 ;; ----------------------------------------------------------------------------
 
 _current_txbuf:
+    .ds   2
+
+;; ----------------------------------------------------------------------------
+;; IP checksum
+;; ----------------------------------------------------------------------------
+
+_ip_checksum:
     .ds   2
 
 ;; ============================================================================
@@ -462,6 +468,393 @@ eth_create:
     rst   enc28j60_write_memory_small
     ret
 
+
+;; ############################################################################
+;; Create UDP reply to the sender of the received packet currently processed.
+;; Source/destination ports are swapped.
+;;
+;; Call with DE=number of bytes in payload
+;; ############################################################################
+
+    .area _CODE
+
+udp_reply:
+
+    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
+
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+
+    ld   hl, #eth_sender_address
+
+    ;; FALL THROUGH to udp_create
+
+
+;; ############################################################################
+;; _udp_create
+;; ############################################################################
+
+udp_create:
+
+    push  hl
+    push  de
+    push  bc
+
+    ;; ----------------------------------------------------------------------
+    ;; Set up a header template, to be filled in with proper data below.
+    ;; ----------------------------------------------------------------------
+
+    exx                  ;; remember DE for use below
+
+    ld    hl, #ip_header_defaults
+    ld    de, #_header_template
+    ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
+
+    ldir
+
+    exx                  ;; recall DE
+
+    ;; ----------------------------------------------------------------------
+    ;; Add IPV4_HEADER_SIZE to DE. This can safely be done as a byte addition
+    ;; (no carry needed), as DE has one of the following values:
+    ;;
+    ;; BOOTP boot request: UDP_HEADER_SIZE + BOOTP_PACKET_SIZE = 308 = 0x134
+    ;; TFTP read request: UDP_HEADER_SIZE
+    ;;                       + TFTP_SIZE_OF_RRQ_PREFIX
+    ;;                       + TFTP_SIZE_OF_RRQ_OPTION
+    ;;                    = 27 = 0x1b
+    ;; TFTP ACK: UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET = 8 + 4 = 0x0c
+    ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
+    ;;
+    ;; In all these cases, the lower byte (that is, E) is < 0xfc, so adding
+    ;; IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition is safe.
+    ;; ----------------------------------------------------------------------
+
+    ld    a, e
+    add   a, #IPV4_HEADER_SIZE
+    ld    e, a                 ;; DE is now total length, including IP header
+
+    ;; ----------------------------------------------------------------------
+    ;; prepare IP header in _header_template
+    ;; ----------------------------------------------------------------------
+
+    ld    hl, #_header_template + 2    ;; total length
+    ld    (hl), d       ;; total_length  (network order)
+    inc   hl
+    ld    (hl), e       ;; total_length, continued
+
+    ;; copy source IP address
+
+    ld    de, #_header_template + 12   ;; source IP address
+    ld    l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld    bc, #4
+    ldir
+
+    ;; copy destination IP address
+
+    pop   hl
+    ld    c, #4       ;; B == 0 after LDIR above
+    ;; keep DE from above: destination address follows immediately after source
+    ldir
+
+    ;; ----------------------------------------------------------------------
+    ;; compute checksum of IP header
+    ;; ----------------------------------------------------------------------
+
+    ld     h, b   ;; BC==0 here after LDIR above
+    ld     l, c
+
+    ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
+    ld     de, #_header_template
+    call   enc28j60_add_to_checksum_hl
+
+    ld     a, l
+    cpl
+    ld     l, a
+    ld     a, h
+    cpl
+    ld     h, a
+    ld     (_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM), hl
+
+    ;; ----------------------------------------------------------------------
+    ;; set UDP length (network order) and clear UDP checksum
+    ;; ----------------------------------------------------------------------
+
+    pop    de       ;; UDP length
+
+    ld     hl, #_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
+    ld     (hl), d
+    inc    hl
+    ld     (hl), e
+    inc    hl
+
+    xor    a, a
+    ld     (hl), a
+    inc    hl
+    ld     (hl), a
+
+    ;; ----------------------------------------------------------------------
+    ;; create IP packet
+    ;; ----------------------------------------------------------------------
+
+    pop    bc             ;; destination MAC address
+    ld     de, #ethertype_ip
+    ld     hl, #ENC28J60_TXBUF1_START
+    call   eth_create
+
+    ;; ----------------------------------------------------------------------
+    ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
+    ;; ----------------------------------------------------------------------
+
+    ld     e, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
+
+    ;; FALL THROUGH and continue execution in the IP header defaults
+
+;; ============================================================================
+;; IP header defaults
+;; https://en.wikipedia.org/wiki/IPv4#Header
+;;
+;; Warning: this is fragile.
+;;
+;; This is a table of IP header defaults, combined with the final parts
+;; of the code in udp_create and the initial parts of ip_receive.
+;;
+;; The length field is only a placeholder (the actual value is set at runtime).
+;; The ID field is arbitrary when the Don't Fragment flag is set, according to
+;; RFC 6864:
+;;
+;;   Originating sources MAY set the IPv4 ID field of
+;;   atomic datagrams to any value.
+;;
+;; https://datatracker.ietf.org/doc/html/rfc6864#section-4.1
+;; ============================================================================
+
+ip_header_defaults:                          ;; IP header meaning
+                                             ;; -----------------
+    ld     b, l                              ;; 0x45: version, IHL
+    nop                                      ;; 0x00: DSCP, EN
+
+    ld     hl, #_header_template             ;; 2 bytes IP length (placeholder)
+    rst    enc28j60_write_memory_small       ;; 2 bytes packet ID (arbitrary)
+
+    ld     b, b                              ;; 0x40: DO NOT FRAGMENT
+    nop                                      ;; 0x00: fragment offset 0
+
+    ret                                      ;; 0xC9: time-to-live = 201
+
+    ;; IP header data continues as the first three bytes of ip_receive below
+
+;; ############################################################################
+;; ip_receive
+;; ############################################################################
+
+ip_receive:
+
+    ld    de, #0                             ;; protocol = IP_PROTOCOL_UDP
+                                             ;; checksum = 0 (temporary value
+                                             ;; for computation)
+
+    ;; clear IP checksum
+
+    ld   (_ip_checksum), de
+
+    ;; read a minimal IPv4 header
+
+    ld   e, #IPV4_HEADER_SIZE            ;; D==0 here
+    call enc28j60_read_memory_to_rxframe
+
+    ;; ------------------------------------------------------------
+    ;; Check the IP destination address
+    ;; ------------------------------------------------------------
+
+    ;; Check if a valid IP address has been set. Set Z as follows:
+    ;;
+    ;; Z == 0: an IP address has been set, check packet IP address
+    ;; Z == 1: no IP address has been set, ignore packet IP address
+
+    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   a, (hl)                        ;; a non-zero first octet
+    or   a                              ;; means an address has been set
+
+    ;; This means that once an IP address is set,
+    ;; multicasts/broadcasts are ignored.
+
+    ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_DST_ADDR
+    call nz, memory_compare_4_bytes
+    ret  nz
+
+    ;; ------------------------------------------------------------
+    ;; Read remaining IP header, skip any options
+    ;; ------------------------------------------------------------
+
+    ;; Read header size
+
+    ld   a, (_rx_frame + IPV4_HEADER_OFFSETOF_VERSION_AND_LENGTH)
+    add  a, a
+    add  a, a         ;; the IP version is shifted out; no masking needed
+
+    push af     ;; remember IP header size for later
+
+    sub  a, #IPV4_HEADER_SIZE
+
+    ;; -----------------------------------------------------------------------
+    ;; Handle IPv4 options, if any. Z==0 means IPv4 options found.
+    ;; -----------------------------------------------------------------------
+
+    ;; To skip forward past any options, load additional header data
+    ;; into UDP part of the buffer (overwritten soon afterwards)
+
+    ld   d, #0
+    ld   e, a
+    ld   l, #<_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
+    call nz, enc28j60_read_memory
+
+    ;; ------------------------------------------------------------
+    ;; compute payload length (excluding IP header)
+    ;; ------------------------------------------------------------
+
+    pop  bc          ;; B now holds IP header size
+
+    ;; compute T-N, where
+    ;;   T is the total packet length
+    ;;   N is the number of bytes currently read (IP header + options)
+
+    ld   hl, (_rx_frame + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
+    ld   a, h    ;; HL is in network order, so this is the low byte
+    sub  a, b
+    ld   e, a
+    ld   d, l
+    jr   nc, no_carry_in_header_size_subtraction
+    dec  d
+no_carry_in_header_size_subtraction:
+
+    ;; DE now holds UDP length (host order)
+
+    ;; ------------------------------------------------------------
+    ;; check IP header checksum
+    ;; ------------------------------------------------------------
+
+    call ip_receive_check_checksum
+
+    ;; ------------------------------------------------------------
+    ;; Check for UDP (everything else will be ignored)
+    ;; ------------------------------------------------------------
+
+    ld   a, (_rx_frame + IPV4_HEADER_OFFSETOF_PROT)
+    cp   a, #IP_PROTOCOL_UDP
+    ret  nz
+
+    ;; ------------------------------------------------------------
+    ;; Initialize IP checksum to IP_PROTOCOL_UDP + UDP length
+    ;; (network order) for pseudo header. One assumption is made:
+    ;;
+    ;; - The UDP length is assumed to equal IP length - IP header
+    ;;   size. This should certainly be true in general, but
+    ;;   perhaps a creative IP stack could break this assumption.
+    ;;   It _seems_ to work fine, though...
+    ;; ------------------------------------------------------------
+
+    add  a, e
+    ld   h, a
+    ld   l, d
+    jr   nc, no_carry
+    inc  l
+no_carry:
+    ld   (_ip_checksum), hl
+
+    ;; ------------------------------------------------------------
+    ;; Load UDP payload
+    ;; ------------------------------------------------------------
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
+    call enc28j60_read_memory
+
+    ;; ------------------------------------------------------------
+    ;; Check UDP checksum
+    ;; ------------------------------------------------------------
+
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_CHECKSUM)
+    ld   a, h
+    or   a, l
+
+    ;; UDP checksum is optional: Z flag is set if no UDP checksum given
+
+    ;; Include IPv4 pseudo header in UDP checksum. UDP protocol and length
+    ;; were already included (given as initial value above), so we do not add
+    ;; it here.
+
+    ld   b, #IPV4_ADDRESS_SIZE    ;; number of words (4 for two IP addresses)
+    ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    call nz, add_and_verify_checksum
+
+    ;; ------------------------------------------------------------
+    ;; Pass on to BOOTP/TFTP
+    ;; ------------------------------------------------------------
+
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+
+    ;; BOOTP or TFTP response?
+    ;;
+    ;; for BOOTP, the port has the value 0x4400
+    ;; (UDP_PORT_BOOTP_CLIENT, network order)
+    ;;
+    ;; for TFTP, port has the value 0x45rr, where 'rr' is a random value
+    ;; (that is, the high byte is UDP_PORT_TFTP_SERVER, as chosen in tftp.inc)
+
+    ld   a, h
+    sub  a, #UDP_PORT_BOOTP_CLIENT
+    jr   nz, ip_receive_not_bootp
+    or   a, l
+    jp   z, bootp_receive
+    ret
+
+ip_receive_not_bootp:
+    dec  a             ;; UDP_PORT_TFTP_SERVER?
+    ret  nz
+    ld   a, (_tftp_client_port)
+    cp   a, l
+    ret  nz
+
+    ;; only accept TFTP if an IP address has been set
+
+    ld   a, (_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET)
+    or   a  ;; a non-zero first octet
+    ret  z
+
+    ;; -------------------------------------------------------------------
+    ;; handle_tftp_packet is a macro, so as to avoid a function call
+    ;; -------------------------------------------------------------------
+
+    HANDLE_TFTP_PACKET
+
+
+;; ############################################################################
+;; ip_send
+;; ############################################################################
+
+tftp_read_request:
+
+    prepare_tftp_read_request
+
+    ;; FALL THROUGH to ip_send
+
+
+;; ############################################################################
+;; ip_send
+;; ############################################################################
+
+ip_send:
+
+    ld   hl, (_header_template + 2)   ;; IP length
+    ld   a, l  ;; swap byte order in HL
+    ld   l, h
+    ld   h, a
+
+    jr   eth_send
+
+
 ;; ############################################################################
 ;; arp_receive
 ;; ############################################################################
@@ -557,32 +950,9 @@ arp_header_template_end:
     rst  enc28j60_write_memory_small
 
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
-    jr   eth_send
-
-
-;; ############################################################################
-;; ip_send
-;; ############################################################################
-
-tftp_read_request:
-
-    prepare_tftp_read_request
-
-    ;; FALL THROUGH to ip_send
-
-
-;; ############################################################################
-;; ip_send
-;; ############################################################################
-
-ip_send:
-
-    ld   hl, (_header_template + 2)   ;; IP length
-    ld   a, l  ;; swap byte order in HL
-    ld   l, h
-    ld   h, a
 
     ;; FALL THROUGH to eth_send
+
 
 ;; ############################################################################
 ;; eth_send
@@ -770,3 +1140,33 @@ poll_register:
     ld     a, #FATAL_INTERNAL_ERROR
     jp     fail
 
+
+;; -----------------------------------------------------------------------
+;; Subroutine: add a number of bytes to IP checksum,
+;; then verify the resulting checksum.
+;; -----------------------------------------------------------------------
+
+add_and_verify_checksum:
+
+    call enc28j60_add_to_checksum
+
+    ;; FALL THROUGH to ip_receive_check_checksum
+
+;; -----------------------------------------------------------------------
+;; Helper: check IP checksum.
+;; If OK (0xffff): return to caller.
+;; if not OK: pop return address and return to next caller
+;;            (that is, return from ip_receive)
+;; Must NOT have anything else on stack when this is called.
+;; Destroys AF, HL if OK; more if not.
+;; -----------------------------------------------------------------------
+
+ip_receive_check_checksum:
+    ld   hl, (_ip_checksum)
+    ld   a, h
+    and  a, l
+    inc  a   ;; if both bytes are 0xff, A will now become zero
+    ret  z
+
+    pop  af   ;; pop return address within ip_receive
+    ret       ;; return to _caller_ of ip_receive
