@@ -378,7 +378,7 @@ initialize_global_data:
 
   .area _CODE
 
-  .area _LAST_PART_OF_ROM  ;; stuff that goes at the end of ROM (mostly 0x7XX)
+  .area _Z80_LOADER_STATES ;; states for .z80 loader (need to be in a single page)
 
   .area _DATA
 

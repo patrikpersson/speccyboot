@@ -125,7 +125,7 @@ _digits:
 ;; address byte). In other cases, simply use LD IX, #TO instead.
 ;; ============================================================================
 
-    .macro SWITCH_STATE_FICKLE FROM TO
+    .macro SWITCH_STATE FROM TO
 
     .globl FROM       ;; ensure these can be checked in the linker's map output
     .globl TO
@@ -140,13 +140,13 @@ _digits:
     .ds  >(FROM)->(TO)     ;; normally zero, but one of these should be negative
     .ds  >(TO)->(FROM)     ;; if the two routines are on different pages
 
-    ;; So place all state routines in segment _LAST_PART_OF_ROM
+    ;; So place all state routines in segment _Z80_LOADER_STATES
     ;; and use the .map file to verify that this segment starts at
     ;; 0x700 or higher. Then this macro _should_ be safe.
 
     .endm
 
-    .macro SWITCH_STATE FROM TO
+    .macro SWITCH_STATE_SAFE FROM TO
     ld   ix, #TO
     .endm
 
@@ -221,7 +221,7 @@ load_byte_from_packet:
 ;; Evacuates the header from the TFTP data block and sets up the next state.
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _Z80_LOADER_STATES
 
 s_header:
 
@@ -376,7 +376,7 @@ s_header_set_state:
 ;; receive first byte in chunk header: low byte of chunk length
 ;; ############################################################################
 
-    .area _LAST_PART_OF_ROM
+    .area _Z80_LOADER_STATES
 
 s_chunk_header:
 
@@ -395,7 +395,7 @@ s_chunk_header:
 ;; receive second byte in chunk header: high byte of chunk length
 ;; ############################################################################
 
-    .area _LAST_PART_OF_ROM
+    .area _Z80_LOADER_STATES
 
 s_chunk_header2:
 
@@ -418,7 +418,7 @@ s_chunk_header2:
 ;; https://www.worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
 ;; ############################################################################
 
-    .area _LAST_PART_OF_ROM
+    .area _Z80_LOADER_STATES
 
 s_chunk_header3:
 
@@ -557,7 +557,7 @@ s_chunk_write_data_uncompressed:
 ;; state CHUNK_REPCOUNT
 ;; ############################################################################
 
-    .area _LAST_PART_OF_ROM
+    .area _Z80_LOADER_STATES
 
 s_chunk_repcount:
 
@@ -575,7 +575,7 @@ s_chunk_repcount:
 ;; state CHUNK_REPVALUE
 ;; ############################################################################
 
-    .area _LAST_PART_OF_ROM
+    .area _Z80_LOADER_STATES
 
 s_chunk_repvalue:
 
@@ -650,7 +650,7 @@ chunk_escape:
 ;; state CHUNK_COMPRESSED_ESCAPE
 ;; ############################################################################
 
-    .area _LAST_PART_OF_ROM
+    .area _Z80_LOADER_STATES
 
 s_chunk_compressed_escape:
 
