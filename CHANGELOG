@@ -1,7 +1,9 @@
 SpeccyBoot 3 (June X, 2021):
 
-* Optimized footprint, to fit everything except the menu application and
-  initial .z80 header parsing into 2K ROM.
+* Optimized footprint, to fit everything except the menu application
+  into 2K ROM.
+* Snapshots (*.z80) are loaded directly, without user intervention,
+  if the BOOTP FILE field is set to a suitable snapshot file name.
 
 -------------------------------------------------------------------------------
 
