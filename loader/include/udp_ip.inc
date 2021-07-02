@@ -69,22 +69,16 @@ UDP_HEADER_OFFSETOF_CHECKSUM   = 6
     .globl _ip_checksum
 
 ;; ----------------------------------------------------------------------------
-;; Header template for outgoing UDP packets
-;; ----------------------------------------------------------------------------
-
-    .globl _header_template
-
-;; ----------------------------------------------------------------------------
+;; _ip_config   (defined as constant in globals.inc)
+;;
 ;; IP configuration (host + server addresses, 4 + 4 bytes)
 ;; ----------------------------------------------------------------------------
-
-    .globl _ip_config
 
 IP_CONFIG_HOST_ADDRESS_OFFSET  = 0
 IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 
 ;; ----------------------------------------------------------------------------
-;; Header data for BOOTP
+;; Header data for BOOTP; defined in init.asm
 ;; ----------------------------------------------------------------------------
 
     .globl bootrequest_header_data

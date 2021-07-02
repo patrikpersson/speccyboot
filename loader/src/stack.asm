@@ -107,8 +107,16 @@ _ip_checksum:
 ;; TFTP
 ;; ============================================================================
 
+;; ----------------------------------------------------------------------------
+;; Position to write loaded TFTP data to (initialized in init.asm)
+;; ----------------------------------------------------------------------------
+
 _tftp_write_pos:
    .ds   2
+
+;; ----------------------------------------------------------------------------
+;; Number of bytes remaining in current .z80 chunk (used by .z80 loader)
+;; ----------------------------------------------------------------------------
 
 _chunk_bytes_remaining:
    .ds   2
@@ -173,7 +181,7 @@ END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
 
     call  eth_init
     
-    bootp_init             ;; macro, no need to CALL
+    BOOTP_INIT
 
     ;; ========================================================================
     ;; main loop: receive packets and act on them

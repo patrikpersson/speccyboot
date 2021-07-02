@@ -75,65 +75,18 @@ TFTP_DATA_MAXSIZE    = 512
 TFTP_HEADER_SIZE     = 4
 
 ;; ----------------------------------------------------------------------------
-;; packet counter for TFTP
-;; ----------------------------------------------------------------------------
-
-    .globl _expected_tftp_block_no
-
-;; ----------------------------------------------------------------------------
-;; UDP port used by TFTP server
-;; ----------------------------------------------------------------------------
-
-    .globl _server_port
-
-;; ----------------------------------------------------------------------------
-;; UDP client-side port for UDP transfers (checked in udp_ip.asm)
-;; Only the low byte (Z80 order) / high byte (network order) is stored here;
-;; the other byte is always UDP_PORT_TFTP_SERVER.
-;; ----------------------------------------------------------------------------
-
-    .globl _tftp_client_port
-
-;; ----------------------------------------------------------------------------
 ;; Position to write loaded TFTP data to (initialized in init.asm)
 ;; ----------------------------------------------------------------------------
 
     .globl _tftp_write_pos
 
 ;; ----------------------------------------------------------------------------
-;; Number of bytes remaining in current .z80 chunk (used by .z80 loader)
-;; ----------------------------------------------------------------------------
-
-    .globl _chunk_bytes_remaining
-
-;; ----------------------------------------------------------------------------
-;; RAM pointer to routine to call on TFTP data. Initially points to
-;; tftp_state_menu_loader, but modified by the .z80 loader to handle snapshots.
-;;
-;; When this routine is called, registers are set as follows:
-;;
-;; DE: number of bytes loaded, excluding IP/UDP/TFTP headers
-;; ----------------------------------------------------------------------------
-
-    .globl tftp_state
-
-;; ----------------------------------------------------------------------------
-;; NUL-terminated default filename for stage 2 loader ('stage2')
-;; ----------------------------------------------------------------------------
-
-    .globl tftp_default_file
-
-;; ----------------------------------------------------------------------------
-;; TFTP initial state: load menu.bin into RAM
-;; ----------------------------------------------------------------------------
-
-    .globl tftp_state_menu_loader
-
-;; ----------------------------------------------------------------------------
 ;; Request snapshot to be loaded over TFTP. DE points to .z80 file name.
 ;; ----------------------------------------------------------------------------
 
     .globl tftp_load_file
+
+
 
 ;; ============================================================================
 ;; Macro: executed by UDP when a TFTP packet has been identified.
@@ -356,6 +309,8 @@ error_packet_end:
     jr    ip_send
 
     .endm
+
+
 
 ;; ============================================================================
 ;; Macro: prepare (but do not send) a TFTP read request packet.

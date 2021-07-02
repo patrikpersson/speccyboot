@@ -56,14 +56,14 @@ BOOTP_OFFSETOF_SNAME = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE +
 BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 10 + 64)
 
 
-;; ----------------------------------------------------------------------------
+;; ===========================================================================
 ;; Macro:
 ;;
 ;; send a BOOTREQUEST for client configuration
 ;; (IP address, boot file name, TFTP server address)
-;; ----------------------------------------------------------------------------
+;; ===========================================================================
 
-    .macro bootp_init
+    .macro BOOTP_INIT
 
     ;; ========================================================================
     ;; the BOOTREQUEST is built in steps:
@@ -126,14 +126,15 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
 
     .endm
 
-;; ----------------------------------------------------------------------------
+
+
+;; ===========================================================================
 ;; Macro:
 ;;
 ;; handle a received BOOTP packet
 ;; If a BOOTREPLY with an IP address is found,
 ;; fall through to tftp_request_snapshot; otherwise return.
-;; ----------------------------------------------------------------------------
-
+;; ===========================================================================
 
     .macro  HANDLE_BOOTP_PACKET
 
