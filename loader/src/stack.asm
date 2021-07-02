@@ -1360,6 +1360,15 @@ bootp_receive_not_default:
 
     call tftp_read_request
 
+    ;; ========================================================================
+    ;; Display IP address information. This is intended for when
+    ;; tftp_load_file is called in response to a BOOTP BOOTREPLY.
+    ;;
+    ;; The information will be printed when a .z80 snapshot is requested too,
+    ;; but it will not be visible (as the lower attribute row will then
+    ;; have INK==PAPER).
+    ;; ========================================================================
+
     ;; ------------------------------------------------------------------------
     ;; print 'L', local IP address, 'S', server IP address
     ;; ------------------------------------------------------------------------
