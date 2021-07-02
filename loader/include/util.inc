@@ -117,7 +117,6 @@ ATTR_DIGIT_ROW = 0x5A00
 ;; ----------------------------------------------------------------------------
 
 FATAL_VERSION_MISMATCH    = BLUE
-FATAL_INVALID_BOOT_SERVER = MAGENTA
 FATAL_INTERNAL_ERROR      = CYAN
 FATAL_FILE_NOT_FOUND      = YELLOW
 

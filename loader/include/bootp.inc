@@ -177,6 +177,8 @@ bootp_receive_octet_loop:
 
     ;; ========================================================================
     ;; Parse decimal number at DE. Truncated to 8 bits (unsigned).
+    ;; This parser is very forgiving, and will give surprising results if
+    ;; given anything else than digits, a period ('.'), or NUL.
     ;; ========================================================================
 
     ld   c, #0
@@ -184,22 +186,14 @@ bootp_receive_octet_loop:
 parse_loop:
 
     ld   a, (de)
-    or   a, a
-    jr   z, parse_byte_complete
-    cp   a, #'.'
-    jr   z, parse_byte_complete
-
     inc  de
 
-    ;; backwards comparison, to ensure C is _cleared_ for non-digits
-    add  a, #(0x100 - '0')
-    jr   nc, parse_invalid_address
+    bit  4, a          ;; sets Z flag for NUL and '.'
+    jr   z, parse_byte_complete
 
-    cp   a, #10
+    sub  a, #'0'
+
     ld   b, a          ;; B now holds digit value 0..9
-parse_invalid_address:
-    ld   a, #FATAL_INVALID_BOOT_SERVER
-    jr   nc, fail
 
     ld   a, c
     add  a, a
@@ -220,22 +214,7 @@ parse_byte_complete:
 
     inc  hl
 
-    ld   a, (de)
-    inc  de
-    or   a      ;; can only be '.' or NUL here
-    jr   nz, bootp_receive_more_octets
-
-    ;; DE apparently points to NUL. This is only OK after last octet (B==1)
-
-    ld   a, b
-    dec  a
-    jr   nz, parse_invalid_address
-
-bootp_receive_more_octets:
     djnz bootp_receive_octet_loop
-
-    ;; If we got here, the last octet was apparently followed by a period.
-    ;; This is technically wrong, but accepted.
 
 bootp_receive_sname_done:
 
