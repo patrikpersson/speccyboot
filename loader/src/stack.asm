@@ -49,6 +49,13 @@ ARP_OFFSET_SPA = 14         ;; offset of SPA field in ARP header
 ARP_OFFSET_TPA = 24         ;; offset of TPA field in ARP header
 ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 
+;; ----------------------------------------------------------------------------
+;; Location of local and server IP addresses (row 23, columns 0 and 16)
+;; ----------------------------------------------------------------------------
+
+LOCAL_IP_POS  = (BITMAP_BASE + 0x1100 + 7*32 + 0)
+SERVER_IP_POS = (BITMAP_BASE + 0x1100 + 7*32 + 16)
+
 ;; ============================================================================
 
 ETH_ADM_HEADER_SIZE = 20
@@ -1138,8 +1145,75 @@ poll_register:
     jr     nz, 00001$
 
     ld     a, #FATAL_INTERNAL_ERROR
-    jp     fail
+    jr     fail
 
+
+;; ############################################################################
+;; tftp_state_menu_loader
+;; ############################################################################
+
+tftp_state_menu_loader:
+
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ldir
+    ld  (_tftp_write_pos), de
+
+    ;; ------------------------------------------------------------------------
+    ;; If a full TFTP packet was loaded, return.
+    ;; (BC above should be exactly 0x200 for all DATA packets except the last
+    ;; one, never larger; so we are done if A != 2 here)
+    ;; ------------------------------------------------------------------------
+
+    cp  a, #2
+    ret z           ;; BC==0 here, indicating that we are done
+
+    ;; ========================================================================
+    ;; This was the last packet of the stage 2 binary:
+    ;; check version signature and run the stage 2 loader
+    ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; check version signature
+    ;; ------------------------------------------------------------------------
+
+    ld  hl, #stage2_start
+    ld  a, (hl)
+    cp  a, #VERSION_MAGIC
+version_mismatch:
+    jr  nz, fail_version_mismatch
+
+    ;; ------------------------------------------------------------------------
+    ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
+    ;; a LD r, r' instruction (binary 01xxxxxx) and harmless to execute.
+    ;; One INC HL is saved this way.
+    ;; ------------------------------------------------------------------------
+
+    jp  (hl)
+
+tftp_default_file:
+    .ascii 'menu.bin'
+    .db    0
+
+
+;; ############################################################################
+;; fail
+;; fail_version_mismatch
+;; ############################################################################
+
+    .area _CODE
+
+fail_version_mismatch:
+    ld  a, #VERSION_STAGE1
+    call show_attr_digit_right
+    ld  a, #FATAL_VERSION_MISMATCH
+
+    ;; FALL THROUGH to fail
+
+fail:
+
+    di
+    out (ULA_PORT), a
+    halt
 
 ;; -----------------------------------------------------------------------
 ;; Subroutine: add a number of bytes to IP checksum,
@@ -1170,3 +1244,13 @@ ip_receive_check_checksum:
 
     pop  af   ;; pop return address within ip_receive
     ret       ;; return to _caller_ of ip_receive
+
+
+;; ----------------------------------------------------------------------------
+;; Called by UDP when a BOOTP packet has been received.
+;; If a BOOTREPLY with an IP address is found, call tftp_read_request().
+;; ----------------------------------------------------------------------------
+
+bootp_receive:
+
+    HANDLE_BOOTP_PACKET
