@@ -897,17 +897,6 @@ ip_receive_not_bootp:
 
 
 ;; ############################################################################
-;; tftp_request_snapshot
-;; ############################################################################
-
-tftp_request_snapshot:
-
-    ld   hl, #s_header                       ;; state for .z80 snapshot loading
-
-    ;; FALL THROUGH to tftp_read_request
-
-
-;; ############################################################################
 ;; tftp_read_request
 ;; ############################################################################
 
@@ -1335,9 +1324,21 @@ bootp_receive:
     ;; ------------------------------------------------------------------------
 
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
+
+    ;; FALL THROUGH to tftp_request_snapshot
+
+
+;; ###########################################################################
+;; tftp_request_snapshot
+;; ###########################################################################
+
+tftp_request_snapshot:
+
+    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+
     ld   a, (de)
     or   a, a
-    jp   nz, tftp_request_snapshot
+    jr   nz, filename_set
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
@@ -1355,6 +1356,8 @@ bootp_receive:
 
     ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
     ld   de, #tftp_default_file                   ;; 'menu.bin'
+
+filename_set:
 
     call tftp_read_request
 
