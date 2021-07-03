@@ -624,11 +624,13 @@ udp_create:
     ldir
 
     ;; ----------------------------------------------------------------------
-    ;; compute checksum of IP header
+    ;; compute checksum of IP header; clear UDP checksum while HL == 0
     ;; ----------------------------------------------------------------------
 
     ld     h, b   ;; BC==0 here after LDIR above
     ld     l, c
+
+    ld     (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_CHECKSUM), hl
 
     ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
     ld     de, #_header_template
@@ -643,7 +645,7 @@ udp_create:
     ld     (_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM), hl
 
     ;; ----------------------------------------------------------------------
-    ;; set UDP length (network order) and clear UDP checksum
+    ;; set UDP length (network order)
     ;; ----------------------------------------------------------------------
 
     pop    de       ;; UDP length
@@ -652,12 +654,6 @@ udp_create:
     ld     (hl), d
     inc    hl
     ld     (hl), e
-    inc    hl
-
-    xor    a, a
-    ld     (hl), a
-    inc    hl
-    ld     (hl), a
 
     ;; ----------------------------------------------------------------------
     ;; create IP packet
