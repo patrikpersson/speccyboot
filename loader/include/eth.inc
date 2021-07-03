@@ -42,14 +42,14 @@
 ;;
 ;; 0xXXXX+1 ... 0xYYYY  TX buffer 1: BOOTP/TFTP frames. Re-sent on time-out.
 ;;
-;; 0xYYYY+1 ... 0x13FF  TX buffer 2: ARP frames, no reply expected,
+;; 0xYYYY+1 ... 0x17FF  TX buffer 2: ARP frames, no reply expected,
 ;;                                   never re-sent.
 ;;
-;; 0x1400   ... 0x1FFF  Reserved for temporary storage during snapshot
+;; 0x1800   ... 0x1FFF  Reserved for temporary storage during snapshot
 ;;                      loading (see context_switch.asm)
 
 ENC28J60_RXBUF_START    = 0x0000
-ENC28J60_EVACUATED_DATA = 0x1400
+ENC28J60_EVACUATED_DATA = 0x1800
 
 ;; Worst-case payload for transmitted UDP frames (BOOTP REQUEST):
 ;;

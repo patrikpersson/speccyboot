@@ -53,7 +53,7 @@
 ;; 0x0000 .. 0x07FF   2kB   SpeccyBoot ROM
 ;; 0x4000 .. 0x57FF   6kB   Video RAM (bitmap)
 ;; 0x5800 .. 0x5AFF   768B  Video RAM (attributes, progress display)     (!)
-;; 0x5B00 .. 0x5FFF  1280B  stack, data, resident code (.z80 loader)     (!)
+;; 0x5B00 .. 0x5FFF  1280B  stack, data                                  (!)
 ;; 0x6000 ..                non-resident code (menu)
 ;;
 ;; The area 0x5800 - 0x5FFF, marked with (!) above, needs to be preserved

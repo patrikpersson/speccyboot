@@ -958,9 +958,10 @@ arp_receive:
     ;; and that the packet was sent to this address
     ;; ------------------------------------------------------------------------
 
+    ;; A is 0 from DEC A above
+
     ld   l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    ld   a, (hl)
-    or   a, a
+    or   a, (hl)
     ret  z
 
     ld   de, #_rx_frame + ARP_OFFSET_TPA

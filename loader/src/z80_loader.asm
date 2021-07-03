@@ -363,7 +363,8 @@ s_header_set_state:
     ;; Safely assume that the TFTP packet is 0x200 bytes in length, as the RFC
     ;; guarantees this for all packets but the last one.
     ;;
-    ;; Set up BC as (0x0200 - C). B is currently 0 (after initial LDIR above).
+    ;; Set up BC as (0x0200 - C). B is currently 0 (after initial LDIR above),
+    ;; and should be 1 after subtraction.
     ;; ------------------------------------------------------------------------
 
     xor  a, a
@@ -800,7 +801,6 @@ progress_128:
     call  a_div_b
     ld    a, c
 
-00002$:
     or    a, a
     jr    z, no_progress_bar
 
