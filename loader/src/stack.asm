@@ -225,6 +225,7 @@ main_loop:
 
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
+    ;; B == 0 from enc28j60_read_register
     call  nz, perform_transmission
 
     jr    main_loop
@@ -981,7 +982,7 @@ arp_receive:
     or   a, a
     ret  z
 
-    ld   de , #_rx_frame + ARP_OFFSET_TPA
+    ld   de, #_rx_frame + ARP_OFFSET_TPA
     call memory_compare_4_bytes
     ret  nz   ;; if the packet is not for the local IP address, return
 
@@ -1045,8 +1046,9 @@ arp_header_template_end:
 eth_send:
 
     ;; ------------------------------------------------------------------------
-    ;; set DE = start address of frame in transmission buffer,
-    ;;     HL = end address of frame in transmission buffer
+    ;; set DE := start address of frame in transmission buffer,
+    ;;     HL := end address of frame in transmission buffer,
+    ;;     B  := 0
     ;;
     ;; end address = start
     ;;               + 1 (per-packet control byte)
@@ -1058,7 +1060,7 @@ eth_send:
 
     ld    de, (_current_txbuf)
     add   hl, de
-    ld    bc, #ETH_HEADER_SIZE
+    ld    bc, #ETH_HEADER_SIZE        ;; B == 0
     add   hl, bc
 
     ;; ------------------------------------------------------------------------
@@ -1082,11 +1084,10 @@ eth_send:
 ;; ############################################################################
 ;; perform_transmission:
 ;;
-;; Perform a frame transmission. Registers and ETXST and ETXND must be set
-;; before this function is called.
-;;
+;; Perform a frame transmission.
 ;; Does not return until the frame has been transmitted.
 ;;
+;; B: must be 0
 ;; DE: address of the first byte in the frame
 ;; HL: address of the last byte in the frame
 ;; ############################################################################
@@ -1100,7 +1101,7 @@ perform_transmission:
     push  hl   ;; remember HL=end_address
     push  de
 
-    ld    e, #0     ;; bank of ETXST and ETXND
+    ld    e, b     ;; B == 0: bank of ETXST and ETXND
     rst   enc28j60_select_bank
 
     pop   hl
@@ -1232,6 +1233,7 @@ poll_register:
 tftp_state_menu_loader:
 
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    bit 1, b
     ldir
     ld  (_tftp_write_pos), de
 
@@ -1241,8 +1243,7 @@ tftp_state_menu_loader:
     ;; one, never larger; so we are done if A != 2 here)
     ;; ------------------------------------------------------------------------
 
-    cp  a, #2
-    ret z           ;; BC==0 here, indicating that we are done
+    ret nz
 
     ;; ========================================================================
     ;; This was the last packet of the stage 2 binary:

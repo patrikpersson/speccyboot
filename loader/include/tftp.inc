@@ -246,7 +246,6 @@ no_carry_in_tftp_length:
     ;; Set up remaining registers for TFTP state handlers:
     ;;
     ;; BC: number of bytes left to read from TFTP packet (already set above)
-    ;; A:  same as C (used by tftp_state_menu_loader)
     ;; DE: write pointer (destination somewhere in RAM)
     ;; HL: number of bytes remaining in current chunk
     ;; IX: current state
