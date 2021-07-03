@@ -343,25 +343,31 @@ ram_trampoline:
 
 initialize_global_data:
 
-  ;; clear bitmap VRAM
+  ;; clear bitmap VRAM (also used as a source of zeros for BOOTP)
 
   ld    de, #0x4001        ;; HL is 0x4000 here (after previous LDIR)
   ld    b, #0x18           ;; BC is now 0x1800 (BC was 0 after previous LDIR)
   ld    (hl), l
   ldir
 
-  ;; set attribute VRAM (+ paint stack) to PAPER WHITE + INK BLACK
+  ;; set attribute VRAM: lines 0..22, PAPER+INK WHITE
 
-  ;; clear RAM up to _font_data
+  ld    (hl), #WHITE + (WHITE << 3)         ;; 0x3f
+  ld    bc, #0x20 * 23
+  ldir
+
+  ;; set attribute VRAM: line 23, PAPER WHITE, INK BLACK
+  ;; also paint stack
+
+  ld    c, (hl)       ;; 0x3f: bottom attribute row + stack, minus one
   ld    (hl), #BLACK + (WHITE << 3)
-  ld    bc, #0x300 + STACK_SIZE 
   ldir
 
   ld    a, #WHITE
   out   (ULA_PORT), a
 
   ld    (hl), c
-  ld    bc, #_font_data - _stack_top
+  ld    bc, #_font_data - _stack_top + 1  ;; plus one, due to using 0x3f above
   ldir
 
   ld    h, #>stage2_start
