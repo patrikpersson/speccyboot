@@ -226,12 +226,23 @@ load_byte_from_packet:
 s_header:
 
     ;; ------------------------------------------------------------------------
+    ;; clear out attribute line 23 for progress bar
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x5ae0        ;; attribute line 23
+    ld   de, #0x5ae1
+    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
+    ld   bc, #0x1f
+
+    ldir
+
+    ;; ------------------------------------------------------------------------
     ;; keep .z80 header until prepare_context is called
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     ld   de, #stored_snapshot_header
-    ld   bc, #Z80_HEADER_RESIDENT_SIZE
+    ld   c, #Z80_HEADER_RESIDENT_SIZE                 ;; B == 0 from LDIR above
 
     ldir
 

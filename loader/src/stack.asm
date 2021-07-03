@@ -902,17 +902,9 @@ ip_receive_not_bootp:
 
 tftp_request_snapshot:
 
-    push de
-
-    ld   hl, #0x5ae0        ;; attribute line 23
-    ld   de, #0x5ae1
-    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
-    ld   bc, #0x1f
-    ldir
-
-    pop  de
-
     ld   hl, #s_header                       ;; state for .z80 snapshot loading
+
+    ;; FALL THROUGH to tftp_read_request
 
 
 ;; ############################################################################
