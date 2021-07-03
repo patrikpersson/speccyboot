@@ -896,6 +896,25 @@ ip_receive_not_bootp:
 
 
 ;; ############################################################################
+;; tftp_request_snapshot
+;; ############################################################################
+
+tftp_request_snapshot:
+
+    push de
+
+    ld   hl, #0x5ae0        ;; attribute line 23
+    ld   de, #0x5ae1
+    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
+    ld   bc, #0x1f
+    ldir
+
+    pop  de
+
+    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+
+
+;; ############################################################################
 ;; tftp_read_request
 ;; ############################################################################
 
@@ -1319,13 +1338,6 @@ bootp_receive:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; Send TFTP read request for filename in FILE field,
-    ;; or, if none given, use the default
-    ;; ------------------------------------------------------------------------
-
-    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
-
-    ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
     ;; ------------------------------------------------------------------------
 
@@ -1339,36 +1351,25 @@ bootp_receive:
     ld    l, (hl)                                  ;; (23, 0)
     ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
+    ;; ------------------------------------------------------------------------
+    ;; Send TFTP read request for filename in FILE field,
+    ;; or, if none given, use the default
+    ;; ------------------------------------------------------------------------
 
-    ;; FALL THROUGH to tftp_load_file
-
-
-;; ############################################################################
-;; tftp_load_file
-;; ############################################################################
-
-tftp_load_file:
-
-    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
 
     ld   a, (de)
     or   a, a
-    jr   nz, bootp_receive_not_default
+    jp   nz, tftp_request_snapshot
 
     ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
     ld   de, #tftp_default_file                   ;; 'menu.bin'
-
-bootp_receive_not_default:
 
     call tftp_read_request
 
     ;; ========================================================================
     ;; Display IP address information. This is intended for when
     ;; tftp_load_file is called in response to a BOOTP BOOTREPLY.
-    ;;
-    ;; The information will be printed when a .z80 snapshot is requested too,
-    ;; but it will not be visible (as the lower attribute row will then
-    ;; have INK==PAPER).
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------

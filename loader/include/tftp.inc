@@ -84,8 +84,7 @@ TFTP_HEADER_SIZE     = 4
 ;; Request snapshot to be loaded over TFTP. DE points to .z80 file name.
 ;; ----------------------------------------------------------------------------
 
-    .globl tftp_load_file
-
+    .globl tftp_request_snapshot
 
 
 ;; ============================================================================
@@ -315,6 +314,8 @@ error_packet_end:
 
 ;; ============================================================================
 ;; Macro: prepare (but do not send) a TFTP read request packet.
+;; DE: pointer to file name
+;; HL: pointer to TFTP state handler
 ;; ============================================================================
 
     .macro PREPARE_TFTP_READ_REQUEST
@@ -325,7 +326,7 @@ error_packet_end:
     ;; Set initial state for TFTP data handling
     ;; ------------------------------------------------------------------------
 
-    ld    (tftp_state), hl
+    ld   (tftp_state), hl
 
     ;; ========================================================================
     ;; create UDP packet

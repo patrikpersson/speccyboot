@@ -368,10 +368,6 @@ menu_hit_enter:
     ld    (hl), #WHITE + (WHITE << 3)
     ldir
 
-    ld    (hl), #WHITE + (WHITE << 3) + BRIGHT
-    ld    bc, #0x1f
-    ldir
-
     xor   a, a
     call  show_attr_digit_right
 
@@ -382,7 +378,7 @@ menu_hit_enter:
     call eth_init
 
     pop  de
-    call tftp_load_file
+    call tftp_request_snapshot
 
     ;; ------------------------------------------------------------------------
     ;; let the main loop handle the response
