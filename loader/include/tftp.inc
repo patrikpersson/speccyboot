@@ -354,9 +354,9 @@ error_packet_end:
     ;; ------------------------------------------------------------------------
 
     xor  a, a      ;; needed for CPIR, to search for NUL
-    ld   c, a      ;; set BC := 0x__00
-    cpir
-    ld   b, a      ;; B := 0
+    ld   c, a      ;; set C := 0x00
+    cpir           ;; find NUL in string pointed to by HL; BC := negated length
+    ld   b, a      ;; set B := 0x00
 
     sub  a, c
     ld   c, a      ;; negate C
