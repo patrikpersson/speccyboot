@@ -140,7 +140,7 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 ;; On return, Z is set if blocks are equal.
 ;; On a successful compare, B is zero, and HL and DE point to the
 ;; first byte after the compared blocks.
-;; A is destroyed.
+;; A is the difference in the last comparison (== 0 on success).
 ;; ----------------------------------------------------------------------------
 
      .globl memory_compare

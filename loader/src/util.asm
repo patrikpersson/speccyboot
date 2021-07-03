@@ -79,7 +79,7 @@ memory_compare_4_bytes:
 
 memory_compare:
     ld   a, (de)
-    cp   a, (hl)
+    sub  a, (hl)
     ret  nz
     inc  de
     inc  hl

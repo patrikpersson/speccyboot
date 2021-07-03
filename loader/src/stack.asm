@@ -949,8 +949,7 @@ arp_receive:
     ret  nz   ;; if the receive packet does not match the expected header, return
 
     ;; HL now points to the low-order OPER byte, expected to be 1 (REQUEST)
-    ld   a, (hl)
-    dec  a
+    dec  (hl)
     ret  nz
 
     ;; ------------------------------------------------------------------------
@@ -958,7 +957,7 @@ arp_receive:
     ;; and that the packet was sent to this address
     ;; ------------------------------------------------------------------------
 
-    ;; A is 0 from DEC A above
+    ;; A is 0 from memory_compare above
 
     ld   l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     or   a, (hl)
