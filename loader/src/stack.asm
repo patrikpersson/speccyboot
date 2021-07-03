@@ -1188,7 +1188,9 @@ perform_transmission:
 
 poll_register:
 
-    ld     bc, #20000       ;; should give controller plenty of time to respond
+    ;; Ensure BC is at least 0x5000, give controller plenty of time to respond
+
+    ld     b, #0x50
 00001$:
     push   bc
     call   enc28j60_read_register
