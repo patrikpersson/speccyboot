@@ -155,9 +155,13 @@ run_menu:
     ;; set up menu colours
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #0x5840
-    ld   de, #0x5841
-    ld   bc, #DISPLAY_LINES * 32 - 1
+    ld   hl, #0x5800
+    ld   de, #0x5801
+    ld   bc, #2*32                                               ;; lines 0..1
+    ld   (hl), #BLACK + (WHITE << 3)
+    ldir
+
+    ld   bc, #DISPLAY_LINES * 32 - 1                             ;; lines 2..21
     ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
     ldir
 
@@ -172,10 +176,10 @@ run_menu:
     ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
 
     ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot vxy' at (0,0)
+    ;; print 'SpeccyBoot <version>' at (0,0)
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #title_str                ;; 'SpeccyBoot xvy'
+    ld    hl, #title_str                ;; 'SpeccyBoot <version>'
     ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
 
     call  print_str
