@@ -320,8 +320,6 @@ error_packet_end:
 
     .macro PREPARE_TFTP_READ_REQUEST
 
-    push de
-
     ;; ------------------------------------------------------------------------
     ;; Set initial state for TFTP data handling
     ;; ------------------------------------------------------------------------
@@ -343,7 +341,7 @@ error_packet_end:
 
     ;; calculate length of filename
 
-    pop  hl
+    ex   de, hl    ;; bring filename pointer to HL
     push hl        ;; remember filename pointer for later
 
     xor  a
