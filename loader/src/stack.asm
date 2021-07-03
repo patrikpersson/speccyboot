@@ -1339,29 +1339,27 @@ bootp_receive:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
+    ;; Snapshot file name explicitly requested in FILE field?
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
+    ld   a, (de)
+    or   a, a
+    jp   nz, tftp_request_snapshot
+
+    ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
-    ld    (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
+    ld   hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ld   (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'L' indicator: black ink, white paper, bright
     ;; ------------------------------------------------------------------------
 
-    ld    l, (hl)                                  ;; (23, 0)
-    ld    (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
-    ;; ------------------------------------------------------------------------
-    ;; Send TFTP read request for filename in FILE field,
-    ;; or, if none given, use the default
-    ;; ------------------------------------------------------------------------
-
-    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
-
-    ld   a, (de)
-    or   a, a
-    jp   nz, tftp_request_snapshot
+    ld   l, (hl)                                  ;; (23, 0)
+    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
     ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
     ld   de, #tftp_default_file                   ;; 'menu.bin'
@@ -1369,13 +1367,10 @@ bootp_receive:
     call tftp_read_request
 
     ;; ========================================================================
-    ;; Display IP address information. This is intended for when
-    ;; tftp_load_file is called in response to a BOOTP BOOTREPLY.
-    ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
+    ;; Display IP address information:
+    ;;
     ;; print 'L', local IP address, 'S', server IP address
-    ;; ------------------------------------------------------------------------
+    ;; ========================================================================
 
     ld    a, #'L'
     ld    de, #LOCAL_IP_POS
