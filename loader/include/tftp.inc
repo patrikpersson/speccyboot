@@ -339,21 +339,6 @@ error_packet_end:
     ld   l, a  ;; H is still UDP_PORT_TFTP_SERVER, so port number will not be zero
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
-    ;; calculate length of filename
-
-    ex   de, hl    ;; bring filename pointer to HL
-    push hl        ;; remember filename pointer for later
-
-    xor  a
-    ld   d, a
-    ld   e, a
-00001$:
-    inc  de
-    cpi
-    jr   nz, 00001$
-
-    push de        ;; remember filename length for later
-
     ;; ------------------------------------------------------------------------
     ;; reset _expected_tftp_block_no to 1
     ;; ------------------------------------------------------------------------
@@ -361,18 +346,29 @@ error_packet_end:
     ld   hl, #1
     ld   (_expected_tftp_block_no), hl
 
-    ;; H==0 here
+    ex   de, hl    ;; bring filename pointer to HL, DE := 0x0001
+    push hl        ;; remember filename pointer for later
 
-    ld   l, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
-    add  hl, de
-    ex   de, hl    ;; DE = UDP length
+    ;; ------------------------------------------------------------------------
+    ;; calculate length of filename; assume length < 240
+    ;; (256 - UDP_HEADER_SIZE - TFTP_SIZE_OF_RRQ_PREFIX - TFTP_SIZE_OF_RRQ_OPTION)
+    ;; ------------------------------------------------------------------------
 
-    ;; HL now equals the filename length. Assume this is less than 256
-    ;; (no path component is included). This means that H==0, which is also
-    ;; the address page where eth_broadcast_address resides.
+    xor  a, a      ;; needed for CPIR, to search for NUL
+    ld   c, a      ;; set BC := 0x__00
+    cpir
+    ld   b, a      ;; B := 0
+
+    sub  a, c
+    ld   c, a      ;; negate C
+
+    push bc        ;; remember filename length for later
+
+    add  a, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
+    ld   e, a      ;; D==0 from above; now DE == UDP length
 
     ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    ld   l, #<eth_broadcast_address    ;; all we know at this point; H==0 here
+    ld   hl, #eth_broadcast_address    ;; all we know at this point
     call udp_create
 
     ;; append 16-bit TFTP opcode and path prefix
