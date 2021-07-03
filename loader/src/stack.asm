@@ -1216,14 +1216,14 @@ poll_register:
 tftp_state_menu_loader:
 
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    bit 1, b
+    bit 1, b   ;; see below
     ldir
     ld  (_tftp_write_pos), de
 
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
     ;; (BC above should be exactly 0x200 for all DATA packets except the last
-    ;; one, never larger; so we are done if A != 2 here)
+    ;; one, never larger; so we are done if bit 1 is set in B)
     ;; ------------------------------------------------------------------------
 
     ret nz
