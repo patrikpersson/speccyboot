@@ -505,14 +505,15 @@ s_chunk_header3_set_comp_mode:
     ;; -----------------------------------------------------------------------
     ;; https://worldofspectrum.org/faq/reference/z80format.htm :
     ;;
-    ;; If chunk length=0xffff, data is 16384 bytes long and not compressed
+    ;; If chunk length=0xffff, data is 16384 bytes long and not compressed.
+    ;; There is no other way that the high byte could be 0xFF here, so only
+    ;; H needs to be checked.
     ;; -----------------------------------------------------------------------
 
     ld   a, h
-    and  a, l
     inc  a
 
-    ;; If chunk length is 0xffff, Z will now be set,
+    ;; If chunk length is 0xffxx, Z will now be set,
     ;; and state s_chunk_write_data_uncompressed is selected
 
     ;; Otherwise s_chunk_write_data_compressed is selected
