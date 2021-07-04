@@ -535,18 +535,20 @@ eth_create:
 
 ;; ############################################################################
 ;; Create UDP reply to the sender of the received packet currently processed.
-;; Source/destination ports are swapped.
 ;;
-;; Call with DE=number of bytes in payload
+;; Call with
+;;   DE: number of bytes in payload
+;;   BC: server-side TFTP port (that is, the port to send the UDP packet to)
 ;; ############################################################################
 
     .area _CODE
 
 tftp_reply:
 
-    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), bc
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), bc
+
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
-    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ld   hl, #eth_sender_address
 

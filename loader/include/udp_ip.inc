@@ -95,14 +95,3 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 ;; ----------------------------------------------------------------------------
 
     .globl udp_create
-
-;; ----------------------------------------------------------------------------
-;; Create UDP reply to the sender of the received packet currently processed.
-;; Defined in stack.asm.
-;;
-;; Call with
-;;   DE: number of bytes in payload
-;;   BC: server-side TFTP port (that is, the port to send the UDP packet to)
-;; ----------------------------------------------------------------------------
-
-    .globl tftp_reply
