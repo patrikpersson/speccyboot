@@ -104,7 +104,7 @@ word_loop:
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
     ;; the CALL NZ below is not taken,
-    ;; and A == B == 0 in the checksum addition instead
+    ;; and A == D == 0 in the checksum addition instead
 
     ;; take care not to modify Z flag
     ld   a, c                         ;; 4   A := 0
@@ -124,7 +124,7 @@ word_loop:
     ;; -----------------------------------------------------------------------
 
     ex    af, af'
-    adc   hl, bc
+    adc   hl, bc                      ;; BC == 0
 
     ld    (_ip_checksum), hl
 
