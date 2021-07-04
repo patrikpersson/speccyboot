@@ -666,7 +666,7 @@ udp_create:
     call   eth_create
 
     ;; ----------------------------------------------------------------------
-    ;; call enc28j60_write_memory_cont(&header_template, sizeof(header_template));
+    ;; write IPv4 + UDP headers
     ;; ----------------------------------------------------------------------
 
     ld     e, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE

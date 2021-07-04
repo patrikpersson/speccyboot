@@ -95,18 +95,14 @@ get_filename_pointer:
 ;; ############################################################################
 ;; print_str
 ;;
-;; Prints a string.
+;; Prints a string, terminated by '.' (that is, _not_ NUL).
 ;;
-;; If the string resides in snapshot_array (specifically, if H matches that
-;; page), then additional checks are made:
-;;  - the string is truncated to the end of the line, and padded with spaces.
-;;  - the string is terminated by either NUL or '.' (otherwise only NUL)
+;; The string is truncated to the end of the line, and padded with spaces.
 ;;
 ;; HL points to the string to print
 ;; DE points to VRAM location
-;; destroys F and HL; preserves BC.
-;; DE will point to the NUL char, or, if HL is a snapshot_array entry,
-;; the first cell of next line.
+;; destroys AF and HL; preserves BC.
+;; DE will point to the first character cell on the following line.
 ;; ############################################################################
 
     .area _NONRESIDENT
