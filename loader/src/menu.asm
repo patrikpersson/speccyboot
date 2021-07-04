@@ -395,9 +395,9 @@ title_str:
     .area _NONRESIDENT
 
 ;; ############################################################################
-;; subroutine: highlight current line to colour in register A
+;; subroutine: highlight current line to colour (in register C)
 ;;
-;; destroys B, F; preserves DE, HL
+;; destroys B, AF; preserves DE, HL
 ;; on return B==0 
 ;; ############################################################################
 
