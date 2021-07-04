@@ -468,14 +468,15 @@ context_switch_spi_return:         ;; return address for ROM-based stack below
     ld    (hl), c
     inc   hl
     ld    a, h
-    cp    a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH) ;; integral number of pages
+    sub   a, #>(RUNTIME_DATA + RUNTIME_DATA_LENGTH) ;; integral number of pages
     jr    nz, context_switch_restore_bytes_loop
 
     ;; ------------------------------------------------------------------------
     ;; we're done with the ENC28J60: put it in the reset state
     ;; ------------------------------------------------------------------------
 
-    xor a, a
+    ;; A == 0 from SUB A, #n above
+
     out (SPI_OUT), a
 
     ;; ------------------------------------------------------------------------
