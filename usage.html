@@ -62,9 +62,15 @@ dhcp-authoritative
 # entries, no other BOOTP/DHCP requests are accidentally replied to.)</span>
 dhcp-host=4e:23:e7:1b:7a:b3,192.168.82.48,infinite
 
-<span class="scriptcomment"># Point SpeccyBoot to another server for TFTP. (The file name must be
-# stated explicitly here; it should normally be 'menu.bin'.)</span>
-<span class="scriptcomment"># dhcp-boot=menu.bin,192.168.1.100</span>
+<span class="scriptcomment"># Example:
+# point SpeccyBoot to another server for TFTP. Note that no boot file name
+# is given here (hence the comma before the IP address). If a boot file name
+# is given, it is assumed to be a snapshot and loaded immediately (no menu).
+# dhcp-boot=,192.168.123.234</span>
+
+<span class="scriptcomment"># Example:
+# set SpeccyBoot to always load the same snapshot (no menu).
+# dhcp-boot=Arkanoid.z80</span>
 
 enable-tftp
 tftp-root=/var/tftp</pre>
@@ -138,16 +144,6 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
         <td>The menu binary <code>menu.bin</code> is incompatible with the SpeccyBoot firmware version. The firmware version is displayed on screen.</td>
         <td>
           Update the SpeccyBoot firmware and/or the Linux-side software (<code>speccyboot-update</code>) and ensure both are the same version.
-        </td>
-      </tr>
-      <tr>
-        <td><div style="background-color:#f0f;color:#fff">magenta</div></td>
-        <td>invalid hostname</td>
-        <td>
-          <p>The BOOTP server's reply included a symbolic hostname for the TFTP server (in field <code>sname</code>).</p>
-        </td>
-        <td>
-          <p>Ensure that the BOOTP <code>sname</code> field is an IP address in <a href="https://en.wikipedia.org/wiki/Dot-decimal_notation">dot-decimal (quad-dotted) notation</a>, on form w.x.y.z.)</p>
         </td>
       </tr>
       <tr>
