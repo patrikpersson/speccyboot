@@ -226,13 +226,16 @@ load_byte_from_packet:
 s_header:
 
     ;; ------------------------------------------------------------------------
-    ;; clear out attribute line 23 for progress bar
+    ;; display kB counter as 0, clear out attribute line 23 for progress bar
     ;; ------------------------------------------------------------------------
+
+    xor  a, a
+    call show_attr_digit_right
 
     ld   hl, #0x5ae0        ;; attribute line 23
     ld   de, #0x5ae1
     ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
-    ld   bc, #0x1f
+    ld   c, #0x1f                          ;; B == 0 from show_attr_digit_right
 
     ldir
 

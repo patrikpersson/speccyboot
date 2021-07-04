@@ -211,7 +211,10 @@ FATAL_FILE_NOT_FOUND      = YELLOW
 ;; ----------------------------------------------------------------------------
 ;; alternate entrypoint for show_attr_digit:
 ;;
-;; L is set to the rightmost position.
+;; Preserves C. Destroys AF, B, DE, H.
+;; H is set to the attribute row for digits (0x5A).
+;; L is set to the rightmost position in the digit.
+;; B := 0. DE is destroyed (points to font data).
 ;; ----------------------------------------------------------------------------
 
     .globl show_attr_digit_right
