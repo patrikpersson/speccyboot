@@ -188,7 +188,7 @@ tftp_receive_blk_nbr_and_port_ok:
     ;; ========================================================================
 
     ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
-    call  udp_reply
+    call  tftp_reply
 
     rst   enc28j60_write_memory_inline
 
@@ -289,7 +289,7 @@ tftp_state_loop:
 tftp_receive_error:
 
     ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
-    call  udp_reply
+    call  tftp_reply
 
     rst   enc28j60_write_memory_inline
 

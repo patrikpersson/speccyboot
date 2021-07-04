@@ -542,16 +542,15 @@ eth_create:
 
     .area _CODE
 
-udp_reply:
+tftp_reply:
 
-    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
-    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), bc
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
     ld   (_header_template  + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ld   hl, #eth_sender_address
+
+    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
 
     ;; FALL THROUGH to udp_create
 
