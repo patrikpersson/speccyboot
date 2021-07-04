@@ -74,8 +74,8 @@ enc28j60_read_memory:
     ;;
     ;; secondary bank (in loop)
     ;; ------------------------
-    ;; BC  temp register for one term in sum above
-    ;; DE  0 (zero)
+    ;; BC  0 (zero)
+    ;; DE  temp register for one term in sum above
     ;; HL  cumulative 16-bit one-complement sum
     ;;
     ;; F   C flag from previous checksum addition
@@ -87,8 +87,7 @@ enc28j60_read_memory:
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
 
-    ld    d, b  ;; DE := 0 ; B==0 from spi_write_byte
-    ld    e, b
+    ld    c, b  ;; BC := 0 ; B==0 from spi_write_byte
 
     ;; spi_write_byte clears carry flag, so keep it
 
@@ -102,7 +101,7 @@ word_loop:
 
     call spi_read_byte_to_memory      ;; 17+630
 
-    ld   c, a                         ;; 4
+    ld   e, a                         ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
@@ -110,14 +109,14 @@ word_loop:
     ;; and A == B == 0 in the checksum addition instead
 
     ;; take care not to modify Z flag
-    ld   a, e                         ;; 4   A := 0
+    ld   a, c                         ;; 4   A := 0
 
     call nz, spi_read_byte_to_memory  ;; 17+630
 
-    ld   b, a                         ;; 4
+    ld   d, a                         ;; 4
 
     ex   af, af'                      ;; 4
-    adc  hl, bc                       ;; 15
+    adc  hl, de                       ;; 15
     ex   af, af'                      ;; 4
 
     jr   nz, word_loop                ;; 12
@@ -127,7 +126,7 @@ word_loop:
     ;; -----------------------------------------------------------------------
 
     ex    af, af'
-    adc   hl, de
+    adc   hl, bc
 
     ld    (_ip_checksum), hl
 
@@ -141,7 +140,7 @@ do_end_transaction:
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (primary HL) and A.
+;; The byte is stored in (primary HL), primary C, and A.
 ;;
 ;; Primary HL is increased, DE is decreased, and the secondary bank
 ;; selected again on exit.
