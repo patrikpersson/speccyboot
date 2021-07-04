@@ -254,6 +254,10 @@ div.footer {
   margin: 36px 0 0 0;
 }
 
+div.footer:after {
+  content: '2009' '\002013' '2021'
+}
+
 pre.code {
   display: block;
   padding: 8px 0 8px 12px;

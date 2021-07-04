@@ -139,31 +139,47 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
         <th>Border&nbsp;colour</th><th>Error</th><th>Explanation</th><th>Remedy</th>
       </tr>
       <tr>
-        <td><div style="background-color:#00f;color:#fff">blue</div></td>
+        <td><div style="background-color:#f00;color:#fff">red</div></td>
         <td>wrong version for <code>menu.bin</code></td>
         <td>The menu binary <code>menu.bin</code> is incompatible with the SpeccyBoot firmware version. The firmware version is displayed on screen.</td>
         <td>
-          Update the SpeccyBoot firmware and/or the Linux-side software (<code>speccyboot-update</code>) and ensure both are the same version.
+          Update the SpeccyBoot firmware and/or the Linux-side software (<code style="padding:0">speccyboot-update</code>) and ensure both are the same version.
         </td>
-      </tr>
-      <tr>
-        <td><div style="background-color:#0ff">cyan</div></td>
-        <td>hardware failure</td>
-        <td>The ENC28J60 controller does not seem to respond to SPI communication.</td>
-        <td>Check your SpeccyBoot hardware.</td>
       </tr>
       <tr>
         <td><div style="background-color:#ff0">yellow</div></td>
         <td>file not found</td>
-        <td>The TFTP server responded with a <code style="padding:0">TFTP</code> <code style="padding:0">ERROR</code>. This usually means the requested file could not be found on the server.</td>
+        <td>The TFTP server responded with a <code style="padding:0">TFTP ERROR</code>. This usually means the requested file could not be found on the server.</td>
         <td>
-          Check your TFTP configuration and re-run <code>speccyboot-update</code>.
+          Check your TFTP configuration and re-run <code style="padding:0">speccyboot-update</code>.
         </td>
+      </tr>
+      <tr>
+        <td><div style="background-color:#f4f4f4">white</div></td>
+        <td>communication time-out</td>
+        <td>
+          The border is white during normal operation, but if SpeccyBoot gets <b>stuck</b> with a white border it is likely
+          due to a missing (or faulty) server response:
+          <ul style="margin-bottom:0;padding:0 0 0 0.5rem">
+            <li>If all you see is a flashing cursor on a blank screen, BOOTP communication has failed.</li>
+            <li>If you see two IP addresses on screen (local+server) and a flashing <code style="background-color:#0f0;color:#000">S</code>, TFTP communication has failed.</li>
+          </ul>
+        </td>
+        <td>
+          Check your <a href="#tftpserver">BOOTP and/or TFTP server configuration</a>.
+          <a href="https://www.wireshark.org/">Wireshark</a> can be useful for determining what's gone wrong.
+        </td>
+      </tr>
+      <tr>
+        <td><div style="background-color:#000;color:#fff">black</div></td>
+        <td>hardware failure</td>
+        <td>The ENC28J60 controller does not seem to respond to SPI communication.</td>
+        <td>Check your SpeccyBoot hardware.</td>
       </tr>
     </table>
 
     <div class="footer">
-      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT> 2009&ndash;
+      <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT>
     </div>
   </div>
   </body>
