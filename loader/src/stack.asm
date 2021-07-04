@@ -839,7 +839,7 @@ no_carry:
     ld   a, h
     or   a, l
 
-    ;; UDP checksum is optional: Z flag is set if no UDP checksum given
+    ;; UDP checksum is optional: Z flag now set if no UDP checksum given
 
     ;; Include IPv4 pseudo header in UDP checksum. UDP protocol and length
     ;; were already included (given as initial value above), so we do not add

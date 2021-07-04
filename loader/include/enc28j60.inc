@@ -267,7 +267,7 @@ enc28j60_write8plus8 = 0x18
 ;; HL = destination address (buffer to read data into)
 ;; DE = number of bytes to read
 ;;
-;; HL is preserved. Destroys AF, BC, DE, AF', BC', and HL'.
+;; HL is preserved. Destroys AF, BC, DE, AF', BC', and HL'. Returns BC := 0.
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_read_memory
