@@ -116,8 +116,8 @@ ATTR_DIGIT_ROW = 0x5A00
 ;; codes for fatal_error() displayed as border colours
 ;; ----------------------------------------------------------------------------
 
-FATAL_VERSION_MISMATCH    = BLUE
-FATAL_INTERNAL_ERROR      = CYAN
+FATAL_INTERNAL_ERROR      = BLACK
+FATAL_VERSION_MISMATCH    = RED
 FATAL_FILE_NOT_FOUND      = YELLOW
 
 ;; ----------------------------------------------------------------------------

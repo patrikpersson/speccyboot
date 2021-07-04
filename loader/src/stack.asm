@@ -1204,7 +1204,7 @@ poll_register:
     or     a, c
     jr     nz, 00001$
 
-    ld     a, #FATAL_INTERNAL_ERROR
+    ;; A is zero here, which is FATAL_INTERNAL_ERROR
     jr     fail
 
 
