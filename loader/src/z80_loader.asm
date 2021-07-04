@@ -220,8 +220,8 @@ load_byte_from_packet:
 ;;
 ;; Evacuates the header from the TFTP data block and sets up the next state.
 ;; The actual entrypoint follows below, and then JRs backwards in memory.
-;; This allows the s_header address to be kept on the same page as the other
-;; .z80 loader states. (Fragile.)
+;; This could potentially allow the s_header address to be kept on the same
+;; page as the other .z80 loader states. (Fragile.)
 ;; ############################################################################
 
     .area _Z80_LOADER_STATES
