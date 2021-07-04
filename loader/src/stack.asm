@@ -767,8 +767,10 @@ ip_receive:
     ;; To skip forward past any options, load additional header data
     ;; into UDP part of the buffer (overwritten soon afterwards)
 
-    ld   d, #0
-    ld   e, a
+    ;; B==0 from enc28j60_read_memory_to_rxframe or memory_compare_4_bytes
+
+    ld   d, b    ;; D := 0
+    ld   e, a    ;; E := IP header length
     ld   l, #<_rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call nz, enc28j60_read_memory
 
