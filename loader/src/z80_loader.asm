@@ -219,9 +219,100 @@ load_byte_from_packet:
 ;; State HEADER (initial):
 ;;
 ;; Evacuates the header from the TFTP data block and sets up the next state.
+;; The actual entrypoint follows below, and then JRs backwards in memory.
+;; This allows the s_header address to be kept on the same page as the other
+;; .z80 loader states. (Fragile.)
 ;; ############################################################################
 
     .area _Z80_LOADER_STATES
+
+    ;; ========================================================================
+    ;; NOTE: actual entrypoint s_header further below
+    ;; ========================================================================
+
+s_header_ext_hdr:
+
+    ;; ========================================================================
+    ;; snapshot version 2+: is it for a 128k machine?
+    ;; ========================================================================
+
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+
+    ld   a, l
+    cp   a, #SNAPSHOT_128K
+    jr   c, s_header_not_128k
+
+    ;; ------------------------------------------------------------------------
+    ;; 128k snapshot detected: load memory config into D, and set E to 128
+    ;; ------------------------------------------------------------------------
+
+    ld   d, h
+    ld   e, #128
+
+s_header_not_128k:
+
+    ;; ------------------------------------------------------------------------
+    ;; adjust header length, keep in BC
+    ;;
+    ;; A byte addition is sufficient, as the sum will always be <= 0xF2
+    ;; ------------------------------------------------------------------------
+
+    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
+    add   a, c
+    inc   a
+    inc   a
+    ld    c, a
+
+    ;; ------------------------------------------------------------------------
+    ;; a chunk is expected next
+    ;; ------------------------------------------------------------------------
+
+    ;; SWITCH_STATE  s_header  s_chunk_header
+    ld   ix, #s_chunk_header
+
+s_header_set_state:
+
+    ;; ------------------------------------------------------------------------
+    ;; store memory configuration and number of kilobytes expected
+    ;; ------------------------------------------------------------------------
+
+    ld   (kilobytes_expected_and_memory_config), de
+
+    ;; ------------------------------------------------------------------------
+    ;; adjust IY and BC for header size
+    ;; ------------------------------------------------------------------------
+
+    add  iy, bc
+
+    ;; ------------------------------------------------------------------------
+    ;; Safely assume that the TFTP packet is 0x200 bytes in length, as the RFC
+    ;; guarantees this for all packets but the last one.
+    ;;
+    ;; Set up BC as (0x0200 - C), that is,
+    ;;
+    ;;   C := 0 - C   and
+    ;;   B := 1.
+    ;;
+    ;; B is currently 0 (after initial LDIR above).
+    ;; ------------------------------------------------------------------------
+
+    xor  a, a
+    sub  a, c       ;; no carry expected, as C is at most 54 (0x36)
+    ld   c, a
+    inc  b          ;; B is now 1
+
+    ;; ------------------------------------------------------------------------
+    ;; Set up DE for a single 48k chunk, to be loaded at 0x4000. For a version
+    ;; 2+ snapshot this address will be superseded in s_chunk_header3.
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #0x4000
+
+    ret
+
+;; ############################################################################
+;; actual entry point
+;; ############################################################################
 
 s_header:
 
@@ -307,82 +398,6 @@ s_header:
     ld   h, #0xC0
 
     jr   s_header_set_state
-
-s_header_ext_hdr:
-
-    ;; ========================================================================
-    ;; snapshot version 2+: is it for a 128k machine?
-    ;; ========================================================================
-
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-
-    ld   a, l
-    cp   a, #SNAPSHOT_128K
-    jr   c, s_header_not_128k
-
-    ;; ------------------------------------------------------------------------
-    ;; 128k snapshot detected: load memory config into D, and set E to 128
-    ;; ------------------------------------------------------------------------
-
-    ld   d, h
-    ld   e, #128
-
-s_header_not_128k:
-
-    ;; ------------------------------------------------------------------------
-    ;; adjust header length, keep in BC
-    ;;
-    ;; A byte addition is sufficient, as the sum will always be <= 0xF2
-    ;; ------------------------------------------------------------------------
-
-    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
-    add   a, c
-    inc   a
-    inc   a
-    ld    c, a
-
-    ;; ------------------------------------------------------------------------
-    ;; a chunk is expected next
-    ;; ------------------------------------------------------------------------
-
-    ;; SWITCH_STATE  s_header  s_chunk_header
-    ld   ix, #s_chunk_header
-
-s_header_set_state:
-
-    ;; ------------------------------------------------------------------------
-    ;; store memory configuration and number of kilobytes expected
-    ;; ------------------------------------------------------------------------
-
-    ld   (kilobytes_expected_and_memory_config), de
-
-    ;; ------------------------------------------------------------------------
-    ;; adjust IY and BC for header size
-    ;; ------------------------------------------------------------------------
-
-    add  iy, bc
-
-    ;; ------------------------------------------------------------------------
-    ;; Safely assume that the TFTP packet is 0x200 bytes in length, as the RFC
-    ;; guarantees this for all packets but the last one.
-    ;;
-    ;; Set up BC as (0x0200 - C). B is currently 0 (after initial LDIR above),
-    ;; and should be 1 after subtraction.
-    ;; ------------------------------------------------------------------------
-
-    xor  a, a
-    sub  a, c       ;; no carry expected, as C is at most 54 (0x36)
-    ld   c, a
-    inc  b          ;; B is now 1
-
-    ;; ------------------------------------------------------------------------
-    ;; Set up DE for a single 48k chunk, to be loaded at 0x4000. For a version
-    ;; 2+ snapshot this address will be superseded in s_chunk_header3.
-    ;; ------------------------------------------------------------------------
-
-    ld   de, #0x4000
-
-    ret
 
 
 ;; ############################################################################
