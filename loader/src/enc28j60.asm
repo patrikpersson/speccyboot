@@ -85,9 +85,7 @@ enc28j60_read_memory:
     ld    hl, (_ip_checksum)
 
     ld    c, #OPCODE_RBM
-    rst   spi_write_byte
-
-    ld    c, b  ;; BC := 0 ; B==0 from spi_write_byte
+    rst   spi_write_byte       ;; sets BC := 0
 
     ;; spi_write_byte clears carry flag, so keep it
 
