@@ -133,9 +133,9 @@ do_end_transaction:
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (primary HL) and secondary C.
+;; The byte is stored in (primary HL) and secondary D.
 ;;
-;; Primary HL is increased, DE is decreased, and the secondary bank
+;; Primary HL is increased, primary DE decreased, and the secondary bank
 ;; selected again on exit.
 ;;
 ;; Sets Z flag if primary DE == 0.
