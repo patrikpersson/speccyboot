@@ -575,10 +575,10 @@ set_compression_state:
 
 s_chunk_write_data_uncompressed:
 
-  call check_limits_and_load_byte
-  jr   nz, store_byte
+    call check_limits_and_load_byte
+    jr   nz, store_byte
 
-  ret
+    ret
 
 
 ;; ############################################################################
@@ -622,56 +622,56 @@ s_chunk_repvalue:
 
 s_chunk_write_data_compressed:
 
-  ;; -------------------------------------------------------------------------
-  ;; Check the repetition count. This is zero when no repetition is active.
-  ;; -------------------------------------------------------------------------
+    ;; -------------------------------------------------------------------------
+    ;; Check the repetition count. This is zero when no repetition is active.
+    ;; -------------------------------------------------------------------------
 
-  ld   a, (_repcount)
-  or   a, a
-  jr   nz, do_repetition
+    ld   a, (_repcount)
+    or   a, a
+    jr   nz, do_repetition
 
-  call check_limits_and_load_byte
-  ret  z
+    call check_limits_and_load_byte
+    ret  z
 
-  ;; -------------------------------------------------------------------------
-  ;; check for the escape byte of a repetition sequence
-  ;; -------------------------------------------------------------------------
+    ;; -------------------------------------------------------------------------
+    ;; check for the escape byte of a repetition sequence
+    ;; -------------------------------------------------------------------------
 
-  cp   a, #Z80_ESCAPE
-  jr   z, chunk_escape
+    cp   a, #Z80_ESCAPE
+    jr   z, chunk_escape
 
 store_byte:
 
-  call store_byte_and_update_progress
+    call store_byte_and_update_progress
 
 jp_ix_instr:
 
-  jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
+    jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
 
-  ;; -------------------------------------------------------------------------
-  ;; a non-zero number of repetitions remain:
-  ;; decrease repetition count and write the repetition value to memory
-  ;; -------------------------------------------------------------------------
+    ;; -------------------------------------------------------------------------
+    ;; a non-zero number of repetitions remain:
+    ;; decrease repetition count and write the repetition value to memory
+    ;; -------------------------------------------------------------------------
 
 do_repetition:
 
-  dec  a
-  ld   (_repcount), a
+    dec  a
+    ld   (_repcount), a
 
-  ld   a, i
+    ld   a, i
 
-  jr   store_byte
+    jr   store_byte
 
-  ;; -------------------------------------------------------------------------
-  ;; Escape byte found: switch state
-  ;; -------------------------------------------------------------------------
+    ;; -------------------------------------------------------------------------
+    ;; Escape byte found: switch state
+    ;; -------------------------------------------------------------------------
 
 chunk_escape:
 
-  SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
-  ;; ld   ix, #s_chunk_compressed_escape
+    SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
+    ;; ld   ix, #s_chunk_compressed_escape
 
-  ret
+    ret
 
 
 ;; ############################################################################
