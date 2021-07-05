@@ -358,6 +358,9 @@ menu_hit_enter:
     ;; Set up snapshot progress display.
     ;; ------------------------------------------------------------------------
 
+    xor  a, a
+    call show_attr_digit_right
+
     ld   hl, #0x5800      ;; clear attribute lines 0..23
     ld   de, #0x5801
     ld   bc, #0x300
