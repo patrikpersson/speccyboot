@@ -338,6 +338,14 @@ evacuate_iff1_set:
     rst  enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
+    ;; Now D == original L == <ENC28J60_EVACUATED_DATA == 0x00
+    ;;
+    ;; Set D := 0xff, high byte of SND_REG_SELECT
+    ;; ------------------------------------------------------------------------
+
+    dec  d    ;; D := 0xff
+
+    ;; ------------------------------------------------------------------------
     ;; set up 128k memory configuration,
     ;; and check whether this is a 48k or 128k snapshot
     ;; ------------------------------------------------------------------------
@@ -360,7 +368,7 @@ evacuate_iff1_set:
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
 context_switch_snd_reg_loop:
     dec  e
-    ld   b, #>SND_REG_SELECT
+    ld   b, d                 ;; BC is now SND_REG_SELECT
     out  (c), e
     ld   b, #>SND_REG_VALUE
     ld   a, (hl)
@@ -369,7 +377,7 @@ context_switch_snd_reg_loop:
     jr   nz, context_switch_snd_reg_loop     ;; Z set by DEC E above when done
 
     ld   a, (hl)              ;; now points to Z80_HEADER_OFFSET_HW_STATE_FFFD
-    ld   b, #>SND_REG_SELECT
+    ld   b, d                 ;; BC is now SND_REG_SELECT
     out  (c), a
 
 context_switch_48k_snapshot:

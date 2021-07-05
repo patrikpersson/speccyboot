@@ -221,16 +221,22 @@ RX_FRAME_SIZE = 20 + 8 + 4 + 512
 ;;
 ;; Call with A set to a WCR opcode for the low half of the register,
 ;; e.g., OPCODE_WCR + (ERXRDPTL & REG_MASK), and HL set to the 16-bit
-;; value to write.
+;; value to write. Defined in init.asm.
 ;;
-;; Destroys F, BC, DE.
+;; Destroys F, BC, DE, L.
+;;
+;; On exit:
+;;   D == original L
+;;   E == original A
+;;   H == original H (preserved)
+;;   L == original A + 1
+;;   
 ;; ----------------------------------------------------------------------------
 
 enc28j60_write_register16 = 0x08
 
 ;; ----------------------------------------------------------------------------
-;; Ensure that the bank in register E (0..3) is paged in. Page 0 is
-;; always paged in when outside of eth.c.
+;; Ensure that the bank in register E (0..3) is paged in.
 ;;
 ;; Destroys AF, BC, HL.
 ;; ----------------------------------------------------------------------------
