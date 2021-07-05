@@ -868,19 +868,17 @@ no_carry:
 
     ld   a, h
     sub  a, #UDP_PORT_BOOTP_CLIENT
-    jr   nz, ip_receive_not_bootp
-    or   a, l
     jp   z, bootp_receive
-    ret
-
-ip_receive_not_bootp:
     dec  a             ;; UDP_PORT_TFTP_SERVER?
     ret  nz
     ld   a, (_tftp_client_port)
     cp   a, l
     ret  nz
 
-    ;; only accept TFTP if an IP address has been set
+    ;; =======================================================================
+    ;; A packet for the TFTP client port was received.
+    ;; Only accept it if an IP address has been set.
+    ;; =======================================================================
 
     ld   a, (_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET)
     or   a  ;; a non-zero first octet
@@ -1313,6 +1311,14 @@ ip_receive_check_checksum:
 ;; ----------------------------------------------------------------------------
 
 bootp_receive:
+
+    ;; ------------------------------------------------------------------------
+    ;; Verify that the high-order byte of the port (network order) is zero.
+    ;; A is zero on entry, due to the subtraction in the BOOTP/TFTP check above
+    ;; ------------------------------------------------------------------------
+
+    or   a, l
+    ret  nz
 
     HANDLE_BOOTP_PACKET
 
