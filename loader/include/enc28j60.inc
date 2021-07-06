@@ -35,19 +35,18 @@
 ;; byte, along with the register number.
 ;;
 ;; bit 0..4: register number (0..0x1f)
-;; bit 5..6: bank (0..3)
-;; bit 7:    1 for MAC/MII register, 0 for ETH
+;; bit 6..7: bank (0..3)
 ;; ----------------------------------------------------------------------------
 
 BANK0          = 0x00
-BANK1          = 0x20
-BANK2          = 0x40
-BANK3          = 0x60
+BANK1          = 0x40
+BANK2          = 0x80
+BANK3          = 0xC0
 
-MAC_MII        = 0x80
+MAC_MII        = 0x00    ;; just a tag
 
 REG_MASK       = 0x1f
-BANK_MASK      = 0x60
+BANK_MASK      = 0xC0
 
 ;; ----------------------------------------------------------------------------
 ;; register definitions

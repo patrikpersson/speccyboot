@@ -154,8 +154,6 @@ _tftp_client_port:
 
     .area _CODE
 
-END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
-
 ;; ############################################################################
 ;; Main function: initiate BOOTP, receive frames and act on them
 ;; Must be first in the _CODE segment, as init will execute right into it
@@ -361,32 +359,32 @@ eth_init:
 
 eth_init_registers_loop:
 
-    ld    a, (hl)  ;; register descriptor, 8 bits
+    ld    a, (hl)                               ;; register descriptor, 8 bits
     cp    a, #END_OF_TABLE
     ret   z
 
     inc   hl
-    ld    d, a
 
-    and   a, #0x1f       ;; mask out register index (0..1f)
-    or    a, #OPCODE_WCR
+    ;; ------------------------------------------------------------------------
+    ;; modify bit 6..7 to OPCODE_WCR (0x40)
+    ;; ------------------------------------------------------------------------
+
     ld    c, a
+    set   6, c
+    res   7, c
 
     ld    b, (hl)
     inc   hl
 
-    push  bc         ;; arguments for enc28j60_write8plus8 below
+    push  bc                        ;; arguments for enc28j60_write8plus8 below
 
     ;; ------------------------------------------------------------------------
-    ;; select register bank (encoded as bits 5-6 from descriptor)
+    ;; select register bank (encoded as bits 6-7 from descriptor)
     ;; ------------------------------------------------------------------------
-
-    ld    a, d    ;; recall register descriptor
 
     exx           ;; keep HL
 
-    rlca          ;; rotate left 3 == rotate right 5
-    rlca
+    rlca          ;; rotate left 2 == rotate right 6
     rlca
     and   a, #3
     ld    e, a
@@ -410,6 +408,8 @@ eth_init_registers_loop:
     ;; stick to half duplex. Not a problem, since Ethernet performance is not
     ;; really a bottleneck on the Spectrum.
     ;; ------------------------------------------------------------------------
+
+END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
 
 eth_register_defaults:
     .db   ERXSTL,   <ENC28J60_RXBUF_START

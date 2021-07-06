@@ -71,7 +71,7 @@
 
   ex     de, hl
 
-  .db    JR_UNCONDITIONAL         ;; JR to 0x0018
+  .db    JR_UNCONDITIONAL         ;; JR to 0x0018: enc28j60_write8plus8
 
   ;; ========================================================================
   ;; RST 0x10 ENTRYPOINT: enc28j60_select_bank
