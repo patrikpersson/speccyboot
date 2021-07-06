@@ -1329,12 +1329,8 @@ bootp_receive:
     HANDLE_BOOTP_PACKET
 
     ;; ========================================================================
-    ;; A BOOTREPLY was received
+    ;; A BOOTREPLY was received: inspect the FILE field
     ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; Snapshot file name explicitly requested in FILE field?
-    ;; ------------------------------------------------------------------------
 
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
 
@@ -1348,6 +1344,10 @@ bootp_receive:
 tftp_request_snapshot:
 
     ld   hl, #s_header                       ;; state for .z80 snapshot loading
+
+    ;; ------------------------------------------------------------------------
+    ;; an empty filename is interpreted as a request to load 'menu.bin'
+    ;; ------------------------------------------------------------------------
 
     ld   a, (de)
     or   a, a
