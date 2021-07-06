@@ -39,11 +39,16 @@
 VERSION_STAGE1 = 3
 
 ;; ----------------------------------------------------------------------------
-;; The VERSION_MAGIC byte is encoded as a LD r, r instruction,
-;; so it is harmless to execute as part of the jump to the stage 2 loader
+;; The VERSION_MAGIC byte is encoded as a LD r, r' instruction, with
+;; VERSION_STAGE1 in the lower 4 bits. As long as VERSION_STAGE1 < 0x30 this
+;; instruction does not write to memory.
+;;
+;; It is harmless to execute as part of the jump to the stage 2 loader.
+;;
+;; It can also be passed as-is to show_attr_digit.
 ;; ----------------------------------------------------------------------------
 
-VERSION_MAGIC  = 0x40 | (VERSION_STAGE1 << 3) | VERSION_STAGE1
+VERSION_MAGIC  = 0x40 | VERSION_STAGE1
 
 ;; ============================================================================
 ;; to facilitate single-page addressing, page 0x5B is laid out as follows:

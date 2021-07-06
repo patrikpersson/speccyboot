@@ -1236,14 +1236,13 @@ tftp_state_menu_loader:
     ;; ------------------------------------------------------------------------
 
     ld  hl, #stage2_start
-    ld  a, (hl)
-    cp  a, #VERSION_MAGIC
-version_mismatch:
+    ld  a, #VERSION_MAGIC
+    cp  a, (hl)
     jr  nz, fail_version_mismatch
 
     ;; ------------------------------------------------------------------------
     ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
-    ;; a LD r, r' instruction (binary 01xxxxxx) and harmless to execute.
+    ;; a LD r, r' instruction (binary 0100xxxx) and harmless to execute.
     ;; One INC HL is saved this way.
     ;; ------------------------------------------------------------------------
 
@@ -1262,13 +1261,19 @@ tftp_default_file:
     .area _CODE
 
 fail_version_mismatch:
-    ld  a, #VERSION_STAGE1
+    ;; lower 4 bits of A is now the ROM loader (stage 1) version number
     call show_attr_digit_right
     ld  a, #FATAL_VERSION_MISMATCH
 
     ;; FALL THROUGH to fail
 
 fail:
+
+    ;; -----------------------------------------------------------------------
+    ;; It would make some sense to RESET the ENC28J60 here. However, any
+    ;; outgoing (but not yet transmitted) packets would then be lost, and
+    ;; possibly confuse debugging.
+    ;; -----------------------------------------------------------------------
 
     di
     out (ULA_PORT), a
