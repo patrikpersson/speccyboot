@@ -901,7 +901,7 @@ tftp_read_request:
 
     PREPARE_TFTP_READ_REQUEST
 
-    ;; FALL THROUGH to ip_send
+    ;; FALL THROUGH to ip_send; B==0 from PREPARE_TFTP_READ_REQUEST
 
 
 ;; ############################################################################
@@ -915,7 +915,7 @@ ip_send:
     ld   l, h
     ld   h, a
 
-    jr   eth_send
+    jr   eth_send                        ;; B==0 from PREPARE_TFTP_READ_REQUEST
 
 
 ;; ############################################################################
@@ -1014,19 +1014,20 @@ arp_header_template_end:
 
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
 
-    ;; FALL THROUGH to eth_send
+    ;; FALL THROUGH to eth_send; B==0 from enc28j60_write_memory_small
 
 
 ;; ############################################################################
 ;; eth_send
+;;
+;; B assumed to be 0 on entry.
 ;; ############################################################################
 
 eth_send:
 
     ;; ------------------------------------------------------------------------
     ;; set DE := start address of frame in transmission buffer,
-    ;;     HL := end address of frame in transmission buffer,
-    ;;     B  := 0
+    ;;     HL := end address of frame in transmission buffer
     ;;
     ;; end address = start
     ;;               + 1 (per-packet control byte)
@@ -1038,7 +1039,7 @@ eth_send:
 
     ld    de, (_current_txbuf)
     add   hl, de
-    ld    bc, #ETH_HEADER_SIZE        ;; B == 0
+    ld    c, #ETH_HEADER_SIZE        ;; B == 0
     add   hl, bc
 
     ;; ------------------------------------------------------------------------

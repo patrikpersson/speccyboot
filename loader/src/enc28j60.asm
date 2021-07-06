@@ -161,8 +161,8 @@ loop:
 
     exx                               ;;  4
 
-    ld   (hl), a                      ;;  7
-    inc  hl                           ;;  6
+    ld   (hl), a                      ;;  7   (IX: 19)
+    inc  hl                           ;;  6   (IX: 10)
 
     dec  de                           ;;  6
     ld   a, d                         ;;  4

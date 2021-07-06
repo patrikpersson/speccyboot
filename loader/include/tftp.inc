@@ -315,6 +315,8 @@ error_packet_end:
 ;; Macro: prepare (but do not send) a TFTP read request packet.
 ;; DE: pointer to file name
 ;; HL: pointer to TFTP state handler
+;;
+;; B==0 on exit.
 ;; ============================================================================
 
     .macro PREPARE_TFTP_READ_REQUEST
