@@ -355,17 +355,23 @@ menu_hit_enter:
     push hl     ;; push arg for tftp_read_request below
 
     ;; ------------------------------------------------------------------------
-    ;; Set up snapshot progress display.
+    ;; Set up snapshot progress display. Present progress bar and digit '0'
+    ;; immediately, as instant user feedback, although the progress bar
+    ;; will be put in place upon the first TFTP data packet too (in s_header).
     ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x5800      ;; clear attribute lines 0..22
+    ld   de, #0x5801
+    ld   bc, #0x2E0
+    ld   (hl), #WHITE + (WHITE << 3)
+    ldir
+
+    ld   c, #0x1f
+    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
+    ldir
 
     xor  a, a
     call show_attr_digit_right
-
-    ld   hl, #0x5800      ;; clear attribute lines 0..23
-    ld   de, #0x5801
-    ld   bc, #0x300
-    ld   (hl), #WHITE + (WHITE << 3)
-    ldir
 
     ;; ------------------------------------------------------------------------
     ;; send a TFTP request for the snapshot
