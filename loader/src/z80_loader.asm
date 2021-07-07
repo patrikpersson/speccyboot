@@ -166,8 +166,9 @@ _digits:
 
 chunk_done:
 
-  ld   ix, #s_chunk_header
-  ret
+    SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_header
+    ;; ld   ix, #s_chunk_header
+    ret
 
 check_limits_and_load_byte:
 
@@ -267,8 +268,8 @@ s_header_not_128k:
     ;; a chunk is expected next
     ;; ------------------------------------------------------------------------
 
-    ;; SWITCH_STATE  s_header  s_chunk_header
-    ld   ix, #s_chunk_header
+    SWITCH_STATE  s_header  s_chunk_header
+    ;; ld   ix, #s_chunk_header
 
 s_header_set_state:
 
@@ -317,13 +318,13 @@ s_header_set_state:
 s_header:
 
     ;; ------------------------------------------------------------------------
-    ;; display kB counter as 0, clear out attribute line 23 for progress bar
+    ;; clear out attribute line 23 for progress bar
     ;; ------------------------------------------------------------------------
 
     ld   hl, #0x5ae0        ;; attribute line 23
     ld   de, #0x5ae1
     ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
-    ld   bc, #0x1f                          ;; B == 0 from show_attr_digit_right
+    ld   bc, #0x1f
 
     ldir
 
