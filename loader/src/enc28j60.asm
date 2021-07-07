@@ -60,55 +60,67 @@ enc28j60_read_memory_to_rxframe:
 enc28j60_read_memory:
 
     push   hl                      ;; preserve HL
+    push   hl
+    pop    ix
+    push   de
 
     ;;
     ;; register allocation:
     ;;
+    ;; IX  destination in RAM
+    ;;
     ;;
     ;; primary bank (in spi_read_byte_to_memory)
     ;; -----------------------------------------
-    ;; DE  outer (byte) loop counter
-    ;; HL  destination in RAM
+    ;; B   inner (bit) loop counter, zero outside subroutine
+    ;; C   SPI_OUT
+    ;; DE  scratch
+    ;; L   SPI_IDLE
+    ;; H   SPI_IDLE+SPI_SCK
     ;;
     ;; secondary bank (in loop)
     ;; ------------------------
-    ;; B   inner (bit) loop counter, zero outside subroutine
-    ;; C   constant SPI_IDLE
-    ;; D   result from spi_read_byte_to_memory
+    ;; BC  byte counter
     ;; DE  temp register for one term in sum above
     ;; HL  cumulative 16-bit one-complement sum
     ;;
     ;; F   C flag from previous checksum addition
     ;;
 
+    ld   hl, #0x0100 * (SPI_IDLE + SPI_SCK) + SPI_IDLE
+
     exx
-    ld    hl, (_ip_checksum)
 
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
+
+    pop   bc    ;; byte counter
+    ld    hl, (_ip_checksum)
 
     ;; spi_write_byte clears carry flag, so keep it
 
     ex    af, af'              ;; to primary AF
 
     ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1241 T-states <=> ~ 45kb/s
+    ;; Each iteration (16 bits) takes 1197 T-states <=> ~ 46.7kbit/s
     ;; -----------------------------------------------------------------------
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+582
+    call spi_read_byte_to_memory      ;; 17+558
 
-    ld   e, d                         ;; 4
+    ld   e, a                         ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
     ;; the CALL NZ below is not taken,
     ;; and D == 0 in the checksum addition instead
 
-    ld   d, b                         ;; 4      D := 0, preserve Z flag
+    ld   a, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+582
+    call nz, spi_read_byte_to_memory  ;; 17+558
+
+    ld   d, a                         ;; 4
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -133,9 +145,9 @@ do_end_transaction:
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (primary HL) and secondary D.
+;; The byte is stored in (IX) and A.
 ;;
-;; Primary HL is increased, primary DE decreased, and the secondary bank
+;; IX is increased, primary DE decreased, and the secondary bank
 ;; selected again on exit.
 ;;
 ;; Sets Z flag if primary DE == 0.
@@ -143,36 +155,40 @@ do_end_transaction:
 
 spi_read_byte_to_memory:
 
-    ;; B := 8 ; C := SPI_IDLE
+    exx                               ;;  4
 
-    ld   bc, #8 * 0x0100 + SPI_IDLE   ;; 10
-loop:
-    ld    a, c           ;;  4
-    out   (SPI_OUT), a   ;; 11
-    inc   a              ;;  4
-    out   (SPI_OUT), a   ;; 11
+    ;; B := 8
+    ;; C := SPI_OUT
+
+    ld   bc, #0x0800 + SPI_OUT        ;; 10
+
+byte_read_loop:
+    out   (c), l         ;; 12
+    out   (c), h         ;; 12
     in    a, (SPI_IN)    ;; 11
     rra                  ;;  4
-    rl    d              ;;  8,   total 424
+    rl    d              ;;  8,   total 376
 
-    djnz  loop           ;; 13 * 7 + 8 = 99
+    djnz  byte_read_loop ;; 13 * 7 + 8 = 99
 
-    ld   a, d                         ;;  4
+    ld   (ix), d                      ;; 19
+    inc  ix                           ;; 10
 
     exx                               ;;  4
 
-    ld   (hl), a                      ;;  7   (IX: 19)
-    inc  hl                           ;;  6   (IX: 10)
+    dec  bc                           ;;  6
+    ld   a, b                         ;;  4
+    or   c                            ;;  4
 
-    dec  de                           ;;  6
+    exx                               ;;  4
+
     ld   a, d                         ;;  4
-    or   e                            ;;  4
 
     exx                               ;;  4
 
     ret                               ;; 10
 
-                                      ;; 582 T-states
+                                      ;; 558 T-states
 
 
 ;; ############################################################################
