@@ -104,12 +104,12 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1197 T-states <=> ~ 46.7kbit/s
+    ;; Each iteration (16 bits) takes 1185 T-states <=> ~ 47 kbit/s
     ;; -----------------------------------------------------------------------
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+558
+    call spi_read_byte_to_memory      ;; 17+554
 
     ld   e, d                         ;; 4
 
@@ -120,7 +120,7 @@ word_loop:
 
     ld   d, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+558
+    call nz, spi_read_byte_to_memory  ;; 17+554
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -145,12 +145,12 @@ do_end_transaction:
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (IX) and A.
+;; The byte is stored in (IX) and D (primary+secondary).
 ;;
-;; IX is increased, primary DE decreased, and the secondary bank
+;; IX is increased, primary BC decreased, and the secondary bank
 ;; selected again on exit.
 ;;
-;; Sets Z flag if primary DE == 0.
+;; Sets Z flag if primary BC == 0.
 ;; ----------------------------------------------------------------------------
 
 spi_read_byte_to_memory:
@@ -178,7 +178,7 @@ byte_read_loop:
 
     exx                               ;;  4
 
-    ld   d, a
+    ld   d, a                         ;;  4
 
     dec  bc                           ;;  6
     ld   a, b                         ;;  4
@@ -186,7 +186,7 @@ byte_read_loop:
 
     ret                               ;; 10
 
-                                      ;; 558 T-states
+                                      ;; 554 T-states
 
 
 ;; ############################################################################
