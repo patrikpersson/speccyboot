@@ -74,13 +74,15 @@ enc28j60_read_memory:
     ;; -----------------------------------------
     ;; B   inner (bit) loop counter, zero outside subroutine
     ;; C   SPI_OUT
-    ;; DE  scratch
+    ;; D   scratch
+    ;; E   unused
     ;; L   SPI_IDLE
     ;; H   SPI_IDLE+SPI_SCK
     ;;
     ;; secondary bank (in loop)
     ;; ------------------------
     ;; BC  byte counter
+    ;; D   return value from spi_read_byte_to_memory
     ;; DE  temp register for one term in sum above
     ;; HL  cumulative 16-bit one-complement sum
     ;;
@@ -109,18 +111,16 @@ word_loop:
 
     call spi_read_byte_to_memory      ;; 17+558
 
-    ld   e, a                         ;; 4
+    ld   e, d                         ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
     ;; the CALL NZ below is not taken,
     ;; and D == 0 in the checksum addition instead
 
-    ld   a, b                         ;; 4      D := 0, preserve Z flag
+    ld   d, b                         ;; 4      D := 0, preserve Z flag
 
     call nz, spi_read_byte_to_memory  ;; 17+558
-
-    ld   d, a                         ;; 4
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -174,17 +174,15 @@ byte_read_loop:
     ld   (ix), d                      ;; 19
     inc  ix                           ;; 10
 
+    ld   a, d                         ;;  4
+
     exx                               ;;  4
+
+    ld   d, a
 
     dec  bc                           ;;  6
     ld   a, b                         ;;  4
     or   c                            ;;  4
-
-    exx                               ;;  4
-
-    ld   a, d                         ;;  4
-
-    exx                               ;;  4
 
     ret                               ;; 10
 
