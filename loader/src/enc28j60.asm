@@ -105,7 +105,16 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1081 T-states <=> ~ 52 kbit/s
+    ;; Each iteration (16 bits) takes 1081 T-states <=> ~ 51.8 kbit/s
+    ;;
+    ;; Inlining two bits more (2x4 instead of 4x2) would result in
+    ;;   22 bytes more code (2xREAD_BIT_TO_D)
+    ;;   26 T-states less per byte -> 1029 T-states in total <=> 54.4 kbit/s
+    ;;
+    ;; Inlining all 8 bits would result in
+    ;;   66 bytes more code (6xREAD_BIT_TO_D), and a few less
+    ;;   47+16+7 T-states less per byte (no B, no DJNZ, using HL instead of DE)
+    ;;     -> 941 T-states in total <=> 59.5 kbit/s
     ;; -----------------------------------------------------------------------
 
 word_loop:
@@ -223,7 +232,7 @@ checksum_loop:
     djnz checksum_loop
 
     ;; ------------------------------------------------------------------------
-    ;; useful subroutine for enc28j60_read_memory above
+    ;; useful subroutine for enc28j60_read_memory above; requires B==0
     ;; ------------------------------------------------------------------------
 
 add_final_carry_and_store_checksum:
