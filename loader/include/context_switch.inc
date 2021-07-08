@@ -356,16 +356,21 @@ evacuate_iff1_set:
 
     ld   a, l                 ;; 128k snapshot?
     add  a, a                 ;; if L is 128, this sets carry flag
-    jr   nc, context_switch_48k_snapshot
 
     ;; ------------------------------------------------------------------------
     ;; 128k snapshot: restore sound registers, in reverse order
     ;; (makes index equal to loop counter, and ensures HL points to
-    ;; something useful afterwards)
+    ;; something useful afterwards).
+    ;;
+    ;; Also load HL whether or not this is a 128k snapshot or not, to ensure
+    ;; H has a useful value below.
     ;; ------------------------------------------------------------------------
 
     ld   e, #16
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
+
+    jr   nc, context_switch_48k_snapshot
+
 context_switch_snd_reg_loop:
     dec  e
     ld   b, d                 ;; BC is now SND_REG_SELECT
@@ -383,25 +388,18 @@ context_switch_snd_reg_loop:
 context_switch_48k_snapshot:
 
     ;; ------------------------------------------------------------------------
-    ;; Restore interrupt mode
+    ;; Restore I
     ;; ------------------------------------------------------------------------
 
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_INT_MODE)
-    im   1
-    rra                              ;; bit 0 set means IM 1 (there is no IM 3)
-    jr   c, context_switch_im_set
-    im   2
-    rra                              ;; bit 1 set means IM 2 (same reason)
-    jr   c, context_switch_im_set
-    im   0
-
-context_switch_im_set:
+    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_I
+    ld   a, (hl)
+    ld   i, a
 
     ;; ------------------------------------------------------------------------
     ;; Restore border
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
     ld   a, (hl)
     rra
     and  a, #0x07
@@ -422,7 +420,6 @@ context_switch_im_set:
     ;; - DE
     ;; - alternate registers (BC, DE, HL, AF)
     ;; - IX & IY
-    ;; - I
     ;; ------------------------------------------------------------------------
 
     inc    hl              ;; stored_snapshot_header + Z80_HEADER_OFFSET_DE
@@ -452,8 +449,22 @@ context_switch_im_set:
     pop    iy
     pop    ix
 
-    ld    a, (stored_snapshot_header + Z80_HEADER_OFFSET_I)
-    ld    i, a
+    ;; ------------------------------------------------------------------------
+    ;; Restore interrupt mode
+    ;; ------------------------------------------------------------------------
+
+    inc  sp            ;; skip Z80_HEADER_OFFSET_IFF1
+    pop  af            ;; pop F := IFF2 state, A := Z80_HEADER_OFFSET_INT_MODE
+
+    im   1
+    rra                              ;; bit 0 set means IM 1 (there is no IM 3)
+    jr   c, context_switch_im_set
+    im   2
+    rra                              ;; bit 1 set means IM 2 (same reason)
+    jr   c, context_switch_im_set
+    im   0
+
+context_switch_im_set:
 
     ;; ========================================================================
     ;; Restore application data temporarily stored in ENC28J60 RAM
