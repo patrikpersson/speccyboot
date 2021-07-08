@@ -89,6 +89,7 @@ enc28j60_read_memory:
     ;; F   C flag from previous checksum addition
     ;;
 
+    ld   c, #SPI_OUT
     ld   hl, #0x0100 * (SPI_IDLE + SPI_SCK) + SPI_IDLE
 
     exx
@@ -104,12 +105,12 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1185 T-states <=> ~ 47 kbit/s
+    ;; Each iteration (16 bits) takes 1081 T-states <=> ~ 52 kbit/s
     ;; -----------------------------------------------------------------------
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+554
+    call spi_read_byte_to_memory      ;; 17+499
 
     ld   e, d                         ;; 4
 
@@ -120,7 +121,7 @@ word_loop:
 
     ld   d, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+554
+    call nz, spi_read_byte_to_memory  ;; 17+499
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -143,6 +144,21 @@ do_end_transaction:
 
 
 ;; ----------------------------------------------------------------------------
+;; Macro for spi_read_byte_to_memory below. Reads one bit from SPI to
+;; register D. Requires  C==SPI_OUT,  L==SPI_IDLE  and  H==SPI_IDLE+SPI_SCK.
+;; ----------------------------------------------------------------------------
+
+   .macro READ_BIT_TO_D
+
+    out   (c), l         ;; 12
+    out   (c), h         ;; 12
+    in    a, (SPI_IN)    ;; 11
+    rra                  ;;  4
+    rl    d              ;;  8,   total 47
+
+   .endm
+
+;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
 ;; The byte is stored in (IX) and D (primary+secondary).
@@ -157,19 +173,11 @@ spi_read_byte_to_memory:
 
     exx                               ;;  4
 
-    ;; B := 8
-    ;; C := SPI_OUT
-
-    ld   bc, #0x0800 + SPI_OUT        ;; 10
-
+    ld    b, #4                       ;;  7
 byte_read_loop:
-    out   (c), l         ;; 12
-    out   (c), h         ;; 12
-    in    a, (SPI_IN)    ;; 11
-    rra                  ;;  4
-    rl    d              ;;  8,   total 376
-
-    djnz  byte_read_loop ;; 13 * 7 + 8 = 99
+    READ_BIT_TO_D
+    READ_BIT_TO_D        ;; 47 * 8     = 376
+    djnz  byte_read_loop ;; 13 * 3 + 8 = 47
 
     ld   (ix), d                      ;; 19
     inc  ix                           ;; 10
@@ -186,7 +194,7 @@ byte_read_loop:
 
     ret                               ;; 10
 
-                                      ;; 554 T-states
+                                      ;; 499 T-states
 
 
 ;; ############################################################################
