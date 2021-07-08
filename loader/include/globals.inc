@@ -57,14 +57,14 @@ VERSION_MAGIC  = 0x40 | VERSION_STAGE1
 ;; 5b20..5b27       IP config (2x IPv4 addresses, 8 bytes)
 ;; 5b28..5b43       IP/UDP header template, 20+8 bytes
 ;; 5b44..5b7a       stored .z80 snapshot header, 55 bytes
-;; 5b7b..5b8e       IP header (20 bytes)
-;; 5b8f..5b96       UDP header (8 bytes)
-;; 5b97..5b9a       TFTP DATA header (4 bytes)
-;; 5b9b..5bd1       .z80 snapshot header, 55 bytes
+;; 5b7e..5b91       IP header (20 bytes)
+;; 5b92..5b99       UDP header (8 bytes)
+;; 5b9a..5b9d       TFTP DATA header (4 bytes)
+;; 5b9e..5bd4       .z80 snapshot header, 55 bytes
 ;;
 ;; The BOOTP header is available here in part:
 ;;
-;; 5b97..5bff       first 69 bytes of BOOTP packet, including
+;; 5b9a..5bff       first 66 bytes of BOOTP packet, including
 ;;                  OP, XID, YIADDR, first byte of SNAME
 ;; ============================================================================
 
@@ -74,9 +74,9 @@ _stack_top             = 0x5b00 + STACK_SIZE
 _ip_config             = 0x5b20             ;; size 8
 _header_template       = 0x5b28             ;; size 0x1c  (20+8)
 stored_snapshot_header = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
-_rx_frame              = 0x5b7b             ;; size 0x220 (RX_FRAME_SIZE)
+_rx_frame              = 0x5b7e             ;; size 0x220 (RX_FRAME_SIZE)
 
-;; _DATA segment can start at 0x5d9b
+;; _DATA segment can start at 0x5d9e
 
 ;; ============================================================================
 

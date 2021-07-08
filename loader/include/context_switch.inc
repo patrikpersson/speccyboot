@@ -346,15 +346,20 @@ evacuate_iff1_set:
     dec  d    ;; D := 0xff
 
     ;; ------------------------------------------------------------------------
-    ;; set up 128k memory configuration,
-    ;; and check whether this is a 48k or 128k snapshot
+    ;; set up 128k memory configuration
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (kilobytes_expected_and_memory_config)
+    ld   hl, #ram_config
     ld   bc, #MEMCFG_ADDR
-    out  (c), h               ;; 128k memory config
+    outd                      ;; write 128k memory config
 
-    ld   a, l                 ;; 128k snapshot?
+    ;; ------------------------------------------------------------------------
+    ;; check whether this is a 48k or 128k snapshot
+    ;; ------------------------------------------------------------------------
+
+    ;; HL now points to kilobytes_expected (decreased by OUTD)
+
+    ld   a, (hl)              ;; 128k snapshot?
     add  a, a                 ;; if L is 128, this sets carry flag
 
     jr   nc, context_switch_48k_snapshot
