@@ -32,14 +32,6 @@
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
 ;; ----------------------------------------------------------------------------
-;; Address of two bytes, co-located for simple addressing:
-;;
-;; - number of kilobytes expected (48 or 128)
-;; - 128k memory configuration
-;; ----------------------------------------------------------------------------
-    .globl kilobytes_expected_and_memory_config
-
-;; ----------------------------------------------------------------------------
 ;; TFTP loader hook, to initiate .z80 snapshot loading
 ;; ----------------------------------------------------------------------------
 

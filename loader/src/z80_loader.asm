@@ -58,19 +58,6 @@ _repcount:
     .ds   1         ;; repetition count for ED ED sequences
 
 ;; ----------------------------------------------------------------------------
-;; Three bytes located together, so two of them can be accessed in a single
-;; 16-bit word (kilobytes_loaded+expected, or kilobytes_expected+ram_config)
-;; ----------------------------------------------------------------------------
-
-kilobytes_loaded:
-    .ds   1          ;; currently loaded no. of kilobytes, for progress display
-kilobytes_expected_and_memory_config:
-kilobytes_expected:
-    .ds   1          ;; expected no. of kilobytes (48 or 128)
-ram_config:
-    .ds   1          ;; 128k RAM configuration (to be written to I/O 0x7ffd)
-
-;; ----------------------------------------------------------------------------
 ;; digits (BCD) for progress display while loading a snapshot
 ;; ----------------------------------------------------------------------------
 
@@ -275,9 +262,10 @@ s_header_set_state:
 
     ;; ------------------------------------------------------------------------
     ;; store memory configuration and number of kilobytes expected
+    ;; assumes kilobytes_expected and ram_config to be stored consecutively
     ;; ------------------------------------------------------------------------
 
-    ld   (kilobytes_expected_and_memory_config), de
+    ld   (kilobytes_expected), de                     ;; also writes ram_config
 
     ;; ------------------------------------------------------------------------
     ;; adjust IY and BC for header size

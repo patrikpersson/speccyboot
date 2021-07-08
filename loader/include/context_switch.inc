@@ -371,7 +371,7 @@ evacuate_iff1_set:
     ;; ------------------------------------------------------------------------
 
     ld   a, #16
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
+    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
 
 context_switch_snd_reg_loop:
     dec  a

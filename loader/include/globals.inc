@@ -62,6 +62,10 @@ VERSION_MAGIC  = 0x40 | VERSION_STAGE1
 ;; 5b9a..5b9d       TFTP DATA header (4 bytes)
 ;; 5b9e..5bd4       .z80 snapshot header, 55 bytes
 ;;
+;; The three bytes kilobytes_loaded, kilobytes_expected, and ram_config are
+;; located together, so two of them can be accessed in a single 16-bit word
+;; (kilobytes_loaded+expected, or kilobytes_expected+ram_config)
+;;
 ;; The BOOTP header is available here in part:
 ;;
 ;; 5b9a..5bff       first 66 bytes of BOOTP packet, including
@@ -74,6 +78,9 @@ _stack_top             = 0x5b00 + STACK_SIZE
 _ip_config             = 0x5b20             ;; size 8
 _header_template       = 0x5b28             ;; size 0x1c  (20+8)
 stored_snapshot_header = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
+kilobytes_loaded       = 0x5b7b             ;; size 1
+kilobytes_expected     = 0x5b7c             ;; size 1
+ram_config             = 0x5b7d             ;; size 1
 _rx_frame              = 0x5b7e             ;; size 0x220 (RX_FRAME_SIZE)
 
 ;; _DATA segment can start at 0x5d9e
