@@ -368,8 +368,6 @@ evacuate_iff1_set:
     ld   a, #16
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
 
-breakpoint1::
-
 context_switch_snd_reg_loop:
     dec  a
     ld   b, d                       ;; BC is now SND_REG_SELECT
@@ -390,8 +388,6 @@ context_switch_snd_reg_loop:
 
     ld   b, a
     outd
-
-breakpoint2::
 
 context_switch_48k_snapshot:
 
