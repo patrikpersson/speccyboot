@@ -261,7 +261,7 @@ evacuate_iff1_set:
     add  a, #REG_R_ADJUSTMENT
     rla                ;; carry now in bit 0, but shifted again out soon
     inc  hl            ;; stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
-    rr   (hl)          ;; get bit 7 from flags
+    rr   (hl)          ;; get bit 7 from flags, shift border bits into place
     rra                ;; and shift it into A
     ld   (VRAM_REGSTATE_R), a
 
@@ -408,14 +408,24 @@ context_switch_48k_snapshot:
     pop  af          ;; A := I, F := high byte of SP (ignore)
     ld   i, a
 
-    ;; ------------------------------------------------------------------------
-    ;; Restore border
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
+    ;; Restore border. The border bits are nominally bit 1..3 in MISC_FLAGS,
+    ;; but this byte was rotated one bit above (to obtain bit for R), so
+    ;; no shifting is needed here.
+    ;;
+    ;; This shifting also means that the other bits from MISC_FLAGS will be
+    ;; shifted into the ULA output value:
+    ;;
+    ;; bit 3 (MIC)  --  set to 1 if Basic SamRom switched in
+    ;; bit 4 (EAR)  --  set to 1 for a v1 snapshot with compressed data
+    ;;
+    ;; Some ROM space is saved by not masking out these. In practice,
+    ;; it doesn't matter beyond a slight loudspeaker click when loading some
+    ;; v1 snapshots.
+    ;; -----------------------------------------------------------------------
 
-    pop  af          ;; A := MISC_FLAGS, F := R (ignore)
-    rra
-    and  a, #0x07
-    out  (ULA_PORT), a
+    pop  af                                ;; A := MISC_FLAGS, F := R (ignore)
+    out  (ULA_PORT), a                           ;; saved an AND A, #0x07 here
 
     ;; -----------------------------------------------------------------------
     ;; Restore the following registers early, to avoid using VRAM for them:
