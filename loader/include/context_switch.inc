@@ -363,10 +363,8 @@ evacuate_iff1_set:
 
     ;; HL now points to kilobytes_expected (decreased by OUTD)
 
-    ld   a, (hl)              ;; 128k snapshot?
-    add  a, a                 ;; if L is 128, this sets carry flag
-
-    jr   nc, context_switch_48k_snapshot
+    bit  7, (hl)
+    jr   z, context_switch_48k_snapshot
 
     ;; ------------------------------------------------------------------------
     ;; 128k snapshot: restore sound registers, in reverse order
@@ -380,9 +378,9 @@ evacuate_iff1_set:
 context_switch_snd_reg_loop:
     dec  a
     ld   b, d                       ;; BC is now SND_REG_SELECT
-    out  (c), a                     ;; write SND_REG_SELECT
+    out  (c), a                     ;; write A to SND_REG_SELECT
     ld   b, #>SND_REG_VALUE + 1     ;; +1 because OUTD decreases B
-    outd                            ;; write SND_REG_VALUE
+    outd                            ;; write (HL) to SND_REG_VALUE
     or   a, a
     jr   nz, context_switch_snd_reg_loop
 
