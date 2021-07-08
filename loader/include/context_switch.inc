@@ -357,19 +357,16 @@ evacuate_iff1_set:
     ld   a, l                 ;; 128k snapshot?
     add  a, a                 ;; if L is 128, this sets carry flag
 
+    jr   nc, context_switch_48k_snapshot
+
     ;; ------------------------------------------------------------------------
     ;; 128k snapshot: restore sound registers, in reverse order
     ;; (makes index equal to loop counter, and ensures HL points to
     ;; something useful afterwards).
-    ;;
-    ;; Also load HL whether or not this is a 128k snapshot or not, to ensure
-    ;; H has a useful value below.
     ;; ------------------------------------------------------------------------
 
     ld   e, #16
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
-
-    jr   nc, context_switch_48k_snapshot
 
 context_switch_snd_reg_loop:
     dec  e
@@ -392,11 +389,9 @@ context_switch_48k_snapshot:
     ;; restore I
     ;; ------------------------------------------------------------------------
 
-    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_I - 1
-    ld   sp, hl
+    ld   sp, #stored_snapshot_header + Z80_HEADER_OFFSET_I - 1
 
     pop  af          ;; A := I, F := high byte of SP (ignore)
-
     ld   i, a
 
     ;; ------------------------------------------------------------------------
@@ -408,13 +403,12 @@ context_switch_48k_snapshot:
     and  a, #0x07
     out  (ULA_PORT), a
 
-    ;; ------------------------------------------------------------------------
-    ;; Restore the following registers early,
-    ;; so we can avoid using VRAM for them:
+    ;; -----------------------------------------------------------------------
+    ;; Restore the following registers early, to avoid using VRAM for them:
     ;; - DE
     ;; - alternate registers (BC, DE, HL, AF)
     ;; - IX & IY
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     pop    de
     exx
@@ -460,7 +454,9 @@ context_switch_im_set:
     ;; ========================================================================
     ;; Restore application data temporarily stored in ENC28J60 RAM.
     ;; Use stored_snapshot_header as stack for spi_write_byte, and
-    ;; a minimal, read-only stack in ROM for the data bytes.
+    ;; a minimal, read-only stack in ROM for the following data bytes.
+    ;;
+    ;; ERDPT was set to ENC28J60_EVACUATED_DATA above.
     ;; ========================================================================
 
     ld    c, #OPCODE_RBM
