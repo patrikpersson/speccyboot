@@ -482,18 +482,18 @@ s_chunk_header3:
     ld   d, #0xc0
     ld   e, a              ;; save page ID (0..7)
 
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-    cp   a, #SNAPSHOT_128K ;; is this a 128k snapshot?
+    ld   a, (kilobytes_expected)
+    add  a, a
 
-    jr   nc, s_chunk_header3_128k_banking
+    jr   c, s_chunk_header3_128k_banking
 
     ;; -----------------------------------------------------------------------
     ;; This is a 48k snapshot:
     ;; 
-    ;;   A == 1  means bank 1, to be mapped to 0x8000
-    ;;   A == 2  means bank 2, to be mapped to 0xC000
+    ;;   E == 1  means bank 1, to be mapped to 0x8000
+    ;;   E == 2  means bank 2, to be mapped to 0xC000
     ;;
-    ;; (other pages not expected in 48 snapshots)
+    ;; (other pages not expected in 48 snapshots; page 5 handled above)
     ;; -----------------------------------------------------------------------
 
     dec  e                                      ;; was this page 1?
