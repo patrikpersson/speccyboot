@@ -365,22 +365,33 @@ evacuate_iff1_set:
     ;; something useful afterwards).
     ;; ------------------------------------------------------------------------
 
-    ld   e, #16
+    ld   a, #16
     ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_HW_STATE_SND + 15
 
-context_switch_snd_reg_loop:
-    dec  e
-    ld   b, d                 ;; BC is now SND_REG_SELECT
-    out  (c), e
-    ld   b, #>SND_REG_VALUE
-    ld   a, (hl)
-    dec  hl
-    out  (c), a
-    jr   nz, context_switch_snd_reg_loop     ;; Z set by DEC E above when done
+breakpoint1::
 
-    ld   a, (hl)              ;; now points to Z80_HEADER_OFFSET_HW_STATE_FFFD
-    ld   b, d                 ;; BC is now SND_REG_SELECT
-    out  (c), a
+context_switch_snd_reg_loop:
+    dec  a
+    ld   b, d                       ;; BC is now SND_REG_SELECT
+    out  (c), a                     ;; write SND_REG_SELECT
+    ld   b, #>SND_REG_VALUE + 1     ;; +1 because OUTD decreases B
+    outd                            ;; write SND_REG_VALUE
+    or   a, a
+    jr   nz, context_switch_snd_reg_loop
+
+    ;; ------------------------------------------------------------------------
+    ;; Restore value of SND_REG_SELECT (Z80_HEADER_OFFSET_HW_STATE_FFFD)
+    ;; ------------------------------------------------------------------------
+
+    ;; HL now points to Z80_HEADER_OFFSET_HW_STATE_FFFD. Set BC to
+    ;; 0xFFFD == SND_REG_SELECT, but compensate for the fact that OUTD
+    ;; decreases B before the bus access. Set B to 0x00, to be decreased to
+    ;; 0xFF == >SND_REG_SELECT by OUTD.
+
+    ld   b, a
+    outd
+
+breakpoint2::
 
 context_switch_48k_snapshot:
 
