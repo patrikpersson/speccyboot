@@ -388,31 +388,25 @@ context_switch_snd_reg_loop:
 context_switch_48k_snapshot:
 
     ;; ------------------------------------------------------------------------
-    ;; Restore I
+    ;; Set up SP for popping state from stored_snapshot_header,
+    ;; restore I
     ;; ------------------------------------------------------------------------
 
-    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_I
-    ld   a, (hl)
+    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_I - 1
+    ld   sp, hl
+
+    pop  af          ;; A := I, F := high byte of SP (ignore)
+
     ld   i, a
 
     ;; ------------------------------------------------------------------------
     ;; Restore border
     ;; ------------------------------------------------------------------------
 
-    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
-    ld   a, (hl)
+    pop  af          ;; A := MISC_FLAGS, F := R (ignore)
     rra
     and  a, #0x07
     out  (ULA_PORT), a
-
-    ;; ------------------------------------------------------------------------
-    ;; initialize memory transfer from ENC28J60:
-    ;;
-    ;; write RBM opcode while the stack pointer is still valid
-    ;; ------------------------------------------------------------------------
-
-    ld    c, #OPCODE_RBM
-    rst   spi_write_byte
 
     ;; ------------------------------------------------------------------------
     ;; Restore the following registers early,
@@ -421,9 +415,6 @@ context_switch_48k_snapshot:
     ;; - alternate registers (BC, DE, HL, AF)
     ;; - IX & IY
     ;; ------------------------------------------------------------------------
-
-    inc    hl              ;; stored_snapshot_header + Z80_HEADER_OFFSET_DE
-    ld     sp, hl
 
     pop    de
     exx
@@ -467,10 +458,13 @@ context_switch_48k_snapshot:
 context_switch_im_set:
 
     ;; ========================================================================
-    ;; Restore application data temporarily stored in ENC28J60 RAM
-    ;; (while using a minimal, read-only stack in ROM).
-    ;; RBM opcode already written above.
+    ;; Restore application data temporarily stored in ENC28J60 RAM.
+    ;; Use stored_snapshot_header as stack for spi_write_byte, and
+    ;; a minimal, read-only stack in ROM for the data bytes.
     ;; ========================================================================
+
+    ld    c, #OPCODE_RBM
+    rst   spi_write_byte
 
     ;; ------------------------------------------------------------------------
     ;; read RUNTIME_DATA_LENGTH bytes from current ERDPT to RUNTIME_DATA
