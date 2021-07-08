@@ -333,7 +333,7 @@ s_header:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ld   de, #stored_snapshot_header
+    ld   e, #<stored_snapshot_header               ;; E == 0x5B from LDIR above
     ld   c, #Z80_HEADER_RESIDENT_SIZE                 ;; B == 0 from LDIR above
 
     ldir
