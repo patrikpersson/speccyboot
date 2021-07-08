@@ -242,10 +242,10 @@ create_trampoline_loop:
     ;; if IFF1 is 0 in snapshot, replace EI with NOP
     ;; ------------------------------------------------------------------------
 
-    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
-    or   a, a
-    jr   nz, evacuate_iff1_set           ;; if A is zero
-    ld   (VRAM_TRAMPOLINE_EI_OR_NOP), a  ;; then it can be used as a NOP
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_IFF1
+    or   a, (hl)                         ;; A is zero after JR NZ above
+    jr   nz, evacuate_iff1_set
+    ld   (VRAM_TRAMPOLINE_EI_OR_NOP), a  ;; and can be used as a NOP
 
 evacuate_iff1_set:
 
@@ -253,22 +253,26 @@ evacuate_iff1_set:
     ;; write register state to VRAM trampoline area
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_R)
+    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_R
 
     ;; now L holds low 7 bits of R, and bit 0 of H holds bit 7 of R
 
-    ld   a, #REG_R_ADJUSTMENT
-    add  a, l
+    ld   a, (hl)
+    add  a, #REG_R_ADJUSTMENT
     rla                ;; carry now in bit 0, but shifted again out soon
-    rr   h
-    rra
+    inc  hl            ;; stored_snapshot_header + Z80_HEADER_OFFSET_MISC_FLAGS
+    rr   (hl)          ;; get bit 7 from flags
+    rra                ;; and shift it into A
     ld   (VRAM_REGSTATE_R), a
 
     ;; ------------------------------------------------------------------------
-    ;; write A to trampoline
+    ;; Write A to trampoline.
+    ;;
+    ;; BC is set up for the LDIR below. To ensure that the two LDI instructions
+    ;; don't make B wrap around, C is given an appropriate value already here.
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_A
+    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_A
     ld   de, #VRAM_REGSTATE_A
     ld   c, #6                   ;; B==0 here; set counter for A + F + BC + HL
 
