@@ -388,8 +388,8 @@ context_switch_snd_reg_loop:
 
     ;; HL now points to Z80_HEADER_OFFSET_HW_STATE_FFFD. Set BC to
     ;; 0xFFFD == SND_REG_SELECT, but compensate for the fact that OUTD
-    ;; decreases B before the bus access. Set B to 0x00, to be decreased to
-    ;; 0xFF == >SND_REG_SELECT by OUTD.
+    ;; decreases B before the bus access. Set B to 0, to be decreased to
+    ;; 0xFF == >SND_REG_SELECT by OUTD. A == 0 after JR NZ above.
 
     ld   b, a
     outd
