@@ -134,7 +134,6 @@ Z80_HEADER_RESIDENT_SIZE         = 55  ;; no of bytes to keep in RAM
 Z80_HEADER_OFFSET_A              = 0
 Z80_HEADER_OFFSET_F              = 1
 Z80_HEADER_OFFSET_BC_HL          = 2
-Z80_HEADER_OFFSET_PC             = 6
 Z80_HEADER_OFFSET_SP             = 8
 Z80_HEADER_OFFSET_I              = 10
 Z80_HEADER_OFFSET_R              = 11
@@ -419,9 +418,9 @@ context_switch_48k_snapshot:
     ;; bit 3 (MIC)  --  set to 1 if Basic SamRom switched in
     ;; bit 4 (EAR)  --  set to 1 for a v1 snapshot with compressed data
     ;;
-    ;; Some ROM space is saved by not masking out these. In practice,
-    ;; it doesn't matter beyond a slight loudspeaker click when loading some
-    ;; v1 snapshots.
+    ;; Some ROM space is saved by not masking out these. They are expected
+    ;; to be zero in version 2+ snapshots. If they're not, nothing will
+    ;; happen, beyond a barely perceptible loudspeaker click.
     ;; -----------------------------------------------------------------------
 
     pop  af                                ;; A := MISC_FLAGS, F := R (ignore)
