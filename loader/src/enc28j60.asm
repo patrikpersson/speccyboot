@@ -106,7 +106,7 @@ enc28j60_read_memory:
     ;; seems to be the sweet spot:
     ;;
     ;;                                            cycle             48kB
-    ;; inlining   code footprint (ROM)            delta   bitrate   load time
+    ;; inlining   code footprint (ROM)            delta   bitrate   xfer time
     ;; --------   --------------------            -----   -------   ---------
     ;;      1b     -11B                            +96     49.25     7.98s
     ;;
