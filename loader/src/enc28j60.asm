@@ -112,7 +112,7 @@ enc28j60_read_memory:
     ;;
     ;;      2b         (current)                   (0)     53.76     7.31s
     ;;
-    ;;      4b     +22B (2xREAD_BIT_TO_D)          -48     56.49     6.97s
+    ;;      4b     +22B (2xREAD_BIT_TO_B)          -48     56.49     6.97s
     ;;      8b     +62B (6x -"-, no LD B/JR NC)   -100     59.51     6.61s
     ;;     16b    +153B (approx.; no CALLs)       -147    ~62.64     6.28s
     ;;
