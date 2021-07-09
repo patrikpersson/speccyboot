@@ -60,24 +60,20 @@ enc28j60_read_memory_to_rxframe:
 enc28j60_read_memory:
 
     push   hl                      ;; preserve HL
-    push   hl
-    pop    ix
-    push   de
+    push   de                      ;; keep byte counter, popped into BC' below
 
     ;;
     ;; register allocation:
     ;;
-    ;; IX  destination in RAM
-    ;;
     ;;
     ;; primary bank (in spi_read_byte_to_memory)
     ;; -----------------------------------------
-    ;; B   inner (bit) loop counter, zero outside subroutine
+    ;; B   byte being loaded, using carry to check for end of loop
     ;; C   SPI_OUT
-    ;; D   scratch
-    ;; E   unused
-    ;; L   SPI_IDLE
-    ;; H   SPI_IDLE+SPI_SCK
+    ;; D   SPI_IDLE+SPI_SCK
+    ;; E   SPI_IDLE
+    ;; HL  destination in RAM
+    ;;
     ;;
     ;; secondary bank (in loop)
     ;; ------------------------
@@ -90,14 +86,15 @@ enc28j60_read_memory:
     ;;
 
     ld   c, #SPI_OUT
-    ld   hl, #0x0100 * (SPI_IDLE + SPI_SCK) + SPI_IDLE
+    ld   de, #0x0100 * (SPI_IDLE + SPI_SCK) + SPI_IDLE
 
     exx
 
     ld    c, #OPCODE_RBM
     rst   spi_write_byte
 
-    pop   bc    ;; byte counter
+    pop   bc    ;; set BC to byte counter
+
     ld    hl, (_ip_checksum)
 
     ;; spi_write_byte clears carry flag, so keep it
@@ -105,32 +102,36 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1081 T-states <=> ~ 51.8 kbit/s
+    ;; Each iteration (16 bits) takes 1041 T-states <=> ~ 53.8 kbit/s. This
+    ;; seems to be the sweet spot:
     ;;
-    ;; Inlining two bits more (2x4 instead of 4x2) would result in
-    ;;   22 bytes more code (2xREAD_BIT_TO_D)
-    ;;   26 T-states less per byte -> 1029 T-states in total <=> 54.4 kbit/s
+    ;;                                            cycle             48kB
+    ;; inlining   code footprint (ROM)            delta   bitrate   load time
+    ;; --------   --------------------            -----   -------   ---------
+    ;;      1b     -11B                            +96     49.25     7.98s
     ;;
-    ;; Inlining all 8 bits would result in
-    ;;   66 bytes more code (6xREAD_BIT_TO_D), and a few less
-    ;;   47+16+7 T-states less per byte (no B, no DJNZ, using HL instead of DE)
-    ;;     -> 941 T-states in total <=> 59.5 kbit/s
+    ;;      2b         (current)                   (0)     53.76     7.31s
+    ;;
+    ;;      4b     +22B (2xREAD_BIT_TO_D)          -48     56.49     6.97s
+    ;;      8b     +62B (6x -"-, no LD B/JR NC)   -100     59.51     6.61s
+    ;;     16b    +153B (approx.; no CALLs)       -147    ~62.64     6.28s
+    ;;
     ;; -----------------------------------------------------------------------
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+499
+    call spi_read_byte_to_memory      ;; 17+479
 
     ld   e, d                         ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
-    ;; the CALL NZ below is not taken,
+    ;; B == 0, the CALL NZ below is not taken,
     ;; and D == 0 in the checksum addition instead
 
     ld   d, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+499
+    call nz, spi_read_byte_to_memory  ;; 17+479
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -154,25 +155,25 @@ do_end_transaction:
 
 ;; ----------------------------------------------------------------------------
 ;; Macro for spi_read_byte_to_memory below. Reads one bit from SPI to
-;; register D. Requires  C==SPI_OUT,  L==SPI_IDLE  and  H==SPI_IDLE+SPI_SCK.
+;; register B. Requires  C==SPI_OUT,  E==SPI_IDLE  and  D==SPI_IDLE+SPI_SCK.
 ;; ----------------------------------------------------------------------------
 
-   .macro READ_BIT_TO_D
+   .macro READ_BIT_TO_B
 
-    out   (c), l         ;; 12
-    out   (c), h         ;; 12
+    out   (c), e         ;; 12
+    out   (c), d         ;; 12
     in    a, (SPI_IN)    ;; 11
     rra                  ;;  4
-    rl    d              ;;  8,   total 47
+    rl    b              ;;  8,   total 47
 
    .endm
 
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (IX) and D (primary+secondary).
+;; The byte is stored in (primary HL), primary B, and secondary D.
 ;;
-;; IX is increased, primary BC decreased, and the secondary bank
+;; Primary HL is increased, primary BC decreased, and the secondary bank
 ;; selected again on exit.
 ;;
 ;; Sets Z flag if primary BC == 0.
@@ -182,16 +183,16 @@ spi_read_byte_to_memory:
 
     exx                               ;;  4
 
-    ld    b, #4                       ;;  7
+    ld    b, #1                       ;;  7
 byte_read_loop:
-    READ_BIT_TO_D
-    READ_BIT_TO_D        ;; 47 * 8     = 376
-    djnz  byte_read_loop ;; 13 * 3 + 8 = 47
+    READ_BIT_TO_B
+    READ_BIT_TO_B                     ;; 376  (47 * 8)
+    jr    nc, byte_read_loop          ;; 43   (12 * 3 + 7)
 
-    ld   (ix), d                      ;; 19
-    inc  ix                           ;; 10
+    ld   (hl), b                      ;;  7
+    inc  hl                           ;;  6
 
-    ld   a, d                         ;;  4
+    ld   a, b                         ;;  4
 
     exx                               ;;  4
 
@@ -203,7 +204,7 @@ byte_read_loop:
 
     ret                               ;; 10
 
-                                      ;; 499 T-states
+                                      ;; 479 T-states
 
 
 ;; ############################################################################
