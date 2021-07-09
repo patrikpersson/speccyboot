@@ -271,17 +271,8 @@ s_header_128k:
     ;; ------------------------------------------------------------------------
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
-    add   a, #Z80_HEADER_OFFSET_EXT_LENGTH
-    inc   a
-    inc   a
+    add   a, #Z80_HEADER_OFFSET_EXT_LENGTH + 2
     ld    c, a            ;; B==0 here, from LDIR above
-
-    ;; ------------------------------------------------------------------------
-    ;; a chunk is expected next
-    ;; ------------------------------------------------------------------------
-
-    ;; SWITCH_STATE  s_header  s_chunk_header
-    ld   ix, #s_chunk_header
 
     ;; ------------------------------------------------------------------------
     ;; adjust IY and BC for header size
@@ -306,8 +297,12 @@ s_header_128k:
     ld   c, a
     inc  b          ;; B is now 1
 
-    ret
+    ;; ------------------------------------------------------------------------
+    ;; A chunk is expected next, and should already be loaded. Fall through
+    ;; and let s_chunk_header set the next state.
+    ;; ------------------------------------------------------------------------
 
+    ;; FALL THROUGH to s_chunk_header
 
 ;; ############################################################################
 ;; state CHUNK_HEADER:
@@ -315,15 +310,13 @@ s_header_128k:
 ;; receive first byte in chunk header: low byte of chunk length
 ;; ############################################################################
 
-    .area _Z80_LOADER_STATES
-
 s_chunk_header:
 
     call load_byte_from_packet
     ld   l, a
 
-    SWITCH_STATE  s_chunk_header  s_chunk_header2
-    ;; ld   ix, #s_chunk_header2
+    ;; SWITCH_STATE  s_chunk_header  s_chunk_header2
+    ld   ix, #s_chunk_header2
 
     ret
 
