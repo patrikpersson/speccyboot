@@ -75,11 +75,11 @@ enc28j60_read_memory:
     ;; HL  destination in RAM
     ;;
     ;;
-    ;; secondary bank (in loop)
-    ;; ------------------------
+    ;; secondary bank (in word_loop)
+    ;; -----------------------------
     ;; BC  byte counter
     ;; D   return value from spi_read_byte_to_memory
-    ;; DE  temp register for one term in sum above
+    ;; DE  temp register for one term in sum below
     ;; HL  cumulative 16-bit one-complement sum
     ;;
     ;; F   C flag from previous checksum addition
@@ -101,8 +101,8 @@ enc28j60_read_memory:
 
     ex    af, af'              ;; to primary AF
 
-    ;; -----------------------------------------------------------------------
-    ;; Each iteration (16 bits) takes 1041 T-states <=> ~ 53.8 kbit/s. This
+    ;; =======================================================================
+    ;; Each iteration (16 bits) takes 1041 T-states <=> 53.76 kbit/s. This
     ;; seems to be the sweet spot:
     ;;
     ;;                                            cycle             48kB
@@ -114,9 +114,9 @@ enc28j60_read_memory:
     ;;
     ;;      4b     +22B (2xREAD_BIT_TO_B)          -48     56.49     6.97s
     ;;      8b     +62B (6x -"-, no LD B/JR NC)   -100     59.51     6.61s
-    ;;     16b    +153B (approx.; no CALLs)       -147    ~62.64     6.28s
+    ;;     16b    +153B (approx.; no CALLs)       -147     62.64     6.28s
     ;;
-    ;; -----------------------------------------------------------------------
+    ;; =======================================================================
 
 word_loop:
 
@@ -182,6 +182,8 @@ do_end_transaction:
 spi_read_byte_to_memory:
 
     exx                               ;;  4
+
+    ;; load byte into B; use carry flag as sentinel
 
     ld    b, #1                       ;;  7
 byte_read_loop:
