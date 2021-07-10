@@ -445,19 +445,14 @@ s_chunk_header3_set_comp_mode:
     ld   a, h
     inc  a
 
-    ;; -----------------------------------------------------------------------
-    ;; Is chunk length == 0xffxx?
-    ;; Then switch to s_chunk_write_data_uncompressed
-    ;; -----------------------------------------------------------------------
+    ;; If chunk length is 0xffxx, Z will now be set,
+    ;; and state s_chunk_write_data_uncompressed is selected
+
+    ;; Otherwise s_chunk_write_data_compressed is selected
 
     SWITCH_STATE  s_header  s_chunk_write_data_compressed
     ;; ld    ix, #s_chunk_write_data_compressed
     ret   nz
-
-    ;; -----------------------------------------------------------------------
-    ;; Otherwise, switch to s_chunk_write_data_compressed, and update
-    ;; chunk length
-    ;; -----------------------------------------------------------------------
 
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
     ;; ld    ix, #s_chunk_write_data_uncompressed
