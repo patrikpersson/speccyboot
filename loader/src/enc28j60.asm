@@ -115,7 +115,7 @@ enc28j60_read_memory:
     ;;      8b     +40B (4 more READ_BIT_TO_B,
     ;;                   remove LD B/JR NC)        -52     59.89     6.56s
     ;;
-    ;;     16b    +137B (approx.; no CALLs)       -103     63.35     6.21s
+    ;;     16b    +131B (approx.; no CALLs)        -99     63.06     6.24s
     ;; =======================================================================
 
 word_loop:
