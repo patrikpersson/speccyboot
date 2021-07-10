@@ -574,15 +574,22 @@ udp_create:
 
     ld    hl, #ip_header_defaults
     ld    de, #_header_template
-    ld    bc, #12         ;; IP v4 header size excluding src/dst addresses
+    ld    bc, #12        ;; IP v4 header size excluding src/dst addresses
 
     ldir
 
     exx                  ;; recall DE
+    ex    de, hl         ;; store UDP length in HL
 
     ;; ----------------------------------------------------------------------
-    ;; Add IPV4_HEADER_SIZE to DE. This can safely be done as a byte addition
-    ;; (no carry needed), as DE has one of the following values:
+    ;; set UDP length (network order)
+    ;; ----------------------------------------------------------------------
+
+    ld     (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), hl
+
+    ;; ----------------------------------------------------------------------
+    ;; Add IPV4_HEADER_SIZE to HL. This can safely be done as a byte addition
+    ;; (no carry needed), as HL has one of the following values:
     ;;
     ;; BOOTP boot request: UDP_HEADER_SIZE + BOOTP_PACKET_SIZE = 308 = 0x134
     ;; TFTP read request: UDP_HEADER_SIZE
@@ -592,26 +599,20 @@ udp_create:
     ;; TFTP ACK: UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET = 8 + 4 = 0x0c
     ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
     ;;
-    ;; In all these cases, the lower byte (that is, D in network order)
+    ;; In all these cases, the lower byte (that is, H in network order)
     ;; is < 0xfc, so adding IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition
     ;; is safe.
     ;; ----------------------------------------------------------------------
 
-    ;; ----------------------------------------------------------------------
-    ;; set UDP length (network order)
-    ;; ----------------------------------------------------------------------
-
-    ld     (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), de
-
-    ld    a, d                    ;; least significant byte in network order
+    ld    a, h                    ;; least significant byte in network order
     add   a, #IPV4_HEADER_SIZE
-    ld    d, a
+    ld    h, a
 
     ;; ----------------------------------------------------------------------
     ;; prepare IP header in _header_template
     ;; ----------------------------------------------------------------------
 
-    ld    (_header_template + 2), de
+    ld    (_header_template + 2), hl
 
     ;; copy source IP address
 

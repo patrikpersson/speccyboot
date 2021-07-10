@@ -253,8 +253,8 @@ s_header_not_128k:
     ;; a chunk is expected next
     ;; ------------------------------------------------------------------------
 
-    SWITCH_STATE  s_header  s_chunk_header
-    ;; ld   ix, #s_chunk_header
+    ;; SWITCH_STATE  s_header  s_chunk_header
+    ld   ix, #s_chunk_header
 
 s_header_set_state:
 
