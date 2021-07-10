@@ -599,7 +599,9 @@ udp_create:
 
     ld    a, e
     add   a, #IPV4_HEADER_SIZE
-    ld    e, a                 ;; DE is now total length, including IP header
+
+    ;; now DA is total length, including IP header
+    ;; (high byte in D, low byte in A)
 
     ;; ----------------------------------------------------------------------
     ;; prepare IP header in _header_template
@@ -608,7 +610,7 @@ udp_create:
     ld    hl, #_header_template + 2    ;; total length
     ld    (hl), d       ;; total_length  (network order)
     inc   hl
-    ld    (hl), e       ;; total_length, continued
+    ld    (hl), a       ;; total_length, continued
 
     ;; copy source IP address
 
