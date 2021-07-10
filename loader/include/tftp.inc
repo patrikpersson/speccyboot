@@ -129,13 +129,12 @@ tftp_receive_got_data:
     ld    l, #<expected_tftp_block_no
 
     ;; ------------------------------------------------------------------------
-    ;; special case: if received and expected both are 1,
-    ;; remember server port, and skip some checks
+    ;; special case: if received and expected both are 1, remember server port
     ;; ------------------------------------------------------------------------
 
-    cp    a, (hl)     ;; both the same value?
+    cp    a, (hl)                          ;; both the same value?
     jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
-    cp    a, #1
+    dec   a                                ;; first packet?
     jr    nz, tftp_receive_blk_nbr_ok
 
     ;; this is the first packet, so note server port and accept the packet
@@ -145,14 +144,17 @@ tftp_receive_got_data:
 
 tftp_receive_check_blk_nbr:
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; received == expected-1 ?  means A-(HL) == received-expected == -1
-    ;; then just acknowledge, but ignore data
-    ;; ------------------------------------------------------------------------
+    ;;
+    ;; This means the previous ACK was lost. Acknowledge, but ignore data.
+    ;; For any other difference, silently drop the packet.
+    ;; -----------------------------------------------------------------------
 
     sub   a, (hl)
     inc   a
     jr    z, tftp_ack
+    ret
 
 tftp_receive_blk_nbr_ok:
 
