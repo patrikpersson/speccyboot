@@ -141,19 +141,22 @@ tftp_receive_got_data:
     ;; this is the first packet, so note server port and accept the packet
 
     ld    (_server_port), bc
-    jr    tftp_receive_blk_nbr_and_port_ok
+    jr    tftp_receive_blk_nbr_ok
 
 tftp_receive_check_blk_nbr:
 
     ;; ------------------------------------------------------------------------
-    ;; received == expected-1 ?  means A-(HL) == received-expected == -1 / 0xff
+    ;; received == expected-1 ?  means A-(HL) == received-expected == -1
+    ;; then just acknowledge, but ignore data
     ;; ------------------------------------------------------------------------
 
     sub   a, (hl)
     inc   a
-    jr    nz, tftp_receive_error
+    jr    z, tftp_ack
 
 tftp_receive_blk_nbr_ok:
+
+    inc   (hl)            ;; _expected_tftp_block_no
 
     ;; ------------------------------------------------------------------------
     ;; check server port number:
@@ -166,46 +169,11 @@ tftp_receive_blk_nbr_ok:
     sbc   hl, bc
     jr    nz, tftp_receive_error
 
-tftp_receive_blk_nbr_and_port_ok:
+    ;; ------------------------------------------------------------------------
+    ;; server port and packet number OK: acknowledge
+    ;; ------------------------------------------------------------------------
 
-    ;; ========================================================================
-    ;; reply with ACK packet
-    ;; ========================================================================
-
-    ld    de, #(UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET) * 0x0100 ;; network order
-    call  tftp_reply
-
-    rst   enc28j60_write_memory_inline
-
-    ;; -----------------------------------------------------------------------
-    ;; inline data for enc28j60_write_memory_inline
-    ;; -----------------------------------------------------------------------
-
-    .db  ack_packet_end - ack_packet_start
-
-ack_packet_start:
-    .db   0, TFTP_OPCODE_ACK
-ack_packet_end:
-
-    ;; -----------------------------------------------------------------------
-
-    ld    e, #TFTP_SIZE_OF_BLOCKNO
-    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
-    rst   enc28j60_write_memory_small
-
-    call  ip_send
-
-    ;; ========================================================================
-    ;; if expected block nbr == received, increase expected and accept the data
-    ;; ========================================================================
-
-    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
-    ld    hl, #_expected_tftp_block_no
-
-    cp    a, (hl)
-    ret   nz
-
-    inc   (hl)
+    call  tftp_ack
 
     ;; -----------------------------------------------------------------------
     ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
@@ -284,6 +252,35 @@ error_packet_start:
     .db   0, 4                        ;; illegal TFTP operation, network order
     .db   0                           ;; no particular message
 error_packet_end:
+
+    jr    ip_send
+
+;; ===========================================================================
+;; subroutine: reply with ACK packet
+;; ===========================================================================
+
+tftp_ack:
+
+    ld    de, #(UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET) * 0x0100 ;; network order
+    call  tftp_reply
+
+    rst   enc28j60_write_memory_inline
+
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline
+    ;; -----------------------------------------------------------------------
+
+    .db  ack_packet_end - ack_packet_start
+
+ack_packet_start:
+    .db   0, TFTP_OPCODE_ACK
+ack_packet_end:
+
+    ;; -----------------------------------------------------------------------
+
+    ld    e, #TFTP_SIZE_OF_BLOCKNO
+    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
+    rst   enc28j60_write_memory_small
 
     jr    ip_send
 
