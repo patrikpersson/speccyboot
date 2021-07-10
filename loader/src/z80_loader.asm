@@ -77,16 +77,20 @@ _digits:
 ;;
 ;; States:
 ;;  
-;;                     HEADER
-;;                        |
-;;                        v  
-;;                  CHUNK_HEADER <---------------------------------\
-;;                        |                                        |
-;;                        v                                        |
-;;                  CHUNK_HEADER2                                  |
-;;                        |                                        |
-;;                        v                                        ^
-;;                  CHUNK_HEADER3                                  |
+;;                        HEADER
+;;                           |
+;; (for v.1 snapshots) /-----+-----\ (for v.2+ snapshots)
+;;                     |           |
+;;                     |           v  
+;;                     |      CHUNK_HEADER <-----------------------\
+;;                     |           |                               |
+;;                     v           v                               |
+;;                     |      CHUNK_HEADER2                        |
+;;                     |           |                               |
+;;                     |           v                               ^
+;;                     |      CHUNK_HEADER3                        |
+;;                     |           |                               |
+;;                     \--v--------/                               |
 ;;                        |                                        |
 ;;                        |                                        |
 ;;                        +---> CHUNK_WRITE_DATA_UNCOMPRESSED -->--+
@@ -214,6 +218,87 @@ load_byte_from_packet:
     ;; NOTE: actual entrypoint s_header further below
     ;; ========================================================================
 
+s_header_ext_hdr:
+
+    ;; ========================================================================
+    ;; snapshot version 2+: is it for a 128k machine?
+    ;; ========================================================================
+
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+
+    ld   a, l
+    cp   a, #SNAPSHOT_128K
+    jr   c, s_header_not_128k
+
+    ;; ------------------------------------------------------------------------
+    ;; 128k snapshot detected: load memory config into D, and set E to 128
+    ;; ------------------------------------------------------------------------
+
+    ld   d, h
+    ld   e, #128
+
+s_header_not_128k:
+
+    ;; ------------------------------------------------------------------------
+    ;; adjust header length, keep in BC
+    ;;
+    ;; A byte addition is sufficient, as the sum will always be <= 0xF2
+    ;; ------------------------------------------------------------------------
+
+    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
+    add   a, c
+    inc   a
+    inc   a
+    ld    c, a
+
+    ;; ------------------------------------------------------------------------
+    ;; a chunk is expected next
+    ;; ------------------------------------------------------------------------
+
+    SWITCH_STATE  s_header  s_chunk_header
+    ;; ld   ix, #s_chunk_header
+
+s_header_set_state:
+
+    ;; ------------------------------------------------------------------------
+    ;; store memory configuration and number of kilobytes expected
+    ;; assumes kilobytes_expected and ram_config to be stored consecutively
+    ;; ------------------------------------------------------------------------
+
+    ld   (kilobytes_expected), de                     ;; also writes ram_config
+
+    ;; ------------------------------------------------------------------------
+    ;; adjust IY and BC for header size
+    ;; ------------------------------------------------------------------------
+
+    add  iy, bc
+
+    ;; ------------------------------------------------------------------------
+    ;; Safely assume that the TFTP packet is 0x200 bytes in length, as the RFC
+    ;; guarantees this for all packets but the last one.
+    ;;
+    ;; Set up BC as (0x0200 - C), that is,
+    ;;
+    ;;   C := 0 - C   and
+    ;;   B := 1.
+    ;;
+    ;; B is currently 0 (after initial LDIR above).
+    ;; ------------------------------------------------------------------------
+
+    xor  a, a
+    sub  a, c       ;; no carry expected, as C is at most 54 (0x36)
+    ld   c, a
+    inc  b          ;; B is now 1
+
+    ;; ------------------------------------------------------------------------
+    ;; Set up DE for a single 48k chunk, to be loaded at 0x4000. For a version
+    ;; 2+ snapshot this address will be superseded in s_chunk_header3.
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #0x4000
+
+    ret
+
 ;; ############################################################################
 ;; actual entry point
 ;; ############################################################################
@@ -263,77 +348,42 @@ s_header:
 
     ld   de, #((MEMCFG_ROM_48K + MEMCFG_LOCK) << 8)  + 48
 
-s_header_ext_hdr:
-
-    ;; ========================================================================
-    ;; snapshot version 2+: is it for a 128k machine?
-    ;; ========================================================================
-
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-
-    ld   a, l
-    cp   a, #SNAPSHOT_128K
-    jr   c, s_header_not_128k
-
     ;; ------------------------------------------------------------------------
-    ;; 128k snapshot detected: load memory config into D, and set E to 128
+    ;; check snapshot header version
     ;; ------------------------------------------------------------------------
 
-    ld   d, h
-    ld   e, #128
-
-s_header_not_128k:
-
-    ;; ------------------------------------------------------------------------
-    ;; adjust header length, keep in BC
-    ;;
-    ;; A byte addition is sufficient, as the sum will always be <= 0xF2
-    ;; ------------------------------------------------------------------------
-
-    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
-    add   a, c
-    inc   a
-    inc   a
-    ld    c, a
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
+    ld   a, h
+    or   a, l
+    jr   z, s_header_ext_hdr               ;; extended header?
 
     ;; ------------------------------------------------------------------------
-    ;; a chunk is expected next
+    ;; This is a v1 snapshot. Store PC value in Z80_HEADER_OFFSET_EXT_PC,
+    ;; to read it unambiguously in context_switch.
     ;; ------------------------------------------------------------------------
 
-    ;; SWITCH_STATE  s_header  s_chunk_header
-    ld   ix, #s_chunk_header
+    ld   (stored_snapshot_header + Z80_HEADER_OFFSET_EXT_PC), hl
 
     ;; ------------------------------------------------------------------------
-    ;; store memory configuration and number of kilobytes expected
-    ;; assumes kilobytes_expected and ram_config to be stored consecutively
+    ;; Assume a single 48k chunk, without header.
+    ;; Decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
-    ld   (kilobytes_expected), de                     ;; also writes ram_config
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS
+    bit  5, (hl)    ;; COMPRESSED flag set?
 
-    ;; ------------------------------------------------------------------------
-    ;; adjust IY and BC for header size
-    ;; ------------------------------------------------------------------------
+    ;; COMPRESSED flag set   =>  Z == 0  =>  s_chunk_write_data_compressed
+    ;; COMPRESSED flag clear =>  Z == 1  =>  s_chunk_write_data_uncompressed
 
-    add  iy, bc
+    call set_compression_state
 
-    ;; ------------------------------------------------------------------------
-    ;; Safely assume that the TFTP packet is 0x200 bytes in length, as the RFC
-    ;; guarantees this for all packets but the last one.
-    ;;
-    ;; Set up BC as (0x0200 - C), that is,
-    ;;
-    ;;   C := 0 - C   and
-    ;;   B := 1.
-    ;;
-    ;; B is currently 0 (after initial LDIR above).
-    ;; ------------------------------------------------------------------------
+    ;; Ensure HL is at least 0xC000, so all bytes in the chunk are loaded.
+    ;; A larger value is OK, since the context switch will take over after 48k
+    ;; have been loaded anyway.
 
-    xor  a, a
-    sub  a, c       ;; no carry expected, as C is at most 54 (0x36)
-    ld   c, a
-    inc  b          ;; B is now 1
+    ld   h, #0xC0
 
-    ret
+    jr   s_header_set_state
 
 
 ;; ############################################################################
@@ -484,6 +534,20 @@ s_chunk_header3_set_comp_mode:
 
     ;; Otherwise s_chunk_write_data_compressed is selected
 
+    ;; FALL THROUGH to set_compression_state
+
+
+;; ############################################################################
+;; set_compression_state
+;;
+;; Sets the next state depending on Z flag. If s_chunk_write_data_uncompressed
+;; is selected, HL (bytes left in chunk) is set to 0x4000.
+;;
+;; Z == 0: s_chunk_write_data_compressed
+;; Z == 1: s_chunk_write_data_uncompressed
+;; ############################################################################
+
+set_compression_state:
     SWITCH_STATE  s_header  s_chunk_write_data_compressed
     ;; ld    ix, #s_chunk_write_data_compressed
     ret   nz
