@@ -91,7 +91,7 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 ;;
 ;; HL: points to destination MAC address
 ;; BC: points to destination IP address
-;; DE: UDP length, including UDP_HEADER_SIZE
+;; DE: UDP length, including UDP_HEADER_SIZE (NETWORK ORDER)
 ;; ----------------------------------------------------------------------------
 
     .globl udp_create

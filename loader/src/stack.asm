@@ -537,7 +537,7 @@ eth_create:
 ;; Create UDP reply to the sender of the received packet currently processed.
 ;;
 ;; Call with
-;;   DE: number of bytes in payload
+;;   DE: number of bytes in payload (NETWORK ORDER)
 ;;   BC: server-side TFTP port (that is, the port to send the UDP packet to)
 ;; ############################################################################
 
@@ -558,13 +558,12 @@ tftp_reply:
 
 
 ;; ############################################################################
-;; _udp_create
+;; udp_create
 ;; ############################################################################
 
 udp_create:
 
     push  hl
-    push  de
     push  bc
 
     ;; ----------------------------------------------------------------------
@@ -593,29 +592,31 @@ udp_create:
     ;; TFTP ACK: UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET = 8 + 4 = 0x0c
     ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
     ;;
-    ;; In all these cases, the lower byte (that is, E) is < 0xfc, so adding
-    ;; IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition is safe.
+    ;; In all these cases, the lower byte (that is, D in network order)
+    ;; is < 0xfc, so adding IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition
+    ;; is safe.
     ;; ----------------------------------------------------------------------
 
-    ld    a, e
-    add   a, #IPV4_HEADER_SIZE
+    ;; ----------------------------------------------------------------------
+    ;; set UDP length (network order)
+    ;; ----------------------------------------------------------------------
 
-    ;; now DA is total length, including IP header
-    ;; (high byte in D, low byte in A)
+    ld     (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), de
+
+    ld    a, d                    ;; least significant byte in network order
+    add   a, #IPV4_HEADER_SIZE
+    ld    d, a
 
     ;; ----------------------------------------------------------------------
     ;; prepare IP header in _header_template
     ;; ----------------------------------------------------------------------
 
-    ld    hl, #_header_template + 2    ;; total length
-    ld    (hl), d       ;; total_length  (network order)
-    inc   hl
-    ld    (hl), a       ;; total_length, continued
+    ld    (_header_template + 2), de
 
     ;; copy source IP address
 
     ld    de, #_header_template + 12   ;; source IP address
-    ld    l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     ld    bc, #4
     ldir
 
@@ -646,17 +647,6 @@ udp_create:
     cpl
     ld     h, a
     ld     (_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM), hl
-
-    ;; ----------------------------------------------------------------------
-    ;; set UDP length (network order)
-    ;; ----------------------------------------------------------------------
-
-    pop    de       ;; UDP length
-
-    ld     hl, #_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH
-    ld     (hl), d
-    inc    hl
-    ld     (hl), e
 
     ;; ----------------------------------------------------------------------
     ;; create IP packet

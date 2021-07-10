@@ -187,7 +187,7 @@ tftp_receive_blk_nbr_and_port_ok:
     ;; reply with ACK packet
     ;; ========================================================================
 
-    ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
+    ld    de, #(UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET) * 0x0100 ;; network order
     call  tftp_reply
 
     rst   enc28j60_write_memory_inline
@@ -288,7 +288,7 @@ tftp_state_loop:
 
 tftp_receive_error:
 
-    ld    de, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
+    ld    de, #(UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET) * 0x0100 ;; network order
     call  tftp_reply
 
     rst   enc28j60_write_memory_inline
@@ -365,8 +365,11 @@ error_packet_end:
 
     push bc        ;; remember filename length for later
 
+    ;; set DE to UDP length, in network order (least significant byte in D)
+
     add  a, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
-    ld   e, a      ;; D==0 from above; now DE == UDP length
+    ld   d, a
+    dec  e        ;; E==1 from above; now DE == UDP length
 
     ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     ld   hl, #eth_broadcast_address    ;; all we know at this point

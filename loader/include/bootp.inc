@@ -83,7 +83,10 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     dec  a  ;; UDP_PORT_BOOTP_SERVER = UDP_PORT_BOOTP_CLIENT - 1
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT + 1), a
 
-    ld   de, #UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
+    ;; set DE to UDP length, in network order
+
+    ld   de, #((UDP_HEADER_SIZE + <BOOTP_PACKET_SIZE) * 0x0100) + >BOOTP_PACKET_SIZE
+
     ld   hl, #eth_broadcast_address
     ld   b, h     ;; works for IP broadcast too (4 x 0xff)
     ld   c, l
