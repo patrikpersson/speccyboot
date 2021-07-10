@@ -111,38 +111,32 @@ tftp_receive_bad_reply:
 
 tftp_receive_got_data:
 
-    ;; ========================================================================
-    ;; check block number: acceptable cases are
-    ;; received == expected   (normal case: acknowledge and read)
-    ;; received == expected-1 (previous ACK lost: acknowledge, but do not read)
-    ;; ========================================================================
-
-    inc   hl
-    ld    d, (hl)    ;; stored in network order, so read D first
-    inc   hl
-    ld    e, (hl)    ;; DE is now the received block number, in host order
-
-    ld    hl, (_expected_tftp_block_no)
-
     ;; ------------------------------------------------------------------------
     ;; keep server-side port number in BC
     ;; ------------------------------------------------------------------------
 
     ld    bc, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
 
+    ;; ========================================================================
+    ;; check block number: acceptable cases are
+    ;; received == expected   (normal case: acknowledge and read)
+    ;; received == expected-1 (previous ACK lost: acknowledge, but do not read)
+    ;;
+    ;; only the least significant byte is checked
+    ;; ========================================================================
+
+    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
+    ld    hl, #_expected_tftp_block_no
+
     ;; ------------------------------------------------------------------------
     ;; special case: if received and expected both are 1,
     ;; remember server port, and skip some checks
     ;; ------------------------------------------------------------------------
 
-    ld    a, h        ;; are these
-    or    a, d        ;; both zero?
+    cp    a, (hl)     ;; both the same value?
     jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
-    ld    a, e        ;; are these
-    cp    a, l        ;; both the same value (specifically, 1) ?
-    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
-    dec   a           ;; is A now 1?
-    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+    cp    a, #1
+    jr    nz, tftp_receive_blk_nbr_ok
 
     ;; this is the first packet, so note server port and accept the packet
 
@@ -152,20 +146,11 @@ tftp_receive_got_data:
 tftp_receive_check_blk_nbr:
 
     ;; ------------------------------------------------------------------------
-    ;; received == expected ?
+    ;; received == expected-1 ?  means A-(HL) == received-expected == -1 / 0xff
     ;; ------------------------------------------------------------------------
 
-    or    a, a   ;; clear C flag
-    sbc   hl, de
-    jr    z, tftp_receive_blk_nbr_ok
-
-    ;; ------------------------------------------------------------------------
-    ;; received == expected-1 ?   means HL-DE == expected-received == 1
-    ;; ------------------------------------------------------------------------
-
-    dec   hl
-    ld    a, h
-    or    a, l
+    sub   a, (hl)
+    inc   a
     jr    nz, tftp_receive_error
 
 tftp_receive_blk_nbr_ok:
@@ -177,7 +162,7 @@ tftp_receive_blk_nbr_ok:
 
     ld    hl, (_server_port)
     ;; BC was loaded above, early on; holds server-side port nbr from packet
-    ;; C flag is clear from either SBC HL, DE (resulting in zero) or OR A, L
+    or    a, a               ;; clear carry
     sbc   hl, bc
     jr    nz, tftp_receive_error
 
@@ -214,18 +199,13 @@ ack_packet_end:
     ;; if expected block nbr == received, increase expected and accept the data
     ;; ========================================================================
 
-    ld    hl, (_expected_tftp_block_no)
+    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
+    ld    hl, #_expected_tftp_block_no
 
-    ld    de, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO)
-    ld    a, e
-    cp    a, h    ;; network order  
-    ret   nz
-    ld    a, d
-    cp    a, l
+    cp    a, (hl)
     ret   nz
 
-    inc   hl
-    ld    (_expected_tftp_block_no), hl
+    inc   (hl)
 
     ;; -----------------------------------------------------------------------
     ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
@@ -344,8 +324,8 @@ error_packet_end:
     ;; reset _expected_tftp_block_no to 1
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #1
-    ld   (_expected_tftp_block_no), hl
+    ld   a, #1
+    ld   (_expected_tftp_block_no), a
 
     ex   de, hl    ;; bring filename pointer to HL
     push hl        ;; remember filename pointer for later

@@ -122,11 +122,11 @@ _chunk_bytes_remaining:
    .ds   2
 
 ;; ----------------------------------------------------------------------------
-;; next TFTP block we expect to receive
+;; next TFTP block we expect to receive (least significant byte)
 ;; ----------------------------------------------------------------------------
 
 _expected_tftp_block_no:
-    .ds   2
+    .ds   1
 
 ;; ----------------------------------------------------------------------------
 ;; source port currently used by server
