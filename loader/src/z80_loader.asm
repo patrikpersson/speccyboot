@@ -546,8 +546,8 @@ s_chunk_header3_set_comp_mode:
 ;; ############################################################################
 
 set_compression_state:
-    SWITCH_STATE  s_header  s_chunk_write_data_compressed
-    ;; ld    ix, #s_chunk_write_data_compressed
+    ;; SWITCH_STATE  s_header  s_chunk_write_data_compressed
+    ld    ix, #s_chunk_write_data_compressed
     ret   nz
 
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed

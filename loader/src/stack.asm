@@ -570,7 +570,7 @@ udp_create:
     ;; Set up a header template, to be filled in with proper data below.
     ;; ----------------------------------------------------------------------
 
-    exx                  ;; remember DE for use below
+    push  de
 
     ld    hl, #ip_header_defaults
     ld    de, #_header_template
@@ -578,8 +578,7 @@ udp_create:
 
     ldir
 
-    exx                  ;; recall DE
-    ex    de, hl         ;; store UDP length in HL
+    pop   hl         ;; recall UDP length
 
     ;; ----------------------------------------------------------------------
     ;; set UDP length (network order)
