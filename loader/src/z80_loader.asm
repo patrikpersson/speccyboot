@@ -203,9 +203,20 @@ load_byte_from_packet:
 ;; State HEADER (initial):
 ;;
 ;; Evacuates the header from the TFTP data block and sets up the next state.
+;; The actual entrypoint follows below, and then JRs backwards in memory.
+;; This could potentially allow the s_header address to be kept on the same
+;; page as the other .z80 loader states. (Fragile.)
 ;; ############################################################################
 
     .area _Z80_LOADER_STATES
+
+    ;; ========================================================================
+    ;; NOTE: actual entrypoint s_header further below
+    ;; ========================================================================
+
+;; ############################################################################
+;; actual entry point
+;; ############################################################################
 
 s_header:
 
@@ -230,16 +241,13 @@ s_header:
 
     ldir
 
-    ;; ========================================================================
-    ;; Snapshot for a 128k machine? Then keep memory configuration as-is
-    ;; ========================================================================
+    ;; ------------------------------------------------------------------------
+    ;; BC: .z80 header size
+    ;; D: memory configuration value for 0x7ffd
+    ;; E: number of kilobytes expected (48 or 128)
+    ;; ------------------------------------------------------------------------
 
-    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
-
-    ld   a, l
-    cp   a, #SNAPSHOT_128K
-    ld   l, #128
-    jr   nc, s_header_128k
+    ld   c, #Z80_HEADER_OFFSET_EXT_LENGTH      ;; B==0 here
 
     ;; -----------------------------------------------------------------------
     ;; Memory configuration for a 48k snapshot on a 128k machine. Bits are
@@ -253,28 +261,40 @@ s_header:
     ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
     ;; -----------------------------------------------------------------------
 
-    ld   hl, #((MEMCFG_ROM_48K + MEMCFG_LOCK) << 8)  + 48
+    ld   de, #((MEMCFG_ROM_48K + MEMCFG_LOCK) << 8)  + 48
 
-s_header_128k:
+s_header_ext_hdr:
+
+    ;; ========================================================================
+    ;; snapshot version 2+: is it for a 128k machine?
+    ;; ========================================================================
+
+    ld   hl, (stored_snapshot_header + Z80_HEADER_OFFSET_HW_TYPE)
+
+    ld   a, l
+    cp   a, #SNAPSHOT_128K
+    jr   c, s_header_not_128k
 
     ;; ------------------------------------------------------------------------
-    ;; store memory configuration and number of kilobytes expected
-    ;; assumes kilobytes_expected and ram_config to be stored consecutively
+    ;; 128k snapshot detected: load memory config into D, and set E to 128
     ;; ------------------------------------------------------------------------
 
-    ld   (kilobytes_expected), hl                     ;; also writes ram_config
+    ld   d, h
+    ld   e, #128
+
+s_header_not_128k:
 
     ;; ------------------------------------------------------------------------
-    ;; adjust header length, store in BC
+    ;; adjust header length, keep in BC
     ;;
     ;; A byte addition is sufficient, as the sum will always be <= 0xF2
     ;; ------------------------------------------------------------------------
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
-    add   a, #Z80_HEADER_OFFSET_EXT_LENGTH
+    add   a, c
     inc   a
     inc   a
-    ld    c, a            ;; B==0 here, from LDIR above
+    ld    c, a
 
     ;; ------------------------------------------------------------------------
     ;; a chunk is expected next
@@ -282,6 +302,13 @@ s_header_128k:
 
     ;; SWITCH_STATE  s_header  s_chunk_header
     ld   ix, #s_chunk_header
+
+    ;; ------------------------------------------------------------------------
+    ;; store memory configuration and number of kilobytes expected
+    ;; assumes kilobytes_expected and ram_config to be stored consecutively
+    ;; ------------------------------------------------------------------------
+
+    ld   (kilobytes_expected), de                     ;; also writes ram_config
 
     ;; ------------------------------------------------------------------------
     ;; adjust IY and BC for header size
