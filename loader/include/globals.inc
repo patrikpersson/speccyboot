@@ -57,10 +57,10 @@ VERSION_MAGIC  = 0x40 | VERSION_STAGE1
 ;; 5b20..5b27       IP config (2x IPv4 addresses, 8 bytes)
 ;; 5b28..5b43       IP/UDP header template, 20+8 bytes
 ;; 5b44..5b7a       stored .z80 snapshot header, 55 bytes
-;; 5b7e..5b91       IP header (20 bytes)
-;; 5b92..5b99       UDP header (8 bytes)
-;; 5b9a..5b9d       TFTP DATA header (4 bytes)
-;; 5b9e..5bd4       .z80 snapshot header, 55 bytes
+;; 5b7f..5b92       IP header (20 bytes)
+;; 5b93..5b9a       UDP header (8 bytes)
+;; 5b9b..5b9e       TFTP DATA header (4 bytes)
+;; 5b9f..5bd5       .z80 snapshot header, 55 bytes
 ;;
 ;; The three bytes kilobytes_loaded, kilobytes_expected, and ram_config are
 ;; located together, so two of them can be accessed in a single 16-bit word
@@ -81,9 +81,10 @@ stored_snapshot_header = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_S
 kilobytes_loaded       = 0x5b7b             ;; size 1
 kilobytes_expected     = 0x5b7c             ;; size 1
 ram_config             = 0x5b7d             ;; size 1
-_rx_frame              = 0x5b7e             ;; size 0x220 (RX_FRAME_SIZE)
+expected_tftp_block_no = 0x5b7e             ;; size 1
+_rx_frame              = 0x5b7f             ;; size 0x220 (RX_FRAME_SIZE)
 
-;; _DATA segment can start at 0x5d9e
+;; _DATA segment can start at 0x5d9f
 
 ;; ============================================================================
 

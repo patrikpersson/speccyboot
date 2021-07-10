@@ -126,7 +126,7 @@ tftp_receive_got_data:
     ;; ========================================================================
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
-    ld    hl, #_expected_tftp_block_no
+    ld    l, #<expected_tftp_block_no
 
     ;; ------------------------------------------------------------------------
     ;; special case: if received and expected both are 1,
@@ -156,7 +156,7 @@ tftp_receive_check_blk_nbr:
 
 tftp_receive_blk_nbr_ok:
 
-    inc   (hl)            ;; _expected_tftp_block_no
+    inc   (hl)            ;; expected_tftp_block_no
 
     ;; ------------------------------------------------------------------------
     ;; check server port number:
@@ -233,6 +233,10 @@ tftp_state_loop:
     ld    (_tftp_write_pos), de
 
     jr    tftp_state_loop
+
+;; ===========================================================================
+;; subroutine: reply with ERROR packet
+;; ===========================================================================
 
 tftp_receive_error:
 
@@ -322,7 +326,7 @@ ack_packet_end:
     ;; ------------------------------------------------------------------------
 
     ld   a, #1
-    ld   (_expected_tftp_block_no), a
+    ld   (expected_tftp_block_no), a
 
     ex   de, hl    ;; bring filename pointer to HL
     push hl        ;; remember filename pointer for later
