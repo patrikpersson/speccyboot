@@ -356,9 +356,10 @@ error_packet_end:
     ;; ------------------------------------------------------------------------
 
     xor  a, a      ;; needed for CPIR, to search for NUL
-    ld   c, a      ;; set C := 0x00
+    ld   c, a      ;; set C := 0
     cpir           ;; find NUL in string pointed to by HL; BC := negated length
-    ld   b, a      ;; set B := 0x00
+    ld   b, a      ;; set B := 0
+    ld   e, a      ;; set E := 0
 
     sub  a, c
     ld   c, a      ;; negate C
@@ -366,10 +367,10 @@ error_packet_end:
     push bc        ;; remember filename length for later
 
     ;; set DE to UDP length, in network order (least significant byte in D)
+    ;; (E == 0 from above)
 
     add  a, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
     ld   d, a
-    ld   e, b      ;; E := 0
 
     ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     ld   hl, #eth_broadcast_address    ;; all we know at this point
