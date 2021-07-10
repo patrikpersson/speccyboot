@@ -76,6 +76,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
 
     ;; ------------------------------------------------------------------------
     ;; create UDP packet
+    ;; assume header_template to contain zeros (this is the first packet)
     ;; ------------------------------------------------------------------------
 
     ld   a, #UDP_PORT_BOOTP_CLIENT

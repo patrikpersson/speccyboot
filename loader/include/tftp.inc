@@ -347,7 +347,7 @@ error_packet_end:
     ld   hl, #1
     ld   (_expected_tftp_block_no), hl
 
-    ex   de, hl    ;; bring filename pointer to HL, DE := 0x0001
+    ex   de, hl    ;; bring filename pointer to HL
     push hl        ;; remember filename pointer for later
 
     ;; ------------------------------------------------------------------------
@@ -369,7 +369,7 @@ error_packet_end:
 
     add  a, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
     ld   d, a
-    dec  e        ;; E==1 from above; now DE == UDP length
+    ld   e, b      ;; E := 0
 
     ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     ld   hl, #eth_broadcast_address    ;; all we know at this point
