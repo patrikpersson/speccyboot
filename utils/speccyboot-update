@@ -49,17 +49,6 @@ loading_address = 0x6400
 
 # ----------------------------------------------------------------------------
 
-def check_snapshot_version(filename):
-    """Returns True if filename refers to a version 2+ snapshot, False otherwise."""
-    with open(filename, "rb") as input:
-        snapshot_bytes = input.read(8)
-        compatible = snapshot_bytes[-2] == 0  and  snapshot_bytes[-1] == 0
-        if not compatible:
-            print("incompatible snapshot (need version 2+), skipping: {}".format(filename))
-        return compatible
-
-# ----------------------------------------------------------------------------
-
 def update_index_in_dir(dir):
     os.chdir(dir)
 
@@ -68,17 +57,13 @@ def update_index_in_dir(dir):
     except FileNotFoundError:
         pass
 
-    filenames = glob.glob('*.z80')
-
-    # choose only compatible snapshots
-    filenames = list(filter(check_snapshot_version, filenames))
-
-    n = len(filenames)
+    list = glob.glob('*.z80')
+    n = len(list)
     if n == 0:
-        print("(no compatible snapshots found in {} -- ignoring)".format(dir))
+        print("(no snapshots found in {} -- ignoring)".format(dir))
         return False
 
-    filenames.sort()
+    list.sort()
 
     # calculate addresses
     nbr_snapshots_address = loading_address + len(stage2_bytes)
@@ -88,7 +73,7 @@ def update_index_in_dir(dir):
     # calculate array contents
     pointers = []
     base = filenames_address
-    for filename in filenames:
+    for filename in list:
         pointers += [base]
         base += len(filename) + 1           # +1 for terminating NUL
 
@@ -97,7 +82,7 @@ def update_index_in_dir(dir):
         output.write(bytes([n]))
         for p in pointers:
             output.write(bytes([p % 256, p // 256]))
-        for filename in filenames:
+        for filename in list:
             output.write(filename.encode(encoding='ascii',errors='replace'))
             output.write(bytes([0]))
     
