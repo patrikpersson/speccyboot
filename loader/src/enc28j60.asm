@@ -68,10 +68,10 @@ enc28j60_read_memory:
     ;;
     ;; primary bank (in spi_read_byte_to_memory)
     ;; -----------------------------------------
-    ;; B   byte being loaded, using carry to check for end of loop
+    ;; B   SPI_IDLE+SPI_MOSI
     ;; C   SPI_OUT
     ;; D   SPI_IDLE+SPI_SCK
-    ;; E   SPI_IDLE
+    ;; E   byte being loaded, using carry to check for end of loop
     ;; HL  destination in RAM
     ;;
     ;;
@@ -85,8 +85,8 @@ enc28j60_read_memory:
     ;; F   C flag from previous checksum addition
     ;;
 
-    ld   c, #SPI_OUT
-    ld   de, #0x0100 * (SPI_IDLE + SPI_SCK) + SPI_IDLE
+    ld   bc, #0x0100 * (SPI_IDLE + SPI_MOSI) + SPI_OUT
+    ld   d, #SPI_IDLE + SPI_SCK
 
     exx
 
@@ -102,12 +102,14 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; =======================================================================
-    ;; each word_loop iteration (16 bits) takes 987 T-states <=> 56.74 kbit/s
+    ;; each word_loop iteration (16 bits) takes 1035 T-states
+    ;;   <=> 54.11 kbit/s  (48k machines @3.5MHz)
+    ;;       54.83 kbit/s  (128k machines @3.54690MHz)
     ;; =======================================================================
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+455
+    call spi_read_byte_to_memory      ;; 17+479
 
     ld   e, d                         ;; 4
 
@@ -118,7 +120,7 @@ word_loop:
 
     ld   d, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+455
+    call nz, spi_read_byte_to_memory  ;; 17+479
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -142,23 +144,42 @@ do_end_transaction:
 
 ;; ----------------------------------------------------------------------------
 ;; Macro for spi_read_byte_to_memory below. Reads one bit from SPI to
-;; register B. Requires  C==SPI_OUT,  E==SPI_IDLE  and  D==SPI_IDLE+SPI_SCK.
+;; register E. Requires registers to be loaded as follows:
+;;
+;;   B == SPI_IDLE+SPI_MOSI
+;;   C == SPI_OUT
+;;   D == SPI_IDLE+SPI_SCK
+;;
+;; NOTE: the reason for including the bit SPI_MOSI in B is to ensure BC points
+;; to a non-contended address (0xc09f). See "Contended Input/Output" in
+;; https://worldofspectrum.org/faq/reference/48kreference.htm#Contention:
+;;
+;;  "The address of the port being accessed is placed on the data bus. If this
+;;   is in the range 0x4000 to 0x7fff, the ULA treats this as an attempted
+;;   access to contended memory and therefore introduces a delay. If the port
+;;   being accessed is between 0xc000 and 0xffff, this effect does not apply,
+;;   even on a 128K machine if a contended memory bank is paged into the range
+;;   0xc000 to 0xffff."
+;;
+;; The MOSI bit will be ignored by the ENC28J60 during a read operation
+;; (ENC28J60 writes, Spectrum reads). See section 4, figure 4.2 in the ENC28J60
+;; data sheet ("Don't Care").
 ;; ----------------------------------------------------------------------------
 
-   .macro READ_BIT_TO_B
+   .macro READ_BIT_TO_E
 
-    out   (c), e         ;; 12
+    out   (c), b         ;; 12
     out   (c), d         ;; 12
     in    a, (SPI_IN)    ;; 11
     rra                  ;;  4
-    rl    b              ;;  8,   total 47
+    rl    e              ;;  8,   total 47
 
    .endm
 
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (primary HL), primary B, and secondary D.
+;; The byte is stored in (primary HL), primary E, and secondary D.
 ;;
 ;; Primary HL is increased, primary BC decreased, and the secondary bank
 ;; selected again on exit.
@@ -170,20 +191,18 @@ spi_read_byte_to_memory:
 
     exx                               ;;  4
 
-    ;; load byte into B; use carry flag as sentinel
+    ;; load byte into E; use carry flag as sentinel
 
-    ld    b, #1                       ;;  7
+    ld    e, #1                       ;;  7
 byte_read_loop:
-    READ_BIT_TO_B
-    READ_BIT_TO_B
-    READ_BIT_TO_B
-    READ_BIT_TO_B                     ;; 376  (47 * 8)
-    jr    nc, byte_read_loop          ;; 19   (12 + 7)
+    READ_BIT_TO_E
+    READ_BIT_TO_E                     ;; 376  (47 * 8)
+    jr    nc, byte_read_loop          ;; 43   (3*12 + 7)
 
-    ld   (hl), b                      ;;  7
+    ld   (hl), e                      ;;  7
     inc  hl                           ;;  6
 
-    ld   a, b                         ;;  4
+    ld   a, e                         ;;  4
 
     exx                               ;;  4
 
@@ -195,7 +214,7 @@ byte_read_loop:
 
     ret                               ;; 10
 
-                                      ;; 455 T-states
+                                      ;; 479 T-states
 
 
 ;; ############################################################################
