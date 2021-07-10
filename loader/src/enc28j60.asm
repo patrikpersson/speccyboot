@@ -103,13 +103,13 @@ enc28j60_read_memory:
 
     ;; =======================================================================
     ;; each word_loop iteration (16 bits) takes 1035 T-states
-    ;;   <=> 54.11 kbit/s  (48k machines @3.5MHz)
-    ;;       54.83 kbit/s  (128k machines @3.54690MHz)
+    ;;   <=> 56.74 kbit/s  (48k machines @3.5MHz)
+    ;;       57.50 kbit/s  (128k machines @3.54690MHz)
     ;; =======================================================================
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+479
+    call spi_read_byte_to_memory      ;; 17+455
 
     ld   e, d                         ;; 4
 
@@ -120,7 +120,7 @@ word_loop:
 
     ld   d, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+479
+    call nz, spi_read_byte_to_memory  ;; 17+455
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -196,8 +196,10 @@ spi_read_byte_to_memory:
     ld    e, #1                       ;;  7
 byte_read_loop:
     READ_BIT_TO_E
+    READ_BIT_TO_E
+    READ_BIT_TO_E
     READ_BIT_TO_E                     ;; 376  (47 * 8)
-    jr    nc, byte_read_loop          ;; 43   (3*12 + 7)
+    jr    nc, byte_read_loop          ;; 19   (12 + 7)
 
     ld   (hl), e                      ;;  7
     inc  hl                           ;;  6
@@ -214,7 +216,7 @@ byte_read_loop:
 
     ret                               ;; 10
 
-                                      ;; 479 T-states
+                                      ;; 455 T-states
 
 
 ;; ############################################################################
