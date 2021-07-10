@@ -246,9 +246,7 @@ s_header_not_128k:
     ;; ------------------------------------------------------------------------
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
-    add   a, c
-    inc   a
-    inc   a
+    add   a, #Z80_HEADER_OFFSET_EXT_LENGTH + 2
     ld    c, a
 
     ;; ------------------------------------------------------------------------

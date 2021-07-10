@@ -102,25 +102,12 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; =======================================================================
-    ;; Each iteration (16 bits) takes 1041 T-states <=> 53.76 kbit/s. This
-    ;; seems to be the sweet spot:
-    ;;
-    ;;                                            cycle             48kB
-    ;; inlining   code footprint (ROM)            delta   bitrate   xfer time
-    ;; --------   --------------------            -----   -------   ---------
-    ;;      1b     -11B                            +96     49.25     7.98s
-    ;;
-    ;;      2b         (current)                   (0)     53.76     7.31s
-    ;;
-    ;;      4b     +22B (2xREAD_BIT_TO_B)          -48     56.49     6.97s
-    ;;      8b     +62B (6x -"-, no LD B/JR NC)   -100     59.51     6.61s
-    ;;     16b    +153B (approx.; no CALLs)       -147     62.64     6.28s
-    ;;
+    ;; each word_loop iteration (16 bits) takes 987 T-states <=> 56.74 kbit/s
     ;; =======================================================================
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+479
+    call spi_read_byte_to_memory      ;; 17+455
 
     ld   e, d                         ;; 4
 
@@ -131,7 +118,7 @@ word_loop:
 
     ld   d, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+479
+    call nz, spi_read_byte_to_memory  ;; 17+455
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -188,8 +175,10 @@ spi_read_byte_to_memory:
     ld    b, #1                       ;;  7
 byte_read_loop:
     READ_BIT_TO_B
+    READ_BIT_TO_B
+    READ_BIT_TO_B
     READ_BIT_TO_B                     ;; 376  (47 * 8)
-    jr    nc, byte_read_loop          ;; 43   (12 * 3 + 7)
+    jr    nc, byte_read_loop          ;; 19   (12 + 7)
 
     ld   (hl), b                      ;;  7
     inc  hl                           ;;  6
@@ -206,7 +195,7 @@ byte_read_loop:
 
     ret                               ;; 10
 
-                                      ;; 479 T-states
+                                      ;; 455 T-states
 
 
 ;; ############################################################################
