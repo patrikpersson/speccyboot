@@ -98,18 +98,15 @@ TFTP_HEADER_SIZE     = 4
     ;; only accept DATA packets; anything else is a fatal error
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
-    xor  a, a
-    or   a, (hl)
-    inc  hl
-    jr   nz, tftp_receive_bad_reply
-    ld   a, (hl)
-    cp   a, #TFTP_OPCODE_DATA
-tftp_receive_bad_reply:
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE)
+    ld   a, h
+    sub  a, #TFTP_OPCODE_DATA
+    or   a, l
+
+    ld   e, a                             ;; E := 0 (assuming the opcode is OK)
+
     ld   a, #FATAL_FILE_NOT_FOUND
     jp   nz, fail
-
-tftp_receive_got_data:
 
     ;; ------------------------------------------------------------------------
     ;; keep server-side port number in BC
@@ -126,37 +123,27 @@ tftp_receive_got_data:
     ;; ========================================================================
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
-    ld    l, #<expected_tftp_block_no
+    ld    hl, #expected_tftp_block_no
 
     ;; ------------------------------------------------------------------------
     ;; special case: if received and expected both are 1, remember server port
     ;; ------------------------------------------------------------------------
 
     cp    a, (hl)                          ;; both the same value?
-    jr    nz, tftp_receive_check_blk_nbr   ;; if not, continue checking
+    jr    nz, tftp_receive_blk_nbr_not_equal
+
+    ;; ------------------------------------------------------------------------
+    ;; special case: if received and expected both are 1, remember server port
+    ;; ------------------------------------------------------------------------
+
     dec   a                                ;; first packet?
-    jr    nz, tftp_receive_blk_nbr_ok
+    jr    nz, tftp_accept
 
     ;; this is the first packet, so note server port and accept the packet
 
     ld    (_server_port), bc
-    jr    tftp_receive_blk_nbr_ok
 
-tftp_receive_check_blk_nbr:
-
-    ;; -----------------------------------------------------------------------
-    ;; received == expected-1 ?  means A-(HL) == received-expected == -1
-    ;;
-    ;; This means the previous ACK was lost. Acknowledge, but ignore data.
-    ;; For any other difference, silently drop the packet.
-    ;; -----------------------------------------------------------------------
-
-    sub   a, (hl)
-    inc   a
-    jr    z, tftp_ack
-    ret
-
-tftp_receive_blk_nbr_ok:
+tftp_accept:
 
     inc   (hl)            ;; expected_tftp_block_no
 
@@ -167,7 +154,7 @@ tftp_receive_blk_nbr_ok:
 
     ld    hl, (_server_port)
     ;; BC was loaded above, early on; holds server-side port nbr from packet
-    or    a, a               ;; clear carry
+    ;; carry was cleared by CP A, (HL)
     sbc   hl, bc
     jr    nz, tftp_receive_error
 
@@ -237,12 +224,40 @@ tftp_state_loop:
     jr    tftp_state_loop
 
 ;; ===========================================================================
+;; subroutine: handle differing received vs. expected block numbers
+;;
+;; Requires E == 0
+;; ===========================================================================
+
+tftp_receive_blk_nbr_not_equal:
+
+    ;; -----------------------------------------------------------------------
+    ;; There is one permissible case where received and expected block numbers
+    ;; could differ:
+    ;;
+    ;; received == expected-1 ?  means A-(HL) == received-expected == -1
+    ;;
+    ;; This means the previous ACK was lost. Acknowledge, but ignore data.
+    ;; Any other difference is an error.
+    ;; -----------------------------------------------------------------------
+
+    sub   a, (hl)
+    inc   a
+    jr    z, tftp_ack
+
+    ;; FALL THROUGH to tftp_receive_error
+
+;; ===========================================================================
 ;; subroutine: reply with ERROR packet
+;;
+;; Requires E == 0
 ;; ===========================================================================
 
 tftp_receive_error:
 
-    ld    de, #(UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET) * 0x0100 ;; network order
+    ;; assuming E == 0 set by caller
+
+    ld    d, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET     ;; network order
     call  tftp_reply
 
     rst   enc28j60_write_memory_inline
@@ -263,11 +278,15 @@ error_packet_end:
 
 ;; ===========================================================================
 ;; subroutine: reply with ACK packet
+;;
+;; Requires E == 0
 ;; ===========================================================================
 
 tftp_ack:
 
-    ld    de, #(UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET) * 0x0100 ;; network order
+    ;; assuming E == 0 set by caller
+
+    ld    d, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET       ;; network order
     call  tftp_reply
 
     rst   enc28j60_write_memory_inline
