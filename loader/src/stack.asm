@@ -122,13 +122,6 @@ _chunk_bytes_remaining:
    .ds   2
 
 ;; ----------------------------------------------------------------------------
-;; source port currently used by server
-;; ----------------------------------------------------------------------------
-
-_server_port:
-    .ds   2
-
-;; ----------------------------------------------------------------------------
 ;; function called for every received TFTP packet
 ;; ----------------------------------------------------------------------------
 
@@ -531,14 +524,14 @@ eth_create:
 ;;
 ;; Call with
 ;;   DE: number of bytes in payload (NETWORK ORDER)
-;;   BC: server-side TFTP port (that is, the port to send the UDP packet to)
 ;; ############################################################################
 
     .area _CODE
 
 tftp_reply:
 
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), bc
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl

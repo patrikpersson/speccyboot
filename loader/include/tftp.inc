@@ -108,12 +108,6 @@ TFTP_HEADER_SIZE     = 4
     ld   a, #FATAL_FILE_NOT_FOUND
     jp   nz, fail
 
-    ;; ------------------------------------------------------------------------
-    ;; keep server-side port number in BC
-    ;; ------------------------------------------------------------------------
-
-    ld    bc, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
-
     ;; ========================================================================
     ;; check block number: acceptable cases are
     ;; received == expected   (normal case: acknowledge and read)
@@ -125,41 +119,13 @@ TFTP_HEADER_SIZE     = 4
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
     ld    hl, #expected_tftp_block_no
 
-    ;; ------------------------------------------------------------------------
-    ;; special case: if received and expected both are 1, remember server port
-    ;; ------------------------------------------------------------------------
-
-    cp    a, (hl)                          ;; both the same value?
+    cp    a, (hl)
     jr    nz, tftp_receive_blk_nbr_not_equal
 
-    ;; ------------------------------------------------------------------------
-    ;; special case: if received and expected both are 1, remember server port
-    ;; ------------------------------------------------------------------------
-
-    dec   a                                ;; first packet?
-    jr    nz, tftp_accept
-
-    ;; this is the first packet, so note server port and accept the packet
-
-    ld    (_server_port), bc
-
-tftp_accept:
-
-    inc   (hl)            ;; expected_tftp_block_no
+    inc   (hl)                             ;; expected_tftp_block_no
 
     ;; ------------------------------------------------------------------------
-    ;; check server port number:
-    ;; must be the same as used for first packet
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, (_server_port)
-    ;; BC was loaded above, early on; holds server-side port nbr from packet
-    ;; carry was cleared by CP A, (HL)
-    sbc   hl, bc
-    jr    nz, tftp_receive_error
-
-    ;; ------------------------------------------------------------------------
-    ;; server port and packet number OK: acknowledge
+    ;; packet number OK: acknowledge
     ;; ------------------------------------------------------------------------
 
     call  tftp_ack

@@ -639,6 +639,7 @@ repetition_ended:
 
     ;; FALL THROUGH to s_chunk_write_data_compressed
 
+
 ;; ############################################################################
 ;; state CHUNK_WRITE_DATA_COMPRESSED         (presumably the most common state)
 ;; ############################################################################
