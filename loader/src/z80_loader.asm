@@ -559,12 +559,15 @@ set_compression_state:
 
 ;; ############################################################################
 ;; state CHUNK_WRITE_DATA_UNCOMPRESSED
+;;
+;; optimized for size rather than speed
+;; (uncompressed chunks seem rather uncommon)
 ;; ############################################################################
 
 s_chunk_write_data_uncompressed:
 
     call check_limits_and_load_byte
-    jr   nz, store_byte
+    jr   nz, store_byte_and_update_progress
 
     ret
 
@@ -630,7 +633,13 @@ s_chunk_write_data_compressed:
 
 store_byte:
 
-    call store_byte_and_update_progress
+    ld    (de), a
+    inc   de
+
+    ld    a, d
+    and   a, #0x03
+    or    a, e
+    jr    z, update_progress
 
 jp_ix_instr:
 
