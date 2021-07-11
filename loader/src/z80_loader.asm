@@ -54,9 +54,6 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
     .area _DATA
 
-repetition_value:
-    .ds   1         ;; repetition value for ED ED sequences
-
 ;; ----------------------------------------------------------------------------
 ;; digits (BCD) for progress display while loading a snapshot
 ;; ----------------------------------------------------------------------------
@@ -559,9 +556,6 @@ set_compression_state:
 
 ;; ############################################################################
 ;; state CHUNK_WRITE_DATA_UNCOMPRESSED
-;;
-;; optimized for size rather than speed
-;; (uncompressed chunks seem rather uncommon)
 ;; ############################################################################
 
 s_chunk_write_data_uncompressed:
@@ -598,7 +592,11 @@ s_chunk_repcount:
 s_chunk_repvalue:
 
     call load_byte_from_chunk
-    ld   (repetition_value), a
+
+    ;; -------------------------------------------------------------------------
+    ;; the loaded byte does not need to be stored here:
+    ;; it is available as -1(iy) when needed
+    ;; -------------------------------------------------------------------------
 
     SWITCH_STATE  s_chunk_repvalue  s_repetition
     ;; ld   ix, #s_repetition
@@ -620,14 +618,18 @@ s_repetition:
     jr   z, repetition_ended
 
     ;; -------------------------------------------------------------------------
-    ;; a non-zero number of repetitions remain:
-    ;; decrease repetition count and write the repetition value to memory
+    ;; a non-zero number of repetitions remain: decrease repetition count
     ;; -------------------------------------------------------------------------
 
     dec  a
     ld   i, a
 
-    ld   a, (repetition_value)
+    ;; -------------------------------------------------------------------------
+    ;; the byte to repeat is always the most recently loaded one, as this state
+    ;; (s_repetition) does not involve any loading of data (only writing)
+    ;; -------------------------------------------------------------------------
+
+    ld   a, -1(iy)
 
     jr   store_byte
 
@@ -638,7 +640,7 @@ repetition_ended:
     ;; FALL THROUGH to s_chunk_write_data_compressed
 
 ;; ############################################################################
-;; state CHUNK_WRITE_DATA_COMPRESSED
+;; state CHUNK_WRITE_DATA_COMPRESSED         (presumably the most common state)
 ;; ############################################################################
 
 s_chunk_write_data_compressed:
