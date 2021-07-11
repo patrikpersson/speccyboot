@@ -103,7 +103,7 @@ TFTP_HEADER_SIZE     = 4
     sub  a, #TFTP_OPCODE_DATA
     or   a, l
 
-    ld   e, a                             ;; E := 0 (assuming the opcode is OK)
+    ld   e, a         ;; E := 0 (assuming the opcode is OK), useful later below
 
     ld   a, #FATAL_FILE_NOT_FOUND
     jp   nz, fail
