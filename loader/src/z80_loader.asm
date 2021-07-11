@@ -725,25 +725,14 @@ s_chunk_compressed_escape:
 ;; ############################################################################
 ;; store_byte_and_update_progress
 ;;
-;; Store byte A in *(DE++), and continue with update_progress
+;; Store byte A in *(DE++). If the number of bytes loaded reached an even
+;; kilobyte, continue with update_progress.
 ;; ############################################################################
 
 store_byte_and_update_progress:
 
     ld    (de), a
     inc   de
-
-    ;; FALL THROUGH to update_progress
-
-
-;; ############################################################################
-;; update_progress
-;;
-;; If the number of bytes loaded reached an even kilobyte,
-;; increase kilobyte counter and update status display
-;; ############################################################################
-
-update_progress:
 
     ;; check if DE is an integral number of kilobytes,
     ;; return early otherwise
@@ -752,6 +741,17 @@ update_progress:
     and   a, #0x03
     or    a, e
     ret   nz
+
+    ;; FALL THROUGH to update_progress
+
+
+;; ############################################################################
+;; update_progress
+;;
+;; increase kilobyte counter and update status display
+;; ############################################################################
+
+update_progress:
 
     ;; ------------------------------------------------------------------------
     ;; use alternate BC, DE, HL for scratch here
