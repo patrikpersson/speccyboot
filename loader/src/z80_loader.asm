@@ -54,8 +54,8 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 
     .area _DATA
 
-_repcount:
-    .ds   1         ;; repetition count for ED ED sequences
+repetition_value:
+    .ds   1         ;; repetition value for ED ED sequences
 
 ;; ----------------------------------------------------------------------------
 ;; digits (BCD) for progress display while loading a snapshot
@@ -82,26 +82,26 @@ _digits:
 ;; (for v.1 snapshots) /-----+-----\ (for v.2+ snapshots)
 ;;                     |           |
 ;;                     |           v  
-;;                     |      CHUNK_HEADER <-----------------------\
-;;                     |           |                               |
-;;                     v           v                               |
-;;                     |      CHUNK_HEADER2                        |
-;;                     |           |                               |
-;;                     |           v                               ^
-;;                     |      CHUNK_HEADER3                        |
-;;                     |           |                               |
-;;                     \--v--------/                               |
-;;                        |                                        |
-;;                        |                                        |
-;;                        +---> CHUNK_WRITE_DATA_UNCOMPRESSED -->--+
-;;                        |                                        |
-;;                        v                                        |
-;;          /-------> CHUNK_WRITE_DATA_COMPRESSED --------->-------/ 
-;;          |            |        ^
-;;          |            v        |
-;;          ^      CHUNK_COMPRESSED_ESCAPE
-;;          |                 |
-;;          |                 v
+;;                     |      CHUNK_HEADER <----------------------------\
+;;                     |           |                                    |
+;;                     v           v                                    |
+;;                     |      CHUNK_HEADER2                             |
+;;                     |           |                                    |
+;;                     |           v                                    ^
+;;                     |      CHUNK_HEADER3                             |
+;;                     |           |                                    |
+;;                     \--v--------/                                    |
+;;                        |                                             |
+;;                        |                                             |
+;;                        +--------> CHUNK_WRITE_DATA_UNCOMPRESSED -->--+
+;;                        |                                             |
+;;                        v                                             |
+;;      REPETITION ------> CHUNK_WRITE_DATA_COMPRESSED --------->-------/ 
+;;          |                 |        ^
+;;          |                 v        |
+;;          ^           CHUNK_COMPRESSED_ESCAPE
+;;          |                      |
+;;          |                      v
 ;;     CHUNK_REPVAL <-- CHUNK_REPCOUNT
 ;;
 ;; ----------------------------------------------------------------------------
@@ -581,8 +581,7 @@ s_chunk_write_data_uncompressed:
 s_chunk_repcount:
 
     call load_byte_from_chunk
-
-    ld   (_repcount), a
+    ld   i, a
 
     SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
     ;; ld   ix, #s_chunk_repvalue
@@ -599,7 +598,7 @@ s_chunk_repcount:
 s_chunk_repvalue:
 
     call load_byte_from_chunk
-    ld   i, a
+    ld   (repetition_value), a
 
     SWITCH_STATE  s_chunk_repvalue  s_repetition
     ;; ld   ix, #s_repetition
@@ -617,8 +616,7 @@ s_repetition:
     ;; Check the repetition count. This is zero when no repetition is active.
     ;; -------------------------------------------------------------------------
 
-    ld   a, (_repcount)
-    or   a, a
+    ld   a, i                    ;; LD A, I updates Z flag!
     jr   z, repetition_ended
 
     ;; -------------------------------------------------------------------------
@@ -627,9 +625,9 @@ s_repetition:
     ;; -------------------------------------------------------------------------
 
     dec  a
-    ld   (_repcount), a
+    ld   i, a
 
-    ld   a, i
+    ld   a, (repetition_value)
 
     jr   store_byte
 
