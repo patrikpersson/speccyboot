@@ -102,14 +102,14 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; =======================================================================
-    ;; each word_loop iteration (16 bits) takes 1035 T-states
-    ;;   <=> 56.74 kbit/s  (48k machines @3.5MHz)
-    ;;       57.50 kbit/s  (128k machines @3.54690MHz)
+    ;; each word_loop iteration (16 bits) takes 935 T-states
+    ;;   <=> 59.89 kbit/s  (48k machines @3.5MHz)
+    ;;       60.70 kbit/s  (128k machines @3.54690MHz)
     ;; =======================================================================
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+455
+    call spi_read_byte_to_memory      ;; 17+429
 
     ld   e, d                         ;; 4
 
@@ -120,7 +120,7 @@ word_loop:
 
     ld   d, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+455
+    call nz, spi_read_byte_to_memory  ;; 17+429
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -191,15 +191,14 @@ spi_read_byte_to_memory:
 
     exx                               ;;  4
 
-    ;; load byte into E; use carry flag as sentinel
-
-    ld    e, #1                       ;;  7
-byte_read_loop:
+    READ_BIT_TO_E
+    READ_BIT_TO_E
+    READ_BIT_TO_E
+    READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E                     ;; 376  (47 * 8)
-    jr    nc, byte_read_loop          ;; 19   (12 + 7)
 
     ld   (hl), e                      ;;  7
     inc  hl                           ;;  6
@@ -216,7 +215,7 @@ byte_read_loop:
 
     ret                               ;; 10
 
-                                      ;; 455 T-states
+                                      ;; 429 T-states
 
 
 ;; ############################################################################
