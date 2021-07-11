@@ -61,6 +61,13 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 _digits:
     .ds   1
 
+;; ----------------------------------------------------------------------------
+;; flag indicating whether SETUP_CONTEXT_SWITCH has been executed
+;; ----------------------------------------------------------------------------
+
+is_context_switch_set_up:
+    .ds   1
+
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -862,14 +869,15 @@ no_progress_bar:
     ret   nz
 
     ;; ------------------------------------------------------------------------
-    ;; use register R, bit 7 to indicate whether the evacuation is already
-    ;; done (R==0 after reset)
+    ;; use flag 'is_context_switch_set_up' to only set up context switch once,
+    ;; first time this address is reached
     ;; ------------------------------------------------------------------------
 
-    ld    a, r
-    ret   m          ;; return if R bit 7 is 1
-    cpl              ;; R bit 7 was 0, is now 1
-    ld    r, a
+    ld    a, (is_context_switch_set_up)
+    or    a, a
+    ret   nz
+    cpl
+    ld    (is_context_switch_set_up), a
 
     ;; ------------------------------------------------------------------------
     ;; use alternate BC, DE, HL for scratch here
