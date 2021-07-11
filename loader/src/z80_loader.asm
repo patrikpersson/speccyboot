@@ -567,9 +567,9 @@ set_compression_state:
 s_chunk_write_data_uncompressed:
 
     call check_limits_and_load_byte
-    jr   nz, store_byte_and_update_progress
+    ret  z
 
-    ret
+    jr   store_byte
 
 
 ;; ############################################################################
@@ -601,17 +601,17 @@ s_chunk_repvalue:
     call load_byte_from_chunk
     ld   i, a
 
-    SWITCH_STATE  s_chunk_repvalue  s_chunk_write_data_compressed
-    ;; ld   ix, #s_chunk_write_data_compressed
+    SWITCH_STATE  s_chunk_repvalue  s_repetition
+    ;; ld   ix, #s_repetition
 
-    ;; FALL THROUGH to s_chunk_write_data_compressed
+    ;; FALL THROUGH to s_repetition
 
 
 ;; ############################################################################
-;; state CHUNK_WRITE_DATA_COMPRESSED
+;; state REPETITION
 ;; ############################################################################
 
-s_chunk_write_data_compressed:
+s_repetition:
 
     ;; -------------------------------------------------------------------------
     ;; Check the repetition count. This is zero when no repetition is active.
@@ -619,7 +619,31 @@ s_chunk_write_data_compressed:
 
     ld   a, (_repcount)
     or   a, a
-    jr   nz, do_repetition
+    jr   z, repetition_ended
+
+    ;; -------------------------------------------------------------------------
+    ;; a non-zero number of repetitions remain:
+    ;; decrease repetition count and write the repetition value to memory
+    ;; -------------------------------------------------------------------------
+
+    dec  a
+    ld   (_repcount), a
+
+    ld   a, i
+
+    jr   store_byte
+
+repetition_ended:
+
+    SWITCH_STATE  s_repetition  s_chunk_write_data_compressed
+
+    ;; FALL THROUGH to s_chunk_write_data_compressed
+
+;; ############################################################################
+;; state CHUNK_WRITE_DATA_COMPRESSED
+;; ############################################################################
+
+s_chunk_write_data_compressed:
 
     call check_limits_and_load_byte
     ret  z
@@ -643,21 +667,10 @@ store_byte:
 
 jp_ix_instr:
 
-    jp   (ix)   ;; one of s_chunk_write_data_compressed  or  ..._uncompressed
-
-    ;; -------------------------------------------------------------------------
-    ;; a non-zero number of repetitions remain:
-    ;; decrease repetition count and write the repetition value to memory
-    ;; -------------------------------------------------------------------------
-
-do_repetition:
-
-    dec  a
-    ld   (_repcount), a
-
-    ld   a, i
-
-    jr   store_byte
+    jp   (ix)   ;; one of
+                ;;   s_chunk_write_data_compressed,
+                ;;   s_chunk_write_data_uncompressed,
+                ;;   s_repetition
 
     ;; -------------------------------------------------------------------------
     ;; Escape byte found: switch state
