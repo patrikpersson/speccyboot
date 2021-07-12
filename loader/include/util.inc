@@ -113,12 +113,18 @@ ROW_LENGTH  = 32
 ATTR_DIGIT_ROW = 0x5A00
 
 ;; ----------------------------------------------------------------------------
-;; codes for fatal_error() displayed as border colours
+;; codes for fail, displayed as border colours
 ;; ----------------------------------------------------------------------------
 
 FATAL_INTERNAL_ERROR      = BLACK
 FATAL_VERSION_MISMATCH    = RED
 FATAL_FILE_NOT_FOUND      = YELLOW
+
+;; ----------------------------------------------------------------------------
+;; border colour indicating packet retransmission
+;; ----------------------------------------------------------------------------
+
+WARNING_RETRANSMITTED     = BLUE
 
 ;; ----------------------------------------------------------------------------
 ;; 16-bit word increased by 2 (!) every 20 milliseconds

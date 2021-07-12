@@ -207,6 +207,10 @@ main_loop:
     ld    a, (_timer_tick_count + 1)   ;; high byte
     or    a, a                         ;; A >= 1 means time-out
 
+    ;; ------------------------------------------------------------------------
+    ;; A is presumably 1 == WARNING_RETRANSMITTED here
+    ;; ------------------------------------------------------------------------
+
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
     ;; B == 0 from enc28j60_read_register
@@ -1027,6 +1031,7 @@ eth_send:
 
     ld    a, e
     cp    a, #<ETH_FRAME_PRIORITY
+    ld    a, #WHITE
     jr    nz, perform_transmission
 
     ;; ------------------------------------------------------------------------
@@ -1044,12 +1049,19 @@ eth_send:
 ;; Perform a frame transmission.
 ;; Does not return until the frame has been transmitted.
 ;;
+;; A: border colour, to indicate regular transmission/retransmission
 ;; B: must be 0
 ;; DE: address of the first byte in the frame
 ;; HL: address of the last byte in the frame
 ;; ############################################################################
 
 perform_transmission:
+
+    ;; ------------------------------------------------------------------------
+    ;; use border color to indicate retransmission status
+    ;; ------------------------------------------------------------------------
+
+    out   (ULA_PORT), a
 
     ;; ----------------------------------------------------------------------
     ;; set up registers:  ETXST := start_address, ETXND := end_address
