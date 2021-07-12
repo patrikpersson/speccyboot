@@ -1189,6 +1189,10 @@ poll_register:
 ;; tftp_state_menu_loader
 ;; ############################################################################
 
+tftp_default_file:
+    .ascii 'menu.bin'
+    .db    0
+
 tftp_state_menu_loader:
 
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
@@ -1216,34 +1220,21 @@ tftp_state_menu_loader:
     ld  hl, #stage2_start
     ld  a, #VERSION_MAGIC
     cp  a, (hl)
-    jr  nz, fail_version_mismatch
+    jp  z, stage2_start + 1
 
     ;; ------------------------------------------------------------------------
-    ;; At this point HL points to the VERSION_MAGIC byte. This is encoded as
-    ;; a LD r, r' instruction (binary 0100xxxx) and harmless to execute.
-    ;; One INC HL is saved this way.
+    ;; display firmware version on screen and fail
     ;; ------------------------------------------------------------------------
 
-    jp  (hl)
-
-tftp_default_file:
-    .ascii 'menu.bin'
-    .db    0
-
-
-;; ############################################################################
-;; fail
-;; fail_version_mismatch
-;; ############################################################################
-
-    .area _CODE
-
-fail_version_mismatch:
     ;; lower 4 bits of A is now the ROM loader (stage 1) version number
     call show_attr_digit_right
     ld  a, #FATAL_VERSION_MISMATCH
 
     ;; FALL THROUGH to fail
+
+;; ############################################################################
+;; fail
+;; ############################################################################
 
 fail:
 

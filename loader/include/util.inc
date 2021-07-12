@@ -156,14 +156,6 @@ FATAL_FILE_NOT_FOUND      = YELLOW
     .globl fail
 
 ;; ----------------------------------------------------------------------------
-;; Alternate entrypoint for fail. Displays firmware version on screen and
-;; fails with error FATAL_VERSION_MISMATCH.
-;; Defined in tftp.asm.
-;; ----------------------------------------------------------------------------
-
-    .globl fail_version_mismatch
-
-;; ----------------------------------------------------------------------------
 ;; Divides A by B. Returns result in C and remainder in A.
 ;; C flag is always set. Z flag is always cleared.
 ;; ----------------------------------------------------------------------------
