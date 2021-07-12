@@ -1288,6 +1288,10 @@ ip_receive_check_checksum:
     ret  z
 
     pop  af   ;; pop return address within ip_receive
+
+    ld   a, #WARNING_CHECKSUM_FAILED
+    out  (ULA_PORT), a
+
     ret       ;; return to _caller_ of ip_receive
 
 
