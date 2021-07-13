@@ -367,7 +367,7 @@ initialize_global_data:
   ld    bc, #_font_data - _stack_top + 1  ;; plus one, due to using 0x3f above
   ldir
 
-  ld    h, #>stage2_start         ;; L remains zero from copying of trampoline
+  ld    h, #>stage2_start         ;; L == <font_data == 0
 
   ld    (_tftp_write_pos), hl
 
