@@ -1234,10 +1234,10 @@ tftp_state_menu_loader:
     cp   a, (hl)
 
     ;; ------------------------------------------------------------------------
-    ;; emulate a JP Z, (HL)
+    ;; If the signature matches, launch the menu.bin binary, otherwise fail.
     ;;
-    ;; this will execute the VERSION_MAGIC byte, which is benign (it is a 
-    ;; LD r, r' instruction)
+    ;; This will start with executing the VERSION_MAGIC byte, which is benign
+    ;; (it is a LD r, r' instruction).
     ;; ------------------------------------------------------------------------
 
     push hl
