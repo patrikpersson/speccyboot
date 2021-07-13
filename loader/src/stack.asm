@@ -1229,10 +1229,19 @@ tftp_state_menu_loader:
     ;; check version signature
     ;; ------------------------------------------------------------------------
 
-    ld  hl, #stage2_start
-    ld  a, #VERSION_MAGIC
-    cp  a, (hl)
-    jp  z, stage2_start + 1
+    ld   hl, #stage2_start
+    ld   a, #VERSION_MAGIC
+    cp   a, (hl)
+
+    ;; ------------------------------------------------------------------------
+    ;; emulate a JP Z, (HL)
+    ;;
+    ;; this will execute the VERSION_MAGIC byte, which is benign (it is a 
+    ;; LD r, r' instruction)
+    ;; ------------------------------------------------------------------------
+
+    push hl
+    ret  z
 
     ;; ------------------------------------------------------------------------
     ;; display firmware version on screen and fail
@@ -1240,7 +1249,7 @@ tftp_state_menu_loader:
 
     ;; lower 4 bits of A is now the ROM loader (stage 1) version number
     call show_attr_digit_right
-    ld  a, #FATAL_VERSION_MISMATCH
+    ld   a, #FATAL_VERSION_MISMATCH
 
     ;; FALL THROUGH to fail
 
