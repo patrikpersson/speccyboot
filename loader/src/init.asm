@@ -287,7 +287,7 @@ init_continued:
   ;; Copy trampoline to RAM. Far more than the trampoline is copied, since
   ;; this routine has an important side-effect: it provides a delay > 200ms
   ;; @3.5469MHz, for 128k reset logic to settle.
-
+  ;;
   ;; 200ms = 709380 T-states = 33780 (0x83F4) LDIR iterations. However,
   ;; since DE points to contended memory, each iteration will take longer
   ;; time than that in reality. Stick with this safe overkill.
@@ -363,14 +363,11 @@ initialize_global_data:
   ld    (hl), #BLACK + (WHITE << 3)
   ldir
 
-  ld    a, #WHITE
-  out   (ULA_PORT), a
-
-  ld    (hl), c
+  ld    (hl), c       ;; C == 0 after LDIR above
   ld    bc, #_font_data - _stack_top + 1  ;; plus one, due to using 0x3f above
   ldir
 
-  ld    h, #>stage2_start
+  ld    h, #>stage2_start         ;; L remains zero from copying of trampoline
 
   ld    (_tftp_write_pos), hl
 
