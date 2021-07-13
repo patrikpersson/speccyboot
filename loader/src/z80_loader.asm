@@ -782,7 +782,7 @@ update_progress:
     ;; means it just turned from 99 to 100.
     ;; Print the digit '1' for hundreds.
 
-    ld    l, #10
+    ld    l, a                 ;; L := 0
     rla                        ;; make A := 1 without affecting Z
     call  z, show_attr_digit
     ld    a, c
@@ -793,7 +793,7 @@ update_progress:
     ;; Print tens (_x_)
 
     rra
-    ld    l, #17
+    ld    l, #7
     call  nz, show_attr_digit_already_shifted
 
     ;; Print single-number digit (__x)

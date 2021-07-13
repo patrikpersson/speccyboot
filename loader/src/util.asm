@@ -95,7 +95,7 @@ memory_compare:
 
 show_attr_digit_right:
 
-    ld    l, #24
+    ld    l, #14
 
    ;; FALL THROUGH to show_attr_digit
 
@@ -117,12 +117,15 @@ show_attr_digit_already_shifted:  ;; special target for below
     ld    d, #>(_font_data + 16 * 8 + 1)
     ld    e, a
 
+show_attr_char:
+
     ld    h, #>ATTR_DIGIT_ROW
 
 show_attr_digit_row_loop:
     ld    a, (de)
     inc   de
     ld    b, #7
+    add   a, a                    ;; skip first pixel column
 
 show_attr_char_pixel_loop:
     add   a, a
