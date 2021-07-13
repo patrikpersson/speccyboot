@@ -706,7 +706,7 @@ ip_receive:
     ;; read a minimal IPv4 header
 
     ld   e, #IPV4_HEADER_SIZE            ;; D==0 here
-    call enc28j60_read_memory_to_rxframe
+    call enc28j60_read_memory_to_rxframe  ;; preserves HL==rx_frame
 
     ;; ------------------------------------------------------------
     ;; Check the IP destination address
@@ -717,7 +717,7 @@ ip_receive:
     ;; Z == 0: an IP address has been set, check packet IP address
     ;; Z == 1: no IP address has been set, ignore packet IP address
 
-    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET ;; HL preserved above
     ld   a, (hl)                        ;; a non-zero first octet
     or   a                              ;; means an address has been set
 
