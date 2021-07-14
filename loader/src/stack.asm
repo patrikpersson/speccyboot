@@ -1026,12 +1026,12 @@ eth_send:
 
     ;; ------------------------------------------------------------------------
     ;; Check if DE points to a critical frame (BOOTP/TFTP, not ARP). Only
-    ;; need to check the low byte.
+    ;; need to check bit 8; that is, bit 0 in the high byte (see eth.inc).
     ;; ------------------------------------------------------------------------
 
-    ld    a, e
-    cp    a, #<ETH_FRAME_PRIORITY
     ld    a, #WHITE
+
+    bit   0, d                      ;; refer to address calculations in eth.inc
     jr    nz, perform_transmission
 
     ;; ------------------------------------------------------------------------

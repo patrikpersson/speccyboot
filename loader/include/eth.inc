@@ -35,7 +35,7 @@
 ;;
 ;; Errata for silicon rev. B5, item #3: receive buffer must start at 0x0000
 ;;
-;; 0x0000   ... 0xXXXX  Receive buffer (FIFO, about 5.5K): automatically
+;; 0x0000   ... 0xXXXX  Receive buffer (FIFO, just under 6K): automatically
 ;;                      filled with received packets by the ENC28J60. The host
 ;;                      updates ERXRDPT to inform the ENC28J60 when data is
 ;;                      consumed.
@@ -79,11 +79,11 @@ ETH_MAX_RX_FRAME_SIZE = ETH_HEADER_SIZE + 574
 ;; Ethernet header, payload, and 8 bytes of administrative info stored
 ;; by controller
 
-ENC28J60_UDP_TXBUF_SIZE = (ETH_HEADER_SIZE + ETH_MAX_UDP_TX_PAYLOAD + 8)
-ENC28J60_ARP_TXBUF_SIZE = (ETH_HEADER_SIZE + ETH_MAX_ARP_TX_PAYLOAD + 8)
-ENC28J60_TXBUF2_START = (ENC28J60_EVACUATED_DATA - ENC28J60_ARP_TXBUF_SIZE)
-ENC28J60_TXBUF1_START = (ENC28J60_TXBUF2_START - ENC28J60_UDP_TXBUF_SIZE)
-ENC28J60_RXBUF_END = (ENC28J60_TXBUF1_START - 1)
+ENC28J60_UDP_TXBUF_SIZE = (ETH_HEADER_SIZE + ETH_MAX_UDP_TX_PAYLOAD + 8)    ;; 0x156
+ENC28J60_ARP_TXBUF_SIZE = (ETH_HEADER_SIZE + ETH_MAX_ARP_TX_PAYLOAD + 8)    ;; 0x2a
+ENC28J60_TXBUF2_START = (ENC28J60_EVACUATED_DATA - ENC28J60_ARP_TXBUF_SIZE) ;; 0x17d6
+ENC28J60_TXBUF1_START = (ENC28J60_TXBUF2_START - ENC28J60_UDP_TXBUF_SIZE)   ;; 0x1680
+ENC28J60_RXBUF_END = (ENC28J60_TXBUF1_START - 1)                            ;; 0x167f
 
 ETH_HWTYPE = 1    ;; Ethernet HW type (as used by, e.g., ARP)
 
@@ -106,8 +106,8 @@ ETH_SIZEOF_ETHERTYPE = 2
 ;; NOTE: the frame class value actually maps directly to a transmission buffer
 ;;       address.
 
-ETH_FRAME_PRIORITY = ENC28J60_TXBUF1_START
-ETH_FRAME_OPTIONAL = ENC28J60_TXBUF2_START
+ETH_FRAME_PRIORITY = ENC28J60_TXBUF1_START        ;; bit 8 cleared -- see above
+ETH_FRAME_OPTIONAL = ENC28J60_TXBUF2_START        ;; bit 8 set -- see above
 
 ;; ----------------------------------------------------------------------------
 ;; Ethernet addresses
