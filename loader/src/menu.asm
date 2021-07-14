@@ -373,10 +373,6 @@ menu_hit_enter:
     xor  a, a
     call show_attr_digit_right
 
-    ld   de, #_font_data + 8 * ('K' - ' ') + 1
-    ld   l, #25
-    call  show_attr_char
-
     ;; ------------------------------------------------------------------------
     ;; send a TFTP request for the snapshot
     ;; ------------------------------------------------------------------------

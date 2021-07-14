@@ -95,7 +95,7 @@ memory_compare:
 
 show_attr_digit_right:
 
-    ld    l, #14
+    ld    l, #24
 
    ;; FALL THROUGH to show_attr_digit
 
@@ -125,7 +125,6 @@ show_attr_digit_row_loop:
     ld    a, (de)
     inc   de
     ld    b, #7
-    add   a, a                    ;; skip first pixel column
 
 show_attr_char_pixel_loop:
     add   a, a
