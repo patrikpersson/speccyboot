@@ -35,7 +35,7 @@
 ;;
 ;; Errata for silicon rev. B5, item #3: receive buffer must start at 0x0000
 ;;
-;; 0x0000   ... 0xXXXX  Receive buffer (FIFO, just under 6K): automatically
+;; 0x0000   ... 0xXXXX  Receive buffer (FIFO, about 5.5K): automatically
 ;;                      filled with received packets by the ENC28J60. The host
 ;;                      updates ERXRDPT to inform the ENC28J60 when data is
 ;;                      consumed.
