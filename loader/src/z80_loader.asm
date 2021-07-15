@@ -284,7 +284,7 @@ s_header_set_state:
     ;;   C := 0 - C   and
     ;;   B := 1.
     ;;
-    ;; B is currently 0 (after initial LDIRs). 0 < C < 0x0100.
+    ;; B is currently 0 (after initial LDIRs), and C > 0.
     ;; ------------------------------------------------------------------------
 
     xor  a, a
@@ -295,16 +295,21 @@ s_header_set_state:
     ;; ------------------------------------------------------------------------
     ;; Set up DE and HL for a single 48k chunk, to be loaded at 0x4000. For a
     ;; version 2+ snapshot these values will be superseded in s_chunk_header
-    ;; and s_chunk_header3.
+    ;; and s_chunk_header3, so a version 1 snapshot is assumed here.
     ;; ------------------------------------------------------------------------
 
     ld   de, #0x4000
 
+    ;; ------------------------------------------------------------------------
     ;; Ensure HL is at least 0xC000, so all bytes in the chunk are loaded.
     ;; A larger value is OK, since the context switch will take over after 48k
     ;; have been loaded anyway.
+    ;;
+    ;; This only matters for a version 1 snapshot, and C is then
+    ;; (0x0100 - Z80_HEADER_OFFSET_EXT_LENGTH) = 0xe2.
+    ;; ------------------------------------------------------------------------
 
-    ld   h, #0xC0
+    ld   h, c       ;; HL := 0xE2xx
 
     ret
 
@@ -551,8 +556,8 @@ s_chunk_header3_set_comp_mode:
 ;; ############################################################################
 
 set_compression_state:
-    SWITCH_STATE  s_header  s_chunk_write_data_compressed
-    ;; ld    ix, #s_chunk_write_data_compressed
+    ;; SWITCH_STATE  s_header  s_chunk_write_data_compressed
+    ld    ix, #s_chunk_write_data_compressed
     ret   nz
 
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
