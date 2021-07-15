@@ -847,8 +847,10 @@ progress_128:
     call  a_div_b
     ld    a, c
 
-    or    a, a
-    ret   z
+    ;; ------------------------------------------------------------------------
+    ;; assume A != 0 here
+    ;; (update_progress is never called for the 0K initial state)
+    ;; ------------------------------------------------------------------------
 
     ld    hl, #PROGRESS_BAR_BASE-1
     add   a, l
