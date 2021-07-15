@@ -284,7 +284,7 @@ s_header_set_state:
     ;;   C := 0 - C   and
     ;;   B := 1.
     ;;
-    ;; B is currently 0 (after initial LDIR above).
+    ;; B is currently 0 (after initial LDIRs). 0 < C < 0x0100.
     ;; ------------------------------------------------------------------------
 
     xor  a, a
@@ -293,11 +293,18 @@ s_header_set_state:
     inc  b          ;; B is now 1
 
     ;; ------------------------------------------------------------------------
-    ;; Set up DE for a single 48k chunk, to be loaded at 0x4000. For a version
-    ;; 2+ snapshot this address will be superseded in s_chunk_header3.
+    ;; Set up DE and HL for a single 48k chunk, to be loaded at 0x4000. For a
+    ;; version 2+ snapshot these values will be superseded in s_chunk_header
+    ;; and s_chunk_header3.
     ;; ------------------------------------------------------------------------
 
     ld   de, #0x4000
+
+    ;; Ensure HL is at least 0xC000, so all bytes in the chunk are loaded.
+    ;; A larger value is OK, since the context switch will take over after 48k
+    ;; have been loaded anyway.
+
+    ld   h, #0xC0
 
     ret
 
@@ -378,12 +385,6 @@ s_header:
     ;; COMPRESSED flag clear =>  Z == 1  =>  s_chunk_write_data_uncompressed
 
     call set_compression_state
-
-    ;; Ensure HL is at least 0xC000, so all bytes in the chunk are loaded.
-    ;; A larger value is OK, since the context switch will take over after 48k
-    ;; have been loaded anyway.
-
-    ld   h, #0xC0
 
     jr   s_header_set_state
 
