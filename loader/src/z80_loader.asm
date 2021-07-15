@@ -701,9 +701,19 @@ chunk_escape:
 
 s_chunk_compressed_escape:
 
+    ;; -----------------------------------------------------------------------
+    ;; One escape byte has been loaded; check the next one.
+    ;; If that byte is also an escape byte, handle the ED ED compression
+    ;; sequence. If not, write the two bytes (ED + x) to RAM and
+    ;; continue in state s_chunk_write_data_compressed.
+    ;; -----------------------------------------------------------------------
+
     call  load_byte_from_chunk
 
-    ;; tentative next state
+    ;; -----------------------------------------------------------------------
+    ;; next state also Z80_ESCAPE (0xED) ?
+    ;; tentatively select s_chunk_repcount as next state
+    ;; -----------------------------------------------------------------------
 
     SWITCH_STATE  s_chunk_compressed_escape  s_chunk_repcount
     ;; ld    ix, #s_chunk_repcount
@@ -711,10 +721,10 @@ s_chunk_compressed_escape:
     cp    a, #Z80_ESCAPE
     ret   z
 
-    ;;
+    ;; -----------------------------------------------------------------------
     ;; False alarm: the escape byte was followed by a non-escape byte,
     ;;              so this is not an escape sequence
-    ;;
+    ;; -----------------------------------------------------------------------
 
     ex    af, af'
 
@@ -820,9 +830,7 @@ update_progress:
     ;; ========================================================================
 
     cp    a, (hl)
-    jp    z, perform_context_switch    ;; FIXME JR
-
-    add   a, a                         ;; sets carry if this is a 128k snapshot
+    jp    z, perform_context_switch    ;; FIXME: could this be a JR instead?
 
     ;; ------------------------------------------------------------------------
     ;; Scale loaded number of kilobytes to a value 0..32.
@@ -833,8 +841,10 @@ update_progress:
     ;; ensure the progress bar reaches its maximum before the context switch
     ;; ------------------------------------------------------------------------
 
+    add   a, a                         ;; sets carry if this is a 128k snapshot
+
     ld    a, (hl)                      ;; kilobytes_loaded
-    inc   a                            ;; see above
+    inc   a                            ;; 'k + 1', see above
 
     ld    b, #4
 
