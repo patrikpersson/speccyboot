@@ -618,13 +618,11 @@ udp_create:
     ldir
 
     ;; ----------------------------------------------------------------------
-    ;; compute checksum of IP header; clear UDP checksum while HL == 0
+    ;; compute checksum of IP header
     ;; ----------------------------------------------------------------------
 
     ld     h, b   ;; BC==0 here after LDIR above
     ld     l, c
-
-    ld     (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_CHECKSUM), hl
 
     ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
     ld     de, #_header_template
@@ -648,7 +646,8 @@ udp_create:
     call   eth_create
 
     ;; ----------------------------------------------------------------------
-    ;; write IPv4 + UDP headers
+    ;; Write IPv4 + UDP headers. The UDP checksum remains zero here,
+    ;; so the UDP checksum is not used in outgoing packets.
     ;; ----------------------------------------------------------------------
 
     ld     e, #IPV4_HEADER_SIZE + UDP_HEADER_SIZE
@@ -1286,7 +1285,7 @@ add_and_verify_checksum:
 ;; if not OK: pop return address and return to next caller
 ;;            (that is, return from ip_receive)
 ;; Must NOT have anything else on stack when this is called.
-;; Destroys AF, HL if OK; more if not.
+;; Destroys AF, HL. Returns with A==0, H==L==0xff and Z set on success.
 ;; -----------------------------------------------------------------------
 
 ip_receive_check_checksum:
