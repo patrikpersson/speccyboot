@@ -813,14 +813,27 @@ update_progress:
     ld    a, (hl)                      ;; load kilobytes_expected
     dec   hl                           ;; now points to kilobytes_loaded
     inc   (hl)                         ;; increase kilobytes_loaded
+
+    ;; ========================================================================
+    ;; if all data has been loaded, perform the context switch
+    ;; ========================================================================
+
+    cp    a, (hl)
+    jp    z, perform_context_switch    ;; FIXME JR
+
     add   a, a                         ;; sets carry if this is a 128k snapshot
-    ld    a, (hl)                      ;; kilobytes_loaded
 
     ;; ------------------------------------------------------------------------
     ;; Scale loaded number of kilobytes to a value 0..32.
-    ;; 48k snapshots:   * 2 / 3
-    ;; 128k snapshots:  * 1 / 4 
+    ;; 48k snapshots:   (k + 1) * 2 / 3
+    ;; 128k snapshots:  (k + 1) * 1 / 4
+    ;;
+    ;; the 'k + 1' addition rounds the progress value up a bit, so as to
+    ;; ensure the progress bar reaches its maximum before the context switch 
     ;; ------------------------------------------------------------------------
+
+    ld    a, (hl)                      ;; kilobytes_loaded
+    inc   a                            ;; see above
 
     ld    b, #4
 
@@ -835,24 +848,12 @@ progress_128:
     ld    a, c
 
     or    a, a
-    jr    z, no_progress_bar
+    ret   z
 
-    ld    bc, #PROGRESS_BAR_BASE-1
-    add   a, c
-    ld    c, a
-    ld    a, #(GREEN + (GREEN << 3))
-    ld    (bc), a
-
-    ;; ========================================================================
-    ;; if all data has been loaded, perform the context switch
-    ;; ========================================================================
-
-    ld    a, (hl)                      ;; kilobytes_loaded
-    inc   hl
-    cp    a, (hl)                      ;; kilobytes_expected
-    jr    z, perform_context_switch
-
-no_progress_bar:
+    ld    hl, #PROGRESS_BAR_BASE-1
+    add   a, l
+    ld    l, a
+    ld    (hl), #(GREEN + (GREEN << 3))
 
     exx
 
