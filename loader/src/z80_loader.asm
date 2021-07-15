@@ -845,15 +845,15 @@ update_progress:
 progress_128:
 
     call  a_div_b
-    ld    a, c
 
     ;; ------------------------------------------------------------------------
-    ;; assume A != 0 here
+    ;; assume C != 0 here
     ;; (update_progress is never called for the 0K initial state)
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #PROGRESS_BAR_BASE-1
-    add   a, l
+    ld    h, #>(PROGRESS_BAR_BASE-1)
+    ld    a, #<(PROGRESS_BAR_BASE-1)
+    add   a, c
     ld    l, a
     ld    (hl), #(GREEN + (GREEN << 3))
 
