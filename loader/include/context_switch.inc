@@ -206,34 +206,33 @@ REG_R_ADJUSTMENT                 = 0xF8
     ;; below.)
     ;; ========================================================================
 
-    ld   hl, #EVACUATION_TEMP_BUFFER        ;; points to attribute data
-    ld   b, #5
+    ld   de, #EVACUATION_TEMP_BUFFER + 5            ;; points to attribute data
 clear_cells_loop:
-    ld   a, (hl)
+    ld   a, (de)
     rra
     rra
     rra
     and  a, #7
     ld   c, a
-    ld   a, (hl)
+    ld   a, (de)
     and  a, #0xf8
     or   a, c
-    ld   (hl), a
-    inc  hl
-    djnz clear_cells_loop
+    dec  e
+    ld   (de), a
+    jr   nz, clear_cells_loop
 
     ;; ------------------------------------------------------------------------
     ;; write trampoline to VRAM
     ;; ------------------------------------------------------------------------
 
     ld   hl, #trampoline_data
-    ld   d, #0x3F
+    ld   d, #0x3F                 ;; E==0 here
 
 create_trampoline_loop:
     inc  d
-    ld   e, b        ;; B==0 since DJNZ or LDIR, so start of next scanline
-    ld   c, #5
+    ld   bc, #5
     ldir
+    ld   e, b        ;; B==0 since LDIR, so start of next scanline
     bit  1, d        ;; up to and including 0x42
     jr   z, create_trampoline_loop
 
