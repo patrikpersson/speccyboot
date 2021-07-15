@@ -228,22 +228,21 @@ clear_cells_loop:
 
     ld   hl, #trampoline_data
     ld   d, #0x3F
-    ld   a, #3
 
 create_trampoline_loop:
     inc  d
     ld   e, b        ;; B==0 since DJNZ or LDIR, so start of next scanline
     ld   c, #5
     ldir
-    dec  a
-    jr   nz, create_trampoline_loop
+    bit  1, d        ;; up to and including 0x42
+    jr   z, create_trampoline_loop
 
     ;; ------------------------------------------------------------------------
     ;; if IFF1 is 0 in snapshot, replace EI with NOP
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_IFF1
-    or   a, (hl)                         ;; A is zero after JR NZ above
+    ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
+    or   a, a
     jr   nz, evacuate_iff1_set
     ld   (VRAM_TRAMPOLINE_EI_OR_NOP), a  ;; and can be used as a NOP
 
@@ -253,9 +252,7 @@ evacuate_iff1_set:
     ;; write register state to VRAM trampoline area
     ;; ------------------------------------------------------------------------
 
-    ld   l, #<stored_snapshot_header + Z80_HEADER_OFFSET_R
-
-    ;; now L holds low 7 bits of R, and bit 0 of H holds bit 7 of R
+    ld   hl, #stored_snapshot_header + Z80_HEADER_OFFSET_R
 
     ld   a, (hl)
     add  a, #REG_R_ADJUSTMENT
