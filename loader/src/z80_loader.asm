@@ -829,7 +829,7 @@ update_progress:
     ;; 128k snapshots:  (k + 1) * 1 / 4
     ;;
     ;; the 'k + 1' addition rounds the progress value up a bit, so as to
-    ;; ensure the progress bar reaches its maximum before the context switch 
+    ;; ensure the progress bar reaches its maximum before the context switch
     ;; ------------------------------------------------------------------------
 
     ld    a, (hl)                      ;; kilobytes_loaded
@@ -845,17 +845,16 @@ update_progress:
 progress_128:
 
     call  a_div_b
-
-    ;; ------------------------------------------------------------------------
-    ;; assume C != 0 here
-    ;; (update_progress is never called for the 0K initial state)
-    ;; ------------------------------------------------------------------------
+    ld    a, c
+    or    a, a
+    jr    z, no_progress_bar
 
     ld    h, #>(PROGRESS_BAR_BASE-1)
-    ld    a, #<(PROGRESS_BAR_BASE-1)
-    add   a, c
+    add   a, #<(PROGRESS_BAR_BASE-1)
     ld    l, a
     ld    (hl), #(GREEN + (GREEN << 3))
+
+no_progress_bar:
 
     exx
 
@@ -873,13 +872,12 @@ progress_128:
 
     ;; ------------------------------------------------------------------------
     ;; use flag 'is_context_switch_set_up' to only set up context switch once,
-    ;; first time this address is reached
+    ;; first time this address is reached; return silently the second time
     ;; ------------------------------------------------------------------------
 
     ld    a, (is_context_switch_set_up)
-    or    a, a
-    ret   nz
-    cpl
+    xor   a, d             ;; becomes non-zero first time, and zero second time
+    ret   z
     ld    (is_context_switch_set_up), a
 
     ;; ------------------------------------------------------------------------
