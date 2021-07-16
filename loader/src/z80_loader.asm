@@ -383,8 +383,8 @@ s_header:
     ;; Decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS
-    bit  5, (hl)    ;; COMPRESSED flag set?
+    ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
+    and  a, #0x20       ;; COMPRESSED flag set?
 
     ;; COMPRESSED flag set   =>  Z == 0  =>  s_chunk_write_data_compressed
     ;; COMPRESSED flag clear =>  Z == 1  =>  s_chunk_write_data_uncompressed
