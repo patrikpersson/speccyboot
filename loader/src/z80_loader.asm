@@ -493,7 +493,7 @@ s_chunk_header3:
     ;; (other pages not expected in 48 snapshots; page 5 handled above)
     ;; -----------------------------------------------------------------------
 
-                    ;; A == 1    A == 2
+                    ;; bank 1    bank 2
     inc  a          ;; 0x02      0x03
     rrca            ;; 0x01      0x81
     rrca            ;; 0x80      0xc0
