@@ -475,37 +475,37 @@ s_chunk_header3:
     ;; Remaining handling is done differently for 48k and 128 snapshots.
     ;; -----------------------------------------------------------------------
 
-    ld   d, #0xc0
-    ld   e, a              ;; save page ID (0..7)
-
+    ld   d, a
     ld   a, (kilobytes_expected)
-    add  a, a
+    add  a, a                            ;; set carry flag for a 128k snapshot
+    ld   a, d
+
+    ld   d, #0xc0
 
     jr   c, s_chunk_header3_128k_banking
 
     ;; -----------------------------------------------------------------------
     ;; This is a 48k snapshot:
     ;; 
-    ;;   E == 1  means bank 1, to be mapped to 0x8000
-    ;;   E == 2  means bank 2, to be mapped to 0xC000
+    ;;   A == 1  means bank 1, to be mapped to 0x8000
+    ;;   A == 2  means bank 2, to be mapped to 0xC000
     ;;
     ;; (other pages not expected in 48 snapshots; page 5 handled above)
     ;; -----------------------------------------------------------------------
 
-    dec  e                                      ;; was this page 1?
-    jr   nz, s_chunk_header3_set_comp_mode      ;; then 0xC000 is fine
-
-    ld   d, #0x80
+                    ;; A == 1    A == 2
+    inc  a          ;; 0x02      0x03
+    rrca            ;; 0x01      0x81
+    rrca            ;; 0x80      0xc0
+    ld   d, a
 
     ;; -----------------------------------------------------------------------
     ;; FALL THROUGH to 128k memory configuration here:
     ;;
-    ;; E==0, so page 0 will be paged in at 0xC000 (which is the same page
-    ;; selected in init.asm and in context switch). Shouldn't matter much
-    ;; anyway, since DE will now be 0x8000, and the 0xC000..0xFFFF addresses
-    ;; shouldn't be touched.
-    ;;
-    ;; The memory configuration will be updated in the context switch anyway.
+    ;; At this point, A==0x80 or 0xc0, but bits 6..7 are not used in the
+    ;; 128k paging register. Lower bits are zero, so page 0 will be paged in
+    ;; at 0xC000 (which is the same page selected in init.asm and in 48k
+    ;; context switch).
     ;; -----------------------------------------------------------------------
 
 s_chunk_header3_128k_banking:
@@ -517,14 +517,12 @@ s_chunk_header3_128k_banking:
     ;; https://worldofspectrum.org/faq/reference/128kreference.htm
     ;; -----------------------------------------------------------------------
 
-    push bc
+    exx
     ld   bc, #MEMCFG_ADDR
-    out  (c), e
-    pop  bc
+    out  (c), a
+    exx
 
 s_chunk_header3_set_comp_mode:
-
-    ld   e, #0
 
     ;; -----------------------------------------------------------------------
     ;; https://worldofspectrum.org/faq/reference/z80format.htm :
@@ -552,7 +550,7 @@ s_chunk_header3_set_comp_mode:
 ;; is selected, HL (bytes left in chunk) is set to 0x4000.
 ;;
 ;; Z == 0: s_chunk_write_data_compressed
-;; Z == 1: s_chunk_write_data_uncompressed
+;; Z == 1: s_chunk_write_data_uncompressed, HL := 0x4000
 ;; ############################################################################
 
 set_compression_state:
