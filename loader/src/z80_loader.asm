@@ -729,7 +729,6 @@ s_chunk_compressed_escape:
     ;; -----------------------------------------------------------------------
 
     SWITCH_STATE  s_chunk_compressed_escape  s_chunk_repcount
-    ;; ld    ix, #s_chunk_repcount
 
     cp    a, #Z80_ESCAPE
     ret   z
@@ -742,22 +741,23 @@ s_chunk_compressed_escape:
     ex    af, af'           ;; store the non-escape, non-ED byte
 
     ;; -----------------------------------------------------------------------
-    ;; store the (non-escape) ED byte
+    ;; store the (non-escape) ED byte, switch state
     ;; -----------------------------------------------------------------------
 
     ld    a, #Z80_ESCAPE
-    ld    (de), a
-    inc   de
 
-    ;; -----------------------------------------------------------------------
-    ;; check if DE is an integral number of kilobytes
-    ;; -----------------------------------------------------------------------
+    SWITCH_STATE  s_chunk_repcount  s_chunk_compressed_escape_false
 
-    ld    a, d
-    and   a, #0x03
-    or    a, e
-    jr    z, update_progress
+    jr    store_byte
 
+;; ############################################################################
+;; state CHUNK_COMPRESSED_ESCAPE_FALSE
+;;
+;; invoked when an ED byte was followed by something else than ED
+;; (in other words, a false escape sequence)
+;; ############################################################################
+
+s_chunk_compressed_escape_false:
     ex    af, af'           ;; recall the non-escape, non-ED byte
 
     jr    switch_to_compressed_state_and_store_byte
