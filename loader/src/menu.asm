@@ -92,52 +92,6 @@ get_filename_pointer:
     pop   bc
     ret
 
-;; ############################################################################
-;; print_str
-;;
-;; Prints a string, terminated by '.' (that is, _not_ NUL).
-;;
-;; The string is truncated to the end of the line, and padded with spaces.
-;;
-;; HL points to the string to print
-;; DE points to VRAM location
-;; destroys AF and HL; preserves BC.
-;; DE will point to the first character cell on the following line.
-;; ############################################################################
-
-    .area _CODE
-
-print_str:
-
-    ld   a, (hl)
-    cp   a, #'.'
-    jr   nz, no_padding
-    ld   a, #' '
-    .db  JR_NZ          ;; Z is set here, so this will skip the INC HL below
-
-no_padding:
-
-    inc  hl
-
-    call print_char
-
-    jr   nz, no_end_of_segment
-
-    ;; E became zero: means we reached the end of one of the 2K VRAM segments,
-    ;; skip to the next one
-
-    ld   a, d
-    add  a, #8
-    ld   d, a
-
-no_end_of_segment:
-
-    ld   a, e
-    and  a, #0x1f
-    jr   nz, print_str
-
-    ret
-
 ;; ============================================================================
 
     .area _STAGE2_ENTRY
