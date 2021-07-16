@@ -622,16 +622,10 @@ s_chunk_repvalue:
 s_repetition:
 
     ;; -------------------------------------------------------------------------
-    ;; Check the repetition count. This is zero when no repetition is active.
+    ;; check the repetition count, set Z flag if this is the last byte
     ;; -------------------------------------------------------------------------
 
-    ld   a, i                    ;; LD A, I updates Z flag!
-    jr   z, repetition_ended
-
-    ;; -------------------------------------------------------------------------
-    ;; a non-zero number of repetitions remain: decrease repetition count
-    ;; -------------------------------------------------------------------------
-
+    ld   a, i
     dec  a
     ld   i, a
 
@@ -642,13 +636,16 @@ s_repetition:
 
     ld   a, -1(iy)
 
-    jr   store_byte
+    jr   nz, store_byte
 
-repetition_ended:
+    ;; -------------------------------------------------------------------------
+    ;; this is the last byte in the sequence:
+    ;; return to s_chunk_write_data_compressed when the byte has been written
+    ;; -------------------------------------------------------------------------
 
     SWITCH_STATE  s_repetition  s_chunk_write_data_compressed
 
-    ;; FALL THROUGH to s_chunk_write_data_compressed
+    jr   store_byte
 
 
 ;; ############################################################################
