@@ -119,9 +119,6 @@ no_padding:
 
     inc  hl
 
-    or   a, a
-    ret  z
-
     call print_char
 
     jr   nz, no_end_of_segment
@@ -394,7 +391,7 @@ menu_hit_enter:
 title_str:
     .ascii "SpeccyBoot "
     .db   VERSION_STAGE1 + '0'
-    .db   0
+    .db   '.'                          ;; string terminator
 
 
     .area _NONRESIDENT
