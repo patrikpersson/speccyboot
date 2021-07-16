@@ -282,18 +282,20 @@ s_header_set_state:
 
     ;; ------------------------------------------------------------------------
     ;; Safely assume that the TFTP packet is 0x200 bytes in length, as the RFC
-    ;; guarantees this for all packets but the last one.
+    ;; guarantees this for all packets but the last one. And the first packet
+    ;; cannot be the last, as 48k in maximal compression would require
+    ;; 5 * (49152 / 255) == 964 bytes.
     ;;
     ;; Set up BC as (0x0200 - C), that is,
     ;;
     ;;   C := 0 - C   and
     ;;   B := 1.
     ;;
-    ;; B is currently 0 (after initial LDIRs), and C > 0.
+    ;; B is currently 0 (after initial LDIRs), and 0 < C <= 0x57.
     ;; ------------------------------------------------------------------------
 
     xor  a, a
-    sub  a, c       ;; no carry expected, as C is at most 54 (0x36)
+    sub  a, c       ;; no carry expected, as C is at most 87 (0x57)
     ld   c, a
     inc  b          ;; B is now 1
 
