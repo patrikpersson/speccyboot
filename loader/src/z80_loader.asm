@@ -246,7 +246,12 @@ s_header_not_128k:
     ;; ------------------------------------------------------------------------
     ;; adjust header length, keep in BC
     ;;
-    ;; A byte addition is sufficient, as the sum will always be <= 0xF2
+    ;; A byte addition is sufficient, as the sum will always be
+    ;; <= (Z80_HEADER_OFFSET_EXT_LENGTH + 2 + 55)
+    ;; <= 0x57
+    ;;
+    ;; see  https://worldofspectrum.org/faq/reference/z80format.htm  about
+    ;; possible values for the header length here
     ;; ------------------------------------------------------------------------
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
