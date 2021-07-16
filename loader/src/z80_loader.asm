@@ -657,6 +657,8 @@ s_repetition:
     ;; return to s_chunk_write_data_compressed when the byte has been written
     ;; -------------------------------------------------------------------------
 
+switch_to_compressed_state_and_store_byte:
+
     SWITCH_STATE  s_repetition  s_chunk_write_data_compressed
 
     jr   store_byte
@@ -737,41 +739,28 @@ s_chunk_compressed_escape:
     ;;              so this is not an escape sequence
     ;; -----------------------------------------------------------------------
 
-    ex    af, af'
+    ex    af, af'           ;; store the non-escape, non-ED byte
+
+    ;; -----------------------------------------------------------------------
+    ;; store the (non-escape) ED byte
+    ;; -----------------------------------------------------------------------
 
     ld    a, #Z80_ESCAPE
-
-    call  store_byte_and_update_progress
-
-    ex    af, af'
-
-    SWITCH_STATE  s_chunk_repcount  s_chunk_write_data_compressed
-    ;; ld    ix, #s_chunk_write_data_compressed
-
-    ;; FALL THROUGH to store_byte_and_update_progress
-
-
-;; ############################################################################
-;; store_byte_and_update_progress
-;;
-;; Store byte A in *(DE++). If the number of bytes loaded reached an even
-;; kilobyte, continue with update_progress.
-;; ############################################################################
-
-store_byte_and_update_progress:
-
     ld    (de), a
     inc   de
 
-    ;; check if DE is an integral number of kilobytes,
-    ;; return early otherwise
+    ;; -----------------------------------------------------------------------
+    ;; check if DE is an integral number of kilobytes
+    ;; -----------------------------------------------------------------------
 
     ld    a, d
     and   a, #0x03
     or    a, e
-    ret   nz
+    jr    z, update_progress
 
-    ;; FALL THROUGH to update_progress
+    ex    af, af'           ;; recall the non-escape, non-ED byte
+
+    jr    switch_to_compressed_state_and_store_byte
 
 
 ;; ############################################################################
