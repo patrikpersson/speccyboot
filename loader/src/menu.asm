@@ -105,7 +105,7 @@ get_filename_pointer:
 ;; DE will point to the first character cell on the following line.
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 print_str:
 
