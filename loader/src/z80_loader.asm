@@ -144,9 +144,10 @@ is_context_switch_set_up:
 ;; ############################################################################
 ;; check_limits_and_load_byte
 ;;
-;; Checks whether the current chunk or the loaded TFTP data have been consumed.
-;; If they have, returns with Z flag set (and possibly state changed).
-;; If they have not, reads another byte into A, and returns with Z cleared.
+;; Checks whether the current chunk or the loaded TFTP packet has been
+;; fully consumed.
+;; If it has, return with Z flag set (and possibly state changed).
+;; If it has not, read another byte into A, and return with Z cleared.
 ;; ############################################################################
 
     .area _CODE
@@ -159,7 +160,14 @@ chunk_done:
 
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_header
     ;; ld   ix, #s_chunk_header
-    ret
+
+  ;; -------------------------------------------------------------------------
+  ;; Helper: leave current state and return to state loop
+  ;; -------------------------------------------------------------------------
+
+chunk_return_from_state:
+    pop  af                  ;; pop return address (s_xxx)
+    ret                      ;; return to state loop
 
 check_limits_and_load_byte:
 
@@ -177,7 +185,7 @@ check_limits_and_load_byte:
 
   ld   a, b
   or   a, c
-  ret  z
+  jr   z, chunk_return_from_state
 
   ;; FALL THROUGH to load_byte_from_chunk
 
@@ -579,7 +587,6 @@ set_compression_state:
 s_chunk_write_data_uncompressed:
 
     call check_limits_and_load_byte
-    ret  z
 
     jr   store_byte
 
@@ -592,13 +599,13 @@ s_chunk_write_data_uncompressed:
 
 s_chunk_repcount:
 
-    call load_byte_from_chunk
+    call check_limits_and_load_byte
     ld   i, a
 
     SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
     ;; ld   ix, #s_chunk_repvalue
 
-    ret
+    ;; FALL THROUGH to s_chunk_repvalue
 
 
 ;; ############################################################################
@@ -609,7 +616,7 @@ s_chunk_repcount:
 
 s_chunk_repvalue:
 
-    call load_byte_from_chunk
+    call check_limits_and_load_byte
 
     ;; -------------------------------------------------------------------------
     ;; the loaded byte does not need to be stored here:
@@ -662,7 +669,6 @@ s_repetition:
 s_chunk_write_data_compressed:
 
     call check_limits_and_load_byte
-    ret  z
 
     ;; -------------------------------------------------------------------------
     ;; check for the escape byte of a repetition sequence
@@ -697,14 +703,12 @@ chunk_escape:
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
     ;; ld   ix, #s_chunk_compressed_escape
 
-    ret
+    ;; FALL THROUGH to s_chunk_compressed_escape
 
 
 ;; ############################################################################
 ;; state CHUNK_COMPRESSED_ESCAPE
 ;; ############################################################################
-
-    .area _Z80_LOADER_STATES
 
 s_chunk_compressed_escape:
 
@@ -715,7 +719,7 @@ s_chunk_compressed_escape:
     ;; continue in state s_chunk_write_data_compressed.
     ;; -----------------------------------------------------------------------
 
-    call  load_byte_from_chunk
+    call  check_limits_and_load_byte
 
     ;; -----------------------------------------------------------------------
     ;; next state also Z80_ESCAPE (0xED) ?
