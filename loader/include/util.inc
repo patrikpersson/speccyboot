@@ -226,18 +226,3 @@ WARNING_CHECKSUM_FAILED   = CYAN
 ;; ----------------------------------------------------------------------------
 
     .globl show_attr_digit_right
-
-;; ----------------------------------------------------------------------------
-;; print_str
-;;
-;; Prints a string, terminated by '.' (that is, _not_ NUL).
-;;
-;; The string is truncated to the end of the line, and padded with spaces.
-;;
-;; HL points to the string to print
-;; DE points to VRAM location
-;; destroys AF and HL; preserves BC.
-;; DE will point to the first character cell on the following line.
-;; ----------------------------------------------------------------------------
-
-    .globl print_str
