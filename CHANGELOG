@@ -1,16 +1,16 @@
-SpeccyBoot 3 (July X, 2021):
+SpeccyBoot 3 (July 17, 2021):
 
 * Optimized footprint further: all code except the menu application
   now fits in 2K ROM; no code in RAM is necessary for loading snapshots.
 * Faster SPI stack (~60kbit/s).
-* Snapshots (*.z80) are loaded directly, without user intervention,
+* Snapshots (*.z80) can be loaded directly, without user intervention,
   if the BOOTP 'file' field is set to a suitable snapshot file name.
 
 -------------------------------------------------------------------------------
 
 v2.0 (May 20, 2021):
 
-* Major refactoring to squeeze SpeccyBoot into a 2K (E(E)P)ROM/FRAM.
+* Major refactoring to squeeze SpeccyBoot into a 2K ROM.
 * Replaced DHCP with BOOTP.
 * Rewritten entirely in Z80 assembly language.
 
