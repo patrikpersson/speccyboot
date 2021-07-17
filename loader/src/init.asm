@@ -274,6 +274,15 @@ eth_broadcast_address:
   ;; ==========================================================================
 
 init_continued:
+  
+  ;; --------------------------------------------------------------------------
+  ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
+  ;; This sequence differs between SpeccyBoot and DGBoot, but preserves HL
+  ;; in both cases. It is executed after the LDIR above to ensure that
+  ;; the 128k reset logic settles first.
+  ;; --------------------------------------------------------------------------
+
+  platform_init
 
   ;; --------------------------------------------------------------------------
   ;; Copy trampoline to RAM. Far more than the trampoline is copied, since
@@ -295,15 +304,6 @@ init_continued:
   push  de
   ld    bc, #0x847f
   ldir
-  
-  ;; --------------------------------------------------------------------------
-  ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
-  ;; This sequence differs between SpeccyBoot and DGBoot, but preserves HL
-  ;; in both cases. It is executed after the LDIR above to ensure that
-  ;; the 128k reset logic settles first.
-  ;; --------------------------------------------------------------------------
-
-  platform_init
 
   ret   ;; jump to _stack_top
 
