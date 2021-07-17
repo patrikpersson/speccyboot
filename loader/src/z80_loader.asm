@@ -717,8 +717,8 @@ s_chunk_compressed_escape:
     ;; -----------------------------------------------------------------------
     ;; One escape byte has been loaded; check the next one.
     ;; If that byte is also an escape byte, handle the ED ED compression
-    ;; sequence. If not, write the two bytes (ED + x) to RAM and
-    ;; continue in state s_chunk_write_data_compressed.
+    ;; sequence. If not, write the initial (misleading) ED byte to RAM
+    ;; and continue in state s_chunk_compressed_escape_false.
     ;; -----------------------------------------------------------------------
 
     call  check_limits_and_load_byte
