@@ -65,6 +65,8 @@ REPEAT_NEXT_TIMEOUT  = 10
 rom_key_scan         = 0x028E
 rom_keymap           = 0x0205
 
+KEYCODE_CAPS         = 0x27
+
 ;; opcode for runtime patching
 
 CP_A_N               = 0xfe
@@ -536,13 +538,17 @@ scan_key:
     ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT   ;; page out SpeccyBoot
     out   (SPI_OUT), a
     call  rom_key_scan                   ;; destroys AF, BC, DE, HL
-    ld    hl, #rom_keymap
     ld    a, e
-    add   a, l
+    cp    a, #KEYCODE_CAPS
+    jr    z, scan_key_no_key
+    inc   a                              ;; the no-key?
+    jr    z, scan_key_no_key
+    ld    hl, #rom_keymap - 1            ;; -1 because of INC A
+    add   a, l                           ;; will not set Z flag
     ld    l, a
     ld    c, (hl)
     ld    a, #SPI_IDLE+SPI_CS            ;; page in SpeccyBoot
     out   (SPI_OUT), a
-    inc   e                              ;; set Z flag if no key pressed
+scan_key_no_key:
     ei
     ret
