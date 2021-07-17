@@ -153,7 +153,6 @@ no_carry_in_tftp_length:
     ;; HL: number of bytes remaining in current chunk
     ;; IX: current state
     ;; IY: read pointer (TFTP packet data)
-    ;; I:  number of ED ED repetitions remaining (set in z80_loader)
     ;; ------------------------------------------------------------------------
 
     ld   hl, (_chunk_bytes_remaining)

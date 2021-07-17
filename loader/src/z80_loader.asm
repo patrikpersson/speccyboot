@@ -68,6 +68,13 @@ _digits:
 is_context_switch_set_up:
     .ds   1
 
+;; ----------------------------------------------------------------------------
+;; number of ED ED repetitions currently remaining
+;; ----------------------------------------------------------------------------
+
+repetition_count:
+    .ds   1
+
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -600,7 +607,7 @@ s_chunk_write_data_uncompressed:
 s_chunk_repcount:
 
     call check_limits_and_load_byte
-    ld   i, a
+    ld   (repetition_count), a
 
     SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
     ;; ld   ix, #s_chunk_repvalue
@@ -639,9 +646,9 @@ s_repetition:
     ;; check the repetition count, set Z flag if this is the last byte
     ;; -------------------------------------------------------------------------
 
-    ld   a, i
+    ld   a, (repetition_count)
     dec  a
-    ld   i, a
+    ld   (repetition_count), a
 
     ;; -------------------------------------------------------------------------
     ;; the byte to repeat is always the most recently loaded one, as this state
