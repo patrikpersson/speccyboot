@@ -276,14 +276,6 @@ eth_broadcast_address:
 init_continued:
 
   ;; --------------------------------------------------------------------------
-  ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
-  ;; This sequence differs between SpeccyBoot and DGBoot, but preserves HL
-  ;; in both cases.
-  ;; --------------------------------------------------------------------------
-
-  platform_init
-
-  ;; --------------------------------------------------------------------------
   ;; Copy trampoline to RAM. Far more than the trampoline is copied, since
   ;; this routine has an important side-effect: it provides a delay > 200ms
   ;; @3.5469MHz, for 128k reset logic to settle.
@@ -304,6 +296,15 @@ init_continued:
   ld    bc, #0x847f
   ldir
   
+  ;; --------------------------------------------------------------------------
+  ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
+  ;; This sequence differs between SpeccyBoot and DGBoot, but preserves HL
+  ;; in both cases. It is executed after the LDIR above to ensure that
+  ;; the 128k reset logic settles first.
+  ;; --------------------------------------------------------------------------
+
+  platform_init
+
   ret   ;; jump to _stack_top
 
   ;; --------------------------------------------------------------------------
@@ -329,7 +330,7 @@ ram_trampoline:
 
   ld    h, #0x3d           ;; 0x3d00 == address of font data in ROM1; L is zero here
   ld    de, #_font_data    ;; address of font buffer in RAM
-  ld    b, #3              ;; BC is now 0x300  (BC was 0 after previous LDIR)
+  ld    bc, #0x0300
   ldir
 
   xor   a                  ;; page in SpeccyBoot ROM, keep ETH in reset
