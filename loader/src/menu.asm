@@ -453,7 +453,7 @@ wait_for_key:
     ;; ------------------------------------------------------------------------
 
     call scan_key
-    jr   z, wait_key_no_repetition
+    jr   nc, wait_key_no_repetition
 
     ;; ------------------------------------------------------------------------
     ;; is the previous key still being pressed?
@@ -477,7 +477,7 @@ wait_key_repetition_loop:
     halt                                ;; allow for an interrupt to occur
 
     call scan_key
-    jr   z, wait_key_no_repetition      ;; key released?
+    jr   nc, wait_key_no_repetition      ;; key released?
 
     ;; ------------------------------------------------------------------------
     ;; decide on a timeout, depending on whether this is the first repetition
@@ -506,7 +506,7 @@ wait_key_repeat:
 wait_key_no_repetition:
 
     call scan_key
-    jr   z, wait_key_no_repetition
+    jr   nc, wait_key_no_repetition
 
     ld   a, c
     ld   (previous_key), a
@@ -524,7 +524,7 @@ wait_key_finish:
 ;; scan_key
 ;;
 ;; Return currently pressed key, if any, in register C.
-;; Z flag is set if no key is pressed, cleared if any key is set.
+;; C flag is set if any key is pressed, cleared if none.
 ;;
 ;; Must run from RAM: pages in the BASIC ROM for keyboard scanning.
 ;;
@@ -539,16 +539,22 @@ scan_key:
     out   (SPI_OUT), a
     call  rom_key_scan                   ;; destroys AF, BC, DE, HL
     ld    a, e
+
+    ;; -----------------------------------------------------------------------
+    ;; treat CAPS the same as no-key,
+    ;; to ensure arrow keys are indeed read as arrows (and not CAPS)
+    ;; -----------------------------------------------------------------------
+
     cp    a, #KEYCODE_CAPS
-    jr    z, scan_key_no_key
-    inc   a                              ;; the no-key?
-    jr    z, scan_key_no_key
-    ld    hl, #rom_keymap - 1            ;; -1 because of INC A
-    add   a, l                           ;; will not set Z flag
+    jr    nc, scan_key_no_key            ;; the no-key, or CAPS?
+
+    ld    hl, #rom_keymap
+    add   a, l
+    scf                                  ;; indicate key set
     ld    l, a
     ld    c, (hl)
+scan_key_no_key:
     ld    a, #SPI_IDLE+SPI_CS            ;; page in SpeccyBoot
     out   (SPI_OUT), a
-scan_key_no_key:
     ei
     ret
