@@ -68,13 +68,6 @@ _digits:
 is_context_switch_set_up:
     .ds   1
 
-;; ----------------------------------------------------------------------------
-;; number of ED ED repetitions currently remaining
-;; ----------------------------------------------------------------------------
-
-repetition_count:
-    .ds   1
-
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -607,10 +600,14 @@ s_chunk_write_data_uncompressed:
 s_chunk_repcount:
 
     call check_limits_and_load_byte
-    ld   (repetition_count), a
+
+    ;; -------------------------------------------------------------------------
+    ;; store the repetition count in (DE), and read it back to A' in next state
+    ;; -------------------------------------------------------------------------
+
+    ld   (de), a
 
     SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
-    ;; ld   ix, #s_chunk_repvalue
 
     ;; FALL THROUGH to s_chunk_repvalue
 
@@ -631,7 +628,13 @@ s_chunk_repvalue:
     ;; -------------------------------------------------------------------------
 
     SWITCH_STATE  s_chunk_repvalue  s_repetition
-    ;; ld   ix, #s_repetition
+
+    ;; -------------------------------------------------------------------------
+    ;; recall the repetition count, store in A'
+    ;; -------------------------------------------------------------------------
+
+    ld   a, (de)
+    ex   af, af'
 
     ;; FALL THROUGH to s_repetition
 
@@ -643,26 +646,31 @@ s_chunk_repvalue:
 s_repetition:
 
     ;; -------------------------------------------------------------------------
-    ;; check the repetition count, set Z flag if this is the last byte
-    ;; -------------------------------------------------------------------------
-
-    ld   a, (repetition_count)
-    dec  a
-    ld   (repetition_count), a
-
-    ;; -------------------------------------------------------------------------
     ;; the byte to repeat is always the most recently loaded one, as this state
     ;; (s_repetition) does not involve any loading of data (only writing)
     ;; -------------------------------------------------------------------------
 
     ld   a, -1(iy)
 
-    jr   nz, store_byte
+    ;; -------------------------------------------------------------------------
+    ;; check the repetition count
+    ;; -------------------------------------------------------------------------
+
+    ex   af, af'
+    dec  a
+    jr   z, repetition_done
+    ex   af, af'
+
+    jr   store_byte
 
     ;; -------------------------------------------------------------------------
     ;; this is the last byte in the sequence:
     ;; return to s_chunk_write_data_compressed when the byte has been written
     ;; -------------------------------------------------------------------------
+
+repetition_done:
+
+    ex   af, af'
 
 switch_to_compressed_state_and_store_byte:
 
