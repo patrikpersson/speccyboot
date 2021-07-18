@@ -142,7 +142,7 @@ EPAUSL                = BANK3 | 0x18
 EPAUSH                = BANK3 | 0x19
 
 ;; Special register value address, not used by ENC28J60 (sentinel in table)
-ENC28J60_UNUSED_REG   = 0x1a
+ENC28J60_TABLE_END    = 0x22
 
 ;; ----------------------------------------------------------------------------
 ;; ENC28J60 PHY control registers  (datasheet table 3-3)

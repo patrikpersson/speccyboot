@@ -306,26 +306,15 @@ eth_init:
     ;; (minimal RST low time, shorter pulses are filtered out)
     ;;
     ;; 400ns < 2 T-states == 571ns    (no problem at all)
-    ;;
-    ;; Data sheet, #11.2:
-    ;;
-    ;; Wait at least 50us after a System Reset before accessing PHY registers.
-    ;; Perform an explicit delay here to be absolutely sure.
-    ;;
-    ;; 64 iterations x (4+12)=16 T-states = 1024 T-states > 288us @3.55MHz
-    ;;
     ;; ========================================================================
 
-    xor  a, a
+    xor  a, a                      ;; RST low
     out  (SPI_OUT), a
-    ld   a, #SPI_IDLE
+    ld   a, #SPI_IDLE              ;; RST high again
     out  (SPI_OUT), a
-00001$:
-    dec  a
-    jr   nz, 00001$
 
     ;; ------------------------------------------------------------------------
-    ;; poll ESTAT until ESTAT_CLKRDY is set
+    ;; poll ESTAT until ESTAT_CLKRDY is set                        (10+10+17+x)
     ;; ------------------------------------------------------------------------
 
     ld    de, #(ESTAT & REG_MASK) + (8 << 8)        ;; ESTAT is an ETH register
@@ -334,7 +323,7 @@ eth_init:
 
     ;; ------------------------------------------------------------------------
     ;; HL is 0x0101 (from poll_register above),
-    ;; and needs to be 0x0000 (ENC28J60_RXBUF_START)
+    ;; and needs to be 0x0000 (ENC28J60_RXBUF_START)                   (4+4+16)
     ;; ------------------------------------------------------------------------
 
     dec   h
@@ -342,10 +331,24 @@ eth_init:
     ld    (_next_frame), hl
 
     ;; ========================================================================
-    ;; set up initial register values for ENC28J60
+    ;; set up initial register values for ENC28J60                         (10)
     ;; ========================================================================
 
     ld    hl, #eth_register_defaults
+
+    ;; ------------------------------------------------------------------------
+    ;; Data sheet, #11.2:
+    ;;
+    ;; Wait at least 50us after a System Reset before accessing PHY registers.
+    ;;
+    ;; 50us == ~178 T-states @ 3.55MHz               (this is the minimum time)
+    ;;
+    ;; Each iteration is 7+7+5+6+4+8+8+7+6+11+4+4+4+7+4+x+4+12
+    ;;   == 108+x T-states   (where x is the execution time for the RST call).
+    ;;
+    ;; So as long as no PHY register is accessed in the first or second
+    ;; table entry, the condition above should hold.
+    ;; ------------------------------------------------------------------------
 
 eth_init_registers_loop:
 
@@ -399,8 +402,6 @@ eth_init_registers_loop:
     ;; really a bottleneck on the Spectrum.
     ;; ------------------------------------------------------------------------
 
-END_OF_TABLE = ENC28J60_UNUSED_REG   ;; sentinel value for config table below
-
 eth_register_defaults:
     .db   ERXSTL,   <ENC28J60_RXBUF_START
     .db   ERXSTH,   >ENC28J60_RXBUF_START
@@ -453,7 +454,12 @@ eth_register_defaults:
     .db   ECON2,    ECON2_AUTOINC
     .db   ECON1,    ECON1_RXEN
 
-    .db   END_OF_TABLE
+    ;; ------------------------------------------------------------------------
+    ;; NOTE: no explicit sentinel here. The table is terminated by the byte
+    ;; 0x22, which happens to be the first byte of eth_create below.
+    ;; ------------------------------------------------------------------------
+
+END_OF_TABLE = 0x22                                              ;; LD (nn), HL
 
 ;; ############################################################################
 ;; eth_create
@@ -463,6 +469,10 @@ eth_create:
 
     ;; ------------------------------------------------------------------------
     ;; remember _current_txbuf (TXBUF1 for IP, TXBUF2 for ARP)
+    ;; ------------------------------------------------------------------------
+
+    ;; ------------------------------------------------------------------------
+    ;; NOTE: this instruction (0x22) terminates the table above.
     ;; ------------------------------------------------------------------------
 
     ld    (_current_txbuf), hl

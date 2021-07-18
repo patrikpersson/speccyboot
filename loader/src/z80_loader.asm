@@ -733,7 +733,6 @@ jp_ix_instr:
 chunk_escape:
 
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
-    ;; ld   ix, #s_chunk_compressed_escape
 
     ;; FALL THROUGH to s_chunk_compressed_escape
 
