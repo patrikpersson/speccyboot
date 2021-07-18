@@ -658,23 +658,37 @@ s_repetition:
 
     ex   af, af'
     dec  a
-    jr   z, repetition_done
-    ex   af, af'
+    jr   nz, switch_af_and_store_byte
 
-    jr   store_byte
+    ;; FALL THROUGH to s_chunk_compressed_escape_false
+
+
+;; ############################################################################
+;; state CHUNK_COMPRESSED_ESCAPE_FALSE
+;;
+;; invoked when an ED byte was followed by something else than ED
+;; (in other words, a false escape sequence)
+;;
+;; (The same code sequence also happens to work for the state transition in
+;; s_repetition above.)
+;; ############################################################################
+
+s_chunk_compressed_escape_false:
 
     ;; -------------------------------------------------------------------------
-    ;; this is the last byte in the sequence:
-    ;; return to s_chunk_write_data_compressed when the byte has been written
+    ;; return to s_chunk_write_data_compressed when this byte has been written
     ;; -------------------------------------------------------------------------
-
-repetition_done:
-
-    ex   af, af'
-
-switch_to_compressed_state_and_store_byte:
 
     SWITCH_STATE  s_repetition  s_chunk_write_data_compressed
+
+switch_af_and_store_byte:
+
+    ;; -------------------------------------------------------------------------
+    ;; in s_chunk_compressed_escape_false: recall the non-escape, non-ED byte
+    ;; in s_repetition: recall the repetition value
+    ;; -------------------------------------------------------------------------
+
+    ex    af, af'
 
     jr   store_byte
 
@@ -764,18 +778,6 @@ s_chunk_compressed_escape:
     SWITCH_STATE  s_chunk_repcount  s_chunk_compressed_escape_false
 
     jr    store_byte
-
-;; ############################################################################
-;; state CHUNK_COMPRESSED_ESCAPE_FALSE
-;;
-;; invoked when an ED byte was followed by something else than ED
-;; (in other words, a false escape sequence)
-;; ############################################################################
-
-s_chunk_compressed_escape_false:
-    ex    af, af'           ;; recall the non-escape, non-ED byte
-
-    jr    switch_to_compressed_state_and_store_byte
 
 
 ;; ############################################################################
