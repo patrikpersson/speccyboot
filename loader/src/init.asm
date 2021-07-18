@@ -274,35 +274,42 @@ eth_broadcast_address:
   ;; ==========================================================================
 
 init_continued:
-  
+
+  ;; --------------------------------------------------------------------------
+  ;; Perform a delay of about 200ms before accessing any memory, for the 128k
+  ;; reset logic (bank switching) to initialize properly. Essentially the same
+  ;; delay as initially performed in the standard 128k ROM 0.
+  ;;
+  ;; >= 0x6b00 iterations  x  26 T-states  >=  200.79ms @3.54690MHz
+  ;; --------------------------------------------------------------------------
+
+  ld    b, #0x6b      ;; BC := 0x6bxx ; the value of C doesn't matter much here
+reset_delay:
+  dec   bc
+  ld    a, b
+  or    a, c
+  jr    nz, reset_delay
+
   ;; --------------------------------------------------------------------------
   ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
   ;; This sequence differs between SpeccyBoot and DGBoot, but preserves HL
-  ;; in both cases. It is executed after the LDIR above to ensure that
+  ;; in both cases. It is executed after the delay above, to ensure that
   ;; the 128k reset logic settles first.
   ;; --------------------------------------------------------------------------
 
   platform_init
 
   ;; --------------------------------------------------------------------------
-  ;; Copy trampoline to RAM. Far more than the trampoline is copied, since
-  ;; this routine has an important side-effect: it provides a delay > 200ms
-  ;; @3.5469MHz, for 128k reset logic to settle.
+  ;; Copy trampoline to RAM. Some extra iterations are added to ensure L ends
+  ;; up being zero (useful later).
   ;;
-  ;; 200ms = 709380 T-states = 33780 (0x83F4) LDIR iterations. However,
-  ;; since DE points to contended memory, each iteration will take longer
-  ;; time than that in reality. Stick with this safe overkill.
-  ;;
-  ;; Some more iterations are also added to ensure L ends up being zero
-  ;; (useful later).
-  ;;
-  ;; NOTE: this is fragile and assumes ram_trampoline == 0x0081. 
+  ;; NOTE: this is fragile.
   ;; --------------------------------------------------------------------------
 
   ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
   push  de
-  ld    bc, #0x847f
+  ld    bc, #0x0078    ;; slight overkill, tuned to ensure L ends up being zero
   ldir
 
   ret   ;; jump to _stack_top
@@ -326,17 +333,30 @@ ram_trampoline:
   in    a, (0xFE)
   rra
 
-  jp    nc, 0              ;; if Caps Shift was pressed, go to BASIC
+  jr    nc, go_to_basic      ;; if Caps Shift was pressed, go to BASIC
 
-  ld    h, #0x3d           ;; 0x3d00 == address of font data in ROM1; L is zero here
-  ld    de, #_font_data    ;; address of font buffer in RAM
+  ld    h, #0x3d             ;; 0x3d00 == ROM1 font data; L == 0 here
+  ld    de, #_font_data      ;; address of font buffer in RAM
   ld    bc, #0x0300
   ldir
 
-  xor   a                  ;; page in SpeccyBoot ROM, keep ETH in reset
+  xor   a                    ;; page in SpeccyBoot ROM, keep ETH in reset
   out   (SPI_OUT), a
 
   jp    initialize_global_data
+
+go_to_basic:
+
+  ;; --------------------------------------------------------------------------
+  ;; Select ROM 0 (boot ROM), restart from there.
+  ;; Ensure the right ROM is selected on a 128k/+2/+3 machine.
+  ;; --------------------------------------------------------------------------
+
+  ld    bc, #MEMCFG_ADDR
+  out   (c), l               ;; L == 0 here
+  ld    b, #>MEMCFG_PLUS_ADDR
+  out   (c), l
+  rst   #0
 
   ;; --------------------------------------------------------------------------
   ;; initialization of (mostly just clearing) global data
