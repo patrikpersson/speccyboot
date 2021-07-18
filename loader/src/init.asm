@@ -266,17 +266,6 @@ eth_broadcast_address:
     .db   0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 
 
-  ;; ========================================================================
-  ;; ARP Ethertype (0x08 0x06)
-  ;; ========================================================================
-
-ethertype_arp:
-
-    .db   0x08
-
-    ;; followed by 0x06 (LD B, #n) below
-
-
   ;; ==========================================================================
   ;; continued initialization (from 0x0000)
   ;; ==========================================================================
@@ -317,7 +306,7 @@ reset_delay:
   ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
   push  de
-  ld    bc, #0x0077    ;; slight overkill, tuned to ensure L ends up being zero
+  ld    bc, #0x0078    ;; slight overkill, tuned to ensure L ends up being zero
   ldir
 
   ret   ;; jump to _stack_top

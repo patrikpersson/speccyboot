@@ -135,12 +135,6 @@ WARNING_CHECKSUM_FAILED   = CYAN
 
 
 ;; ----------------------------------------------------------------------------
-;; Useful constant-byte value (used by eth.asm, defined in init.asm)
-;; ----------------------------------------------------------------------------
-
-    .globl ethertype_arp
-
-;; ----------------------------------------------------------------------------
 ;; Compare memory blocks pointed to by HL and DE. Register B indicates the
 ;; number of bytes to compare (so, max 256).
 ;;

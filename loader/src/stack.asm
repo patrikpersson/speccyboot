@@ -1160,9 +1160,30 @@ perform_transmission:
     ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
     rst   enc28j60_write8plus8
 
-    ld    de, #(ECON1 & REG_MASK) + (8 << 8)      ;; ECON1 is an ETH register
-    ;; keep H==ECON1_TXRTS from above, B==0 from _spi_write_byte
     ld    l, b
+    ;; keep H==ECON1_TXRTS from above, B==0 from _spi_write_byte
+
+    ;; ----------------------------------------------------------------------
+    ;; This is the following instruction:
+    ;;
+    ;; LD DE, #(ECON1 & REG_MASK) + (8 << 8)    (as ECON1 is an ETH register)
+    ;;
+    ;; list individual bytes to make the bytes (0x08, 0x06) addressable as
+    ;; ethertype_arp
+    ;; ----------------------------------------------------------------------
+
+    .db   LD_DE_NN
+    .db   (ECON1 & REG_MASK)
+
+  ;; ========================================================================
+  ;; ARP Ethertype (0x08 0x06)
+  ;; ========================================================================
+
+ethertype_arp:
+
+    .db   0x08
+
+    ;; followed by 0x06 (LD B, #n) below
 
     ;; FALL THROUGH to poll_register
 
