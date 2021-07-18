@@ -36,7 +36,7 @@
 ;; Version information
 ;; ============================================================================
 
-VERSION_STAGE1 = 3
+VERSION_STAGE1 = 4
 
 ;; ----------------------------------------------------------------------------
 ;; The VERSION_MAGIC byte is encoded as a LD r, r' instruction, with
