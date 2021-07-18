@@ -186,6 +186,17 @@ REG_R_ADJUSTMENT                 = 0xF8
 ;; ----------------------------------------------------------------------------
     .globl trampoline_data
 
+;; ----------------------------------------------------------------------------
+;; Return address for SPI read loop in PERFORM_CONTEXT_SWITCH
+;; (used for a one-word, ROM-based stack in init.asm)
+;; ----------------------------------------------------------------------------
+    .globl context_switch_spi_return
+
+;; ----------------------------------------------------------------------------
+;; Stack pointer value (top of stack) for one-word, ROM-based stack in init.asm
+;; ----------------------------------------------------------------------------
+    .globl spi_restore_stack_top
+
 ;; ============================================================================
 ;; Macro: prepare context switch
 ;;
@@ -533,12 +544,5 @@ context_switch_spi_return:         ;; return address for ROM-based stack below
     ld    a, #0x20      ;; page out SpeccyBoot, keep ENC28J60 in reset
 
     jp    VRAM_TRAMPOLINE_START
-
-;; ===========================================================================
-;; Simple stack (one return address) to allow CALLs with stack pointer in ROM.
-;; ===========================================================================
-
-    .dw   context_switch_spi_return
-spi_restore_stack_top:
 
     .endm

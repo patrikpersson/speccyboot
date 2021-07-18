@@ -31,6 +31,7 @@
 
   .module init
 
+  .include "context_switch.inc"
   .include "enc28j60.inc"
   .include "eth.inc"
   .include "globals.inc"
@@ -109,8 +110,12 @@
   rst   spi_write_byte                                          ;; 1 byte
   jr    enc28j60_end_transaction_and_return                     ;; 2 bytes
 
-  ;; two-byte slot remains
+;; ===========================================================================
+;; Simple stack (one return address) to allow CALLs with stack pointer in ROM.
+;; ===========================================================================
 
+  .dw   context_switch_spi_return
+spi_restore_stack_top:
 
   ;; ========================================================================
   ;; RST 0x20 ENTRYPOINT: spi_write_byte
