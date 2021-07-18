@@ -444,7 +444,6 @@ s_chunk_header2:
     ld   h, a
 
     SWITCH_STATE  s_chunk_header2  s_chunk_header3
-    ;; ld   ix, #s_chunk_header3
 
     ret
 
@@ -480,7 +479,7 @@ s_chunk_header3:
     sub  a, #3
 
     ;; -----------------------------------------------------------------------
-    ;; Need to handle page 5 separately -- if we do not use the address range
+    ;; Need to handle page 5 separately -- if we don't use the address range
     ;; 0x4000..0x7fff, the evacuation stuff will not work.
     ;; -----------------------------------------------------------------------
 
@@ -507,22 +506,24 @@ s_chunk_header3:
     ;;   A == 1  means bank 1, to be mapped to 0x8000
     ;;   A == 2  means bank 2, to be mapped to 0xC000
     ;;
-    ;; (other pages not expected in 48 snapshots; page 5 handled above)
+    ;; (other pages not expected in 48 snapshots, as page 5 was handled above)
     ;; -----------------------------------------------------------------------
 
                     ;; bank 1    bank 2
-    inc  a          ;; 0x02      0x03
-    rrca            ;; 0x01      0x81
-    rrca            ;; 0x80      0xc0
+                    ;; ------    ------
+                    ;;  0x01      0x02
+    inc  a          ;;  0x02      0x03
+    rrca            ;;  0x01      0x81
+    rrca            ;;  0x80      0xc0
     ld   d, a
 
     ;; -----------------------------------------------------------------------
     ;; FALL THROUGH to 128k memory configuration here:
     ;;
     ;; At this point, A==0x80 or 0xc0, but bits 6..7 are not used in the
-    ;; 128k paging register. Lower bits are zero, so page 0 will be paged in
-    ;; at 0xC000 (which is the same page selected in init.asm and in 48k
-    ;; context switch).
+    ;; 128k paging register. Lower bits are zero, so writing this calue will
+    ;; result in page 0 being paged in at 0xC000 (which is the same page
+    ;; selected in init.asm and in 48k context switch).
     ;; -----------------------------------------------------------------------
 
 s_chunk_header3_128k_banking:
@@ -572,11 +573,9 @@ s_chunk_header3_set_comp_mode:
 
 set_compression_state:
     SWITCH_STATE  s_header  s_chunk_write_data_compressed
-    ;; ld    ix, #s_chunk_write_data_compressed
     ret   nz
 
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_write_data_uncompressed
-    ;; ld    ix, #s_chunk_write_data_uncompressed
 
     ld    hl, #0x4000
     ret
@@ -604,7 +603,7 @@ s_chunk_repcount:
     call check_limits_and_load_byte
 
     ;; -------------------------------------------------------------------------
-    ;; store the repetition count in (DE), and read it back to A' in next state
+    ;; store the repetition count temporarily in (DE)
     ;; -------------------------------------------------------------------------
 
     ld   (de), a
