@@ -146,8 +146,8 @@ is_context_switch_set_up:
 ;;
 ;; Checks whether the current chunk or the loaded TFTP packet has been
 ;; fully consumed.
-;; If it has, return with Z flag set (and possibly state changed).
-;; If it has not, read another byte into A, and return with Z cleared.
+;; If it has, return to the caller's caller (that is, the state loop).
+;; Otherwise, read another byte into A, and set Z if A == Z80_ESCAPE (0xED).
 ;; ############################################################################
 
     .area _CODE
@@ -212,6 +212,8 @@ load_byte_from_packet:
     inc  iy
 
     dec  bc
+
+    cp   a, #Z80_ESCAPE
 
     ret
 
@@ -705,8 +707,7 @@ s_chunk_write_data_compressed:
     ;; check for the escape byte of a repetition sequence
     ;; -------------------------------------------------------------------------
 
-    cp   a, #Z80_ESCAPE
-    jr   z, chunk_escape
+    jr   z, chunk_escape            ;; Z set if A == Z80_ESCAPE
 
 store_byte:
 
@@ -753,21 +754,19 @@ s_chunk_compressed_escape:
     call  check_limits_and_load_byte
 
     ;; -----------------------------------------------------------------------
-    ;; next state also Z80_ESCAPE (0xED) ?
-    ;; tentatively select s_chunk_repcount as next state
+    ;; Z flag now indicates whether the next char is also Z80_ESCAPE (0xED)
     ;; -----------------------------------------------------------------------
 
     SWITCH_STATE  s_chunk_compressed_escape  s_chunk_repcount
 
-    cp    a, #Z80_ESCAPE
-    ret   z
+    ret   z                                       ;; return if A == Z80_ESCAPE
 
     ;; -----------------------------------------------------------------------
     ;; False alarm: the escape byte was followed by a non-escape byte,
     ;;              so this is not an escape sequence
     ;; -----------------------------------------------------------------------
 
-    ex    af, af'           ;; store the non-escape, non-ED byte
+    ex    af, af'                         ;; store the non-escape, non-ED byte
 
     ;; -----------------------------------------------------------------------
     ;; store the (non-escape) ED byte, switch state
