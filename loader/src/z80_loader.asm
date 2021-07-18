@@ -799,31 +799,48 @@ update_progress:
 
     ld    hl, #_digits
     ld    a, (hl)
+
+    ;; -----------------------------------------------------------------------
+    ;; DAA fits nicely to get the decimal digits here.
+    ;; Two flags in register F are particularly useful:
+    ;;
+    ;; If Z is set, then the number of kilobytes became zero in BCD:
+    ;; in other words, it just wrapped from 99 to (1)00.
+    ;;
+    ;; If H (half-carry) is set, the last digit wrapped from 9 to 0, and the
+    ;; second-to-last (tens) digit increased. H is bit 4 in register F.
+    ;; -----------------------------------------------------------------------
+
     inc   a
     daa
-    push  af             ;; remember flags
+
+    push  af                                                 ;; remember flags
     ld    (hl), a
     ld    c, a
 
-    ;; If Z is set, then the number of kilobytes became zero in BCD:
-    ;; means it just turned from 99 to 100.
-    ;; Print the digit '1' for hundreds.
+    ;; -----------------------------------------------------------------------
+    ;; if the counter wrapped to 00 in BCD, display the digit '1' for hundreds
+    ;; -----------------------------------------------------------------------
 
     ld    l, #10
-    rla                        ;; make A := 1 without affecting Z
+    rla                                     ;; make A := 1 without affecting Z
     call  z, show_attr_digit
     ld    a, c
 
-    pop   de             ;; recall flags, old F is now in E
-    bit   #4, e          ;; was H flag set? Then the tens have increased
+    ;; -----------------------------------------------------------------------
+    ;; if the last digit wrapped to 0, display tens (_x_)
+    ;; -----------------------------------------------------------------------
 
-    ;; Print tens (_x_)
+    pop   de                                ;; recall flags, old F is now in E
+    bit   #4, e                ;; was H flag set? Then the tens have increased
 
     rra
     ld    l, #17
     call  nz, show_attr_digit_already_shifted
 
-    ;; Print single-number digit (__x)
+    ;; -----------------------------------------------------------------------
+    ;; always display the last digit (__x)
+    ;; -----------------------------------------------------------------------
 
     ld    a, c
     call  show_attr_digit_right
