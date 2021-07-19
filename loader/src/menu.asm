@@ -83,7 +83,8 @@ CP_A_N               = 0xfe
 ;; HL points to the string to print
 ;; DE points to VRAM location
 ;; destroys AF and HL; preserves BC.
-;; DE will point to the first character cell on the following line.
+;; On return, A==0, Z==1, and DE points to the first character cell on the
+;; following line.
 ;; ############################################################################
 
     .area _CODE
@@ -187,8 +188,8 @@ run_menu:
     ;; E = total number of snapshots (0..255)
     ;; ========================================================================
 
-    ld   c, #0
-    ld   d, c
+    ld   c, a       ;; A == 0 from print_str
+    ld   d, a
     ld   a, (nbr_snapshots)
     ld   e, a
 
