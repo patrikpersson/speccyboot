@@ -294,6 +294,7 @@ spi_read_byte_to_c:
 ;; helper: read_bits_to_c
 ;;
 ;; Reads B (typically 8) bits into C. Destroys AF, returns with B==0.
+;; Execution time: 56*B + 13 *(B-1) + 8 + 10 = 69*B + 5
 ;; ===========================================================================
 
 read_bits_to_c:

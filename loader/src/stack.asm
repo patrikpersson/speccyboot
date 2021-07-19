@@ -336,11 +336,16 @@ eth_init:
     ;;
     ;; 50us == ~178 T-states @ 3.55MHz               (this is the minimum time)
     ;;
-    ;; Each iteration is 7+7+5+6+4+8+8+7+6+11+4+4+4+7+4+x+4+12
-    ;;   == 108+x T-states   (where x is the execution time for the RST call).
+    ;; Preamble above is 10+10+17+x+4+4+16+10
+    ;;   == 71+x T-states    (where x is the execution time for poll_register)
     ;;
-    ;; So as long as no PHY register is accessed in the first or second
-    ;; table entry, the condition above should hold.
+    ;; poll_register includes at least one SPI byte read, which takes at least
+    ;; 8*56 T-states, so x >= 448. This poll_register call does not access any
+    ;; PHY register.
+    ;;
+    ;; At least 519 (17+448) T-states, or 146us @3.55MHz, pass from reset until
+    ;; the first loop iteration. PHY registers are accessed a few iterations
+    ;; into the loop, well after the specified minimum time.
     ;; ------------------------------------------------------------------------
 
 eth_init_registers_loop:
@@ -392,7 +397,8 @@ eth_init_registers_loop:
     ;;
     ;; Since the ENC28J60 does not support auto-negotiation, we will need to
     ;; stick to half duplex. Not a problem, since Ethernet performance is not
-    ;; really a bottleneck on the Spectrum.
+    ;; really a bottleneck here. (The bottleneck is instead SPI communication
+    ;; from the ENC28J60 to the Spectrum.)
     ;; ------------------------------------------------------------------------
 
 eth_register_defaults:
