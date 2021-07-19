@@ -50,26 +50,12 @@ KEY_ENTER     = 13
 KEY_UP        = '7'
 KEY_DOWN      = '6'
 
-;; ============================================================================
-;; Repeat time-outs: between the keypress and the first repetition, and for
-;; any subsequent repetitions
-;;
-;; (measured in double-ticks of 20ms)
-;; ============================================================================
-
-REPEAT_FIRST_TIMEOUT = 40
-REPEAT_NEXT_TIMEOUT  = 10
-
 ;; BASIC ROM1 entry points
 
 rom_key_scan         = 0x028E
 rom_keymap           = 0x0205
 
 KEYCODE_CAPS         = 0x27
-
-;; opcode for runtime patching
-
-CP_A_N               = 0xfe
 
 ;; ============================================================================
 
@@ -83,8 +69,8 @@ CP_A_N               = 0xfe
 ;; HL points to the string to print
 ;; DE points to VRAM location
 ;; destroys AF and HL; preserves BC.
-;; On return, A==0, Z==1, and DE points to the first character cell on the
-;; following line.
+;; On return, A==0, Z==1, carry==0,
+;; and DE points to the first character cell on the following line.
 ;; ############################################################################
 
     .area _CODE
@@ -186,6 +172,8 @@ run_menu:
     ;; C = currently highlighted entry (0..254)
     ;; D = display offset (index of first displayed snapshot name, < E)
     ;; E = total number of snapshots (0..255)
+    ;;
+    ;; menu contents are redrawn when carry is clear
     ;; ========================================================================
 
     ld   c, a       ;; A == 0 from print_str
@@ -193,17 +181,24 @@ run_menu:
     ld   a, (nbr_snapshots)
     ld   e, a
 
+    ;; carry is clear from print_str
+
 menu_loop:
 
+    ex   af, af'
     ld   a, #BLACK + (GREEN << 3) + BRIGHT
     call menu_set_highlight
+    ex   af, af'
 
     ;; ========================================================================
-    ;; redraw menu contents
+    ;; redraw menu if carry is clear
+    ;; handle user input (keypress) regardless
     ;; ========================================================================
 
     push bc
     push de
+
+    jr   c, skip_redraw
 
     ;; Set up B to be ((last index to display) + 1)
 
@@ -230,15 +225,12 @@ redraw_menu_loop:
     cp   a, b
     jr   c, redraw_menu_loop
 
-    ;; ========================================================================
-    ;; handle user input
-    ;; ========================================================================
+skip_redraw:
 
     call wait_for_key
 
     pop  de
     pop  bc
-
 
     ld   a, #BLACK + (WHITE << 3) + BRIGHT
     call menu_set_highlight
@@ -293,7 +285,7 @@ menu_hit_down:
     ld   a, c
     inc  a
     cp   a, e
-    jr   nc, menu_loop
+    jr   nc, menu_loop             ;; will redraw if UP pressed for first entry
 
     inc  c
 
@@ -322,13 +314,15 @@ menu_adjust:
 
     ;; C < D? Reached top of display?
 
-    ld   a, c
-    cp   a, d
-    jr   nc, ensure_visible_not_top
+    ld   a, d
+    cp   a, c
+    jr   c, ensure_visible_not_top
 
     ;; C < D: adjust D to ensure index C is visible
 
     ld   d, c
+
+    jr   menu_loop
 
 ensure_visible_not_top:
 
@@ -442,114 +436,50 @@ menu_highlight_loop:
 ;; ############################################################################
 ;; wait_for_key
 ;;
-;; wait for keypress. Handles repeat events.
-;; ############################################################################
-
-    .area _NONRESIDENT
-
-wait_for_key:
-
-    ;; ------------------------------------------------------------------------
-    ;; is any key being pressed?
-    ;; ------------------------------------------------------------------------
-
-    call scan_key
-    jr   z, wait_key_no_repetition
-
-    ;; ------------------------------------------------------------------------
-    ;; is the previous key still being pressed?
-    ;; ------------------------------------------------------------------------
-
-    ld   a, c
-
-    .db  CP_A_N
-previous_key:
-    .db  0                        ;; value patched at runtime
-
-    jr   nz, wait_key_no_repetition
-
-    ;; ------------------------------------------------------------------------
-    ;; yes, the previous key is still being pressed
-    ;; see if the same key remains pressed until the repetition timer expires
-    ;; ------------------------------------------------------------------------
-
-wait_key_repetition_loop:
-
-    halt                                ;; allow for an interrupt to occur
-
-    call scan_key
-    jr   z, wait_key_no_repetition      ;; key released?
-
-    ;; ------------------------------------------------------------------------
-    ;; decide on a timeout, depending on whether this is the first repetition
-    ;; ------------------------------------------------------------------------
-
-    ld   a, (_timer_tick_count)
-
-    .db  CP_A_N
-wait_key_timeout:
-    .db  REPEAT_FIRST_TIMEOUT          ;; value patched at runtime
-
-    jr   c, wait_key_repetition_loop
-
-    ;; ------------------------------------------------------------------------
-    ;; we have a repeat event, and this is no longer the first repetition
-    ;; ------------------------------------------------------------------------
-
-wait_key_repeat:
-    ld   a, #REPEAT_NEXT_TIMEOUT
-    jr   wait_key_finish
-
-    ;; ------------------------------------------------------------------------
-    ;; no repetition: instead wait for a key to become pressed
-    ;; ------------------------------------------------------------------------
-
-wait_key_no_repetition:
-
-    call scan_key
-    jr   z, wait_key_no_repetition
-
-    ld   a, c
-    ld   (previous_key), a
-    ld   a, #REPEAT_FIRST_TIMEOUT
-
-wait_key_finish:
-    ;; assume A holds value for is_first_repetition, and C holds result
-    ld   hl, #0
-    ld   (_timer_tick_count), hl
-    ld   (wait_key_timeout), a
-    ld   l, c
-    ret
-
-;; ############################################################################
-;; scan_key
-;;
-;; Return currently pressed key, if any, in register C.
-;; Z flag is set if no key is pressed, cleared if any key is set.
-;;
+;; Waits for a keypress and returns a character in register L.
 ;; Must run from RAM: pages in the BASIC ROM for keyboard scanning.
 ;;
 ;; Destroys HL, BC, DE, AF.
 ;; ############################################################################
 
+KEY_MIN_INTERVAL   = 10
+
     .area _NONRESIDENT
 
-scan_key:
+wait_for_key:
+
+wait_for_key_interval:
+    ld    hl, (_timer_tick_count)
+    ld    a, h
+    or    a, a
+    jr    nz, wait_for_key_interval_done
+    ld    a, l
+    cp    a, #KEY_MIN_INTERVAL
+    jr    c, wait_for_key_interval
+wait_for_key_interval_done:
+
     di
     ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT   ;; page out SpeccyBoot
     out   (SPI_OUT), a
+
+wait_for_key_loop:
     call  rom_key_scan                   ;; destroys AF, BC, DE, HL
     ld    a, e
     cp    a, #KEYCODE_CAPS
-    jr    z, scan_key_no_key
+    jr    z, wait_for_key_loop
     inc   a                              ;; the no-key?
-    jr    z, scan_key_no_key
+    jr    z, wait_for_key_loop
+
+    ld   hl, #0
+    ld   (_timer_tick_count), hl
+
     ld    hl, #rom_keymap - 1            ;; -1 because of INC A
-    add   a, l                           ;; will not set Z flag
+    add   a, l
     ld    l, a
-    ld    c, (hl)
+    ld    l, (hl)
     ld    a, #SPI_IDLE+SPI_CS            ;; page in SpeccyBoot
     out   (SPI_OUT), a
 scan_key_no_key:
     ei
+
     ret
