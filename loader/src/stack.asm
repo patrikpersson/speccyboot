@@ -980,7 +980,9 @@ arp_header_template_end:
 
     ;; TPA
 
-    ld   l, #<_rx_frame + ARP_OFFSET_SPA  ;; sender IP address, taken from SPA field in request
+    ;; HL now points to _rx_frame + ARP_OFFSET_SPA,
+    ;; which happens to be precisely the sender IP address to send
+
     ld   e, #IPV4_ADDRESS_SIZE
     rst  enc28j60_write_memory_small
 
