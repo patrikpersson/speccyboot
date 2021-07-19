@@ -315,12 +315,12 @@ eth_init:
     call  poll_register
 
     ;; ------------------------------------------------------------------------
-    ;; HL is 0x0101 (from poll_register above),
-    ;; and needs to be 0x0000 (ENC28J60_RXBUF_START)                   (4+4+16)
+    ;; A is 0 (from poll_register above),
+    ;; and HL needs to be 0x0000 (ENC28J60_RXBUF_START)                (4+4+16)
     ;; ------------------------------------------------------------------------
 
-    dec   h
-    dec   l
+    ld    h, a
+    ld    l, a
     ld    (_next_frame), hl
 
     ;; ========================================================================
@@ -1134,7 +1134,7 @@ perform_transmission:
     ;; set bit TXRST in ECON1, then clear it
     ;; ----------------------------------------------------------------------
 
-    ld    e, #0    ;; bank of ECON1
+    ld    e, a                          ;; A == 0, which is the bank of ECON1
     rst   enc28j60_select_bank
 
     ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
@@ -1205,6 +1205,8 @@ ethertype_arp:
 ;; H=mask
 ;; L=expected_value
 ;;
+;; Returns with A == 0 and Z flag set.
+;;
 ;; Destroys AF, BC
 ;; ----------------------------------------------------------------------------
 
@@ -1219,7 +1221,7 @@ poll_register:
     pop    bc
 
     and    a, h
-    cp     a, l
+    sub    a, l
     ret    z
 
     dec    bc
