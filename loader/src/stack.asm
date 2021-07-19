@@ -880,6 +880,10 @@ no_carry:
 
     HANDLE_TFTP_PACKET
 
+    ;; -------------------------------------------------------------------
+    ;; HANDLE_TFTP_PACKET returns when done, so no fall-through here
+    ;; -------------------------------------------------------------------
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -932,6 +936,9 @@ arp_receive:
     ld   bc, #eth_sender_address
     ld   de, #ENC28J60_TXBUF2_START
     ld   hl, #ethertype_arp
+
+    push de                             ;; useful below
+
     call eth_create
 
     ;; ARP header
@@ -977,7 +984,7 @@ arp_header_template_end:
     ld   e, #IPV4_ADDRESS_SIZE
     rst  enc28j60_write_memory_small
 
-    ld   de, #ENC28J60_TXBUF2_START
+    pop  de                               ;; recall ENC28J60_TXBUF2_START
     ld   hl, #ENC28J60_TXBUF2_START + ETH_HEADER_SIZE + ARP_IP_ETH_PACKET_SIZE
 
     jr   eth_send_frame
