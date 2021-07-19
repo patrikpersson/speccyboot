@@ -185,6 +185,9 @@ run_menu:
 
 menu_loop:
 
+    ld   hl, #0x0100 - KEY_MIN_INTERVAL
+    ld   (_timer_tick_count), hl
+
     ex   af, af'
     ld   a, #BLACK + (GREEN << 3) + BRIGHT
     call menu_set_highlight
@@ -226,6 +229,11 @@ redraw_menu_loop:
     jr   c, redraw_menu_loop
 
 skip_redraw:
+
+wait_for_key_interval:
+    ld    a, (_timer_tick_count + 1)
+    or    a, a
+    jr    z, wait_for_key_interval
 
     call wait_for_key
 
@@ -442,22 +450,11 @@ menu_highlight_loop:
 ;; Destroys HL, BC, DE, AF.
 ;; ############################################################################
 
-KEY_MIN_INTERVAL   = 10
+KEY_MIN_INTERVAL   = 12   ;; 120ms
 
     .area _NONRESIDENT
 
 wait_for_key:
-
-wait_for_key_interval:
-    ld    hl, (_timer_tick_count)
-    ld    a, h
-    or    a, a
-    jr    nz, wait_for_key_interval_done
-    ld    a, l
-    cp    a, #KEY_MIN_INTERVAL
-    jr    c, wait_for_key_interval
-wait_for_key_interval_done:
-
     di
     ld    a, #SPI_IDLE+SPI_CS+PAGE_OUT   ;; page out SpeccyBoot
     out   (SPI_OUT), a
@@ -466,14 +463,8 @@ wait_for_key_loop:
     call  rom_key_scan                   ;; destroys AF, BC, DE, HL
     ld    a, e
     cp    a, #KEYCODE_CAPS
-    jr    z, wait_for_key_loop
-    inc   a                              ;; the no-key?
-    jr    z, wait_for_key_loop
-
-    ld   hl, #0
-    ld   (_timer_tick_count), hl
-
-    ld    hl, #rom_keymap - 1            ;; -1 because of INC A
+    jr    nc, wait_for_key_loop          ;; CAPS or the no-key?
+    ld    hl, #rom_keymap
     add   a, l
     ld    l, a
     ld    l, (hl)
