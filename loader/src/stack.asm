@@ -85,13 +85,6 @@ eth_adm_header_ethertype:
 _end_of_critical_frame:
     .ds   2                   ;; written to ETXND for re-transmission
 
-;; ----------------------------------------------------------------------------
-;; points to the frame currently being created
-;; ----------------------------------------------------------------------------
-
-_current_txbuf:
-    .ds   2
-
 ;; ============================================================================
 ;; IP
 ;; ============================================================================
@@ -456,10 +449,10 @@ eth_register_defaults:
 
     ;; ------------------------------------------------------------------------
     ;; NOTE: no explicit sentinel here. The table is terminated by the byte
-    ;; 0x22, which happens to be the first byte of eth_create below.
+    ;; 0xE5, which happens to be the first byte of eth_create below.
     ;; ------------------------------------------------------------------------
-
-END_OF_TABLE = 0x22                                              ;; LD (nn), HL
+    
+END_OF_TABLE = 0xE5                                                  ;; PUSH HL
 
 ;; ############################################################################
 ;; eth_create
@@ -468,18 +461,12 @@ END_OF_TABLE = 0x22                                              ;; LD (nn), HL
 eth_create:
 
     ;; ------------------------------------------------------------------------
-    ;; remember _current_txbuf (TXBUF1 for IP, TXBUF2 for ARP)
+    ;; NOTE: this instruction (0xE5) terminates the table above.
     ;; ------------------------------------------------------------------------
 
-    ;; ------------------------------------------------------------------------
-    ;; NOTE: this instruction (0x22) terminates the table above.
-    ;; ------------------------------------------------------------------------
-
-    ld    (_current_txbuf), hl
-
-    push  de
-    push  bc
     push  hl
+    push  bc
+    push  de
 
     ;; ------------------------------------------------------------------------
     ;; select default bank for ENC28J60
@@ -651,8 +638,8 @@ udp_create:
     ;; ----------------------------------------------------------------------
 
     pop    bc             ;; destination MAC address
-    ld     de, #ethertype_ip
-    ld     hl, #ENC28J60_TXBUF1_START
+    ld     de, #ENC28J60_TXBUF1_START
+    ld     hl, #ethertype_ip
     call   eth_create
 
     ;; ----------------------------------------------------------------------
@@ -906,6 +893,8 @@ ip_send:
     ld   l, h
     ld   h, a
 
+    ld   de, #ENC28J60_TXBUF1_START
+
     jr   eth_send                        ;; B==0 from PREPARE_TFTP_READ_REQUEST
 
 
@@ -956,8 +945,8 @@ arp_receive:
     ret  nz   ;; if the packet is not for the local IP address, return
 
     ld   bc, #eth_sender_address
-    ld   de, #ethertype_arp
-    ld   hl, #ENC28J60_TXBUF2_START
+    ld   de, #ENC28J60_TXBUF2_START
+    ld   hl, #ethertype_arp
     call eth_create
 
     ;; ARP header
@@ -1003,6 +992,7 @@ arp_header_template_end:
     ld   e, #IPV4_ADDRESS_SIZE
     rst  enc28j60_write_memory_small
 
+    ld   de, #ENC28J60_TXBUF2_START
     ld   hl, #ARP_IP_ETH_PACKET_SIZE
 
     ;; FALL THROUGH to eth_send; B==0 from enc28j60_write_memory_small
@@ -1011,7 +1001,10 @@ arp_header_template_end:
 ;; ############################################################################
 ;; eth_send
 ;;
-;; B assumed to be 0 on entry.
+;; On entry:
+;;   DE: start of transmission buffer
+;;   HL: number of bytes
+;;   B:  0
 ;; ############################################################################
 
 eth_send:
@@ -1028,7 +1021,6 @@ eth_send:
     ;;             = start + ETH_HEADER_SIZE + nbr_bytes
     ;; ------------------------------------------------------------------------
 
-    ld    de, (_current_txbuf)
     add   hl, de
     ld    c, #ETH_HEADER_SIZE        ;; B == 0
     add   hl, bc
