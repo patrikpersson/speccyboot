@@ -86,7 +86,7 @@ CP_A_N               = 0xfe
 ;; DE will point to the first character cell on the following line.
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 print_str:
 
