@@ -295,6 +295,7 @@ enc28j60_write8plus8 = 0x18
 ;;   BC == 0
 ;;   DE points to next byte after checksummed data
 ;;   HL holds current checksum (also stored in _ip_checksum)
+;;   A  holds same value as H
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_add_to_checksum
