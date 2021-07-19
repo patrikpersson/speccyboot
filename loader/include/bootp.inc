@@ -126,7 +126,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     pop  hl                       ;; HL is now 0x4800, zeros in VRAM
     call enc28j60_write_memory
 
-    call ip_send
+    call ip_send_critical
 
     .endm
 

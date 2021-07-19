@@ -207,7 +207,7 @@ main_loop:
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
     ;; B == 0 from enc28j60_read_register
-    call  nz, perform_transmission
+    call  nz, eth_send_frame
 
     jr    main_loop
 
@@ -884,33 +884,6 @@ no_carry:
 
 
 ;; ############################################################################
-;; tftp_read_request
-;; ############################################################################
-
-tftp_read_request:
-
-    PREPARE_TFTP_READ_REQUEST
-
-    ;; FALL THROUGH to ip_send; B==0 from PREPARE_TFTP_READ_REQUEST
-
-
-;; ############################################################################
-;; ip_send
-;; ############################################################################
-
-ip_send:
-
-    ld   hl, (_header_template + 2)   ;; IP length
-    ld   a, l  ;; swap byte order in HL
-    ld   l, h
-    ld   h, a
-
-    ld   de, #ENC28J60_TXBUF1_START
-
-    jr   eth_send                        ;; B==0 from PREPARE_TFTP_READ_REQUEST
-
-
-;; ############################################################################
 ;; arp_receive
 ;; ############################################################################
 
@@ -1005,21 +978,24 @@ arp_header_template_end:
     rst  enc28j60_write_memory_small
 
     ld   de, #ENC28J60_TXBUF2_START
-    ld   hl, #ARP_IP_ETH_PACKET_SIZE
+    ld   hl, #ENC28J60_TXBUF2_START + ETH_HEADER_SIZE + ARP_IP_ETH_PACKET_SIZE
 
-    ;; FALL THROUGH to eth_send; B==0 from enc28j60_write_memory_small
+    jr   eth_send_frame
 
 
 ;; ############################################################################
-;; eth_send
+;; ip_send_critical
 ;;
-;; On entry:
-;;   DE: start of transmission buffer
-;;   HL: number of bytes
-;;   B:  0
+;; Send a completed IP packet (packet length determined by IP header).
+;; Updates _end_of_critical_frame for any future retransmissions.
 ;; ############################################################################
 
-eth_send:
+ip_send_critical:
+
+    ld   hl, (_header_template + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
+    ld   a, l  ;; swap byte order in HL
+    ld   l, h
+    ld   h, a
 
     ;; ------------------------------------------------------------------------
     ;; set DE := start address of frame in transmission buffer,
@@ -1033,19 +1009,9 @@ eth_send:
     ;;             = start + ETH_HEADER_SIZE + nbr_bytes
     ;; ------------------------------------------------------------------------
 
-    add   hl, de
-    ld    c, #ETH_HEADER_SIZE        ;; B == 0
+    ld    de, #ENC28J60_TXBUF1_START
+    ld    bc, #ENC28J60_TXBUF1_START+ETH_HEADER_SIZE
     add   hl, bc
-
-    ;; ------------------------------------------------------------------------
-    ;; Check if DE points to a critical frame (BOOTP/TFTP, not ARP). Only
-    ;; need to check bit 8; that is, bit 0 in the high byte (see eth.inc).
-    ;; ------------------------------------------------------------------------
-
-    ld    a, #WHITE
-
-    bit   0, d                      ;; refer to address calculations in eth.inc
-    jr    nz, perform_transmission
 
     ;; ------------------------------------------------------------------------
     ;; this is a critical frame: update _end_of_critical_frame
@@ -1053,28 +1019,20 @@ eth_send:
 
     ld    (_end_of_critical_frame), hl
 
-    ;; FALL THROUGH to perform_transmission
+    ;; FALL THROUGH to eth_send_frame
 
 
 ;; ############################################################################
-;; perform_transmission:
+;; eth_send_frame:
 ;;
 ;; Perform a frame transmission.
 ;; Does not return until the frame has been transmitted.
 ;;
-;; A: border colour, to indicate regular transmission/retransmission
-;; B: must be 0
 ;; DE: address of the first byte in the frame
 ;; HL: address of the last byte in the frame
 ;; ############################################################################
 
-perform_transmission:
-
-    ;; ------------------------------------------------------------------------
-    ;; use border color to indicate retransmission status
-    ;; ------------------------------------------------------------------------
-
-    out   (ULA_PORT), a
+eth_send_frame:
 
     ;; ----------------------------------------------------------------------
     ;; set up registers:  ETXST := start_address, ETXND := end_address
@@ -1083,7 +1041,7 @@ perform_transmission:
     push  hl   ;; remember HL=end_address
     push  de
 
-    ld    e, b     ;; B == 0: bank of ETXST and ETXND
+    ld    e, #0     ;; bank of ETXST and ETXND
     rst   enc28j60_select_bank
 
     pop   hl
@@ -1334,9 +1292,6 @@ ip_receive_check_checksum:
 
     pop  af   ;; pop return address within ip_receive
 
-    ld   a, #WARNING_CHECKSUM_FAILED
-    out  (ULA_PORT), a
-
     ret       ;; return to _caller_ of ip_receive
 
 
@@ -1381,7 +1336,7 @@ tftp_request_snapshot:
 
     ld   a, (de)
     or   a, a
-    jr   nz, filename_set
+    jr   nz, filename_selected
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
@@ -1400,9 +1355,11 @@ tftp_request_snapshot:
     ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
     ld   de, #tftp_default_file                   ;; 'menu.bin'
 
-filename_set:
+filename_selected:
 
-    call tftp_read_request
+    PREPARE_TFTP_READ_REQUEST
+
+    call ip_send_critical
 
     ;; ========================================================================
     ;; Display IP address information:

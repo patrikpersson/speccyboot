@@ -239,7 +239,7 @@ error_packet_start:
     .db   0                           ;; no particular message
 error_packet_end:
 
-    jr    ip_send
+    jr    ip_send_critical
 
 ;; ===========================================================================
 ;; subroutine: reply with ACK packet
@@ -272,7 +272,7 @@ ack_packet_end:
     ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
     rst   enc28j60_write_memory_small
 
-    jr    ip_send
+    jr    ip_send_critical
 
     .endm
 

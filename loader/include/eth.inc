@@ -145,17 +145,6 @@ ETH_HEADER_SIZE = 14
     .globl eth_create
 
 ;; ============================================================================
-;; Send an Ethernet frame, previously created with eth_create().
-;; HL:  number of bytes in payload (that is, excluding Ethernet header)
-;; ============================================================================
-    .globl eth_send
-
-;; ============================================================================
-;; Send a completed IP packet (packet length determined by IP header)
-;; ============================================================================
-    .globl ip_send
-
-;; ============================================================================
 ;; main loop
 ;; ============================================================================
     .globl main_loop

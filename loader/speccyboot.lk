@@ -1,6 +1,6 @@
 -mjwx
 -i obj/speccyboot.ihx
--b _CODE = 0x00cd
+-b _CODE = 0x00d1
 -b _DATA = 0x5d9f
 -b _STAGE2_ENTRY = 0x6400
 obj/init.rel
