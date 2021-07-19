@@ -961,29 +961,26 @@ ethertype_ip:
 arp_header_template_end:
 
     ;; -----------------------------------------------------------------------
-
     ;; SHA: local MAC address
+    ;; -----------------------------------------------------------------------
 
     call enc28j60_write_local_hwaddr
 
+    ;; -----------------------------------------------------------------------
     ;; SPA: local IPv4 address
+    ;; -----------------------------------------------------------------------
 
     ld   e, #IPV4_ADDRESS_SIZE
     ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
     rst  enc28j60_write_memory_small
 
-    ;; THA
+    ;; -----------------------------------------------------------------------
+    ;; THA+TPA: remote MAC+IP addresses,
+    ;; taken from SHA+TPA fields in source frame
+    ;; -----------------------------------------------------------------------
 
-    ld   e, #ETH_ADDRESS_SIZE
-    ld   l, #<_rx_frame + ARP_OFFSET_SHA  ;; sender MAC address, taken from SHA field in request
-    rst  enc28j60_write_memory_small
-
-    ;; TPA
-
-    ;; HL now points to _rx_frame + ARP_OFFSET_SPA,
-    ;; which happens to be precisely the sender IP address to send
-
-    ld   e, #IPV4_ADDRESS_SIZE
+    ld   e, #ETH_ADDRESS_SIZE + IPV4_ADDRESS_SIZE
+    ld   l, #<_rx_frame + ARP_OFFSET_SHA
     rst  enc28j60_write_memory_small
 
     pop  de                               ;; recall ENC28J60_TXBUF2_START
