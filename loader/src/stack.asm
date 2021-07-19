@@ -450,6 +450,7 @@ eth_register_defaults:
     ;; ------------------------------------------------------------------------
     ;; NOTE: no explicit sentinel here. The table is terminated by the byte
     ;; 0xE5, which happens to be the first byte of eth_create below.
+    ;; (This instruction has bit 5 set, which none of the table entries have.)
     ;; ------------------------------------------------------------------------
     
 END_OF_TABLE = 0xE5                                                  ;; PUSH HL
@@ -461,12 +462,12 @@ END_OF_TABLE = 0xE5                                                  ;; PUSH HL
 eth_create:
 
     ;; ------------------------------------------------------------------------
-    ;; NOTE: this instruction (0xE5) terminates the table above.
+    ;; NOTE: the first instruction here (0xE5) terminates the table above.
     ;; ------------------------------------------------------------------------
 
-    push  hl
-    push  bc
-    push  de
+    push  hl                                                 ;; stack Ethertype
+    push  bc                                   ;; stack destination MAC address
+    push  de                                       ;; stack transmission buffer
 
     ;; ------------------------------------------------------------------------
     ;; select default bank for ENC28J60
@@ -475,13 +476,12 @@ eth_create:
     ld    e, #0
     rst   enc28j60_select_bank
 
-    pop   hl
-
     ;; ------------------------------------------------------------------------
     ;; set up EWRPT for writing packet data
     ;; ------------------------------------------------------------------------
 
     ld    a, #OPCODE_WCR + (EWRPTL & REG_MASK)
+    pop   hl                                      ;; recall transmission buffer
     rst   enc28j60_write_register16
 
     ;; ========================================================================
@@ -500,8 +500,8 @@ eth_create:
     ;; write destination (remote) MAC address
     ;; ------------------------------------------------------------------------
 
-    pop   hl                             ;; bring back destination MAC address
     ld    e, #ETH_ADDRESS_SIZE
+    pop   hl                                  ;; recall destination MAC address
     rst   enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
@@ -515,7 +515,7 @@ eth_create:
     ;; ------------------------------------------------------------------------
 
     ld    e, #ETH_SIZEOF_ETHERTYPE
-    pop   hl     ;; pop Ethertype pointer
+    pop   hl                                                ;; recall Ethertype
     rst   enc28j60_write_memory_small
     ret
 
