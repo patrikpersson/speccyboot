@@ -577,11 +577,12 @@ udp_create:
     ;; set UDP length (network order)
     ;; ----------------------------------------------------------------------
 
-    ld     (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), hl
+    ld    (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), hl
 
     ;; ----------------------------------------------------------------------
     ;; Add IPV4_HEADER_SIZE to HL. This can safely be done as a byte addition
-    ;; (no carry needed), as HL has one of the following values:
+    ;; (no carry needed), as HL holds one of the following lengths
+    ;; (byte-swapped to network order):
     ;;
     ;; BOOTP boot request: UDP_HEADER_SIZE + BOOTP_PACKET_SIZE = 308 = 0x134
     ;; TFTP read request: UDP_HEADER_SIZE
@@ -592,7 +593,7 @@ udp_create:
     ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
     ;;
     ;; In all these cases, the lower byte (that is, H in network order)
-    ;; is < 0xfc, so adding IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition
+    ;; is < 0xec, so adding IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition
     ;; is safe.
     ;; ----------------------------------------------------------------------
 
@@ -604,7 +605,7 @@ udp_create:
     ;; prepare IP header in _header_template
     ;; ----------------------------------------------------------------------
 
-    ld    (_header_template + 2), hl
+    ld    (_header_template + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH), hl
 
     ;; copy source IP address
 
