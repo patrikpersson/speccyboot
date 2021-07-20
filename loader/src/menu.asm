@@ -391,14 +391,6 @@ menu_hit_enter:
 
     .area _NONRESIDENT
 
-title_str:
-    .ascii "SpeccyBoot "
-    .db   VERSION_STAGE1 + '0'
-    .db   '.'                          ;; string terminator
-
-
-    .area _NONRESIDENT
-
 ;; ############################################################################
 ;; subroutine: highlight current line to colour (in register C)
 ;;
@@ -553,3 +545,12 @@ scan_key:
 scan_key_no_key:
     ei
     ret
+
+;; ############################################################################
+
+    .area _CODE
+
+title_str:
+    .ascii "SpeccyBoot "
+    .db   VERSION_STAGE1 + '0'
+    .db   '.'                          ;; string terminator
