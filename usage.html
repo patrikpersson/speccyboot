@@ -155,20 +155,20 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
         </td>
       </tr>
       <tr>
-        <td><div style="background-color:#00f;color:#fff">blue</div></td>
+        <td><div style="background-color:#eee">white</div></td>
         <td>communication time-out</td>
         <td>
           <p>
-            The border is set to blue whenever a packet is re-transmitted,
-            so short moments with a blue border are perfectly normal.
+            The border is white during normal operation,
+            so a white border is not in itself an indication of any error.
           </p>
           <p>
-            However, if SpeccyBoot gets <b>stuck</b> with a blue border it is likely
+            However, if SpeccyBoot gets <b>stuck</b> with a white border it is likely
             due to a missing (or faulty) server response:
           </p>
           <ul style="margin-bottom:0;padding:0 0 0 0.5rem">
-            <li>If all you see is a flashing cursor on a blank screen, BOOTP communication has failed.</li>
-            <li>If you see two IP addresses on screen (local+server) and a flashing <code style="background-color:#0f0;color:#000">S</code>, TFTP communication has failed.</li>
+            <li>If all you see is a flashing cursor on a blank screen, BOOTP communication failed.</li>
+            <li>If you see two IP addresses on screen (local+server) and a flashing <code style="background-color:#0f0;color:#000">S</code>, TFTP communication failed.</li>
           </ul>
 </p>        </td>
         <td>

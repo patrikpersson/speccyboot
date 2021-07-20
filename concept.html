@@ -19,9 +19,9 @@
     </div>
 
     <p>SpeccyBoot is a device for booting a ZX Spectrum over an Ethernet
-      network. Network booting was used for diskless workstation a few
-      years back, and is still often used for configuring and
-      booting some embedded devices, such as VoIP phones or embedded development boards.</p>
+      network. Network booting was widely used with diskless workstation a few
+      years back, and is still useful for configuring and
+      booting embedded devices such as VoIP phones or embedded development boards.</p>
 
     <h3>Contents</h3>
 
@@ -38,11 +38,15 @@
     <p>In general, network booting works as follows:</p>
 
     <ul>
-      <li>The machine boots and uses BOOTP to get an IP
-        address.</li>
-      <li>The machine then loads an executable file over TFTP from a
+      <li>When the machine is powered on, an IP
+        address is obtained using BOOTP.</li>
+      <li>The machine then loads and runs an executable file over TFTP from a
         server.</li>
     </ul>
+
+    <p>
+      The process is automatic (assuming BOOTP and TFTP servers have been configured correctly).
+    </p>
 
     <p>SpeccyBoot is a device to do this with a Spectrum. The device
       connects to the Spectrum's expansion port, and to your local network
@@ -50,11 +54,8 @@
       so it works with standard software.</p>
 
     <p>This allows us to load virtually any program onto the Spectrum in
-      a matter of seconds, instead of the tedious and error-prone cassette
-      loading. Programs are packaged as .z80 snapshots, which can be
-      created from any modern Spectrum emulator, or obtained from the
-      <a href="http://www.worldofspectrum.org/">World of Spectrum</a>
-      archives.</p>
+      a matter of seconds. Programs are packaged as .z80 snapshots, which can be
+      created from any modern Spectrum emulator.</p>
 
     <h3>Network booting with SpeccyBoot</h3>
 
@@ -178,10 +179,9 @@
     </table>
 
     <p>
-      SpeccyBoot also includes a <a href="https://en.wikipedia.org/wiki/Bit_banging">bit-banged</a>
-      <a href="https://en.wikipedia.org/wiki/Serial_Peripheral_Interface">SPI</a>
-      stack (with a transfer bandwidth of about 60 kbit/s), a menu
-      selection facility, and support for loading and executing
+      The SpeccyBoot firmware also includes an <a href="https://en.wikipedia.org/wiki/Serial_Peripheral_Interface">SPI</a>
+      stack (with a transfer bandwidth of about 60 kbit/s)
+      and support for loading and executing
       <a href="https://worldofspectrum.org/faq/reference/z80format.htm">.z80 snapshots</a>.
     </p>
 
