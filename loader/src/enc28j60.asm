@@ -78,7 +78,6 @@ enc28j60_read_memory:
     ;; secondary bank (in word_loop)
     ;; -----------------------------
     ;; BC  byte counter
-    ;; D   return value from spi_read_byte_to_memory
     ;; DE  temp register for one term in sum below
     ;; HL  cumulative 16-bit one-complement sum
     ;;
@@ -94,6 +93,7 @@ enc28j60_read_memory:
     rst   spi_write_byte
 
     pop   bc    ;; set BC to byte counter
+    inc   b     ;; see spi_read_byte_to_memory below
 
     ld    hl, (_ip_checksum)
 
@@ -102,25 +102,27 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; =======================================================================
-    ;; each word_loop iteration (16 bits) takes 933 T-states
-    ;;   <=> 60.02 kbit/s  (48k machines @3.5MHz)
-    ;;       60.83 kbit/s  (128k machines @3.54690MHz)
+    ;; each word_loop iteration (16 bits) takes 911.0625 T-states (average)
+    ;;   <=> 61.47 kbit/s  (48k machines @3.5MHz)
+    ;;       62.29 kbit/s  (128k machines @3.54690MHz)
     ;; =======================================================================
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+429
+    call spi_read_byte_to_memory      ;; 17+416.03125
 
-    ld   e, d                         ;; 4
+    ld   e, a                         ;; 4
 
     ;; Padding byte handling for odd-sized payloads:
     ;; if this was the last byte, then Z==1,
     ;; B == 0, the CALL NZ below is not taken,
     ;; and D == 0 in the checksum addition instead
 
-    ld   d, b                         ;; 4      D := 0, preserve Z flag
+    ld   a, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+429
+    call nz, spi_read_byte_to_memory  ;; 17+416.03125
+
+    ld   d, a                         ;; 4
 
     ex   af, af'                      ;; 4
     adc  hl, de                       ;; 15
@@ -179,7 +181,7 @@ do_end_transaction:
 ;; ----------------------------------------------------------------------------
 ;; Subroutine: read one byte. Call with secondary bank selected.
 ;;
-;; The byte is stored in (primary HL), primary E, and secondary D.
+;; The byte is stored in (primary HL), primary E, and A.
 ;;
 ;; Primary HL is increased, primary BC decreased, and the secondary bank
 ;; selected again on exit.
@@ -207,15 +209,24 @@ spi_read_byte_to_memory:
 
     exx                               ;;  4
 
-    ld   d, a                         ;;  4
+    ;; -------------------------------------------------------------
+    ;; The following is equivalent to
+    ;;   DEC BC
+    ;;   + setting Z flag when BC reaches zero, without involving A
+    ;;
+    ;; BUT requires B to be increased by 1 in advance, so a length
+    ;; of 0x1234 is represented as B==0x13, C==0x34.
+    ;; -------------------------------------------------------------
 
-    dec  bc                           ;;  6
-    ld   a, b                         ;;  4
-    or   c                            ;;  4
+    dec  c                            ;;  4
+    ret  nz                           ;;  5   (11)
+    dec  b                            ;;  4
 
     ret                               ;; 10
 
-                                      ;; 429 T-states
+                                      ;; 424 T-states (1/256 times)
+                                      ;; 416 T-states (255/256 times)
+                                      ;; 416.03125 T-states (average)
 
 
 ;; ############################################################################
