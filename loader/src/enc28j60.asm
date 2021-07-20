@@ -71,7 +71,7 @@ enc28j60_read_memory:
     ;; B   SPI_IDLE+SPI_MOSI
     ;; C   SPI_OUT
     ;; D   SPI_IDLE+SPI_SCK
-    ;; E   byte being loaded, using carry to check for end of loop
+    ;; E   byte being loaded
     ;; HL  destination in RAM
     ;;
     ;;
