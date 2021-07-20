@@ -61,13 +61,6 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 _digits:
     .ds   1
 
-;; ----------------------------------------------------------------------------
-;; flag indicating whether SETUP_CONTEXT_SWITCH has been executed
-;; ----------------------------------------------------------------------------
-
-is_context_switch_set_up:
-    .ds   1
-
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -915,14 +908,16 @@ no_progress_bar:
     ret   nz
 
     ;; ------------------------------------------------------------------------
-    ;; use flag 'is_context_switch_set_up' to only set up context switch once,
+    ;; use register I (zero on reset) to only set up context switch once,
     ;; first time this address is reached; return silently the second time
+    ;;
+    ;; keep values for I < 0x40, to avoid nasty interference with ULA ('snow')
     ;; ------------------------------------------------------------------------
 
-    ld    a, (is_context_switch_set_up)
-    xor   a, d             ;; becomes non-zero first time, and zero second time
-    ret   z
-    ld    (is_context_switch_set_up), a
+    ld    a, i
+    ret   nz
+    inc   a
+    ld    i, a
 
     ;; ------------------------------------------------------------------------
     ;; use alternate BC, DE, HL for scratch here
