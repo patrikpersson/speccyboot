@@ -503,7 +503,8 @@ context_switch_restore_bytes_loop:
 
     call  spi_read_byte_to_c
 
-context_switch_spi_return:         ;; return address for ROM-based stack below
+context_switch_spi_return:               ;; return address for ROM-based stack
+                                         ;; (see spi_restore_stack_top)
 
     ld    (hl), c
     inc   hl
