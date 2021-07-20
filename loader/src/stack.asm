@@ -1157,7 +1157,7 @@ ethertype_arp:
 
 
 ;; ----------------------------------------------------------------------------
-;; Subroutine: poll indicated ETH/MAC/MII register R until
+;; Subroutine: poll indicated ETH/MAC/MII register until
 ;;
 ;;   (reg & mask) == expected_value
 ;;
