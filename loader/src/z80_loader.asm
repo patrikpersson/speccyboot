@@ -159,7 +159,6 @@ is_context_switch_set_up:
 chunk_done:
 
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_header
-    ;; ld   ix, #s_chunk_header
 
   ;; -------------------------------------------------------------------------
   ;; Helper: leave current state and return to state loop
@@ -222,8 +221,8 @@ load_byte_from_packet:
 ;;
 ;; Evacuates the header from the TFTP data block and sets up the next state.
 ;; The actual entrypoint follows below, and then JRs backwards in memory.
-;; This could potentially allow the s_header address to be kept on the same
-;; page as the other .z80 loader states. (Fragile.)
+;; This allows the s_header address to be kept on the same page as the other
+;; .z80 loader states. (Fragile.)
 ;; ############################################################################
 
     .area _Z80_LOADER_STATES
@@ -273,7 +272,6 @@ s_header_not_128k:
     ;; ------------------------------------------------------------------------
 
     SWITCH_STATE  s_header  s_chunk_header
-    ;; ld   ix, #s_chunk_header
 
 s_header_set_state:
 
@@ -861,7 +859,11 @@ update_progress:
     ;; ========================================================================
 
     cp    a, (hl)
-    jp    z, perform_context_switch    ;; FIXME: could this be a JR instead?
+    jr    nz, no_context_switch
+
+    PERFORM_CONTEXT_SWITCH
+
+no_context_switch:
 
     ;; ------------------------------------------------------------------------
     ;; Scale loaded number of kilobytes to a value 0..32.
@@ -933,6 +935,3 @@ no_progress_bar:
 start_storing_runtime_data:
     ld    d, #>EVACUATION_TEMP_BUFFER
     ret
-
-perform_context_switch:
-    PERFORM_CONTEXT_SWITCH
