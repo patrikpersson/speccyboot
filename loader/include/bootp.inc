@@ -192,10 +192,12 @@ parse_loop:
     ld   a, (de)
     inc  de
 
-    bit  4, a          ;; sets Z flag for NUL and '.'
-    jr   z, parse_byte_complete
+    ;; -----------------------------------------------------------------------
+    ;; any char less than '0' is assumed to be either NUL or '.'
+    ;; -----------------------------------------------------------------------
 
     sub  a, #'0'
+    jr   c, parse_byte_complete
 
     ld   b, a          ;; B now holds digit value 0..9
 
