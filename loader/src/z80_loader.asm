@@ -61,13 +61,6 @@ PROGRESS_BAR_BASE  = ATTRS_BASE + 0x2E0
 _digits:
     .ds   1
 
-;; ----------------------------------------------------------------------------
-;; number of bytes left of an ED ED repetition sequence
-;; ----------------------------------------------------------------------------
-
-repetition_count:
-    .ds   1
-
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -519,9 +512,9 @@ s_chunk_header3:
     ;; FALL THROUGH to 128k memory configuration here:
     ;;
     ;; At this point, A==0x80 or 0xc0, but bits 6..7 are not used in the
-    ;; 128k paging register. Lower bits are zero, so writing this value will
+    ;; 128k paging register. Lower bits are zero, so writing this calue will
     ;; result in page 0 being paged in at 0xC000 (which is the same page
-    ;; selected in init.asm and in 48k context switch). This should be benign.
+    ;; selected in init.asm and in 48k context switch).
     ;; -----------------------------------------------------------------------
 
 s_chunk_header3_128k_banking:
@@ -601,10 +594,10 @@ s_chunk_repcount:
     call check_limits_and_load_byte
 
     ;; -------------------------------------------------------------------------
-    ;; store the repetition count
+    ;; store the repetition count temporarily in (DE)
     ;; -------------------------------------------------------------------------
 
-    ld   (repetition_count), a
+    ld   (de), a
 
     SWITCH_STATE  s_chunk_repcount  s_chunk_repvalue
 
@@ -628,6 +621,13 @@ s_chunk_repvalue:
 
     SWITCH_STATE  s_chunk_repvalue  s_repetition
 
+    ;; -------------------------------------------------------------------------
+    ;; recall the repetition count, store in A'
+    ;; -------------------------------------------------------------------------
+
+    ld   a, (de)
+    ex   af, af'
+
     ;; FALL THROUGH to s_repetition
 
 
@@ -638,23 +638,19 @@ s_chunk_repvalue:
 s_repetition:
 
     ;; -------------------------------------------------------------------------
-    ;; check the repetition count
-    ;; -------------------------------------------------------------------------
-
-    ld   a, (repetition_count)
-    dec  a
-    ld   (repetition_count), a
-
-    ;; -------------------------------------------------------------------------
     ;; the byte to repeat is always the most recently loaded one, as this state
     ;; (s_repetition) does not involve any loading of data (only writing)
     ;; -------------------------------------------------------------------------
 
     ld   a, -1(iy)
 
-    jr   nz, store_byte
+    ;; -------------------------------------------------------------------------
+    ;; check the repetition count
+    ;; -------------------------------------------------------------------------
 
-    ex   af, af'        ;; to match the other EX below
+    ex   af, af'
+    dec  a
+    jr   nz, switch_af_and_store_byte
 
     ;; FALL THROUGH to s_chunk_compressed_escape_false
 
