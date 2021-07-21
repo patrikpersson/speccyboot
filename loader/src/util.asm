@@ -108,9 +108,13 @@ show_attr_digit:
 
 show_attr_digit_already_shifted:  ;; special target for below
 
-    and   a, #0x78                ;; binary 01111000
-    add   a, #<(_font_data + 16 * 8 + 1)    ;; all digits in a single 256b page
-    ld    d, #>(_font_data + 16 * 8 + 1)
+    ;; -----------------------------------------------------------------------
+    ;; Font data is assumed to reside on an even page, which means that the
+    ;; data for digit '0' starts ('0'-' ')*8 = 0x80 bytes in.
+    ;; -----------------------------------------------------------------------
+
+    or    a, #0x80
+    ld    d, #>_font_data
     ld    e, a
 
 show_attr_char:
@@ -118,8 +122,8 @@ show_attr_char:
     ld    h, #>ATTR_DIGIT_ROW
 
 show_attr_digit_row_loop:
-    ld    a, (de)
     inc   de
+    ld    a, (de)
     ld    b, #7
 
 show_attr_char_pixel_loop:
