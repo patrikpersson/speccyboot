@@ -102,9 +102,9 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; =======================================================================
-    ;; each word_loop iteration (16 bits) takes 911.0916 T-states (average)
-    ;;   <=> 61.46 kbit/s  (48k machines @3.5MHz)
-    ;;       62.29 kbit/s  (128k machines @3.54690MHz)
+    ;; each word_loop iteration (16 bits) takes 913.0916 T-states (average)
+    ;;   <=> 61.33 kbit/s  (48k machines @3.5MHz)
+    ;;       62.15 kbit/s  (128k machines @3.54690MHz)
     ;; =======================================================================
 
 word_loop:
@@ -128,7 +128,7 @@ word_loop:
     adc  hl, de                       ;; 15
     ex   af, af'                      ;; 4
 
-    jp   nz, word_loop                ;; 10  (JP is 2 T-states faster than JR)
+    jr   nz, word_loop                ;; 12
 
     ;; -----------------------------------------------------------------------
     ;; end of payload: add the final carry to HL
