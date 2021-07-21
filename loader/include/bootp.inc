@@ -202,9 +202,8 @@ parse_loop:
     ld   a, c
     add  a, a
     add  a, a
+    add  a, c
     add  a, a
-    add  a, c
-    add  a, c
     add  a, b       ;; A := C*10 + B
 
     ld   c, a

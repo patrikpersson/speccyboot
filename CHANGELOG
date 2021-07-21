@@ -1,8 +1,12 @@
+* Further SPI performance optimizations (~62 kbit/s).
+
+-------------------------------------------------------------------------------
+
 SpeccyBoot 3 (July 17, 2021):
 
 * Optimized footprint further: all code except the menu application
   now fits in 2K ROM; no code in RAM is necessary for loading snapshots.
-* Faster SPI stack (~60kbit/s).
+* Faster SPI stack (~60 kbit/s).
 * Snapshots (*.z80) can be loaded directly, without user intervention,
   if the BOOTP 'file' field is set to a suitable snapshot file name.
 
