@@ -183,7 +183,7 @@ bootp_receive_octet_loop:
     ;; given anything else than digits, a period ('.'), or NUL.
     ;; ========================================================================
 
-    ld   c, #0
+    ld   (hl), #0
 
 parse_loop:
 
@@ -199,24 +199,22 @@ parse_loop:
 
     ld   b, a          ;; B now holds digit value 0..9
 
-    ld   a, c
+    ld   a, (hl)
     add  a, a
     add  a, a
-    add  a, c
+    add  a, (hl)
     add  a, a
-    add  a, b       ;; A := C*10 + B
+    add  a, b           ;; A := (HL)*10 + B
 
-    ld   c, a
+    ld   (hl), a
 
     jr parse_loop
 
 parse_byte_complete:
 
-    ld   (hl), c
     inc  hl
 
-    ld   a, l
-    cp   a, #<_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET + 4
+    cp   a, #0x0100 - '0'                ;; was A == NUL before SUB A, #'0' ?
     jr   nz, bootp_receive_octet_loop
 
 bootp_receive_sname_done:
