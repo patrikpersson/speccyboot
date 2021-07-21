@@ -1,4 +1,5 @@
 * Further SPI performance optimizations (~62 kbit/s).
+* Fixed boot delay for 128k reset logic (avoiding crashes).
 
 -------------------------------------------------------------------------------
 
