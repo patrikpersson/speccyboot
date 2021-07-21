@@ -106,11 +106,14 @@ show_attr_digit:
     add   a, a
     add   a, a
 
-show_attr_digit_already_shifted:  ;; special target for below
+show_attr_digit_already_shifted:
 
     ;; -----------------------------------------------------------------------
-    ;; Font data is assumed to reside on an even page, which means that the
+    ;; Font data is assumed to start on a page boundary, which means that the
     ;; data for digit '0' starts ('0'-' ')*8 = 0x80 bytes in.
+    ;;
+    ;; However, A may already have bit 7 set (spilling over from the least-
+    ;; significant bit of the next digit). Use OR rather than ADD.
     ;; -----------------------------------------------------------------------
 
     or    a, #0x80
