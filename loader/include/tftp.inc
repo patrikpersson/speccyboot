@@ -119,7 +119,7 @@ TFTP_HEADER_SIZE     = 4
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
     ld    hl, #expected_tftp_block_no
 
-    cp    a, (hl)
+    sub   a, (hl)
     jr    nz, tftp_receive_blk_nbr_not_equal
 
     inc   (hl)                             ;; expected_tftp_block_no
@@ -206,7 +206,6 @@ tftp_receive_blk_nbr_not_equal:
     ;; Any other difference is an error.
     ;; -----------------------------------------------------------------------
 
-    sub   a, (hl)
     inc   a
     jr    z, tftp_ack
 
