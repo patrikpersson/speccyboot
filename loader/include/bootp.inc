@@ -174,10 +174,8 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     jr   z, bootp_receive_sname_done
 
     ld   l, #<_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
-    ld   b, #4  ;; four octets
 
 bootp_receive_octet_loop:
-    push bc
 
     ;; ========================================================================
     ;; Parse decimal number at DE. Truncated to 8 bits (unsigned).
@@ -215,11 +213,11 @@ parse_loop:
 parse_byte_complete:
 
     ld   (hl), c
-    pop  bc
-
     inc  hl
 
-    djnz bootp_receive_octet_loop
+    ld   a, l
+    cp   a, #<_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET + 4
+    jr   nz, bootp_receive_octet_loop
 
 bootp_receive_sname_done:
 
