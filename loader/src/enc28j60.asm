@@ -102,14 +102,14 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; =======================================================================
-    ;; each word_loop iteration (16 bits) takes 911.0625 T-states (average)
-    ;;   <=> 61.47 kbit/s  (48k machines @3.5MHz)
+    ;; each word_loop iteration (16 bits) takes 911.0916 T-states (average)
+    ;;   <=> 61.46 kbit/s  (48k machines @3.5MHz)
     ;;       62.29 kbit/s  (128k machines @3.54690MHz)
     ;; =======================================================================
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+416.03125
+    call spi_read_byte_to_memory      ;; 17+416.0458
 
     ld   e, a                         ;; 4
 
@@ -120,7 +120,7 @@ word_loop:
 
     ld   a, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+416.03125
+    call nz, spi_read_byte_to_memory  ;; 17+416.0458
 
     ld   d, a                         ;; 4
 
@@ -219,14 +219,21 @@ spi_read_byte_to_memory:
     ;; -------------------------------------------------------------
 
     dec  c                            ;;  4
-    ret  nz                           ;;  5   (11)
+    ret  nz                           ;;  5   (11 if return taken)
     dec  b                            ;;  4
 
     ret                               ;; 10
+                                      ;; ---
+                                      ;; 416 T-states (..RET NZ)
+                                      ;; 424 T-states (..DEC B; RET)
 
-                                      ;; 424 T-states (1/256 times)
-                                      ;; 416 T-states (255/256 times)
-                                      ;; 416.03125 T-states (average)
+    ;; -------------------------------------------------------------
+    ;; T-state calculation, assuming a fully loaded TFTP packet:
+    ;; 8 (UDP header) + 4 (TFTP header) + 512 (TFTP payload) == 524
+    ;;
+    ;; Results in 3 long instances (424) and 521 short ones (416),
+    ;; so (3*424+521*416)/524 == 416.0458 T-states (average)
+    ;; -------------------------------------------------------------
 
 
 ;; ############################################################################
