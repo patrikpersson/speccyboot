@@ -981,6 +981,96 @@ arp_header_template_end:
 
 
 ;; ############################################################################
+;; TFTP subroutine: handle differing received vs. expected block numbers
+;;
+;; On entry, A holds the difference between received and expected block numbers
+;; ############################################################################
+
+tftp_receive_blk_nbr_not_equal:
+
+    ;; -----------------------------------------------------------------------
+    ;; There is one permissible case where received and expected block numbers
+    ;; could differ:
+    ;;
+    ;; received == expected-1 ?  means A == received-expected == -1
+    ;;
+    ;; This means the previous ACK was lost. Acknowledge, but ignore data.
+    ;; Any other difference is an error.
+    ;; -----------------------------------------------------------------------
+
+    inc   a
+
+    ;; FALL THROUGH to tftp_ack_if_equal
+
+;; ===========================================================================
+;; subroutine: reply with ACK if Z flag is set, ERROR otherwise
+;; ===========================================================================
+
+tftp_ack_if_equal:
+
+    ;; -----------------------------------------------------------------------
+    ;; packet length, network order
+    ;;
+    ;; revised for ERROR packets below
+    ;; -----------------------------------------------------------------------
+
+    ld    de, #0x0100 * (UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET)
+
+    jr    z, tftp_send_ack
+
+    ;; =======================================================================
+    ;; reply with ERROR packet
+    ;; =======================================================================
+
+    inc   d                  ;; -> UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
+    call  tftp_reply
+
+    rst   enc28j60_write_memory_inline
+
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline
+    ;; -----------------------------------------------------------------------
+
+    .db  error_packet_end - error_packet_start
+
+error_packet_start:
+    .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
+    .db   0, 4                        ;; illegal TFTP operation, network order
+    .db   0                           ;; no particular message
+error_packet_end:
+
+    jr    ip_send_critical
+
+    ;; =======================================================================
+    ;; reply with ACK packet
+    ;; =======================================================================
+
+tftp_send_ack:
+
+    call  tftp_reply
+
+    rst   enc28j60_write_memory_inline
+
+    ;; -----------------------------------------------------------------------
+    ;; inline data for enc28j60_write_memory_inline
+    ;; -----------------------------------------------------------------------
+
+    .db  ack_packet_end - ack_packet_start
+
+ack_packet_start:
+    .db   0, TFTP_OPCODE_ACK
+ack_packet_end:
+
+    ;; -----------------------------------------------------------------------
+
+    ld    e, #TFTP_SIZE_OF_BLOCKNO
+    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
+    rst   enc28j60_write_memory_small
+
+    ;; FALL THROUGH to ip_send_critical
+
+
+;; ############################################################################
 ;; ip_send_critical
 ;;
 ;; Send a completed IP packet (packet length determined by IP header).
