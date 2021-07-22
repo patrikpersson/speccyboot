@@ -305,20 +305,20 @@ ack_packet_end:
 
     ;; -----------------------------------------------------------------------
     ;; Set up the TFTP client port to use. The least significant byte
-    ;; (in network order) is always UDP_PORT_TFTP_SERVER, and the most
-    ;; significant byte is based on register R, for some coarse
+    ;; (in network order, so H) is always UDP_PORT_TFTP_SERVER, and the most
+    ;; significant byte is based on register R, for some crude
     ;; pseudo-randomness.
     ;;
     ;; Only the high-order (pseudo-random) byte is stored. It also has some
-    ;; 1-valued bits masked in, to ensure it can never be zero. This protects
-    ;; against TFTP packets received before this code is executed. (Such
-    ;; packets should be ignored.)
+    ;; 1-valued bits masked in, to ensure it can never be zero. This prevents
+    ;; the IP stack from accepting TFTP packets before this code is executed.
+    ;; (The default value of _tftp_client_port on boot is zero.)
     ;; -----------------------------------------------------------------------
 
     ld   a, r
-    or   a, h               ;; ensure _tftp_client_port cannot be zero
+    or   a, h                       ;; ensure _tftp_client_port cannot be zero
     ld   (_tftp_client_port), a
-    ld   l, a  ;; H is still UDP_PORT_TFTP_SERVER, so port number will not be zero
+    ld   l, a
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ;; ------------------------------------------------------------------------
