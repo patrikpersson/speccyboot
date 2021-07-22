@@ -74,53 +74,6 @@ CP_A_N               = 0xfe
 ;; ============================================================================
 
 ;; ############################################################################
-;; print_str
-;;
-;; Prints a string, terminated by '.' (that is, _not_ NUL).
-;;
-;; The string is truncated to the end of the line, and padded with spaces.
-;;
-;; HL points to the string to print
-;; DE points to VRAM location
-;; destroys AF and HL; preserves BC.
-;; On return, A==0, Z==1, and DE points to the first character cell on the
-;; following line.
-;; ############################################################################
-
-    .area _CODE
-
-print_str:
-
-    ld   a, (hl)
-    cp   a, #'.'
-    jr   nz, no_padding
-    ld   a, #' '
-    .db  JR_NZ          ;; Z is set here, so this will skip the INC HL below
-
-no_padding:
-
-    inc  hl
-
-    call print_char
-
-    jr   nz, no_end_of_segment
-
-    ;; E became zero: means we reached the end of one of the 2K VRAM segments,
-    ;; skip to the next one
-
-    ld   a, d
-    add  a, #8
-    ld   d, a
-
-no_end_of_segment:
-
-    ld   a, e
-    and  a, #0x1f
-    jr   nz, print_str
-
-    ret
-
-;; ############################################################################
 ;; subroutine: get filename pointer for index in C (0..255), return
 ;; pointer in HL. Destroys AF, preserves BC and DE.
 ;; ############################################################################
@@ -147,39 +100,6 @@ get_filename_pointer:
 
 run_menu:
 
-    ;; ------------------------------------------------------------------------
-    ;; set up menu colours
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #0x5800
-    ld   de, #0x5801
-    ld   bc, #2*32                                               ;; lines 0..1
-    ld   (hl), #BLACK + (WHITE << 3)
-    ldir
-
-    ld   bc, #DISPLAY_LINES * 32 - 1                             ;; lines 2..21
-    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
-    ldir
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, bright
-    ;; (same as menu background above)
-    ;; ------------------------------------------------------------------------
-
-    ;; H already has the right value here
-
-    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
-    ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
-
-    ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot <version>' at (0,0)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #title_str                ;; 'SpeccyBoot <version>'
-    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
-
-    call  print_str
-
     ;; ========================================================================
     ;; main loop for the menu
     ;;
@@ -188,8 +108,8 @@ run_menu:
     ;; E = total number of snapshots (0..255)
     ;; ========================================================================
 
-    ld   c, a       ;; A == 0 from print_str
-    ld   d, a
+    ld   c, #0
+    ld   d, c
     ld   a, (nbr_snapshots)
     ld   e, a
 
@@ -545,12 +465,3 @@ scan_key:
 scan_key_no_key:
     ei
     ret
-
-;; ############################################################################
-
-    .area _CODE
-
-title_str:
-    .ascii "SpeccyBoot "
-    .db   VERSION_STAGE1 + '0'
-    .db   '.'                          ;; string terminator
