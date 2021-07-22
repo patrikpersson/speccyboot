@@ -118,11 +118,10 @@ TFTP_HEADER_SIZE     = 4
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
     ld    hl, #expected_tftp_block_no
+    inc   (hl)
 
     sub   a, (hl)
     jr    nz, tftp_receive_blk_nbr_not_equal
-
-    inc   (hl)                             ;; expected_tftp_block_no
 
     ;; ------------------------------------------------------------------------
     ;; packet number OK: acknowledge
@@ -307,10 +306,10 @@ ack_packet_end:
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ;; ------------------------------------------------------------------------
-    ;; reset _expected_tftp_block_no to 1
+    ;; reset _expected_tftp_block_no
     ;; ------------------------------------------------------------------------
 
-    ld   a, #1
+    xor  a, a
     ld   (expected_tftp_block_no), a
 
     ex   de, hl    ;; bring filename pointer to HL
