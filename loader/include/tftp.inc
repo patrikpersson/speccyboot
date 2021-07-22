@@ -216,22 +216,21 @@ tftp_state_loop:
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
 
     ;; -----------------------------------------------------------------------
-    ;; Set up the TFTP client port to use. The least significant byte
-    ;; (in network order, so H) is always UDP_PORT_TFTP_SERVER, and the most
-    ;; significant byte is based on register R, for some crude
-    ;; pseudo-randomness.
+    ;; Set up the TFTP client port to use, as a pseudo-random number in
+    ;; range 0x80..0xff. It has a one-valued bit masked in, for two reasons:
     ;;
-    ;; Only the high-order (pseudo-random) byte is stored. It also has a one-
-    ;; valued bit masked in, to ensure it can never be zero. This prevents
-    ;; the IP stack from accepting TFTP packets before this code is executed.
-    ;; (The default value of _tftp_client_port on boot is zero, which should
-    ;; not match any TFTP packets.)
+    ;; 1. Ensure this port number is never zero. This prevents the IP stack
+    ;;    from accepting TFTP packets before this code is executed. (The
+    ;;    default value of _tftp_client_port on boot is zero, which should not
+    ;;    match any valid TFTP packets.)
+    ;;
+    ;; 2. Avoid overlap with UDP_PORT_TFTP_SERVER.
     ;; -----------------------------------------------------------------------
 
     ld   a, r
-    or   a, #0x80                   ;; ensure _tftp_client_port cannot be zero
+    or   a, #0x80
     ld   (_tftp_client_port), a
-    ld   l, a
+    ld   h, a
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ;; ------------------------------------------------------------------------

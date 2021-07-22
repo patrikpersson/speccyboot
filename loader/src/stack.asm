@@ -853,16 +853,19 @@ no_carry:
     ;; for BOOTP, the port has the value 0x4400
     ;; (UDP_PORT_BOOTP_CLIENT, network order)
     ;;
-    ;; for TFTP, port has the value 0x45rr, where 'rr' is a random value
-    ;; (that is, the high byte is UDP_PORT_TFTP_SERVER, as chosen in tftp.inc)
+    ;; for TFTP, port has the value 0xrr00, where 'rr' is the
+    ;; byte in _tftp_client_port, a random value in range 0x80..0xff.
+
+    ld   a, l        ;; low-order byte should always be zero
+    or   a, a
+    ret  nz
 
     ld   a, h
-    sub  a, #UDP_PORT_BOOTP_CLIENT
+    cp   a, #UDP_PORT_BOOTP_CLIENT
     jp   z, bootp_receive
-    dec  a             ;; UDP_PORT_TFTP_SERVER?
-    ret  nz
+
     ld   a, (_tftp_client_port)
-    cp   a, l
+    cp   a, h
     ret  nz
 
     ;; -------------------------------------------------------------------
@@ -1389,14 +1392,6 @@ ip_receive_check_checksum:
 ;; ----------------------------------------------------------------------------
 
 bootp_receive:
-
-    ;; ------------------------------------------------------------------------
-    ;; Verify that the high-order byte of the port (network order) is zero.
-    ;; A is zero on entry, due to the subtraction in the BOOTP/TFTP check above
-    ;; ------------------------------------------------------------------------
-
-    or   a, l
-    ret  nz
 
     HANDLE_BOOTP_PACKET
 
