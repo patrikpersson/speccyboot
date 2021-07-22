@@ -318,9 +318,10 @@ ack_packet_end:
     ;; ------------------------------------------------------------------------
     ;; calculate length of filename; assume length < 240
     ;; (256 - UDP_HEADER_SIZE - TFTP_SIZE_OF_RRQ_PREFIX - TFTP_SIZE_OF_RRQ_OPTION)
+    ;;
+    ;; assuming HL == filename and A == 0
     ;; ------------------------------------------------------------------------
 
-    xor  a, a      ;; needed for CPIR, to search for NUL
     ld   c, a      ;; set C := 0
     cpir           ;; find NUL in string pointed to by HL; BC := negated length
     ld   b, a      ;; set B := 0
@@ -341,7 +342,7 @@ ack_packet_end:
     ld   hl, #eth_broadcast_address    ;; all we know at this point
     call udp_create
 
-    ;; append 16-bit TFTP opcode and path prefix
+    ;; append 16-bit TFTP opcode
 
     rst  enc28j60_write_memory_inline
 
