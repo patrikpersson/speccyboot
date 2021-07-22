@@ -221,14 +221,15 @@ tftp_state_loop:
     ;; significant byte is based on register R, for some crude
     ;; pseudo-randomness.
     ;;
-    ;; Only the high-order (pseudo-random) byte is stored. It also has some
-    ;; 1-valued bits masked in, to ensure it can never be zero. This prevents
+    ;; Only the high-order (pseudo-random) byte is stored. It also has a one-
+    ;; valued bit masked in, to ensure it can never be zero. This prevents
     ;; the IP stack from accepting TFTP packets before this code is executed.
-    ;; (The default value of _tftp_client_port on boot is zero.)
+    ;; (The default value of _tftp_client_port on boot is zero, which should
+    ;; not match any TFTP packets.)
     ;; -----------------------------------------------------------------------
 
     ld   a, r
-    or   a, h                       ;; ensure _tftp_client_port cannot be zero
+    or   a, #0x80                   ;; ensure _tftp_client_port cannot be zero
     ld   (_tftp_client_port), a
     ld   l, a
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
