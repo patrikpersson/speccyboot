@@ -103,8 +103,6 @@ TFTP_HEADER_SIZE     = 4
     sub  a, #TFTP_OPCODE_DATA
     or   a, l
 
-    ld   e, a         ;; E := 0 (assuming the opcode is OK), useful later below
-
     ld   a, #FATAL_FILE_NOT_FOUND
     jp   nz, fail
 
@@ -191,8 +189,6 @@ tftp_state_loop:
 
 ;; ===========================================================================
 ;; subroutine: handle differing received vs. expected block numbers
-;;
-;; Requires E == 0
 ;; ===========================================================================
 
 tftp_receive_blk_nbr_not_equal:
@@ -213,14 +209,17 @@ tftp_receive_blk_nbr_not_equal:
 
 ;; ===========================================================================
 ;; subroutine: reply with ACK if Z flag is set, ERROR otherwise
-;;
-;; Requires E == 0
 ;; ===========================================================================
 
 tftp_ack_if_equal:
 
-    ;; assuming E == 0 set by caller
-    ld    d, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET       ;; network order
+    ;; -----------------------------------------------------------------------
+    ;; packet length, network order
+    ;;
+    ;; revised for ERROR packets below
+    ;; -----------------------------------------------------------------------
+
+    ld    de, #0x0100 * (UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET)
 
     jr    z, tftp_send_ack
 
