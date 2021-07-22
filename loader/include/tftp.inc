@@ -125,9 +125,11 @@ TFTP_HEADER_SIZE     = 4
 
     ;; ------------------------------------------------------------------------
     ;; packet number OK: acknowledge
+    ;;
+    ;; Z flag is set after JR NZ above
     ;; ------------------------------------------------------------------------
 
-    call  tftp_ack
+    call  tftp_ack_if_equal
 
     ;; -----------------------------------------------------------------------
     ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
@@ -206,21 +208,27 @@ tftp_receive_blk_nbr_not_equal:
     ;; -----------------------------------------------------------------------
 
     inc   a
-    jr    z, tftp_ack
 
-    ;; FALL THROUGH to tftp_receive_error
+    ;; FALL THROUGH to tftp_ack_if_equal
 
 ;; ===========================================================================
-;; subroutine: reply with ERROR packet
+;; subroutine: reply with ACK if Z flag is set, ERROR otherwise
 ;;
 ;; Requires E == 0
 ;; ===========================================================================
 
-tftp_receive_error:
+tftp_ack_if_equal:
 
     ;; assuming E == 0 set by caller
+    ld    d, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET       ;; network order
 
-    ld    d, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET     ;; network order
+    jr    z, tftp_send_ack
+
+    ;; =======================================================================
+    ;; reply with ERROR packet
+    ;; =======================================================================
+
+    inc   d                  ;; -> UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
     call  tftp_reply
 
     rst   enc28j60_write_memory_inline
@@ -239,17 +247,12 @@ error_packet_end:
 
     jr    ip_send_critical
 
-;; ===========================================================================
-;; subroutine: reply with ACK packet
-;;
-;; Requires E == 0
-;; ===========================================================================
+    ;; =======================================================================
+    ;; reply with ACK packet
+    ;; =======================================================================
 
-tftp_ack:
+tftp_send_ack:
 
-    ;; assuming E == 0 set by caller
-
-    ld    d, #UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET       ;; network order
     call  tftp_reply
 
     rst   enc28j60_write_memory_inline
