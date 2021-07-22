@@ -865,15 +865,6 @@ no_carry:
     cp   a, l
     ret  nz
 
-    ;; =======================================================================
-    ;; A packet for the TFTP client port was received.
-    ;; Only accept it if an IP address has been set.
-    ;; =======================================================================
-
-    ld   a, (_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET)
-    or   a  ;; a non-zero first octet
-    ret  z
-
     ;; -------------------------------------------------------------------
     ;; handle_tftp_packet is a macro, so as to avoid a function call
     ;; -------------------------------------------------------------------
