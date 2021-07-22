@@ -268,11 +268,8 @@ main_packet_not_ip:
 main_packet_done:
 
     ;; ------------------------------------------------------------------------
-    ;; advance ERXRDPT
+    ;; advance ERXRDPT                  (assuming bank 0 is currently selected)
     ;; ------------------------------------------------------------------------
-
-    ld    e, #0     ;; bank of ERXRDPT
-    rst   enc28j60_select_bank
 
     ;; errata B5, item 11:  EXRDPT must always be written with an odd value
 
@@ -473,21 +470,14 @@ eth_create:
 
     push  hl                                                 ;; stack Ethertype
     push  bc                                   ;; stack destination MAC address
-    push  de                                       ;; stack transmission buffer
 
     ;; ------------------------------------------------------------------------
-    ;; select default bank for ENC28J60
+    ;; set up EWRPT for writing packet data                   (assuming bank 0)
     ;; ------------------------------------------------------------------------
 
-    ld    e, #0
-    rst   enc28j60_select_bank
-
-    ;; ------------------------------------------------------------------------
-    ;; set up EWRPT for writing packet data
-    ;; ------------------------------------------------------------------------
+    ex    de, hl           ;; FIXME: change registers?
 
     ld    a, #OPCODE_WCR + (EWRPTL & REG_MASK)
-    pop   hl                                      ;; recall transmission buffer
     rst   enc28j60_write_register16
 
     ;; ========================================================================
@@ -1126,22 +1116,18 @@ eth_send_frame:
 
     ;; ----------------------------------------------------------------------
     ;; set up registers:  ETXST := start_address, ETXND := end_address
+    ;; (assuming bank 0)
     ;; ----------------------------------------------------------------------
 
-    push  hl   ;; remember HL=end_address
-    push  de
+    push  hl                                       ;; remember HL=end_address
 
-    ld    e, #0     ;; bank of ETXST and ETXND
-    rst   enc28j60_select_bank
-
-    pop   hl
-    ;; keep end_address on stack
+    ex    de, hl
 
     ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
     rst   enc28j60_write_register16
 
     ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
-    pop   hl   ;; end_address pushed above
+    pop   hl                                      ;; end_address pushed above
     rst  enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
