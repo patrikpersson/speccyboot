@@ -452,11 +452,12 @@ eth_register_defaults:
 
     ;; ------------------------------------------------------------------------
     ;; NOTE: no explicit sentinel here. The table is terminated by the byte
-    ;; 0xE5, which happens to be the first byte of eth_create below.
-    ;; (This instruction has bit 5 set, which none of the table entries have.)
+    ;; 0xD5, which happens to be the first byte of eth_create below.
+    ;; (This byte would correspond to bank 3, register 0x15, ECOCON, which
+    ;; is not used here.)
     ;; ------------------------------------------------------------------------
     
-END_OF_TABLE = 0xE5                                                  ;; PUSH HL
+END_OF_TABLE = 0xD5                                                  ;; PUSH DE
 
 ;; ############################################################################
 ;; eth_create
@@ -465,17 +466,15 @@ END_OF_TABLE = 0xE5                                                  ;; PUSH HL
 eth_create:
 
     ;; ------------------------------------------------------------------------
-    ;; NOTE: the first instruction here (0xE5) terminates the table above.
+    ;; NOTE: the first instruction here (0xD5) terminates the table above.
     ;; ------------------------------------------------------------------------
 
-    push  hl                                                 ;; stack Ethertype
+    push  de                                                 ;; stack Ethertype
     push  bc                                   ;; stack destination MAC address
 
     ;; ------------------------------------------------------------------------
     ;; set up EWRPT for writing packet data                   (assuming bank 0)
     ;; ------------------------------------------------------------------------
-
-    ex    de, hl           ;; FIXME: change registers?
 
     ld    a, #OPCODE_WCR + (EWRPTL & REG_MASK)
     rst   enc28j60_write_register16
@@ -640,8 +639,8 @@ udp_create:
     ;; ----------------------------------------------------------------------
 
     pop    bc             ;; destination MAC address
-    ld     de, #ENC28J60_TXBUF1_START
-    ld     hl, #ethertype_ip
+    ld     de, #ethertype_ip
+    ld     hl, #ENC28J60_TXBUF1_START
     call   eth_create
 
     ;; ----------------------------------------------------------------------
@@ -918,10 +917,10 @@ arp_receive:
     ret  nz   ;; if the packet is not for the local IP address, return
 
     ld   bc, #eth_sender_address
-    ld   de, #ENC28J60_TXBUF2_START
-    ld   hl, #ethertype_arp
+    ld   de, #ethertype_arp
+    ld   hl, #ENC28J60_TXBUF2_START
 
-    push de                             ;; useful below
+    push hl                             ;; useful below
 
     call eth_create
 

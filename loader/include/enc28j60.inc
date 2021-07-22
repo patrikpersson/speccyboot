@@ -136,7 +136,6 @@ EBSTCSL               = BANK3 | 0x08
 EBSTCSH               = BANK3 | 0x09
 MISTAT                = BANK3 | MAC_MII | 0x0a
 EREVID                = BANK3 | 0x12
-ECOCON                = BANK3 | 0x15
 EFLOCON               = BANK3 | 0x17
 EPAUSL                = BANK3 | 0x18
 EPAUSH                = BANK3 | 0x19

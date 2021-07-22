@@ -139,8 +139,8 @@ ETH_HEADER_SIZE = 14
 ;; currently in transmission, block until that is done first.
 ;;
 ;; BC: destination MAC address
-;; DE: ENC28J60_TXBUF1_START for IP, ENC28J60_TXBUF1_START for ARP
-;; HL: pointer to Ethertype (2 bytes)
+;; DE: pointer to Ethertype (2 bytes)
+;; HL: ENC28J60_TXBUF1_START for IP, ENC28J60_TXBUF1_START for ARP
 ;; ============================================================================
     .globl eth_create
 
