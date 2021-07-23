@@ -440,8 +440,8 @@ scan_key:
     add   a, l                           ;; will not set Z flag
     ld    l, a
     ld    c, (hl)
+scan_key_no_key:
     ld    a, #SPI_IDLE+SPI_CS            ;; page in SpeccyBoot
     out   (SPI_OUT), a
-scan_key_no_key:
     ei
     ret
