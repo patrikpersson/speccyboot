@@ -289,6 +289,15 @@ main_packet_done:
 
 eth_init:
 
+    ;; ------------------------------------------------------------------------
+    ;; print 'SpeccyBoot <version>' at (0,0)
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #title_str                ;; 'SpeccyBoot <version>'
+    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
+
+    call  print_str
+
     ;; ========================================================================
     ;; reset Ethernet controller
     ;;
@@ -1296,16 +1305,12 @@ tftp_state_menu_loader:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; set up menu colours
+    ;; set up menu colours (lines 2..21)
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #0x5800
-    ld   de, #0x5801
-    ld   bc, #2*32                                               ;; lines 0..1
-    ld   (hl), #BLACK + (WHITE << 3)
-    ldir
-
-    ld   bc, #DISPLAY_LINES * 32 - 1                             ;; lines 2..21
+    ld   hl, #0x5840
+    ld   de, #0x5841
+    ld   bc, #DISPLAY_LINES * 32 - 1
     ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
     ldir
 
@@ -1318,15 +1323,6 @@ tftp_state_menu_loader:
 
     ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
     ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
-
-    ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot <version>' at (0,0)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #title_str                ;; 'SpeccyBoot <version>'
-    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
-
-    call  print_str
 
     ;; ------------------------------------------------------------------------
     ;; check version signature
@@ -1428,15 +1424,13 @@ bootp_receive:
 
 tftp_request_snapshot:
 
-    ld   hl, #s_header                       ;; state for .z80 snapshot loading
-
     ;; ------------------------------------------------------------------------
     ;; an empty filename is interpreted as a request to load 'menu.bin'
     ;; ------------------------------------------------------------------------
 
     ld   a, (de)
     or   a, a
-    jr   nz, filename_selected
+    jr   nz, prepare_snapshot_loading
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
@@ -1454,6 +1448,30 @@ tftp_request_snapshot:
 
     ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
     ld   de, #tftp_default_file                   ;; 'menu.bin'
+
+    jr   filename_selected
+
+prepare_snapshot_loading:
+
+    ;; ========================================================================
+    ;; prepare for snapshot loading:
+    ;; ========================================================================
+
+    exx
+
+    ld   hl, #ATTRS_BASE
+    ld   de, #ATTRS_BASE+1
+    ld   bc, #32 * 23
+    ld   (hl), #WHITE + (WHITE << 3)
+    ldir
+
+    ld   c, #0x1f
+    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
+    ldir
+
+    exx
+
+    ld   hl, #s_header                       ;; state for .z80 snapshot loading
 
 filename_selected:
 

@@ -359,7 +359,7 @@ go_to_basic:
   ;; initialization of (mostly just clearing) global data
   ;; --------------------------------------------------------------------------
 
-initialize_global_data:
+initialize_global_data::
 
   ;; clear bitmap VRAM (also used as a source of zeros for BOOTP)
 
@@ -368,21 +368,15 @@ initialize_global_data:
   ld    (hl), l
   ldir
 
-  ;; set attribute VRAM: lines 0..22, PAPER+INK WHITE
-
-  ld    (hl), #WHITE + (WHITE << 3)         ;; 0x3f
-  ld    bc, #0x20 * 23
-  ldir
-
-  ;; set attribute VRAM: line 23, PAPER WHITE, INK BLACK
+  ;; set attribute VRAM: PAPER WHITE+INK BLACK
   ;; also paint stack
 
-  ld    c, (hl)       ;; 0x3f: bottom attribute row + stack, minus one
   ld    (hl), #BLACK + (WHITE << 3)
+  ld    bc, #0x20 * 24 + STACK_SIZE
   ldir
 
   ld    (hl), c       ;; C == 0 after LDIR above
-  ld    bc, #_font_data - _stack_top + 1  ;; plus one, due to using 0x3f above
+  ld    bc, #_font_data - _stack_top
   ldir
 
   ld    a, #WHITE
