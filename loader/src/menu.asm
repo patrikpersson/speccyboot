@@ -289,7 +289,7 @@ menu_hit_enter:
 
     jp   main_loop
 
-    .area _NONRESIDENT
+    .area _CODE
 
 ;; ############################################################################
 ;; subroutine: highlight current line to colour (in register C)
