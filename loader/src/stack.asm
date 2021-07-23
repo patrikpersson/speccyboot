@@ -813,23 +813,27 @@ no_carry:
     ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
     call nz, add_and_verify_checksum
 
-    ;; ------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; Pass on to BOOTP/TFTP
-    ;; ------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
 
-    ;; BOOTP or TFTP response?
-    ;;
-    ;; for BOOTP, the port has the value 0x4400
-    ;; (UDP_PORT_BOOTP_CLIENT, network order)
-    ;;
-    ;; for TFTP, port has the value 0xrr00, where 'rr' is the
-    ;; byte in _tftp_client_port, a random value in range 0x80..0xff.
+    ;; -----------------------------------------------------------------------
+    ;; check low-order byte of port (should always be zero)
+    ;; -----------------------------------------------------------------------
 
-    ld   a, l        ;; low-order byte should always be zero
-    or   a, a
+    or   a, l      ;; A == 0 from above:
+                   ;; either the UDP checksum was zero, A == 0, CALL not taken
+                   ;; or add_and_verify_checksum was called, and set A == 0
     ret  nz
+
+    ;; -----------------------------------------------------------------------
+    ;; check high-order byte:
+    ;;
+    ;; 0x44                -> BOOTP   (UDP_PORT_BOOTP_CLIENT, network order)
+    ;; (_tftp_client_port) -> TFTP
+    ;; -----------------------------------------------------------------------
 
     ld   a, h
     cp   a, #UDP_PORT_BOOTP_CLIENT
@@ -839,15 +843,15 @@ no_carry:
     cp   a, h
     ret  nz
 
-    ;; -------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; handle_tftp_packet is a macro, so as to avoid a function call
-    ;; -------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     HANDLE_TFTP_PACKET
 
-    ;; -------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; HANDLE_TFTP_PACKET returns when done, so no fall-through here
-    ;; -------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
 
 ;; ############################################################################
@@ -1283,7 +1287,7 @@ tftp_state_menu_loader:
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
     ;; (BC above should be exactly 0x200 for all DATA packets except the last
-    ;; one, never larger; so we are done if bit 1 is set in B)
+    ;; one, never larger; so we are done if bit 1 was set in B)
     ;; ------------------------------------------------------------------------
 
     ret nz
