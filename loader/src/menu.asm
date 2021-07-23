@@ -108,7 +108,7 @@ run_menu:
     ;; E = total number of snapshots (0..255)
     ;; ========================================================================
 
-    ld   c, #0            ;; FIXME currently superfluous
+    ld   c, #0
     ld   d, c
     ld   a, (nbr_snapshots)
     ld   e, a
