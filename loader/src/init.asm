@@ -184,7 +184,7 @@ bootrequest_header_data:
   ;; ========================================================================
   ;; RST 0x38 ENTRYPOINT: 50 Hz interrupt
   ;;
-  ;; Increase 16-bit value at '_timer_tick_count' by 2
+  ;; Increase 16-bit value at '_timer_tick_count' by 1
   ;; ========================================================================
 
   .org	0x38
@@ -198,7 +198,6 @@ bootrequest_xid:
 
   push  hl
   ld	  hl, (_timer_tick_count)
-  inc	  hl
   inc	  hl
   ld	  (_timer_tick_count), hl
   pop   hl
@@ -298,7 +297,7 @@ reset_delay:
   ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
   push  de
-  ld    bc, #0x007e    ;; slight overkill, tuned to ensure L ends up being zero
+  ld    bc, #0x007f    ;; slight overkill, tuned to ensure L ends up being zero
   ldir
 
   ret   ;; jump to _stack_top
@@ -398,7 +397,7 @@ initialize_global_data:
   ;; six data bytes.)
   ;;
   ;; A seventh byte is written to ensure L := 0x00, which saves a byte below.
-  ;; This seventh byte technically overwrite the first byte of font data for
+  ;; This seventh byte technically overwrites the first byte of font data for
   ;; the SPACE character, but print_char skips the first pixel line anyway.
   ;; -------------------------------------------------------------------------
 

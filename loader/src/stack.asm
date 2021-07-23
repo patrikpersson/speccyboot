@@ -1138,9 +1138,16 @@ eth_send_frame:
     ;; ------------------------------------------------------------------------
 
     ;; B == 0 after enc28j60_write_register16 above
+    ;; L == OPCODE_WCR + (ETXNDL & REG_MASK) == 0x47
 
-    ld    c, b
-    ld    (_timer_tick_count), bc
+    ;; ----------------------------------------------------------------------
+    ;; Set HL := 0x0047, which is not zero, but close enough. Next timeout
+    ;; (if no packet is received) happens after
+    ;; 0x0100 - 0x0047 == 0xb9 == 185 ticks == 3700 milliseconds.
+    ;; ----------------------------------------------------------------------
+
+    ld    h, b
+    ld    (_timer_tick_count), hl
 
     ;; ----------------------------------------------------------------------
     ;; Poll for link to come up (if it has not already)

@@ -54,11 +54,11 @@ KEY_DOWN      = '6'
 ;; Repeat time-outs: between the keypress and the first repetition, and for
 ;; any subsequent repetitions
 ;;
-;; (measured in double-ticks of 20ms)
+;; (measured in ticks of 20ms)
 ;; ============================================================================
 
-REPEAT_FIRST_TIMEOUT = 40
-REPEAT_NEXT_TIMEOUT  = 10
+REPEAT_FIRST_TIMEOUT = 20
+REPEAT_NEXT_TIMEOUT  = 5
 
 ;; BASIC ROM1 entry points
 
