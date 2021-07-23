@@ -204,15 +204,6 @@ WARNING_CHECKSUM_FAILED   = CYAN
 ;; ----------------------------------------------------------------------------
 ;; alternate entrypoint for show_attr_digit:
 ;;
-;; DE: points to font data for a character
-;; L: as in show_attr_digit
-;; ----------------------------------------------------------------------------
-
-    .globl show_attr_char
-
-;; ----------------------------------------------------------------------------
-;; alternate entrypoint for show_attr_digit:
-;;
 ;; Preserves C. Destroys AF, B, DE, H.
 ;; H is set to the attribute row for digits (0x5A).
 ;; L is set to the rightmost position in the digit.
@@ -221,6 +212,13 @@ WARNING_CHECKSUM_FAILED   = CYAN
 
     .globl show_attr_digit_right
 
+;; ----------------------------------------------------------------------------
+;; title_str
+;;
+;; The string 'SpeccyBoot <version>', terminated by '.'
+;; ----------------------------------------------------------------------------
+
+    .globl title_str
 
 ;; ----------------------------------------------------------------------------
 ;; print_str

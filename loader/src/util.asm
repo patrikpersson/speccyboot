@@ -84,14 +84,24 @@ memory_compare:
 
 
 ;; ############################################################################
-;; show_attr_digit_right
+;; title_str
 ;; ############################################################################
 
    .area _CODE
 
+title_str:
+    .ascii "SpeccyBoot "
+    .db   VERSION_STAGE1 + '0'
+
+    ;; terminated by '.', which is the LD L, #n instruction below
+
+;; ############################################################################
+;; show_attr_digit_right
+;; ############################################################################
+
 show_attr_digit_right:
 
-    ld    l, #24
+    ld    l, #24                               ;; NOTE: terminates string above
 
    ;; FALL THROUGH to show_attr_digit
 
@@ -119,9 +129,6 @@ show_attr_digit_already_shifted:
     or    a, #0x80
     ld    d, #>_font_data
     ld    e, a
-
-show_attr_char:
-
     ld    h, #>ATTR_DIGIT_ROW
 
 show_attr_digit_row_loop:

@@ -122,8 +122,7 @@ tftp_state:
     .ds    2
 
 ;; ----------------------------------------------------------------------------
-;; high byte of chosen UDP client port
-;; (low byte is always 0x45, network order)
+;; high byte of chosen UDP client port for TFTP (low byte always zero)
 ;; ----------------------------------------------------------------------------
 
 _tftp_client_port:
@@ -141,6 +140,15 @@ _tftp_client_port:
     ;; ========================================================================
     ;; Presentation
     ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; print 'SpeccyBoot <version>' at (0,0)
+    ;; ------------------------------------------------------------------------
+
+    ld    hl, #title_str                ;; 'SpeccyBoot <version>'
+    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
+
+    call  print_str
 
     ;; ------------------------------------------------------------------------
     ;; flashing cursor (bottom left): black ink, green paper, bright, flash
@@ -288,15 +296,6 @@ main_packet_done:
 ;; ############################################################################
 
 eth_init:
-
-    ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot <version>' at (0,0)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #title_str                ;; 'SpeccyBoot <version>'
-    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
-
-    call  print_str
 
     ;; ========================================================================
     ;; reset Ethernet controller
@@ -1304,6 +1303,25 @@ tftp_state_menu_loader:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
+    ;; set up menu colours (lines 2..21)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x5840
+    ld   de, #0x5841
+    ld   bc, #DISPLAY_LINES * 32 - 1
+    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
+    ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'S' indicator: black ink, white paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ;; H already has the right value here
+
+    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
+    ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
+
+    ;; ------------------------------------------------------------------------
     ;; check version signature
     ;; ------------------------------------------------------------------------
 
@@ -1340,11 +1358,6 @@ fail:
     di
     out (ULA_PORT), a
     halt
-
-title_str:
-    .ascii "SpeccyBoot "
-    .db   VERSION_STAGE1 + '0'
-    .db   '.'                          ;; string terminator
 
 ;; -----------------------------------------------------------------------
 ;; Subroutine: add a number of bytes to IP checksum,
@@ -1406,8 +1419,6 @@ tftp_request_snapshot:
     ;; an empty filename is interpreted as a request to load 'menu.bin'
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #ATTRS_BASE + 32 * 24 - 1   ;; useful for both cases below
-
     ld   a, (de)
     or   a, a
     jr   z, tftp_load_menu_bin
@@ -1418,15 +1429,15 @@ tftp_request_snapshot:
 
     push de
 
-    ;; HL set above
-    ld   de, #ATTRS_BASE + 32 * 24 - 2
-    ld   bc, #0x1f
-    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
-    lddr
-
+    ld   hl, #ATTRS_BASE
+    ld   de, #ATTRS_BASE + 1
     ld   bc, #0x02E0
     ld   (hl), #WHITE + (WHITE << 3)
-    lddr
+    ldir
+
+    ld   c, #0x1f
+    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
+    ldir
 
     xor  a, a
     call show_attr_digit_right
@@ -1443,9 +1454,7 @@ tftp_load_menu_bin:
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
     ;; ------------------------------------------------------------------------
 
-    ;; H has the right value here (0x5A)
-
-    ld   l, #<(ATTRS_BASE + 23 * 32 + 16)                           ;; (23, 16)
+    ld   hl, #(ATTRS_BASE + 23 * 32 + 16)                           ;; (23, 16)
     ld   (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
 
     ;; ------------------------------------------------------------------------
