@@ -80,11 +80,6 @@ eth_sender_address:
 eth_adm_header_ethertype:
     .ds   2
 
-;; ----------------------------------------------------------------------------
-
-_end_of_critical_frame:
-    .ds   2                   ;; written to ETXND for re-transmission
-
 ;; ============================================================================
 ;; IP
 ;; ============================================================================
@@ -198,10 +193,7 @@ main_loop:
     ld    a, (_timer_tick_count + 1)   ;; high byte
     or    a, a                         ;; A >= 1 means time-out
 
-    ld    hl, (_end_of_critical_frame)
-    ld    de, #ENC28J60_TXBUF1_START
-    ;; B == 0 from enc28j60_read_register
-    call  nz, eth_send_frame
+    call  nz, ip_send_critical
 
     jr    main_loop
 
@@ -1063,7 +1055,6 @@ ack_packet_end:
 ;; ip_send_critical
 ;;
 ;; Send a completed IP packet (packet length determined by IP header).
-;; Updates _end_of_critical_frame for any future retransmissions.
 ;; ############################################################################
 
 ip_send_critical:
@@ -1088,12 +1079,6 @@ ip_send_critical:
     ld    de, #ENC28J60_TXBUF1_START
     ld    bc, #ENC28J60_TXBUF1_START+ETH_HEADER_SIZE
     add   hl, bc
-
-    ;; ------------------------------------------------------------------------
-    ;; this is a critical frame: update _end_of_critical_frame
-    ;; ------------------------------------------------------------------------
-
-    ld    (_end_of_critical_frame), hl
 
     ;; FALL THROUGH to eth_send_frame
 

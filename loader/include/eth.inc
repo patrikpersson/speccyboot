@@ -122,10 +122,8 @@ ETH_ADDRESS_SIZE = 6
 ETH_HEADER_SIZE = 14
 
 ;; ----------------------------------------------------------------------------
-;; timeout handling
+;; pointer to Ethertype for IP
 ;; ----------------------------------------------------------------------------
-
-    .globl _end_of_critical_frame
 
     .globl ethertype_ip
 
