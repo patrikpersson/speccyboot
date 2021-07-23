@@ -1381,7 +1381,7 @@ ip_receive_check_checksum:
 ;; ----------------------------------------------------------------------------
 ;; Called by UDP when a BOOTP packet has been received.
 ;; If a BOOTREPLY with an IP address is found,
-;; continue with tftp_request_snapshot; otherwise return.
+;; make a TFTP file read request, otherwise return.
 ;; ----------------------------------------------------------------------------
 
 bootp_receive:
@@ -1396,7 +1396,6 @@ bootp_receive:
 
     ;; FALL THROUGH to tftp_request_snapshot
 
-
 ;; ###########################################################################
 ;; tftp_request_snapshot
 ;; ###########################################################################
@@ -1407,15 +1406,46 @@ tftp_request_snapshot:
     ;; an empty filename is interpreted as a request to load 'menu.bin'
     ;; ------------------------------------------------------------------------
 
+    ld   hl, #ATTRS_BASE + 32 * 24 - 1   ;; useful for both cases below
+
     ld   a, (de)
     or   a, a
-    jr   nz, prepare_snapshot_loading
+    jr   z, tftp_load_menu_bin
+
+    ;; ========================================================================
+    ;; prepare for snapshot loading
+    ;; ========================================================================
+
+    push de
+
+    ;; HL set above
+    ld   de, #ATTRS_BASE + 32 * 24 - 2
+    ld   bc, #0x1f
+    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
+    lddr
+
+    ld   bc, #0x02E0
+    ld   (hl), #WHITE + (WHITE << 3)
+    lddr
+
+    xor  a, a
+    call show_attr_digit_right
+
+    pop  de
+
+    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+
+    jr   filename_selected
+
+tftp_load_menu_bin:
 
     ;; ------------------------------------------------------------------------
     ;; attributes for 'S' indicator: black ink, green paper, bright, flash
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #ATTRS_BASE + 23 * 32 + 16           ;; (23, 16)
+    ;; H has the right value here (0x5A)
+
+    ld   l, #<(ATTRS_BASE + 23 * 32 + 16)                           ;; (23, 16)
     ld   (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
 
     ;; ------------------------------------------------------------------------
@@ -1425,35 +1455,8 @@ tftp_request_snapshot:
     ld   l, (hl)                                  ;; (23, 0)
     ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
-    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
     ld   de, #tftp_default_file                   ;; 'menu.bin'
-
-    jr   filename_selected
-
-prepare_snapshot_loading:
-
-    ;; ========================================================================
-    ;; prepare for snapshot loading
-    ;; ========================================================================
-
-    exx
-
-    ld   hl, #ATTRS_BASE
-    ld   de, #ATTRS_BASE+1
-    ld   bc, #32 * 23
-    ld   (hl), #WHITE + (WHITE << 3)
-    ldir
-
-    ld   c, #0x1f
-    ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
-    ldir
-
-    xor  a, a
-    call show_attr_digit_right
-
-    exx
-
-    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
 
 filename_selected:
 

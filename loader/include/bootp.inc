@@ -219,6 +219,6 @@ parse_byte_complete:
 
 bootp_receive_sname_done:
 
-    ;; FALL THROUGH to tftp_request_snapshot
+    ;; continue with bootp_receive
 
     .endm

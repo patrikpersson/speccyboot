@@ -309,9 +309,9 @@ s_header_set_state:
     ld   de, #0x4000
 
     ;; ------------------------------------------------------------------------
-    ;; Ensure HL is at least 0xC000, so all bytes in the chunk are loaded.
-    ;; A larger value is OK, since the context switch will take over after 48k
-    ;; have been loaded anyway.
+    ;; Ensure HL is at least 0xC000, so all bytes in the single 48k chunk are
+    ;; loaded. A larger value is OK, since the context switch will take over
+    ;; after 48k have been loaded anyway.
     ;;
     ;; This only matters for a version 1 snapshot, and C is then
     ;; (0x0100 - Z80_HEADER_OFFSET_EXT_LENGTH) = 0xe2.
