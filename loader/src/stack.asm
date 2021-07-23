@@ -150,16 +150,6 @@ _tftp_client_port:
 
     call  print_str
 
-    ;; ------------------------------------------------------------------------
-    ;; flashing cursor (bottom left): black ink, green paper, bright, flash
-    ;; ------------------------------------------------------------------------
-
-    ;; Attribute byte (BLACK | (GREEN << 3) | BRIGHT | FLASH) == 0xE0
-    ;; happens to coincide with low byte in the VRAM address
-
-    ld    hl, #ATTRS_BASE + 23 * 32                        ;; (23, 0) -- 0x5AE0
-    ld    (hl), l
-
     ;; ========================================================================
     ;; system initialization
     ;; ========================================================================
@@ -1287,7 +1277,6 @@ tftp_state_menu_loader:
     ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     bit 1, b   ;; see below
     ldir
-    ld  (_tftp_write_pos), de
 
     ;; ------------------------------------------------------------------------
     ;; If a full TFTP packet was loaded, return.
