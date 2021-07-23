@@ -1300,29 +1300,8 @@ tftp_state_menu_loader:
 
     ;; ========================================================================
     ;; This was the last packet of the stage 2 binary:
-    ;; set up user interface,
     ;; check version signature and run the stage 2 loader
     ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; set up menu colours (lines 2..21)
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #0x5840
-    ld   de, #0x5841
-    ld   bc, #DISPLAY_LINES * 32 - 1
-    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
-    ldir
-
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, bright
-    ;; (same as menu background above)
-    ;; ------------------------------------------------------------------------
-
-    ;; H already has the right value here
-
-    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
-    ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
 
     ;; ------------------------------------------------------------------------
     ;; check version signature
@@ -1454,7 +1433,7 @@ tftp_request_snapshot:
 prepare_snapshot_loading:
 
     ;; ========================================================================
-    ;; prepare for snapshot loading:
+    ;; prepare for snapshot loading
     ;; ========================================================================
 
     exx
@@ -1468,6 +1447,9 @@ prepare_snapshot_loading:
     ld   c, #0x1f
     ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
     ldir
+
+    xor  a, a
+    call show_attr_digit_right
 
     exx
 
@@ -1485,13 +1467,14 @@ filename_selected:
     ;; print 'L', local IP address, 'S', server IP address
     ;; ========================================================================
 
-    ld    a, #'L'
-    ld    de, #LOCAL_IP_POS
-    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   a, #'L'
+    ld   de, #LOCAL_IP_POS
+    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+
     call print_ip_addr
 
-    ld    a, #'S'
-    ld    e, #<SERVER_IP_POS
+    ld   a, #'S'
+    ld   e, #<SERVER_IP_POS
 
     ;; FALL THROUGH to print_ip_addr
 

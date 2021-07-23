@@ -100,6 +100,26 @@ get_filename_pointer:
 
 run_menu:
 
+    ;; ------------------------------------------------------------------------
+    ;; set up menu colours (lines 2..21)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #0x5840
+    ld   de, #0x5841
+    ld   bc, #DISPLAY_LINES * 32 - 1
+    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
+    ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; attributes for 'S' indicator: black ink, white paper, bright
+    ;; (same as menu background above)
+    ;; ------------------------------------------------------------------------
+
+    ;; H already has the right value here
+
+    ld    l, #<ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
+    ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
+
     ;; ========================================================================
     ;; main loop for the menu
     ;;
@@ -108,7 +128,7 @@ run_menu:
     ;; E = total number of snapshots (0..255)
     ;; ========================================================================
 
-    ld   c, #0
+    ld   c, #0            ;; FIXME currently superfluous
     ld   d, c
     ld   a, (nbr_snapshots)
     ld   e, a
