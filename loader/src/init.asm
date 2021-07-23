@@ -258,14 +258,6 @@ enc28j60_end_transaction_and_return:
 
     ret
 
-;; ===========================================================================
-;; MAC address data (placed here to ensure high byte of address is zero)
-;; ===========================================================================
-
-eth_broadcast_address:
-    .db   0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-
-
   ;; ==========================================================================
   ;; continued initialization (from 0x0000)
   ;; ==========================================================================
@@ -306,7 +298,7 @@ reset_delay:
   ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
   push  de
-  ld    bc, #0x0078    ;; slight overkill, tuned to ensure L ends up being zero
+  ld    bc, #0x007e    ;; slight overkill, tuned to ensure L ends up being zero
   ldir
 
   ret   ;; jump to _stack_top
@@ -359,7 +351,7 @@ go_to_basic:
   ;; initialization of (mostly just clearing) global data
   ;; --------------------------------------------------------------------------
 
-initialize_global_data::
+initialize_global_data:
 
   ;; clear bitmap VRAM (also used as a source of zeros for BOOTP)
 
@@ -376,13 +368,27 @@ initialize_global_data::
   ldir
 
   ld    (hl), c       ;; C == 0 after LDIR above
-  ld    bc, #_font_data - _stack_top
+  ld    bc, #_font_data - _stack_top - ETH_ADDRESS_SIZE
+  ldir
+
+  ;; -------------------------------------------------------------------------
+  ;; Set up six (actually seven) bytes of 0xFF at _font_data-ETH_ADDRESS_SIZE,
+  ;; to be used as Ethernet broadcast address. (Five code bytes is less than
+  ;; six data bytes.)
+  ;;
+  ;; A seventh byte is written to ensure L := 0x00, which saves a byte below.
+  ;; This seventh byte technically overwrite the first byte of font data for
+  ;; the SPACE character, but print_char skips the first pixel line anyway.
+  ;; -------------------------------------------------------------------------
+
+  dec   (hl)          ;; set byte := 0xff
+  ld    c, #ETH_ADDRESS_SIZE
   ldir
 
   ld    a, #WHITE
   out   (ULA_PORT), a
 
-  ld    h, #>stage2_start         ;; L == <font_data == 0
+  ld    h, #>stage2_start         ;; L == <font_data == 0x00
 
   ld    (_tftp_write_pos), hl
 
