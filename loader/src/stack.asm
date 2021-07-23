@@ -198,10 +198,6 @@ main_loop:
     ld    a, (_timer_tick_count + 1)   ;; high byte
     or    a, a                         ;; A >= 1 means time-out
 
-    ;; ------------------------------------------------------------------------
-    ;; A is presumably 1 == WARNING_RETRANSMITTED here
-    ;; ------------------------------------------------------------------------
-
     ld    hl, (_end_of_critical_frame)
     ld    de, #ENC28J60_TXBUF1_START
     ;; B == 0 from enc28j60_read_register
@@ -244,26 +240,14 @@ main_packet:
     rst   enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
-    ;; pass packet to IP or ARP, if ethertype matches
-    ;; 0x0608 -> IP
-    ;; 0x0008 -> ARP
+    ;; check first byte of Ethertype, common to IP and ARP
     ;; ------------------------------------------------------------------------
 
     ld    hl, (eth_adm_header_ethertype)
     ld    a, l
     sub   a, #8
-    jr    nz, main_packet_done   ;; neither IP nor ARP -- ignore
-    or    a, h
-    jr    nz, main_packet_not_ip
 
-    call  ip_receive
-    xor   a, a                   ;; avoid matching ARP below
-
-main_packet_not_ip:
-    cp    a, #6
-    call  z, arp_receive
-
-main_packet_done:
+    call  z, handle_ip_or_arp_packet
 
     ;; ------------------------------------------------------------------------
     ;; advance ERXRDPT                  (assuming bank 0 is currently selected)
@@ -865,18 +849,29 @@ no_carry:
     ;; HANDLE_TFTP_PACKET returns when done, so no fall-through here
     ;; -------------------------------------------------------------------
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 ;; ############################################################################
-;; arp_receive
+;; handle_packet
+;;
+;; Helper to select IP or ARP depending on ethertype:
+;; 0x0008 -> IP
+;; 0x0608 -> ARP
+;;
+;; On entry:
+;; A == 0
+;; H == high byte of ethertype (0x00 or 0x06)
 ;; ############################################################################
 
-arp_receive:
+handle_ip_or_arp_packet:
 
-    ;; ------------------------------------------------------------------------
-    ;; retrieve ARP payload
-    ;; ------------------------------------------------------------------------
+    or    a, h
+    jp    z, ip_receive
+    cp    a, #6
+    ret   nz
+
+    ;; =======================================================================
+    ;; ARP packet detected: retrieve payload
+    ;; =======================================================================
 
     ld   de, #ARP_IP_ETH_PACKET_SIZE
     call enc28j60_read_memory_to_rxframe
