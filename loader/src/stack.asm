@@ -1387,18 +1387,33 @@ bootp_receive:
     HANDLE_BOOTP_PACKET
 
     ;; ========================================================================
-    ;; A BOOTREPLY was received: inspect the FILE field
+    ;; A BOOTREPLY was received
     ;; ========================================================================
 
+    ;; ------------------------------------------------------------------------
+    ;; keep configuration for loading 'menu.bin' in DE', HL'
+    ;; ------------------------------------------------------------------------
+
+    ld   de, #tftp_default_file                   ;; 'menu.bin'
+    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
+    exx
+
+    ;; ------------------------------------------------------------------------
+    ;; set attributes for 'L'/'S' indicators: black ink, white paper, bright
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #(ATTRS_BASE + 23 * 32)                         ;; (23, 0)  0x5ae0
+    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
+
+    ld   l, #<(ATTRS_BASE + 23 * 32 + 16)                   ;; (23, 16)  0x5af0
+    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
+
+    ;; ------------------------------------------------------------------------
+    ;; inspect the FILE field, set Z flag if filename is empty
+    ;; (interpreted as a request to load 'menu.bin')
+    ;; ------------------------------------------------------------------------
+
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
-
-    ;; FALL THROUGH to tftp_request_snapshot
-
-;; ###########################################################################
-;; tftp_request_snapshot
-;; ###########################################################################
-
-tftp_request_snapshot:
 
     ;; ------------------------------------------------------------------------
     ;; an empty filename is interpreted as a request to load 'menu.bin'
@@ -1408,11 +1423,21 @@ tftp_request_snapshot:
     or   a, a
     jr   z, tftp_load_menu_bin
 
+    ;; FALL THROUGH to tftp_request_snapshot
+
+;; ###########################################################################
+;; tftp_request_snapshot
+;; ###########################################################################
+
+tftp_request_snapshot:
+
     ;; ========================================================================
     ;; prepare for snapshot loading
     ;; ========================================================================
 
-    push de
+    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+
+    exx
 
     ld   hl, #ATTRS_BASE
     ld   de, #ATTRS_BASE + 1
@@ -1424,28 +1449,9 @@ tftp_request_snapshot:
     ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
     ldir
 
-    pop  de
-
-    ld   hl, #s_header                       ;; state for .z80 snapshot loading
-
-    jr   filename_selected
-
 tftp_load_menu_bin:
 
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'L' and 'S' indicators: black ink, white paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #(ATTRS_BASE + 23 * 32)                         ;; (23, 0)  0x5ae0
-    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
-    ld   l, #<(ATTRS_BASE + 23 * 32 + 16)                   ;; (23, 16)  0x5af0
-    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
-    ld   de, #tftp_default_file                   ;; 'menu.bin'
-    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
-
-filename_selected:
+    exx
 
     PREPARE_TFTP_READ_REQUEST
 
@@ -1455,6 +1461,9 @@ filename_selected:
     ;; Display IP address information:
     ;;
     ;; print 'L', local IP address, 'S', server IP address
+    ;;
+    ;; This will be displayed when a snapshot is requested too, but remains
+    ;; invisible (as PAPER and INK colours have been both set to WHITE+BRIGHT)
     ;; ========================================================================
 
     ld   a, #'L'
