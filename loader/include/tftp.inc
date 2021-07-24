@@ -259,7 +259,6 @@ tftp_state_loop:
     add  a, #UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
     ld   d, a
 
-    ld   bc, #_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
     ld   hl, #eth_broadcast_address    ;; all we know at this point
     call udp_create
 

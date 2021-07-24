@@ -84,13 +84,22 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     dec  a  ;; UDP_PORT_BOOTP_SERVER = UDP_PORT_BOOTP_CLIENT - 1
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT + 1), a
 
+    ;; ------------------------------------------------------------------------
+    ;; set destination address to 255.255.255.255
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_header_template + IPV4_HEADER_OFFSETOF_DST_ADDR
+    ld   b, #4
+set_bcast_loop:
+    ld   (hl), #0xff
+    inc  hl
+    djnz set_bcast_loop
+
     ;; set DE to UDP length, in network order
 
     ld   de, #((UDP_HEADER_SIZE + <BOOTP_PACKET_SIZE) * 0x0100) + >BOOTP_PACKET_SIZE
 
     ld   hl, #eth_broadcast_address
-    ld   b, h     ;; works for IP broadcast too (4 x 0xff)
-    ld   c, l
     call udp_create
 
     ;; ------------------------------------------------------------------------
@@ -160,7 +169,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_YIADDR
-    ld   e, #<_ip_config
+    ld   e, #<_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
     ld   bc, #8
     ldir
 
@@ -173,7 +182,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     or   a, a
     jr   z, bootp_receive_sname_done
 
-    ld   l, #<_ip_config + IP_CONFIG_TFTP_ADDRESS_OFFSET
+    ld   l, #<_header_template + IPV4_HEADER_OFFSETOF_DST_ADDR
 
 bootp_receive_octet_loop:
 

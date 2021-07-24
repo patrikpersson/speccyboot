@@ -516,8 +516,6 @@ tftp_reply:
 
     ld   hl, #eth_sender_address
 
-    ld   bc, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-
     ;; FALL THROUGH to udp_create
 
 
@@ -528,7 +526,6 @@ tftp_reply:
 udp_create:
 
     push  hl
-    push  bc
 
     ;; ----------------------------------------------------------------------
     ;; Set up a header template, to be filled in with proper data below.
@@ -578,26 +575,12 @@ udp_create:
 
     ld    (_header_template + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH), hl
 
-    ;; copy source IP address
-
-    ld    de, #_header_template + 12   ;; source IP address
-    ld    hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
-    ld    bc, #4
-    ldir
-
-    ;; copy destination IP address
-
-    pop   hl
-    ld    c, #4       ;; B == 0 after LDIR above
-    ;; keep DE from above: destination address follows immediately after source
-    ldir
-
     ;; ----------------------------------------------------------------------
     ;; compute checksum of IP header
     ;; ----------------------------------------------------------------------
 
-    ld     h, b   ;; BC==0 here after LDIR above
-    ld     l, c
+    ld     h, b                        ;; BC == 0 from LDIR above, so HL := 0
+    ld     l, b
 
     ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
     ld     de, #_header_template
@@ -697,7 +680,7 @@ ip_receive:
     ;; A == 0 and HL == _rx_frame after enc28j60_read_memory_to_rxframe above.
     ;; -----------------------------------------------------------------------
 
-    ld   l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   l, #<_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
     or   a, (hl)
 
     ;; -----------------------------------------------------------------------
@@ -923,7 +906,7 @@ handle_ip_or_arp_packet:
 
     ;; A is 0 from memory_compare above
 
-    ld   l, #<_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   l, #<_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
     or   a, (hl)
     ret  z
 
@@ -969,7 +952,7 @@ arp_header_template_end:
     ;; -----------------------------------------------------------------------
 
     ld   e, #IPV4_ADDRESS_SIZE
-    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   hl, #_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
     rst  enc28j60_write_memory_small
 
     ;; -----------------------------------------------------------------------
@@ -1468,7 +1451,7 @@ tftp_load_menu_bin:
 
     ld   a, #'L'
     ld   de, #LOCAL_IP_POS
-    ld   hl, #_ip_config + IP_CONFIG_HOST_ADDRESS_OFFSET
+    ld   hl, #_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
 
     call print_ip_addr
 
