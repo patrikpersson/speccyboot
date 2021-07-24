@@ -85,21 +85,26 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT + 1), a
 
     ;; ------------------------------------------------------------------------
-    ;; set destination address to 255.255.255.255
+    ;; set destination IP address to 255.255.255.255, and
+    ;; destination MAC address to ff:ff:ff:ff:ff:ff
+    ;;
+    ;; (see https://datatracker.ietf.org/doc/html/rfc951#section-3)
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_header_template + IPV4_HEADER_OFFSETOF_DST_ADDR
-    ld   b, #4
-set_bcast_loop:
-    ld   (hl), #0xff
-    inc  hl
-    djnz set_bcast_loop
+    ld   hl, #ipv4_broadcast_address
 
+    ld   de, #_header_template + IPV4_HEADER_OFFSETOF_DST_ADDR
+    ld   bc, #4
+
+    ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; HL now points to eth_broadcast_address == ipv4_broadcast_address + 4
     ;; set DE to UDP length, in network order
+    ;; ------------------------------------------------------------------------
 
     ld   de, #((UDP_HEADER_SIZE + <BOOTP_PACKET_SIZE) * 0x0100) + >BOOTP_PACKET_SIZE
 
-    ld   hl, #eth_broadcast_address
     call udp_create
 
     ;; ------------------------------------------------------------------------

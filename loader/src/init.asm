@@ -388,29 +388,28 @@ initialize_global_data:
   ;; ------------------------------------------------------------------------
 
   ld    (hl), c       ;; C == 0 after LDIR above
-  ld    bc, #_font_data - _stack_top - ETH_ADDRESS_SIZE
+  ld    bc, #_font_data - _stack_top - ETH_ADDRESS_SIZE - IPV4_ADDRESS_SIZE
   ldir
 
   ;; -------------------------------------------------------------------------
-  ;; Set up six (actually seven) bytes of 0xFF at _font_data-ETH_ADDRESS_SIZE,
-  ;; to be used as Ethernet broadcast address. (Five code bytes is less than
-  ;; six data bytes.)
+  ;; Set up ten of 0xFF at _font_data-ETH_ADDRESS_SIZE, to be used as
+  ;; broadcast IP address + Ethernet broadcast address.
   ;;
-  ;; A seventh byte is written to ensure L := 0x00, which saves a byte below.
-  ;; This seventh byte technically overwrites the first byte of font data for
-  ;; the SPACE character, but print_char skips the first pixel line anyway.
+  ;; Storing ten (rather than six) bytes here allows use of LDIR to copy the
+  ;; first four bytes to the IPv4 destination address, and using the resulting
+  ;; HL as pointer to the Ethernet broadcast address (see bootp.inc).
   ;; -------------------------------------------------------------------------
 
   dec   (hl)          ;; set byte := 0xff
-  ld    c, #ETH_ADDRESS_SIZE
+  ld    c, #ETH_ADDRESS_SIZE + IPV4_ADDRESS_SIZE - 1
   ldir
 
   ld    a, #WHITE
   out   (ULA_PORT), a
 
-  ld    h, #>stage2_start         ;; L == <font_data == 0x00
+  ld    a, #>stage2_start
 
-  ld    (_tftp_write_pos), hl
+  ld    (_tftp_write_pos + 1), a
 
   ei
 

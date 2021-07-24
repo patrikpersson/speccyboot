@@ -94,9 +94,10 @@ _rx_frame              = 0x5b7f             ;; size 0x220 (RX_FRAME_SIZE)
 _font_data             = 0x5e00
 
 ;; ----------------------------------------------------------------------------
-;; MAC address data (set up in init.asm)
+;; Ten bytes of 0xff, useful as broadcast address data (set up in init.asm)
 ;; ----------------------------------------------------------------------------
 
+ipv4_broadcast_address = 0x5df6
 eth_broadcast_address  = 0x5dfa      ;; immediately before _font_data
 
 ;; ============================================================================
