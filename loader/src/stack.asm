@@ -116,13 +116,6 @@ _chunk_bytes_remaining:
 tftp_state:
     .ds    2
 
-;; ----------------------------------------------------------------------------
-;; high byte of chosen UDP client port for TFTP (low byte always zero)
-;; ----------------------------------------------------------------------------
-
-_tftp_client_port:
-    .ds    1
-
 ;; ============================================================================
 
     .area _CODE
@@ -824,14 +817,19 @@ no_carry:
     ;; check high-order byte:
     ;;
     ;; 0x44                -> BOOTP   (UDP_PORT_BOOTP_CLIENT, network order)
-    ;; (_tftp_client_port) -> TFTP
+    ;; TFTP client port    -> TFTP
     ;; -----------------------------------------------------------------------
 
     ld   a, h
     cp   a, #UDP_PORT_BOOTP_CLIENT
     jp   z, bootp_receive
 
-    ld   a, (_tftp_client_port)
+    ;; -----------------------------------------------------------------------
+    ;; the last sent UDP packet is a TFTP packet,
+    ;; with the selected TFTP client port number in the UDP header
+    ;; -----------------------------------------------------------------------
+
+    ld   a, (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT + 1)
     cp   a, h
     ret  nz
 
