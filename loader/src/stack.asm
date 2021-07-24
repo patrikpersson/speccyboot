@@ -1283,13 +1283,6 @@ tftp_state_menu_loader:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, white paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #ATTRS_BASE + 23 * 32 + 16            ;; (23, 16)
-    ld    (hl), #BLACK + (WHITE << 3) + BRIGHT
-
-    ;; ------------------------------------------------------------------------
     ;; check version signature
     ;; ------------------------------------------------------------------------
 
@@ -1407,9 +1400,6 @@ tftp_request_snapshot:
     ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
     ldir
 
-    xor  a, a
-    call show_attr_digit_right
-
     pop  de
 
     ld   hl, #s_header                       ;; state for .z80 snapshot loading
@@ -1419,17 +1409,13 @@ tftp_request_snapshot:
 tftp_load_menu_bin:
 
     ;; ------------------------------------------------------------------------
-    ;; attributes for 'S' indicator: black ink, green paper, bright, flash
+    ;; attributes for 'L' and 'S' indicators: black ink, white paper, bright
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #(ATTRS_BASE + 23 * 32 + 16)                           ;; (23, 16)
-    ld   (hl), #(BLACK | (GREEN << 3) | BRIGHT | FLASH)
+    ld   hl, #(ATTRS_BASE + 23 * 32)                         ;; (23, 0)  0x5ae0
+    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
-    ;; ------------------------------------------------------------------------
-    ;; attributes for 'L' indicator: black ink, white paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld   l, (hl)                                  ;; (23, 0)
+    ld   l, #<(ATTRS_BASE + 23 * 32 + 16)                   ;; (23, 16)  0x5af0
     ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
 
     ld   de, #tftp_default_file                   ;; 'menu.bin'
