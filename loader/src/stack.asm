@@ -176,8 +176,23 @@ main_loop:
     ld    de, #(EPKTCNT & REG_MASK) + (8 << 8)    ;; EPKTCNT is an ETH register
     call  enc28j60_read_register
 
+    ex    af, af'                                   ;; keep EPKTCNT value in A'
+
+    ;; ------------------------------------------------------------------------
+    ;; restore register bank 0
+    ;; ------------------------------------------------------------------------
+
+    ld    e, b                            ;; B == 0 from enc28j60_read_register
+    rst   enc28j60_select_bank
+
+    ;; ------------------------------------------------------------------------
+    ;; any packet received?
+    ;; ------------------------------------------------------------------------
+
+    ex    af, af'                         ;; restore EPKTCNT value from A' to A
+
     or    a, a
-    jr    nz, main_packet              ;; NZ means a packet has been received
+    jr    nz, packet_received
 
     ;; ------------------------------------------------------------------------
     ;; Re-transmit the last critical frame if timer expired
@@ -190,7 +205,9 @@ main_loop:
 
     jr    main_loop
 
-main_packet:
+    ;; ------------------------------------------------------------------------
+
+packet_received:
 
     ;; ========================================================================
     ;; done spinning: a packet has been received, bring it into Spectrum RAM
@@ -199,9 +216,6 @@ main_packet:
     ;; ------------------------------------------------------------------------
     ;; set ERDPT (bank 0) to _next_frame
     ;; ------------------------------------------------------------------------
-
-    ld    e, b                            ;; B == 0 from enc28j60_read_register
-    rst   enc28j60_select_bank
 
     ld    hl, (_next_frame)
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
@@ -1094,19 +1108,17 @@ ip_send_critical:
 eth_send_frame:
 
     ;; ----------------------------------------------------------------------
-    ;; set up registers:  ETXST := start_address, ETXND := end_address
-    ;; (assuming bank 0)
+    ;; set up registers:  ETXST := start address, ETXND := end address
     ;; ----------------------------------------------------------------------
 
-    push  hl                                       ;; remember HL=end_address
-
-    ex    de, hl
-
-    ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
-    rst   enc28j60_write_register16
+    push  de                                       ;; push start address
 
     ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
-    pop   hl                                      ;; end_address pushed above
+    rst   enc28j60_write_register16
+
+    pop   hl                                       ;; pop start address
+
+    ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
     rst  enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------

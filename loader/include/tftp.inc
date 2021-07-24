@@ -218,7 +218,7 @@ tftp_state_loop:
     ;; -----------------------------------------------------------------------
     ;; Set up the TFTP client port to use, as a pseudo-random number in
     ;; range 0x80..0xff. It has a one-valued bit masked in, to overlap with
-    ;; UDP_PORT_TFTP_SERVER.
+    ;; UDP_PORT_TFTP_SERVER, and to avoid using port number zero.
     ;; -----------------------------------------------------------------------
 
     ld   a, r
