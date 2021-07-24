@@ -72,7 +72,7 @@ ETH_ADM_HEADER_SIZE = 20
 ;; ----------------------------------------------------------------------------
 
 eth_adm_header:
-_next_frame:
+next_frame_to_read:
     .ds   2             ;; position of next frame to read from the ENC28J60
     .ds   10
 eth_sender_address:
@@ -214,10 +214,10 @@ packet_received:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; set ERDPT (bank 0) to _next_frame
+    ;; set ERDPT (bank 0) to next_frame_to_read
     ;; ------------------------------------------------------------------------
 
-    ld    hl, (_next_frame)
+    ld    hl, (next_frame_to_read)
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
     rst   enc28j60_write_register16
 
@@ -254,7 +254,7 @@ packet_received:
 
     ;; errata B5, item 11:  EXRDPT must always be written with an odd value
 
-    ld    hl, (_next_frame)
+    ld    hl, (next_frame_to_read)
     dec   hl
     set   0, l
 
@@ -299,7 +299,7 @@ eth_init:
 
     ld    h, a
     ld    l, a
-    ld    (_next_frame), hl
+    ld    (next_frame_to_read), hl
 
     ;; ========================================================================
     ;; set up initial register values for ENC28J60                         (10)

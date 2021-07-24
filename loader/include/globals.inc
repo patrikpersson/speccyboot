@@ -54,13 +54,12 @@ VERSION_MAGIC  = 0x40 | VERSION_STAGE1
 ;; to facilitate single-page addressing, page 0x5B is laid out as follows:
 ;;
 ;; 5b00..5b1f       stack, 0x20 bytes
-;; 5b20..5b27       IP config (2x IPv4 addresses, 8 bytes)
-;; 5b28..5b43       IP/UDP header template, 20+8 bytes
+;; 5b28..5b43       IP/UDP headers for outgoing packets, 20+8 bytes
 ;; 5b44..5b7a       stored .z80 snapshot header, 55 bytes
-;; 5b7f..5b92       IP header (20 bytes)
-;; 5b93..5b9a       UDP header (8 bytes)
-;; 5b9b..5b9e       TFTP DATA header (4 bytes)
-;; 5b9f..5bd5       .z80 snapshot header, 55 bytes
+;; 5b7f..5b92       received IP header (20 bytes)
+;; 5b93..5b9a       received UDP header (8 bytes)
+;; 5b9b..5b9e       received TFTP DATA header (4 bytes)
+;; 5b9f..5bd5       received .z80 snapshot header, 55 bytes
 ;;
 ;; The three bytes kilobytes_loaded, kilobytes_expected, and ram_config are
 ;; located together, so two of them can be accessed in a single 16-bit word
