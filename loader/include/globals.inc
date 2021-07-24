@@ -75,7 +75,7 @@ VERSION_MAGIC  = 0x40 | VERSION_STAGE1
 STACK_SIZE             = 0x20
 _stack_top             = 0x5b00 + STACK_SIZE
                                             ;; 8 unused (empty) bytes here
-_header_template       = 0x5b28             ;; size 0x1c  (20+8)
+outgoing_header        = 0x5b28             ;; size 0x1c  (20+8)
 stored_snapshot_header = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
 kilobytes_loaded       = 0x5b7b             ;; size 1
 kilobytes_expected     = 0x5b7c             ;; size 1

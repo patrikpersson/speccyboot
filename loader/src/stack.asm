@@ -508,7 +508,7 @@ eth_create:
 tftp_reply:
 
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
 
     ;; ----------------------------------------------------------------------
     ;; no need to update source port here: keep the chosen TFTP client port
@@ -534,7 +534,7 @@ udp_create:
     push  de
 
     ld    hl, #ip_header_defaults
-    ld    de, #_header_template
+    ld    de, #outgoing_header
     ld    bc, #12        ;; IP v4 header size excluding src/dst addresses
 
     ldir
@@ -545,7 +545,7 @@ udp_create:
     ;; set UDP length (network order)
     ;; ----------------------------------------------------------------------
 
-    ld    (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), hl
+    ld    (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), hl
 
     ;; ----------------------------------------------------------------------
     ;; Add IPV4_HEADER_SIZE to HL. This can safely be done as a byte addition
@@ -570,10 +570,10 @@ udp_create:
     ld    h, a
 
     ;; ----------------------------------------------------------------------
-    ;; prepare IP header in _header_template
+    ;; prepare IP header in outgoing_header
     ;; ----------------------------------------------------------------------
 
-    ld    (_header_template + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH), hl
+    ld    (outgoing_header + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH), hl
 
     ;; ----------------------------------------------------------------------
     ;; compute checksum of IP header
@@ -583,14 +583,14 @@ udp_create:
     ld     l, b
 
     ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
-    ld     de, #_header_template
+    ld     de, #outgoing_header
     call   enc28j60_add_to_checksum_hl
 
     ;; ----------------------------------------------------------------------
     ;; store one-complemented checksum
     ;; ----------------------------------------------------------------------
 
-    ld     e, #<_header_template + IPV4_HEADER_OFFSETOF_CHECKSUM + 1
+    ld     e, #<outgoing_header + IPV4_HEADER_OFFSETOF_CHECKSUM + 1
     ;; A now holds same value as H (checksum, second byte)
     cpl
     ld     (de), a
@@ -641,7 +641,7 @@ ip_header_defaults:                          ;; IP header meaning
     ld     b, l                              ;; 0x45: version, IHL
     nop                                      ;; 0x00: DSCP, EN
 
-    ld     hl, #_header_template             ;; 2 bytes IP length (placeholder)
+    ld     hl, #outgoing_header             ;; 2 bytes IP length (placeholder)
     rst    enc28j60_write_memory_small       ;; 2 bytes packet ID (arbitrary)
 
     ld     b, b                              ;; 0x40: DO NOT FRAGMENT
@@ -680,7 +680,7 @@ ip_receive:
     ;; A == 0 and HL == _rx_frame after enc28j60_read_memory_to_rxframe above.
     ;; -----------------------------------------------------------------------
 
-    ld   l, #<_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    ld   l, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
     or   a, (hl)
 
     ;; -----------------------------------------------------------------------
@@ -838,7 +838,7 @@ no_carry:
     ;; UDP_PORT_BOOTP_CLIENT, and would then have been matched above already.
     ;; -----------------------------------------------------------------------
 
-    ld   a, (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT + 1)
+    ld   a, (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT + 1)
     cp   a, h
     ret  nz
 
@@ -890,8 +890,8 @@ handle_ip_or_arp_packet:
 
     ;; HL is set to _rx_frame and preserved by enc28j60_read_memory_to_rxframe
 
-    ld   de, #arp_header_template_start
-    ld   b, #(arp_header_template_end - arp_header_template_start - 1)
+    ld   de, #arpoutgoing_header_start
+    ld   b, #(arpoutgoing_header_end - arpoutgoing_header_start - 1)
     call memory_compare
     ret  nz   ;; if the receive packet does not match the expected header, return
 
@@ -906,7 +906,7 @@ handle_ip_or_arp_packet:
 
     ;; A is 0 from memory_compare above
 
-    ld   l, #<_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    ld   l, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
     or   a, (hl)
     ret  z
 
@@ -930,16 +930,16 @@ handle_ip_or_arp_packet:
     ;; inline data for enc28j60_write_memory_inline: ARP reply header
     ;; -----------------------------------------------------------------------
 
-    .db  arp_header_template_end - arp_header_template_start         ;; length
+    .db  arpoutgoing_header_end - arpoutgoing_header_start         ;; length
 
-arp_header_template_start:
+arpoutgoing_header_start:
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
 ethertype_ip:
     .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
     .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
     .db  0, 2                  ;; OPER: reply, 16 bits, network order
-arp_header_template_end:
+arpoutgoing_header_end:
 
     ;; -----------------------------------------------------------------------
     ;; SHA: local MAC address
@@ -952,7 +952,7 @@ arp_header_template_end:
     ;; -----------------------------------------------------------------------
 
     ld   e, #IPV4_ADDRESS_SIZE
-    ld   hl, #_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    ld   hl, #outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
     rst  enc28j60_write_memory_small
 
     ;; -----------------------------------------------------------------------
@@ -1068,7 +1068,7 @@ ack_packet_end:
 
 ip_send_critical:
 
-    ld   hl, (_header_template + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
+    ld   hl, (outgoing_header + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
     ld   a, l  ;; swap byte order in HL
     ld   l, h
     ld   h, a
@@ -1451,7 +1451,7 @@ tftp_load_menu_bin:
 
     ld   a, #'L'
     ld   de, #LOCAL_IP_POS
-    ld   hl, #_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    ld   hl, #outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
 
     call print_ip_addr
 

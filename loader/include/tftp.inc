@@ -213,7 +213,7 @@ tftp_state_loop:
     ;; set UDP ports
 
     ld   hl, #UDP_PORT_TFTP_SERVER * 0x0100    ;; network order
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+    ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
 
     ;; -----------------------------------------------------------------------
     ;; Set up the TFTP client port to use, as a pseudo-random number in
@@ -224,7 +224,7 @@ tftp_state_loop:
     ld   a, r
     or   a, #0x80
     ld   h, a
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+    ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ;; ------------------------------------------------------------------------
     ;; reset _expected_tftp_block_no

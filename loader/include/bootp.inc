@@ -80,9 +80,9 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; ------------------------------------------------------------------------
 
     ld   a, #UDP_PORT_BOOTP_CLIENT
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT + 1), a
+    ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT + 1), a
     dec  a  ;; UDP_PORT_BOOTP_SERVER = UDP_PORT_BOOTP_CLIENT - 1
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT + 1), a
+    ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT + 1), a
 
     ;; ------------------------------------------------------------------------
     ;; set destination IP address to 255.255.255.255, and
@@ -93,7 +93,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
 
     ld   hl, #ipv4_broadcast_address
 
-    ld   de, #_header_template + IPV4_HEADER_OFFSETOF_DST_ADDR
+    ld   de, #outgoing_header + IPV4_HEADER_OFFSETOF_DST_ADDR
     ld   bc, #4
 
     ldir
@@ -174,7 +174,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; ------------------------------------------------------------------------
 
     ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_YIADDR
-    ld   e, #<_header_template + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    ld   e, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
     ld   bc, #8
     ldir
 
@@ -187,7 +187,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     or   a, a
     jr   z, bootp_receive_sname_done
 
-    ld   l, #<_header_template + IPV4_HEADER_OFFSETOF_DST_ADDR
+    ld   l, #<outgoing_header + IPV4_HEADER_OFFSETOF_DST_ADDR
 
 bootp_receive_octet_loop:
 
