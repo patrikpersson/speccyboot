@@ -510,8 +510,9 @@ tftp_reply:
     ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
     ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
-    ld   (_header_template + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
+    ;; ----------------------------------------------------------------------
+    ;; no need to update source port here: keep the chosen TFTP client port
+    ;; ----------------------------------------------------------------------
 
     ld   hl, #eth_sender_address
 
