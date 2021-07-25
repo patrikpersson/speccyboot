@@ -149,7 +149,7 @@ redraw_menu_loop:
 
     sub  a, #KEY_DOWN
     jr   z, menu_hit_down
-    dec  a                ;; KEY_UP?
+    dec  a                                                           ;; KEY_UP?
     jr   z, menu_hit_up
 
     ;; ========================================================================
@@ -331,15 +331,6 @@ wait_for_key_pressed:
     call scan_key
     jr   c, wait_for_key_pressed
 
-    ;; -----------------------------------------------------------------------
-    ;; ignore CAPS SHIFT entirely
-    ;; (arrow keys can be erroneously detected as CAPS)
-    ;; -----------------------------------------------------------------------
-
-    ld   a, #keymap_caps
-    cp   a, l
-    jr   z, wait_for_key_pressed
-
     ret
 
 ;; --------------------------------------------------------------------------
@@ -358,12 +349,28 @@ scan_key:
 
     ld    hl, #keymap
     ld    d, #0x10                                         ;; start with bit 4
+
 scan_key_row_loop:
+
     ld    bc, #0x7ffe
+
 scan_key_col_loop:
+
+    ;; -----------------------------------------------------------------------
+    ;; Ignore caps shift (whose bogus key value happens to have bit 7 set).
+    ;; Arrow keys can otherwise be erroneously be detected as CAPS pressed.
+    ;;
+    ;; This sets carry flag, indicating no (real) key being pressed.
+    ;; -----------------------------------------------------------------------
+
+    ld    a, (hl)
+    rla
+    ret   c
+
     in    a, (c)
     and   a, d                                            ;; clears carry flag
     ret   z
+
     inc   hl
     rrc   b
     jr    c, scan_key_col_loop
