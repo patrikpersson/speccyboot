@@ -349,7 +349,7 @@ scan_key:
 
 scan_key_row_loop:
 
-    ld    b, #0x7f                                            ;; first key row
+    ld    b, #0x7f                             ;; first key row, C == ULA_PORT
 
 scan_key_col_loop:
 
