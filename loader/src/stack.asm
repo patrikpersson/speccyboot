@@ -134,10 +134,6 @@ tftp_state:
 ;; ############################################################################
 
     ;; ========================================================================
-    ;; Presentation
-    ;; ========================================================================
-
-    ;; ========================================================================
     ;; system initialization
     ;; ========================================================================
 
@@ -1318,16 +1314,6 @@ bootp_receive:
     exx
 
     ;; ------------------------------------------------------------------------
-    ;; set attributes for 'L'/'S' indicators: black ink, white paper, bright
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #(ATTRS_BASE + 23 * 32)                         ;; (23, 0)  0x5ae0
-    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
-    ld   l, #<(ATTRS_BASE + 23 * 32 + 16)                   ;; (23, 16)  0x5af0
-    ld   (hl), #(BLACK | (WHITE << 3) | BRIGHT)
-
-    ;; ------------------------------------------------------------------------
     ;; inspect the FILE field, set Z flag if filename is empty
     ;; (interpreted as a request to load 'menu.bin')
     ;; ------------------------------------------------------------------------
@@ -1379,37 +1365,35 @@ tftp_load_menu_bin:
     ;; ========================================================================
     ;; Display IP address information:
     ;;
-    ;; print 'L', local IP address, 'S', server IP address
+    ;; print local IP address, 'S', server IP address
     ;;
     ;; This will be displayed when a snapshot is requested too, but remains
     ;; invisible (as PAPER and INK colours have been both set to WHITE+BRIGHT)
     ;; ========================================================================
 
-    ld   a, #'L'
+
     ld   de, #LOCAL_IP_POS
     ld   hl, #outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
 
     call print_ip_addr
 
-    ld   a, #'S'
     ld   e, #<SERVER_IP_POS
+
+    ld   a, #'R'
+    call  print_char
 
     ;; FALL THROUGH to print_ip_addr
 
 
 ;; ############################################################################
 ;; Subroutine:
-;; prints IP address, four octets of 1-3 digits, with a descriptive letter
-;; ('L' or 'S') and periods between octets.
-;; A = initial letter to print ('L' or 'S')
+;; prints IP address, four octets of 1-3 digits
 ;; DE = VRAM pointer
 ;; HL = pointer to IP address
 ;; AF, AF', and BC are destroyed. DE and HL are increased.
 ;; ############################################################################
 
 print_ip_addr:
-
-    call  print_char             ;; initial letter
 
     ;; DE = VRAM pointer
     ;; HL = IP address

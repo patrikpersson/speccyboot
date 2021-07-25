@@ -144,7 +144,6 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     .endm
 
 
-
 ;; ===========================================================================
 ;; Macro:
 ;;
