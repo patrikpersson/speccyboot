@@ -93,12 +93,6 @@ tftp_state_menu_loader:
     ;; display menu
     ;; ========================================================================
 
-;; ============================================================================
-
-    .area _CODE
-
-run_menu:
-
     ;; ========================================================================
     ;; main loop for the menu
     ;;
@@ -140,7 +134,42 @@ redraw_menu_limit_set:
 redraw_menu_loop:
 
     call get_filename_pointer
-    call print_str
+
+    ;; ------------------------------------------------------------------------
+    ;; print string, terminated by '.' (that is, _not_ NUL).
+    ;;
+    ;; The string is truncated to the end of the line, and padded with spaces.
+    ;; ------------------------------------------------------------------------
+
+print_string_loop:
+
+    ld   a, (hl)
+    cp   a, #'.'
+    jr   nz, no_padding
+    ld   a, #' '
+    .db  JR_NZ          ;; Z is set here, so this will skip the INC HL below
+
+no_padding:
+
+    inc  hl
+
+    call print_char
+
+    jr   nz, no_end_of_segment
+
+    ;; E became zero: means we reached the end of one of the 2K VRAM segments,
+    ;; skip to the next one
+
+    ld   a, d
+    add  a, #8
+    ld   d, a
+
+no_end_of_segment:
+
+    ld   a, e
+    and  a, #0x1f
+    jr   nz, print_string_loop
+
 
     inc  de    ;; skip first cell on each line
     inc  c
