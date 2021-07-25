@@ -293,7 +293,7 @@ reset_delay:
   ;; -------------------------------------------------------------------------
   ;; Set A to 0x20 (PAGE_OUT) for the SPI access OUT (SPI_OUT), A below.
   ;;
-  ;; This relies on the low byte of _stack_top being 0x02. Fragile.
+  ;; This relies on the low byte of _stack_top being 0x20. Fragile.
   ;; -------------------------------------------------------------------------
 
   ld    a, e
