@@ -283,16 +283,31 @@ reset_delay:
   platform_init
 
   ;; --------------------------------------------------------------------------
-  ;; Copy trampoline to RAM. Some extra iterations are added to ensure L ends
-  ;; up being zero (useful later).
-  ;;
-  ;; NOTE: this is fragile.
+  ;; copy trampoline to RAM
   ;; --------------------------------------------------------------------------
 
   ex    de, hl   ;; DE now points to _stack_top
   ld    hl, #ram_trampoline
   push  de
-  ld    bc, #0x007f    ;; slight overkill, tuned to ensure L ends up being zero
+
+  ;; -------------------------------------------------------------------------
+  ;; Set A to 0x20 (PAGE_OUT) for the SPI access OUT (SPI_OUT), A below.
+  ;;
+  ;; This relies on the low byte of _stack_top being 0x02. Fragile.
+  ;; -------------------------------------------------------------------------
+
+  ld    a, e
+
+  ;; -------------------------------------------------------------------------
+  ;; set BC to some sane value >= (ram_trampoline_end - ram_trampoline)
+  ;;
+  ;; C == 0xFD from platform_init
+  ;; H == >ram_trampoline == 0x00
+  ;;
+  ;; This will copy 0xFD bytes to RAM for the trampoline (slight overkill).
+  ;; -------------------------------------------------------------------------
+
+  ld    b, h
   ldir
 
   ret   ;; jump to _stack_top
@@ -307,7 +322,7 @@ reset_delay:
 
 ram_trampoline:
 
-  ld    a, #PAGE_OUT         ;; page out SpeccyBoot, keep ETH in reset
+  ;; A == 0x20 == PAGE_OUT here: page out SpeccyBoot, keep ETH in reset
   out   (SPI_OUT), a
 
   ;; Is Caps Shift being pressed? Clear C flag if it is
@@ -350,11 +365,13 @@ go_to_basic:
   out   (c), l
   rst   #0
 
+ram_trampoline_end:
+
   ;; --------------------------------------------------------------------------
   ;; initialization of (mostly just clearing) global data
   ;; --------------------------------------------------------------------------
 
-initialize_global_data::
+initialize_global_data:
 
   ;; clear bitmap VRAM (also used as a source of zeros for BOOTP)
 

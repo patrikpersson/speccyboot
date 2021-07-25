@@ -125,8 +125,6 @@ copied_rom_data        = 0x6100      ;; immediately after _font_data
 eth_broadcast_address  = copied_rom_data
 keymap                 = copied_rom_data + ROM_KEYMAP_ADDR - ROM_DATA_ADDR
 
-keymap_caps            = keymap + ROM_KEYMAP_LENGTH - 1
-
 ;; ============================================================================
 
 ;; ----------------------------------------------------------------------------
@@ -153,7 +151,6 @@ DISPLAY_LINES = 22
 ;; ----------------------------------------------------------------------------
 
     .globl snapshot_array
-
 
 ;; ----------------------------------------------------------------------------
 ;; A JP (IX) instruction, used as a CALL target, to emulate a CALL (IX)
