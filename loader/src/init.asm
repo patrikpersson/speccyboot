@@ -276,8 +276,8 @@ reset_delay:
   ;; --------------------------------------------------------------------------
   ;; Configure memory banks, and ensure ROM1 (BASIC ROM) is paged in.
   ;; This sequence differs between SpeccyBoot and DGBoot, but preserves HL
-  ;; in both cases. It is executed after the delay above, to ensure that
-  ;; the 128k reset logic settles first.
+  ;; and sets C := 0xFD in both cases. It is executed after the delay above,
+  ;; to ensure that the 128k reset logic settles first.
   ;; --------------------------------------------------------------------------
 
   platform_init

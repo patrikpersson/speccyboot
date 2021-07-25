@@ -54,9 +54,9 @@ SPI_CS  = 0x02
     ld    a, #0x90             ;; PB out, PC out, PA in, mode 0
     out   (CWR), a
 
+    ld    c, #<MEMCFG_ADDR     ;; used by init.asm
+
     nop                        ;; ensure size is exactly 12 bytes
-    nop
-    nop
     nop
 
     .endm
