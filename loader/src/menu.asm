@@ -138,7 +138,6 @@ redraw_menu_loop:
     pop  de
     pop  bc
 
-
     ld   a, #BLACK + (WHITE << 3) + BRIGHT
     call menu_set_highlight
 
