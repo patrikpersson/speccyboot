@@ -315,7 +315,7 @@ menu_highlight_loop:
 ;; Blocks until a key is pressed. If any key is pressed when the routine is
 ;; called, block until that key is released.
 ;;
-;; Destroys AF, BC, D, HL.
+;; Destroys AF, BC, DE, HL.
 ;;
 ;; On return, HL points to the pressed key (ASCII).
 ;; ############################################################################
@@ -323,22 +323,19 @@ menu_highlight_loop:
     .area _NONRESIDENT
 
 wait_key:
-    call scan_key
-    jr   nc, wait_key
 
-wait_for_key_pressed:
+    ld    bc, #ULA_PORT                ;; set B := 0, to detect any key press
 
-    call scan_key
-    jr   c, wait_for_key_pressed
+wait_until_no_key_pressed:
 
-    ret
+    in    a, (c)
+    cpl
+    and   a, #0x1f
+    jr    nz, wait_until_no_key_pressed
 
-;; --------------------------------------------------------------------------
-;; Subroutine: scan keyboard
-;;
-;; If a key is pressed, carry is cleared and HL points to the key (ASCII).
-;; If no key is pressed, carry is set.
-;; ---------------------------------------------------------------------------
+    ;; =======================================================================
+    ;; Scan keyboard
+    ;; =======================================================================
 
 scan_key:
 
@@ -352,7 +349,7 @@ scan_key:
 
 scan_key_row_loop:
 
-    ld    bc, #0x7ffe
+    ld    b, #0x7f                                            ;; first key row
 
 scan_key_col_loop:
 
@@ -360,12 +357,12 @@ scan_key_col_loop:
     ;; Ignore caps shift (whose bogus key value happens to have bit 7 set).
     ;; Arrow keys can otherwise be erroneously be detected as CAPS pressed.
     ;;
-    ;; This sets carry flag, indicating no (real) key being pressed.
+    ;; This also terminates the outer loop, since CAPS is the last entry
+    ;; in the keymap table.
     ;; -----------------------------------------------------------------------
 
-    ld    a, (hl)
-    rla
-    ret   c
+    bit   7, (hl)
+    jr    nz, scan_key
 
     in    a, (c)
     and   a, d                                            ;; clears carry flag
@@ -375,8 +372,4 @@ scan_key_col_loop:
     rrc   b
     jr    c, scan_key_col_loop
     rr    d
-    jr    nc, scan_key_row_loop
-
-    ;; carry is set here after JR NC above
-
-    ret
+    jr    scan_key_row_loop
