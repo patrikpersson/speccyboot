@@ -354,7 +354,7 @@ go_to_basic:
   ;; initialization of (mostly just clearing) global data
   ;; --------------------------------------------------------------------------
 
-initialize_global_data:
+initialize_global_data::
 
   ;; clear bitmap VRAM (also used as a source of zeros for BOOTP)
 
@@ -364,15 +364,7 @@ initialize_global_data:
   ldir
 
   ;; ------------------------------------------------------------------------
-  ;; set up attributes for lines 0..1
-  ;; ------------------------------------------------------------------------
-
-  ld    (hl), #BLACK + (WHITE << 3)
-  ld    c, #0x20 * 2
-  ldir
-
-  ;; ------------------------------------------------------------------------
-  ;; set up menu colours (lines 2..21)
+  ;; set up menu colours (lines 0..21)
   ;; ------------------------------------------------------------------------
 
   ld   (hl), #BLACK + (WHITE << 3) + BRIGHT

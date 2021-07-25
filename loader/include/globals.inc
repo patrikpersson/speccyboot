@@ -133,7 +133,7 @@ keymap_caps            = keymap + ROM_KEYMAP_LENGTH - 1
 ;; Number of snapshot names displayed at a time (in the menu)
 ;; ----------------------------------------------------------------------------
 
-DISPLAY_LINES = 20
+DISPLAY_LINES = 22
 
 ;; ----------------------------------------------------------------------------
 ;; Address of stage 2 loader

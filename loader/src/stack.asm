@@ -136,15 +136,6 @@ tftp_state:
     ;; Presentation
     ;; ========================================================================
 
-    ;; ------------------------------------------------------------------------
-    ;; print 'SpeccyBoot <version>' at (0,0)
-    ;; ------------------------------------------------------------------------
-
-    ld    hl, #title_str                ;; 'SpeccyBoot <version>'
-    ld    de, #BITMAP_BASE + 0x0100     ;; coordinates (0,0)
-
-    call  print_str
-
     ;; ========================================================================
     ;; system initialization
     ;; ========================================================================
@@ -1084,6 +1075,13 @@ ip_send_critical:
     ld   h, a
 
     ;; ------------------------------------------------------------------------
+    ;; Reset retransmission timer. A is not exactly zero here, but close enough
+    ;; (2 for BOOTP BOOTREQUEST, 0 for TFTP).
+    ;; ------------------------------------------------------------------------
+
+    ld    (retransmission_count), a
+
+    ;; ------------------------------------------------------------------------
     ;; set DE := start address of frame in transmission buffer,
     ;;     HL := end address of frame in transmission buffer
     ;;
@@ -1127,19 +1125,6 @@ eth_send_frame:
 
     ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
     rst  enc28j60_write_register16
-
-    ;; ------------------------------------------------------------------------
-    ;; Reset retransmission timer. For simplicity, this is done here
-    ;; regardless of whether this is a critical frame or not, so it will
-    ;; be reset even for an ARP response. 
-    ;;
-    ;; In theory, an IP stack that keeps sending ARP requests more frequently
-    ;; than the retransmission timer (a couple of seconds) could inhibit
-    ;; retransmission. In practice, this is not expected to happen.
-    ;; ------------------------------------------------------------------------
-
-    xor   a, a
-    ld    (retransmission_count), a
 
     ;; ----------------------------------------------------------------------
     ;; Poll for link to come up (if it has not already)

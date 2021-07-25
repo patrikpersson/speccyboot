@@ -57,7 +57,7 @@ KEY_DOWN      = '6'
 ;; pointer in HL. Destroys AF, preserves BC and DE.
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 get_filename_pointer:
     push  bc
@@ -115,7 +115,7 @@ menu_loop:
     ld   b, e
 redraw_menu_limit_set:
 
-    ld   de, #0x4141      ;; (2,1)
+    ld   de, #0x4101      ;; (0,1)
 
 redraw_menu_loop:
 
@@ -279,17 +279,17 @@ menu_hit_enter:
 menu_set_highlight:
 
     ;; ------------------------------------------------------------------------
-    ;; The VRAM attribute address is 0x5840 + 32 * (C - D). This is computed as
-    ;; 32 * (C - D + 0x2C2). The difference (C-D) is at most decimal 20, so the
-    ;; value (C - D + 0xC2) fits in a byte (at most 0xD6)
+    ;; The VRAM attribute address is 0x5800 + 32 * (C - D). This is computed as
+    ;; 32 * (C - D + 0x2C0). The difference (C-D) is at most decimal 20, so the
+    ;; value (C - D + 0xC0) fits in a byte (at most 0xD4)
     ;; ------------------------------------------------------------------------
 
     push hl
     push af
-    ld   h, #>0x2C2
+    ld   h, #>0x2C0
     ld   a, c
     sub  a, d
-    add  a, #<0x2C2
+    add  a, #<0x2C0
     ld   l, a
     add  hl, hl
     add  hl, hl

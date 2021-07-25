@@ -206,14 +206,6 @@ WARNING_CHECKSUM_FAILED   = CYAN
     .globl show_attr_digit_right
 
 ;; ----------------------------------------------------------------------------
-;; title_str
-;;
-;; The string 'SpeccyBoot <version>', terminated by '.'
-;; ----------------------------------------------------------------------------
-
-    .globl title_str
-
-;; ----------------------------------------------------------------------------
 ;; print_str
 ;;
 ;; Prints a string, terminated by '.' (that is, _not_ NUL).

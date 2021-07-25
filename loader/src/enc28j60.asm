@@ -193,14 +193,13 @@ spi_read_byte_to_memory:
 
     exx                               ;;  4
 
-    READ_BIT_TO_E
-    READ_BIT_TO_E
-    READ_BIT_TO_E
-    READ_BIT_TO_E
+    ld   e, #1                        ;;  7
+spi_byte_inline_loop:
     READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E                     ;; 376  (47 * 8)
+    jr   nc, spi_byte_inline_loop     ;; 12 + 7
 
     ld   (hl), e                      ;;  7
     inc  hl                           ;;  6
