@@ -41,12 +41,9 @@
   .include "udp_ip.inc"
   .include "util.inc"
 
-  ;; --------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 
   .area  _HEADER (ABS)
-
-  ;; --------------------------------------------------------------------------
-
   .org  0
 
   im    1                    ;; 2 bytes
@@ -323,9 +320,18 @@ ram_trampoline:
 
   jr    nc, go_to_basic      ;; if Caps Shift was pressed, go to BASIC
 
-  ld    h, #0x3d             ;; 0x3d00 == ROM1 font data; L == 0 here
+  ;; -------------------------------------------------------------------------
+  ;; copy ROM data (6x 0xff, keymap, font) to RAM
+  ;; -------------------------------------------------------------------------
+
+  ld    hl, #ROM_DATA_ADDR
+  ld    de, #copied_rom_data
+  ld    bc, #ROM_DATA_LENGTH
+  ldir
+
+  ld    hl, #ROM_FONTDATA_ADDR
   ld    de, #_font_data      ;; address of font buffer in RAM
-  ld    bc, #0x0300
+  ld    b, #0x03             ;; C == 0 from LDIR above
   ldir
 
   xor   a                    ;; page in SpeccyBoot ROM, keep ETH in reset
@@ -387,21 +393,8 @@ initialize_global_data:
   ;; clear (zero) global variables
   ;; ------------------------------------------------------------------------
 
-  ld    (hl), c       ;; C == 0 after LDIR above
-  ld    bc, #_font_data - _stack_top - ETH_ADDRESS_SIZE - IPV4_ADDRESS_SIZE
-  ldir
-
-  ;; -------------------------------------------------------------------------
-  ;; Set up ten of 0xFF at _font_data-ETH_ADDRESS_SIZE, to be used as
-  ;; broadcast IP address + Ethernet broadcast address.
-  ;;
-  ;; Storing ten (rather than six) bytes here allows use of LDIR to copy the
-  ;; first four bytes to the IPv4 destination address, and using the resulting
-  ;; HL as pointer to the Ethernet broadcast address (see bootp.inc).
-  ;; -------------------------------------------------------------------------
-
-  dec   (hl)          ;; set byte := 0xff
-  ld    c, #ETH_ADDRESS_SIZE + IPV4_ADDRESS_SIZE - 1
+  ld    (hl), c                                    ;; C == 0 after LDIR above
+  ld    bc, #_font_data - _stack_top
   ldir
 
   ld    a, #WHITE

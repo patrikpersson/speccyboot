@@ -91,15 +91,14 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; (see https://datatracker.ietf.org/doc/html/rfc951#section-3)
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #ipv4_broadcast_address
-
-    ld   de, #outgoing_header + IPV4_HEADER_OFFSETOF_DST_ADDR
+    ld   hl, #eth_broadcast_address + 4
+    ld   de, #outgoing_header + IPV4_HEADER_OFFSETOF_DST_ADDR + 3
     ld   bc, #4
 
-    ldir
+    lddr
 
     ;; ------------------------------------------------------------------------
-    ;; HL now points to eth_broadcast_address == ipv4_broadcast_address + 4
+    ;; HL now points to eth_broadcast_address
     ;; set DE to UDP length, in network order
     ;; ------------------------------------------------------------------------
 

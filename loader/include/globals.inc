@@ -50,6 +50,30 @@ VERSION_STAGE1 = 4
 
 VERSION_MAGIC  = 0x40 | VERSION_STAGE1
 
+;; ===========================================================================
+;; ROM1 data, to be copied to RAM
+;; ===========================================================================
+
+;; ---------------------------------------------------------------------------
+;; Keymap (mapping scancode -> ASCII)
+;; ---------------------------------------------------------------------------
+
+ROM_KEYMAP_ADDR   = 0x0205
+ROM_KEYMAP_LENGTH = 0x28
+
+;; ---------------------------------------------------------------------------
+;; Data block with 6x0xff and keymap in a single chunk
+;; ---------------------------------------------------------------------------
+
+ROM_DATA_ADDR     = 0x0060
+ROM_DATA_LENGTH   = (ROM_KEYMAP_ADDR + ROM_KEYMAP_LENGTH - ROM_DATA_ADDR)
+
+;; ---------------------------------------------------------------------------
+;; Font data
+;; ---------------------------------------------------------------------------
+
+ROM_FONTDATA_ADDR = 0x3d00
+
 ;; ============================================================================
 ;; to facilitate single-page addressing, page 0x5B is laid out as follows:
 ;;
@@ -93,11 +117,13 @@ _rx_frame              = 0x5b7f             ;; size 0x220 (RX_FRAME_SIZE)
 _font_data             = 0x5e00
 
 ;; ----------------------------------------------------------------------------
-;; Ten bytes of 0xff, useful as broadcast address data (set up in init.asm)
+;; RAM copy of 6x 0xff bytes and keymap
 ;; ----------------------------------------------------------------------------
 
-ipv4_broadcast_address = 0x5df6
-eth_broadcast_address  = 0x5dfa      ;; immediately before _font_data
+copied_rom_data        = 0x6100      ;; immediately after _font_data
+
+eth_broadcast_address  = copied_rom_data
+keymap                 = copied_rom_data + ROM_KEYMAP_ADDR - ROM_DATA_ADDR
 
 ;; ============================================================================
 
