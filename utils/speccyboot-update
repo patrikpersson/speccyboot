@@ -41,10 +41,6 @@ import sys
 
 FINAL_BINARY = 'menu.bin'
 
-stage2_bytes = open(os.path.join(SPECCYBOOT_HOME, 'spboot.bin'), "rb").read()
-
-version = stage2_bytes[0] & 0x07
-
 loading_address = 0x6400
 
 # ----------------------------------------------------------------------------
@@ -66,7 +62,7 @@ def update_index_in_dir(dir):
     list.sort()
 
     # calculate addresses
-    nbr_snapshots_address = loading_address + len(stage2_bytes)
+    nbr_snapshots_address = loading_address
     array_address = nbr_snapshots_address + 1
     filenames_address = array_address + n * 2
 
@@ -78,7 +74,6 @@ def update_index_in_dir(dir):
         base += len(filename) + 1           # +1 for terminating NUL
 
     with open(FINAL_BINARY, "wb") as output:
-        output.write(stage2_bytes)
         output.write(bytes([n]))
         for p in pointers:
             output.write(bytes([p % 256, p // 256]))
@@ -86,7 +81,7 @@ def update_index_in_dir(dir):
             output.write(filename.encode(encoding='ascii',errors='replace'))
             output.write(bytes([0]))
     
-    print("updated index: {} snapshots, SpeccyBoot v{} menu.bin installed in {}".format(n,version,dir))
+    print("updated index: {} snapshots, SpeccyBoot menu.bin installed in {}".format(n,dir))
     # print("loading address = {}".format(loading_address))
     return True
 

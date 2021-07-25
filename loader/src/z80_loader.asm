@@ -213,16 +213,74 @@ load_byte_from_packet:
 ;; State HEADER (initial):
 ;;
 ;; Evacuates the header from the TFTP data block and sets up the next state.
-;; The actual entrypoint follows below, and then JRs backwards in memory.
-;; This allows the s_header address to be kept on the same page as the other
-;; .z80 loader states. (Fragile.)
 ;; ############################################################################
 
     .area _Z80_LOADER_STATES
 
-    ;; ========================================================================
-    ;; NOTE: actual entrypoint s_header further below
-    ;; ========================================================================
+s_header:
+
+    ;; ------------------------------------------------------------------------
+    ;; keep .z80 header until prepare_context is called
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld   de, #stored_snapshot_header
+    ld   bc, #Z80_HEADER_RESIDENT_SIZE
+
+    ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; BC: .z80 header size
+    ;; D: memory configuration value for 0x7ffd
+    ;; E: number of kilobytes expected (48 or 128)
+    ;; ------------------------------------------------------------------------
+
+    ld   c, #Z80_HEADER_OFFSET_EXT_LENGTH      ;; B==0 here
+
+    ;; -----------------------------------------------------------------------
+    ;; Memory configuration for a 48k snapshot on a 128k machine. Bits are
+    ;; set as follows:
+    ;;
+    ;; Bits 0..2 := 0:  page 0 at 0xC000
+    ;; Bit 3     := 0:  normal screen (page 5)
+    ;; Bit 4     := 1:  48k BASIC ROM
+    ;; Bit 5     := 1:  lock memory paging
+    ;;
+    ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
+    ;; -----------------------------------------------------------------------
+
+    ld   de, #((MEMCFG_ROM_48K + MEMCFG_LOCK) << 8)  + 48
+
+    ;; ------------------------------------------------------------------------
+    ;; check snapshot header version
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
+    ld   a, h
+    or   a, l
+    jr   z, s_header_ext_hdr               ;; extended header?
+
+    ;; ------------------------------------------------------------------------
+    ;; This is a v1 snapshot. Store PC value in Z80_HEADER_OFFSET_EXT_PC,
+    ;; to read it unambiguously in context_switch.
+    ;; ------------------------------------------------------------------------
+
+    ld   (stored_snapshot_header + Z80_HEADER_OFFSET_EXT_PC), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; Assume a single 48k chunk, without header.
+    ;; Decide next state, depending on whether COMPRESSED flag is set
+    ;; ------------------------------------------------------------------------
+
+    ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
+    and  a, #0x20       ;; COMPRESSED flag set?
+
+    ;; COMPRESSED flag set   =>  Z == 0  =>  s_chunk_write_data_compressed
+    ;; COMPRESSED flag clear =>  Z == 1  =>  s_chunk_write_data_uncompressed
+
+    call set_compression_state
+
+    jr   s_header_set_state
 
 s_header_ext_hdr:
 
@@ -320,77 +378,6 @@ s_header_set_state:
     ld   h, c       ;; HL := 0xE2xx
 
     ret
-
-    nop    ;; FIXME
-
-;; ############################################################################
-;; actual entry point
-;; ############################################################################
-
-s_header:
-
-    ;; ------------------------------------------------------------------------
-    ;; keep .z80 header until prepare_context is called
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    ld   de, #stored_snapshot_header
-    ld   bc, #Z80_HEADER_RESIDENT_SIZE
-
-    ldir
-
-    ;; ------------------------------------------------------------------------
-    ;; BC: .z80 header size
-    ;; D: memory configuration value for 0x7ffd
-    ;; E: number of kilobytes expected (48 or 128)
-    ;; ------------------------------------------------------------------------
-
-    ld   c, #Z80_HEADER_OFFSET_EXT_LENGTH      ;; B==0 here
-
-    ;; -----------------------------------------------------------------------
-    ;; Memory configuration for a 48k snapshot on a 128k machine. Bits are
-    ;; set as follows:
-    ;;
-    ;; Bits 0..2 := 0:  page 0 at 0xC000
-    ;; Bit 3     := 0:  normal screen (page 5)
-    ;; Bit 4     := 1:  48k BASIC ROM
-    ;; Bit 5     := 1:  lock memory paging
-    ;;
-    ;; https://worldofspectrum.org/faq/reference/128kreference.htm#ZX128Memory
-    ;; -----------------------------------------------------------------------
-
-    ld   de, #((MEMCFG_ROM_48K + MEMCFG_LOCK) << 8)  + 48
-
-    ;; ------------------------------------------------------------------------
-    ;; check snapshot header version
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
-    ld   a, h
-    or   a, l
-    jr   z, s_header_ext_hdr               ;; extended header?
-
-    ;; ------------------------------------------------------------------------
-    ;; This is a v1 snapshot. Store PC value in Z80_HEADER_OFFSET_EXT_PC,
-    ;; to read it unambiguously in context_switch.
-    ;; ------------------------------------------------------------------------
-
-    ld   (stored_snapshot_header + Z80_HEADER_OFFSET_EXT_PC), hl
-
-    ;; ------------------------------------------------------------------------
-    ;; Assume a single 48k chunk, without header.
-    ;; Decide next state, depending on whether COMPRESSED flag is set
-    ;; ------------------------------------------------------------------------
-
-    ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
-    and  a, #0x20       ;; COMPRESSED flag set?
-
-    ;; COMPRESSED flag set   =>  Z == 0  =>  s_chunk_write_data_compressed
-    ;; COMPRESSED flag clear =>  Z == 1  =>  s_chunk_write_data_uncompressed
-
-    call set_compression_state
-
-    jr   s_header_set_state
 
 
 ;; ############################################################################
@@ -713,16 +700,17 @@ jp_ix_instr:
 
 chunk_escape:
 
+s_chunk_compressed_escape:   ;; FIXME: temporarily moved label here to keep stuff in one page
+
     SWITCH_STATE  s_chunk_write_data_compressed  s_chunk_compressed_escape
 
     ;; FALL THROUGH to s_chunk_compressed_escape
-
 
 ;; ############################################################################
 ;; state CHUNK_COMPRESSED_ESCAPE
 ;; ############################################################################
 
-s_chunk_compressed_escape:
+;; s_chunk_compressed_escape:
 
     ;; -----------------------------------------------------------------------
     ;; One escape byte has been loaded; check the next one.

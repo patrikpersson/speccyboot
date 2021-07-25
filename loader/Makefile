@@ -48,13 +48,6 @@ OFILES       = $(ASMFILES:%.asm=%.rel)
 
 ROM          = speccyboot.rom
 ROM8K        = speccyboot-fuse.rom
-STAGE2BIN    = spboot.bin
-
-# -----------------------------------------------------------------------------
-
-# macro for getting the loading address of the stage2 binary
-
-get_address  = $(shell grep 's__STAGE2_ENTRY' $(OBJDIR)/speccyboot.noi | cut -d' ' -f3 | sed -e 's/0x/obase=10;ibase=16; /g' | bc)
 
 # =============================================================================
 # DIRECTORIES
@@ -75,7 +68,7 @@ vpath %.rel  $(OBJDIR)
 
 LINKFILE     = speccyboot.lk
 
-MAKEBINFLAGS = -p
+MAKEBINFLAGS = -s 8192
 
 # =============================================================================
 # COMMAND-LINE TARGETS
@@ -83,14 +76,13 @@ MAKEBINFLAGS = -p
 
 all: bin
 
-bin: $(ROM) $(ROM8K) $(STAGE2BIN)
+bin: $(ROM) $(ROM8K)
 
 clean:
-	rm -rf $(OBJDIR) $(ROM) $(ROM8K) $(STAGE2BIN)
+	rm -rf $(OBJDIR) $(ROM) $(ROM8K)
 
-install: $(ROM) $(STAGE2BIN) $(INSTALLDIR)
+install: $(ROM) $(INSTALLDIR)
 	install --mode=a+r $(ROM) $(FUSEROMDIR)
-	install --mode=a+r $(STAGE2BIN) $(INSTALLDIR)
 
 .SUFFIXES:
 
@@ -123,6 +115,3 @@ $(ROM): $(COMBINED)
 
 $(ROM8K): $(COMBINED)
 	dd if=$< of=$@ bs=1k count=8 status=none
-
-$(STAGE2BIN): $(COMBINED)
-	dd if=$< of=$@ bs=1 skip=${get_address} status=none

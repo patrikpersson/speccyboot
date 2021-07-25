@@ -35,6 +35,7 @@
     .include "enc28j60.inc"
     .include "eth.inc"
     .include "globals.inc"
+    .include "menu.inc"
     .include "spi.inc"
     .include "tftp.inc"
     .include "udp_ip.inc"
@@ -1245,61 +1246,6 @@ poll_register:
     jr     nz, 00001$
 
     ;; A is zero here, which is FATAL_INTERNAL_ERROR
-    jr     fail
-
-
-;; ############################################################################
-;; tftp_state_menu_loader
-;; ############################################################################
-
-tftp_default_file:
-    .ascii 'menu.bin'
-    .db    0
-
-tftp_state_menu_loader:
-
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
-    bit 1, b   ;; see below
-    ldir
-
-    ;; ------------------------------------------------------------------------
-    ;; If a full TFTP packet was loaded, return.
-    ;; (BC above should be exactly 0x200 for all DATA packets except the last
-    ;; one, never larger; so we are done if bit 1 was set in B)
-    ;; ------------------------------------------------------------------------
-
-    ret nz
-
-    ;; ========================================================================
-    ;; This was the last packet of the stage 2 binary:
-    ;; check version signature and run the stage 2 loader
-    ;; ========================================================================
-
-    ;; ------------------------------------------------------------------------
-    ;; check version signature
-    ;; ------------------------------------------------------------------------
-
-    ld   hl, #stage2_start
-    ld   a, #VERSION_MAGIC
-    cp   a, (hl)
-
-    ;; ------------------------------------------------------------------------
-    ;; If the signature matches, launch the menu.bin binary, otherwise fail.
-    ;;
-    ;; This will start with executing the VERSION_MAGIC byte, which is benign
-    ;; (it is a LD r, r' instruction).
-    ;; ------------------------------------------------------------------------
-
-    push hl
-    ret  z
-
-    ld   a, #FATAL_VERSION_MISMATCH
-
-    ;; FALL THROUGH to fail
-
-;; ############################################################################
-;; fail
-;; ############################################################################
 
 fail:
 
@@ -1350,6 +1296,10 @@ ip_receive_check_checksum:
 ;; If a BOOTREPLY with an IP address is found,
 ;; make a TFTP file read request, otherwise return.
 ;; ----------------------------------------------------------------------------
+
+tftp_default_file:
+    .ascii 'menu.bin'
+    .db    0
 
 bootp_receive:
 

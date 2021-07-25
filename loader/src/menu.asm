@@ -60,22 +60,42 @@ KEY_DOWN      = '6'
     .area _CODE
 
 get_filename_pointer:
-    push  bc
-    ld   h, #0
+    ld   h, #0x32                   ;; high byte of 0x6400; must match .lk file
     ld   l, c
     add  hl, hl
-    ld   bc, #snapshot_array
-    add  hl, bc
+    inc  hl
     ld   a, (hl)
     inc  hl
     ld   h, (hl)
     ld   l, a
-    pop   bc
     ret
+
+;; ############################################################################
+;; tftp_state_menu_loader
+;; ############################################################################
+
+tftp_state_menu_loader:
+
+    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    bit 1, b   ;; see below
+    ldir
+
+    ;; ------------------------------------------------------------------------
+    ;; If a full TFTP packet was loaded, return.
+    ;; (BC above should be exactly 0x200 for all DATA packets except the last
+    ;; one, never larger; so we are done if bit 1 was set in B)
+    ;; ------------------------------------------------------------------------
+
+    ret nz
+
+    ;; ========================================================================
+    ;; This was the last packet of the stage 2 binary:
+    ;; display menu
+    ;; ========================================================================
 
 ;; ============================================================================
 
-    .area _STAGE2_ENTRY
+    .area _CODE
 
 run_menu:
 

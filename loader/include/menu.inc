@@ -32,7 +32,7 @@
 
 
 ;; ----------------------------------------------------------------------------
-;; Display a menu of snapshots. When the user selects a snapshot, load it.
+;; First state for TFTP loader: load a menu file and display it.
 ;; ----------------------------------------------------------------------------
 
-    .globl run_menu
+    .globl tftp_state_menu_loader

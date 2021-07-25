@@ -412,18 +412,6 @@ initialize_global_data::
 
 stage2_start:
 
-  ;; --------------------------------------------------------------------------
-  ;; Special mark for integrity check, as first byte in loaded binary:
-  ;; VERSION_MAGIC
-  ;; --------------------------------------------------------------------------
-
-  .db   VERSION_MAGIC
-
-  ;; --------------------------------------------------------------------------
-  ;; If the version mark above checks out, execution continues here
-  ;; --------------------------------------------------------------------------
-
-  .area _NONRESIDENT          ;; continues here
   .area _SNAPSHOTLIST         ;; area for loaded snapshot list
 
 nbr_snapshots:
