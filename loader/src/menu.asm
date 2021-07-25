@@ -320,7 +320,7 @@ menu_highlight_loop:
 ;; On return, HL points to the pressed key (ASCII).
 ;; ############################################################################
 
-    .area _NONRESIDENT
+    .area _CODE
 
 wait_key:
 

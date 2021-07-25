@@ -181,23 +181,21 @@ bootrequest_header_data:
   ;; ========================================================================
   ;; RST 0x38 ENTRYPOINT: 50 Hz interrupt
   ;;
-  ;; Increase 16-bit value at '_timer_tick_count' by 1
+  ;; Does nothing, but makes it possible to use HALT to wait for the next
+  ;; 50Hz tick
   ;; ========================================================================
 
   .org	0x38
 
   nop              ;; zero byte, HOP field from BOOTP header above
 
-;; The BOOTP XID is arbitrary, and happens to be taken from the
-;; interrupt handler code below.
+  ;; ========================================================================
+  ;; The BOOTP XID is arbitrary (4 bytes), and happens to be taken from the
+  ;; code below.
+  ;; ========================================================================
 
 bootrequest_xid:
 
-  push  hl
-  ld	  hl, (_timer_tick_count)
-  inc	  hl
-  ld	  (_timer_tick_count), hl
-  pop   hl
   ei
   ret
 

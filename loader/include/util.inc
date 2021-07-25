@@ -128,13 +128,6 @@ WARNING_RETRANSMITTED     = BLUE
 WARNING_CHECKSUM_FAILED   = CYAN
 
 ;; ----------------------------------------------------------------------------
-;; 16-bit word increased by 2 (!) every 20 milliseconds
-;; ----------------------------------------------------------------------------
-
-    .globl _timer_tick_count
-
-
-;; ----------------------------------------------------------------------------
 ;; Compare memory blocks pointed to by HL and DE. Register B indicates the
 ;; number of bytes to compare (so, max 256).
 ;;

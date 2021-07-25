@@ -91,6 +91,13 @@ eth_adm_header_ethertype:
 _ip_checksum:
     .ds   2
 
+;; ----------------------------------------------------------------------------
+;; retransmission counter (number of HALTs executed)
+;; ----------------------------------------------------------------------------
+
+retransmission_count:
+    .ds   1
+
 ;; ============================================================================
 ;; TFTP
 ;; ============================================================================
@@ -195,13 +202,16 @@ main_loop:
     jr    nz, packet_received
 
     ;; ------------------------------------------------------------------------
-    ;; Re-transmit the last critical frame if timer expired
+    ;; Wait one frame tick,
+    ;; re-transmit the last critical frame if timer expired
     ;; ------------------------------------------------------------------------
 
-    ld    a, (_timer_tick_count + 1)   ;; high byte
-    or    a, a                         ;; A >= 1 means time-out
+    halt
 
-    call  nz, ip_send_critical
+    ld    hl, #retransmission_count
+    inc   (hl)
+
+    call  z, ip_send_critical
 
     jr    main_loop
 
@@ -1128,17 +1138,8 @@ eth_send_frame:
     ;; retransmission. In practice, this is not expected to happen.
     ;; ------------------------------------------------------------------------
 
-    ;; B == 0 after enc28j60_write_register16 above
-    ;; L == OPCODE_WCR + (ETXNDL & REG_MASK) == 0x47
-
-    ;; ----------------------------------------------------------------------
-    ;; Set HL := 0x0047, which is not zero, but close enough. Next timeout
-    ;; (if no packet is received) happens after
-    ;; 0x0100 - 0x0047 == 0xb9 == 185 ticks == 3700 milliseconds.
-    ;; ----------------------------------------------------------------------
-
-    ld    h, b
-    ld    (_timer_tick_count), hl
+    xor   a, a
+    ld    (retransmission_count), a
 
     ;; ----------------------------------------------------------------------
     ;; Poll for link to come up (if it has not already)
