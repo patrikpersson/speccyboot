@@ -495,29 +495,6 @@ eth_create:
 
 
 ;; ############################################################################
-;; Create UDP reply to the sender of the received packet currently processed.
-;;
-;; Call with
-;;   DE: number of bytes in payload (NETWORK ORDER)
-;; ############################################################################
-
-    .area _CODE
-
-tftp_reply:
-
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
-    ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
-
-    ;; ----------------------------------------------------------------------
-    ;; no need to update source port here: keep the chosen TFTP client port
-    ;; ----------------------------------------------------------------------
-
-    ld   hl, #eth_sender_address
-
-    ;; FALL THROUGH to udp_create
-
-
-;; ############################################################################
 ;; udp_create
 ;; ############################################################################
 
@@ -988,14 +965,13 @@ tftp_receive_blk_nbr_not_equal:
     ;; The TFTP RFC indicates that an ERROR response is not critical:
     ;;
     ;; "This is only a courtesy since it will not be retransmitted or
-    ;;  acknowledged, so it may never be received. Timeouts must also be used
-    ;;  to detect errors."
+    ;;  acknowledged, so it may never be received.
+    ;;  Timeouts must also be used to detect errors."
     ;;
-    ;; No ERROR packet is sent here. Instead, incorrect packets are dropped.
+    ;; No ERROR packet is sent here. Incorrect packets are silently dropped.
     ;; -----------------------------------------------------------------------
 
     inc   a
-
     ret   nz
 
     ;; FALL THROUGH to tftp_send_ack
@@ -1006,12 +982,22 @@ tftp_receive_blk_nbr_not_equal:
 
 tftp_send_ack:
 
+    ld    hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld    (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
+
+    ;; ----------------------------------------------------------------------
+    ;; no need to update source port here: keep the chosen TFTP client port
+    ;; ----------------------------------------------------------------------
+
+    ld    hl, #eth_sender_address
+
     ;; -----------------------------------------------------------------------
     ;; packet length, network order
     ;; -----------------------------------------------------------------------
 
     ld    de, #0x0100 * (UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET)
-    call  tftp_reply
+
+    call  udp_create
 
     rst   enc28j60_write_memory_inline
 
