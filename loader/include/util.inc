@@ -117,8 +117,7 @@ ATTR_DIGIT_ROW = 0x5A00
 ;; ----------------------------------------------------------------------------
 
 FATAL_INTERNAL_ERROR      = BLACK
-FATAL_VERSION_MISMATCH    = RED
-FATAL_FILE_NOT_FOUND      = YELLOW
+FATAL_FILE_NOT_FOUND      = RED
 
 ;; ----------------------------------------------------------------------------
 ;; codes for warnings

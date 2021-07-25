@@ -103,7 +103,12 @@ TFTP_HEADER_SIZE     = 4
     sub  a, #TFTP_OPCODE_DATA
     or   a, l
 
-    ld   a, #FATAL_FILE_NOT_FOUND
+    ;; ------------------------------------------------------------------------
+    ;; for an ERROR packet,
+    ;; A is now (TFTP_OPCODE_ERROR - TFTP_OPCODE_DATA)
+    ;; == 2 == FATAL_FILE_NOT_FOUND
+    ;; ------------------------------------------------------------------------
+
     jp   nz, fail
 
     ;; ========================================================================
@@ -123,11 +128,9 @@ TFTP_HEADER_SIZE     = 4
 
     ;; ------------------------------------------------------------------------
     ;; packet number OK: acknowledge
-    ;;
-    ;; Z flag is set after JR NZ above
     ;; ------------------------------------------------------------------------
 
-    call  tftp_ack_if_equal
+    call  tftp_send_ack
 
     ;; -----------------------------------------------------------------------
     ;; Compute TFTP data length by subtracting UDP+TFTP header sizes

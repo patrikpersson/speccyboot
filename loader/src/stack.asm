@@ -984,57 +984,33 @@ tftp_receive_blk_nbr_not_equal:
     ;;
     ;; This means the previous ACK was lost. Acknowledge, but ignore data.
     ;; Any other difference is an error.
+    ;;
+    ;; The TFTP RFC indicates that an ERROR response is not critical:
+    ;;
+    ;; "This is only a courtesy since it will not be retransmitted or
+    ;;  acknowledged, so it may never be received. Timeouts must also be used
+    ;;  to detect errors."
+    ;;
+    ;; No ERROR packet is sent here. Instead, incorrect packets are dropped.
     ;; -----------------------------------------------------------------------
 
     inc   a
 
-    ;; FALL THROUGH to tftp_ack_if_equal
+    ret   nz
+
+    ;; FALL THROUGH to tftp_send_ack
 
 ;; ===========================================================================
-;; subroutine: reply with ACK if Z flag is set, ERROR otherwise
+;; subroutine: reply with ACK
 ;; ===========================================================================
-
-tftp_ack_if_equal:
-
-    ;; -----------------------------------------------------------------------
-    ;; packet length, network order
-    ;;
-    ;; revised for ERROR packets below
-    ;; -----------------------------------------------------------------------
-
-    ld    de, #0x0100 * (UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET)
-
-    jr    z, tftp_send_ack
-
-    ;; =======================================================================
-    ;; reply with ERROR packet
-    ;; =======================================================================
-
-    inc   d                  ;; -> UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET
-    call  tftp_reply
-
-    rst   enc28j60_write_memory_inline
-
-    ;; -----------------------------------------------------------------------
-    ;; inline data for enc28j60_write_memory_inline
-    ;; -----------------------------------------------------------------------
-
-    .db  error_packet_end - error_packet_start
-
-error_packet_start:
-    .db   0, TFTP_OPCODE_ERROR        ;; opcode in network order
-    .db   0, 4                        ;; illegal TFTP operation, network order
-    .db   0                           ;; no particular message
-error_packet_end:
-
-    jr    ip_send_critical
-
-    ;; =======================================================================
-    ;; reply with ACK packet
-    ;; =======================================================================
 
 tftp_send_ack:
 
+    ;; -----------------------------------------------------------------------
+    ;; packet length, network order
+    ;; -----------------------------------------------------------------------
+
+    ld    de, #0x0100 * (UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET)
     call  tftp_reply
 
     rst   enc28j60_write_memory_inline
