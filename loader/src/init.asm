@@ -425,11 +425,9 @@ initialize_global_data:
 
   .area _DATA
 
-  .area _STAGE2_ENTRY      ;; header for the stage 2 bootloader (RAM)
+  .area _SNAPSHOTLIST         ;; area for loaded snapshot list
 
 stage2_start:
-
-  .area _SNAPSHOTLIST         ;; area for loaded snapshot list
 
 nbr_snapshots:
   .ds    1
