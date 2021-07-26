@@ -250,9 +250,13 @@ menu_hit_down:
     cp   a, e
     jr   nc, menu_loop
 
-    inc  c
+    ;; ------------------------------------------------------------------------
+    ;; Do two INC C and fall through to the KEY_UP case below
+    ;; (which does DEC C). Saves a JR.
+    ;; ------------------------------------------------------------------------
 
-    jr   menu_adjust
+    inc  c
+    inc  c
 
     ;; ========================================================================
     ;; user hit UP: highlight previous entry
