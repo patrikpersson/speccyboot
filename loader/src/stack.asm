@@ -968,11 +968,15 @@ tftp_reply_ack:
     call  udp_create
 
     ;; -----------------------------------------------------------------------
-    ;; udp_create ends with enc28j60_write_memory, so DE == 0 here
+    ;; udp_create ends with enc28j60_write_memory, so
+    ;;   DE == 0 and
+    ;;   HL == outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_SIZE
+    ;;
+    ;; Re-use D == 0 and H == 0x5b here.
     ;; -----------------------------------------------------------------------
 
     ld    e, #TFTP_SIZE_OF_ACK_PACKET
-    ld    hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
+    ld    l, #<rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
 
     ;; FALL THROUGH to ip_append_data_and_send
 
