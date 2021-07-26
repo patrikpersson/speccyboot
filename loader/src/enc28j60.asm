@@ -34,6 +34,7 @@
     .include "enc28j60.inc"
 
     .include "eth.inc"
+    .include "globals.inc"
     .include "spi.inc"
     .include "udp_ip.inc"
     .include "util.inc"
@@ -48,7 +49,7 @@
 
 enc28j60_read_memory_to_rxframe:
 
-    ld    hl, #_rx_frame
+    ld    hl, #rx_frame
 
     ;; FALL THROUGH to enc28j60_read_memory
 

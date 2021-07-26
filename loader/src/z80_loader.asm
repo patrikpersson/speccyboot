@@ -220,7 +220,7 @@ s_header:
     ;; keep .z80 header until prepare_context is called
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld   hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     ld   de, #stored_snapshot_header
     ld   bc, #Z80_HEADER_RESIDENT_SIZE
 
@@ -252,7 +252,7 @@ s_header:
     ;; check snapshot header version
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
+    ld   hl, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_PC)
     ld   a, h
     or   a, l
     jr   z, s_header_ext_hdr               ;; extended header?
@@ -269,7 +269,7 @@ s_header:
     ;; Decide next state, depending on whether COMPRESSED flag is set
     ;; ------------------------------------------------------------------------
 
-    ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
+    ld   a, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_MISC_FLAGS)
     and  a, #0x20       ;; COMPRESSED flag set?
 
     ;; COMPRESSED flag set   =>  Z == 0  =>  s_chunk_write_data_compressed
@@ -311,7 +311,7 @@ s_header_not_128k:
     ;; possible values for the header length here
     ;; ------------------------------------------------------------------------
 
-    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
+    ld    a, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE + Z80_HEADER_OFFSET_EXT_LENGTH)
     add   a, #Z80_HEADER_OFFSET_EXT_LENGTH + 2
     ld    c, a
 

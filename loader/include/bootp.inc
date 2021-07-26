@@ -158,10 +158,10 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; only accept BOOTREPLY packets with correct XID
     ;; ------------------------------------------------------------------------
 
-    ld   a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_OP)
+    ld   a, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_OP)
     cp   a, #BOOTREPLY
     ld   hl, #bootrequest_xid
-    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_XID
+    ld   de, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_XID
     call z, memory_compare_4_bytes
     ret  nz   ;; will return if (a) not a BOOTREPLY or (b) XID does not match
 
@@ -171,7 +171,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; default to the DHCP server address.
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_YIADDR
+    ld   hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_YIADDR
     ld   e, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
     ld   bc, #8
     ldir
@@ -180,7 +180,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; Check SNAME field for a dotted-decimal IP address (four octets)
     ;; ========================================================================
 
-    ld   e, #<_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_SNAME
+    ld   e, #<rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_SNAME
     ld   a, (de)
     or   a, a
     jr   z, bootp_receive_sname_done

@@ -76,7 +76,7 @@ get_filename_pointer:
 
 tftp_state_menu_loader:
 
-    ld  hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld  hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
     bit 1, b   ;; see below
     ldir
 

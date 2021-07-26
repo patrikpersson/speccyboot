@@ -113,7 +113,7 @@ kilobytes_loaded            = 0x5b7b             ;; size 1
 kilobytes_expected          = 0x5b7c             ;; size 1
 ram_config                  = 0x5b7d             ;; size 1
 tftp_last_block_no_received = 0x5b7e             ;; size 1
-_rx_frame                   = 0x5b7f             ;; size 0x220 (RX_FRAME_SIZE)
+rx_frame                    = 0x5b7f             ;; size 0x220 (RX_FRAME_SIZE)
 
 ;; _DATA segment can start at 0x5d9f
 

@@ -652,7 +652,7 @@ ip_receive:
     ;; Z == 0: an IP address has been set, check packet IP address
     ;; Z == 1: no IP address has been set, ignore packet IP address
     ;;
-    ;; A == 0 and HL == _rx_frame after enc28j60_read_memory_to_rxframe above.
+    ;; A == 0 and HL == rx_frame after enc28j60_read_memory_to_rxframe above.
     ;; -----------------------------------------------------------------------
 
     ld   l, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
@@ -663,7 +663,7 @@ ip_receive:
     ;; multicasts/broadcasts are ignored.
     ;; -----------------------------------------------------------------------
 
-    ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_DST_ADDR
+    ld   de, #rx_frame + IPV4_HEADER_OFFSETOF_DST_ADDR
     call nz, memory_compare_4_bytes
     ret  nz
 
@@ -671,7 +671,7 @@ ip_receive:
     ;; Read remaining IP header, skip any options
     ;; -----------------------------------------------------------------------
 
-    ld   a, (_rx_frame + IPV4_HEADER_OFFSETOF_VERSION_AND_LENGTH)
+    ld   a, (rx_frame + IPV4_HEADER_OFFSETOF_VERSION_AND_LENGTH)
     add  a, a
     add  a, a              ;; IP version (0x40) shifted out; no masking needed
 
@@ -690,7 +690,7 @@ ip_receive:
 
     ld   d, b                                         ;; D := 0
     ld   e, a                                         ;; E := IP header length
-    ld   l, #<_rx_frame + IPV4_HEADER_SIZE            ;; offset of UDP header
+    ld   l, #<rx_frame + IPV4_HEADER_SIZE            ;; offset of UDP header
     call nz, enc28j60_read_memory
 
     ;; -----------------------------------------------------------------------
@@ -706,7 +706,7 @@ ip_receive:
 
     pop  bc                                      ;; B now holds IP header size
 
-    ld   hl, (_rx_frame + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
+    ld   hl, (rx_frame + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
     ld   a, h    ;; HL is in network order, so this is the low byte
     sub  a, b
     ld   e, a
@@ -725,7 +725,7 @@ no_carry_in_header_size_subtraction:
     ;; Check for UDP (everything else will be ignored)
     ;; -----------------------------------------------------------------------
 
-    ld   a, (_rx_frame + IPV4_HEADER_OFFSETOF_PROT)
+    ld   a, (rx_frame + IPV4_HEADER_OFFSETOF_PROT)
     cp   a, #IP_PROTOCOL_UDP
     ret  nz
 
@@ -758,14 +758,14 @@ no_carry:
     ;; Load UDP payload
     ;; -----------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE             ;; offset of UDP header
+    ld   hl, #rx_frame + IPV4_HEADER_SIZE             ;; offset of UDP header
     call enc28j60_read_memory
 
     ;; -----------------------------------------------------------------------
     ;; Check UDP checksum
     ;; -----------------------------------------------------------------------
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_CHECKSUM)
+    ld   hl, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_CHECKSUM)
     ld   a, h
     or   a, l
 
@@ -776,14 +776,14 @@ no_carry:
     ;; it here.
 
     ld   b, #IPV4_ADDRESS_SIZE    ;; number of words (4 for two IP addresses)
-    ld   de, #_rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
+    ld   de, #rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
     call nz, add_and_verify_checksum
 
     ;; -----------------------------------------------------------------------
     ;; Pass on to BOOTP/TFTP
     ;; -----------------------------------------------------------------------
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
+    ld   hl, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT)
 
     ;; -----------------------------------------------------------------------
     ;; check low-order byte of port (should always be zero)
@@ -863,7 +863,7 @@ handle_ip_or_arp_packet:
 
     ;; first check everything except OPER
 
-    ;; HL is set to _rx_frame and preserved by enc28j60_read_memory_to_rxframe
+    ;; HL is set to rx_frame and preserved by enc28j60_read_memory_to_rxframe
 
     ld   de, #arp_outgoing_header_start
     ld   b, #(arp_outgoing_header_end - arp_outgoing_header_start - 1)
@@ -885,7 +885,7 @@ handle_ip_or_arp_packet:
     or   a, (hl)
     ret  z
 
-    ld   de, #_rx_frame + ARP_OFFSET_TPA
+    ld   de, #rx_frame + ARP_OFFSET_TPA
     call memory_compare_4_bytes
     ret  nz   ;; if the packet is not for the local IP address, return
 
@@ -936,7 +936,7 @@ arp_outgoing_header_end:
     ;; -----------------------------------------------------------------------
 
     ld   e, #ETH_ADDRESS_SIZE + IPV4_ADDRESS_SIZE
-    ld   l, #<_rx_frame + ARP_OFFSET_SHA
+    ld   l, #<rx_frame + ARP_OFFSET_SHA
     rst  enc28j60_write_memory_small
 
     pop  de                               ;; recall ENC28J60_TXBUF2_START
@@ -950,7 +950,7 @@ arp_outgoing_header_end:
 
 tftp_reply_ack:
 
-    ld    hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
+    ld    hl, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
     ld    (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
 
     ;; ----------------------------------------------------------------------
@@ -968,7 +968,7 @@ tftp_reply_ack:
     call  udp_create
 
     ld    e, #TFTP_SIZE_OF_ACK_PACKET
-    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
+    ld    hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
     rst   enc28j60_write_memory_small
 
     ;; FALL THROUGH to ip_send_critical
@@ -1241,7 +1241,7 @@ bootp_receive:
     ;; (interpreted as a request to load 'menu.dat')
     ;; ------------------------------------------------------------------------
 
-    ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
+    ld   de, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
 
     ;; ------------------------------------------------------------------------
     ;; an empty filename is interpreted as a request to load 'menu.dat'

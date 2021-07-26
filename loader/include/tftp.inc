@@ -102,7 +102,7 @@ TFTP_HEADER_SIZE     = 4
     ;; modify opcode to ACK, so the header can be used for acknowledgment
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE + 1
+    ld   hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE + 1
     ld   a, (hl)
     inc  (hl)                                      ;; modify to TFTP_OPCODE_ACK
     sub  a, #TFTP_OPCODE_DATA
@@ -141,7 +141,7 @@ TFTP_HEADER_SIZE     = 4
     ;; No ERROR packet is sent here. Incorrect packets are silently dropped.
     ;; -----------------------------------------------------------------------
 
-    ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
+    ld    a, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
     dec   a
     ld    l, #<tftp_last_block_no_received
 
@@ -161,7 +161,7 @@ TFTP_HEADER_SIZE     = 4
     ;; Set BC to TFTP payload length, 0..512.
     ;; -----------------------------------------------------------------------
 
-    ld  hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH)
+    ld  hl, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH)
     ld  a, h                                           ;; UDP length, low byte
     sub a, #(UDP_HEADER_SIZE + TFTP_HEADER_SIZE)
     ld  c, a                                          ;; TFTP length, low byte
@@ -184,7 +184,7 @@ no_carry_in_tftp_length:
     ld   de, (_tftp_write_pos)
 
     ld   ix, (tftp_state)
-    ld   iy, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
+    ld   iy, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_HEADER_SIZE
 
     ;; ========================================================================
     ;; read bytes, call state functions
