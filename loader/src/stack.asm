@@ -199,7 +199,7 @@ main_loop:
     ld    hl, #retransmission_count
     inc   (hl)
 
-    call  z, ip_send_critical
+    call  z, udp_send
 
     jr    main_loop
 
@@ -979,23 +979,23 @@ tftp_reply_ack:
 ;; ############################################################################
 ;; ip_append_data_and_send
 ;;
-;; Call enc28j60_write_memory and continue with ip_send_critical.
+;; Call enc28j60_write_memory and continue with udp_send.
 ;; ############################################################################
 
 ip_append_data_and_send:
 
     call enc28j60_write_memory
 
-    ;; FALL THROUGH to ip_send_critical
+    ;; FALL THROUGH to udp_send
 
 
 ;; ############################################################################
-;; ip_send_critical
+;; udp_send
 ;;
-;; Send a completed IP packet (packet length determined by IP header).
+;; Send a completed IP/UDP packet (packet length determined by IP header).
 ;; ############################################################################
 
-ip_send_critical:
+udp_send:
 
     ld   hl, (outgoing_header + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
     ld   a, l  ;; swap byte order in HL
@@ -1007,7 +1007,7 @@ ip_send_critical:
     ;; but close enough (1 for BOOTP BOOTREQUEST, 0 for TFTP).
     ;; ------------------------------------------------------------------------
 
-    ld    (retransmission_count), a
+    ld   (retransmission_count), a
 
     ;; ------------------------------------------------------------------------
     ;; set DE := start address of frame in transmission buffer,
@@ -1296,9 +1296,7 @@ tftp_load_menu_bin:
 
     exx
 
-    PREPARE_TFTP_READ_REQUEST
-
-    call ip_send_critical
+    SEND_TFTP_READ_REQUEST
 
     ;; ========================================================================
     ;; Display IP address information:

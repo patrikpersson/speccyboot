@@ -217,14 +217,12 @@ tftp_state_loop:
 
 
 ;; ============================================================================
-;; Macro: prepare (but do not send) a TFTP read request packet.
+;; Macro: prepare and send a TFTP read request packet.
 ;; DE: pointer to file name
 ;; HL: pointer to TFTP state handler
-;;
-;; B==0 on exit.
 ;; ============================================================================
 
-    .macro PREPARE_TFTP_READ_REQUEST
+    .macro SEND_TFTP_READ_REQUEST
 
     ;; ------------------------------------------------------------------------
     ;; Set initial state for TFTP data handling
@@ -326,5 +324,7 @@ rrq_option_start:
     .ascii "octet"
     .db    0
 rrq_option_end:
+
+    call udp_send
 
     .endm
