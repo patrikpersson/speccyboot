@@ -944,43 +944,11 @@ arpoutgoing_header_end:
 
     jr   eth_send_frame
 
-
-;; ############################################################################
-;; TFTP subroutine: handle differing received vs. expected block numbers
-;;
-;; On entry, A holds the difference between received and expected block numbers
-;; ############################################################################
-
-tftp_receive_blk_nbr_not_equal:
-
-    ;; -----------------------------------------------------------------------
-    ;; There is one permissible case where received and expected block numbers
-    ;; could differ:
-    ;;
-    ;; received == expected-1 ?  means A == received-expected == -1
-    ;;
-    ;; This means the previous ACK was lost. Acknowledge, but ignore data.
-    ;; Any other difference is an error.
-    ;;
-    ;; The TFTP RFC indicates that an ERROR response is not critical:
-    ;;
-    ;; "This is only a courtesy since it will not be retransmitted or
-    ;;  acknowledged, so it may never be received.
-    ;;  Timeouts must also be used to detect errors."
-    ;;
-    ;; No ERROR packet is sent here. Incorrect packets are silently dropped.
-    ;; -----------------------------------------------------------------------
-
-    inc   a
-    ret   nz
-
-    ;; FALL THROUGH to tftp_send_ack
-
 ;; ===========================================================================
 ;; subroutine: reply with ACK
 ;; ===========================================================================
 
-tftp_send_ack:
+tftp_reply_ack:
 
     ld    hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT)
     ld    (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_DST_PORT), hl
@@ -999,22 +967,8 @@ tftp_send_ack:
 
     call  udp_create
 
-    rst   enc28j60_write_memory_inline
-
-    ;; -----------------------------------------------------------------------
-    ;; inline data for enc28j60_write_memory_inline
-    ;; -----------------------------------------------------------------------
-
-    .db  ack_packet_end - ack_packet_start
-
-ack_packet_start:
-    .db   0, TFTP_OPCODE_ACK
-ack_packet_end:
-
-    ;; -----------------------------------------------------------------------
-
-    ld    e, #TFTP_SIZE_OF_BLOCKNO
-    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO
+    ld    e, #TFTP_SIZE_OF_ACK_PACKET
+    ld    hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
     rst   enc28j60_write_memory_small
 
     ;; FALL THROUGH to ip_send_critical

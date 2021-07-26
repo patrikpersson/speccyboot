@@ -95,16 +95,16 @@ ROM_FONTDATA_ADDR = 0x3d00
 ;;                  OP, XID, YIADDR, first byte of SNAME
 ;; ============================================================================
 
-STACK_SIZE             = 0x20
-_stack_top             = 0x5b00 + STACK_SIZE
-                                            ;; 8 unused (empty) bytes here
-outgoing_header        = 0x5b28             ;; size 0x1c  (20+8)
-stored_snapshot_header = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
-kilobytes_loaded       = 0x5b7b             ;; size 1
-kilobytes_expected     = 0x5b7c             ;; size 1
-ram_config             = 0x5b7d             ;; size 1
-expected_tftp_block_no = 0x5b7e             ;; size 1
-_rx_frame              = 0x5b7f             ;; size 0x220 (RX_FRAME_SIZE)
+STACK_SIZE                  = 0x20
+_stack_top                  = 0x5b00 + STACK_SIZE
+                                                 ;; 8 unused (empty) bytes here
+outgoing_header             = 0x5b28             ;; size 0x1c  (20+8)
+stored_snapshot_header      = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
+kilobytes_loaded            = 0x5b7b             ;; size 1
+kilobytes_expected          = 0x5b7c             ;; size 1
+ram_config                  = 0x5b7d             ;; size 1
+tftp_last_block_no_received = 0x5b7e             ;; size 1
+_rx_frame                   = 0x5b7f             ;; size 0x220 (RX_FRAME_SIZE)
 
 ;; _DATA segment can start at 0x5d9f
 

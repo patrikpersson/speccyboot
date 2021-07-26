@@ -96,16 +96,20 @@ TFTP_HEADER_SIZE     = 4
 
     ;; ------------------------------------------------------------------------
     ;; only accept DATA packets; anything else is a fatal error
+    ;;
+    ;; only check the least significant byte (network order)
+    ;;
+    ;; modify opcode to ACK, so the header can be used for acknowledgment
     ;; ------------------------------------------------------------------------
 
-    ld   hl, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE)
-    ld   a, h
+    ld   hl, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE + 1
+    ld   a, (hl)
+    inc  (hl)                                      ;; modify to TFTP_OPCODE_ACK
     sub  a, #TFTP_OPCODE_DATA
-    or   a, l
 
     ;; ------------------------------------------------------------------------
-    ;; for an ERROR packet,
-    ;; A is now (TFTP_OPCODE_ERROR - TFTP_OPCODE_DATA)
+    ;; The only conceivable non-DATA packet at this point would be an ERROR
+    ;; packet. In this case, A is now (TFTP_OPCODE_ERROR - TFTP_OPCODE_DATA)
     ;; == 2 == FATAL_FILE_NOT_FOUND
     ;; ------------------------------------------------------------------------
 
@@ -116,21 +120,40 @@ TFTP_HEADER_SIZE     = 4
     ;; received == expected   (normal case: acknowledge and read)
     ;; received == expected-1 (previous ACK lost: acknowledge, but do not read)
     ;;
-    ;; only the least significant byte is checked
-    ;; ========================================================================
+    ;; Other cases _should_ not happen. A block number larger than the expected
+    ;; would mean the server has received an ACK not sent by this client.
+    ;; A block number less than (expected-1) would mean that the server sent
+    ;; a DATA packet already known to be acknowledged.
+    ;;
+    ;; For simplicity, DATA packets with block numbers other than the expected
+    ;; are acknowledged and silently dropped. This handles the acceptable
+    ;; cases above, and makes for at least predictable results in the "should
+    ;; not happen" cases.
+    ;; 
+    ;; Also for simplicity, only the least significant byte is checked.
+    ;; -----------------------------------------------------------------------
+    ;; The TFTP RFC indicates that an ERROR response is not critical:
+    ;;
+    ;; "This is only a courtesy since it will not be retransmitted or
+    ;;  acknowledged, so it may never be received.
+    ;;  Timeouts must also be used to detect errors."
+    ;;
+    ;; No ERROR packet is sent here. Incorrect packets are silently dropped.
+    ;; -----------------------------------------------------------------------
 
     ld    a, (_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
-    ld    hl, #expected_tftp_block_no
-    inc   (hl)
+    dec   a
+    ld    l, #<tftp_last_block_no_received
 
-    sub   a, (hl)
-    jr    nz, tftp_receive_blk_nbr_not_equal
+    cp    a, (hl)
+    jr    nz, tftp_reply_ack
 
     ;; ------------------------------------------------------------------------
     ;; packet number OK: acknowledge
     ;; ------------------------------------------------------------------------
 
-    call  tftp_send_ack
+    inc   (hl)
+    call  tftp_reply_ack
 
     ;; -----------------------------------------------------------------------
     ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
@@ -230,11 +253,11 @@ tftp_state_loop:
     ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ;; ------------------------------------------------------------------------
-    ;; reset _expected_tftp_block_no
+    ;; reset tftp_last_block_no_received
     ;; ------------------------------------------------------------------------
 
     xor  a, a
-    ld   (expected_tftp_block_no), a
+    ld   (tftp_last_block_no_received), a
 
     ex   de, hl    ;; bring filename pointer to HL
     push hl        ;; remember filename pointer for later
