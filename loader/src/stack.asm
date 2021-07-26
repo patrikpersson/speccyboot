@@ -1315,11 +1315,7 @@ print_ip_addr:
     ;; HL = IP address
     ;; AF, BC = scratch
 
-    ld    b, #4       ;; loop counter, four octets
-
 00001$:
-    push  bc
-
     ld    a, (hl)
     inc   hl
 
@@ -1329,10 +1325,15 @@ print_ip_addr:
 
     call  print_digit      ;; last digit
 
-    pop   bc
+    ;; -----------------------------------------------------------------------
+    ;; Print period or return?
+    ;;
+    ;; Assume IP addresses to have Z80 addresses divisible by 4
+    ;; (set up in globals.inc)
+    ;; -----------------------------------------------------------------------
 
-    ;; print period?
-    dec   b
+    ld    a, l
+    and   a, #3
     ret   z
 
     ld    a, #'.'

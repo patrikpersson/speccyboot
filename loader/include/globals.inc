@@ -78,7 +78,8 @@ ROM_FONTDATA_ADDR = 0x3d00
 ;; to facilitate single-page addressing, page 0x5B is laid out as follows:
 ;;
 ;; 5b00..5b1f       stack, 0x20 bytes
-;; 5b28..5b43       IP/UDP headers for outgoing packets, 20+8 bytes
+;; 5b20..5b3b       IP/UDP headers for outgoing packets, 20+8 bytes
+;;
 ;; 5b44..5b7a       stored .z80 snapshot header, 55 bytes
 ;; 5b7f..5b92       received IP header (20 bytes)
 ;; 5b93..5b9a       received UDP header (8 bytes)
@@ -97,8 +98,16 @@ ROM_FONTDATA_ADDR = 0x3d00
 
 STACK_SIZE                  = 0x20
 _stack_top                  = 0x5b00 + STACK_SIZE
+
+;; ---------------------------------------------------------------------------
+;; outgoing_header is placed so IP addresses have (Z80) addresses
+;; divisible by 4 (used in stack.asm, print_ip_addr)
+;; ---------------------------------------------------------------------------
+
+outgoing_header             = 0x5b20             ;; size 0x1c  (20+8)
+
                                                  ;; 8 unused (empty) bytes here
-outgoing_header             = 0x5b28             ;; size 0x1c  (20+8)
+
 stored_snapshot_header      = 0x5b44             ;; size 0x37  (Z80_HEADER_RESIDENT_SIZE)
 kilobytes_loaded            = 0x5b7b             ;; size 1
 kilobytes_expected          = 0x5b7c             ;; size 1
