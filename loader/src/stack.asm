@@ -988,8 +988,8 @@ ip_send_critical:
     ld   h, a
 
     ;; ------------------------------------------------------------------------
-    ;; Reset retransmission timer. A is not exactly zero here, but close enough
-    ;; (2 for BOOTP BOOTREQUEST, 0 for TFTP).
+    ;; Reset retransmission timer. A is not always exactly zero here,
+    ;; but close enough (1 for BOOTP BOOTREQUEST, 0 for TFTP).
     ;; ------------------------------------------------------------------------
 
     ld    (retransmission_count), a
