@@ -251,14 +251,20 @@ tftp_state_loop:
     ld   (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_SRC_PORT), hl
 
     ;; ------------------------------------------------------------------------
+    ;; set HL := filename pointer,
+    ;; E := 0 (zero byte from port number above)
+    ;; ------------------------------------------------------------------------
+
+    ex   de, hl
+
+    push hl        ;; remember filename pointer for later
+
+    ;; ------------------------------------------------------------------------
     ;; reset tftp_last_block_no_received
     ;; ------------------------------------------------------------------------
 
     xor  a, a
     ld   (tftp_last_block_no_received), a
-
-    ex   de, hl    ;; bring filename pointer to HL
-    push hl        ;; remember filename pointer for later
 
     ;; ------------------------------------------------------------------------
     ;; calculate length of filename; assume length < 240
@@ -270,7 +276,6 @@ tftp_state_loop:
     ld   c, a      ;; set C := 0
     cpir           ;; find NUL in string pointed to by HL; BC := negated length
     ld   b, a      ;; set B := 0
-    ld   e, a      ;; set E := 0
 
     sub  a, c
     ld   c, a      ;; negate C

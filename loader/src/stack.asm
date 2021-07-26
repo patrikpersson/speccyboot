@@ -1307,7 +1307,6 @@ tftp_load_menu_bin:
     ;; invisible (as PAPER and INK colours have been both set to WHITE+BRIGHT)
     ;; ========================================================================
 
-
     ld   de, #LOCAL_IP_POS
     ld   hl, #outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
 
