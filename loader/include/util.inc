@@ -110,7 +110,7 @@ ROW_LENGTH  = 32
 ;; attribute VRAM address for kilobyte counter
 ;; ----------------------------------------------------------------------------
 
-ATTR_DIGIT_ROW = 0x5A00
+ATTR_DIGIT_ROW = 0x5a00
 
 ;; ----------------------------------------------------------------------------
 ;; codes for fail(), displayed as border colours
@@ -118,13 +118,6 @@ ATTR_DIGIT_ROW = 0x5A00
 
 FATAL_INTERNAL_ERROR      = BLACK
 FATAL_FILE_NOT_FOUND      = RED
-
-;; ----------------------------------------------------------------------------
-;; codes for warnings
-;; ----------------------------------------------------------------------------
-
-WARNING_RETRANSMITTED     = BLUE
-WARNING_CHECKSUM_FAILED   = CYAN
 
 ;; ----------------------------------------------------------------------------
 ;; Compare memory blocks pointed to by HL and DE. Register B indicates the
@@ -192,14 +185,3 @@ WARNING_CHECKSUM_FAILED   = CYAN
 ;; ----------------------------------------------------------------------------
 
     .globl show_attr_digit_already_shifted
-
-;; ----------------------------------------------------------------------------
-;; alternate entrypoint for show_attr_digit:
-;;
-;; Preserves C. Destroys AF, B, DE, H.
-;; H is set to the attribute row for digits (0x5A).
-;; L is set to the rightmost position in the digit.
-;; B := 0. DE is destroyed (points to font data).
-;; ----------------------------------------------------------------------------
-
-    .globl show_attr_digit_right
