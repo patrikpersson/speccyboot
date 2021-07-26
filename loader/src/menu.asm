@@ -224,11 +224,14 @@ find_snapshot_for_key_lp:
 
     ld   a, (hl)
 
-    cp   a, #'a'
-    jr   c, not_lowercase_letter
-    and  a, #0xDF     ;; to upper case
-not_lowercase_letter:
+    ;; ------------------------------------------------------------------------
+    ;; skip check for upper/lower case here:
+    ;;
+    ;; digit keys or space aren't expected to work here anyway
+    ;; (as digits < KEY_DOWN are considered equivalent to KEY_DOWN above)
+    ;; ------------------------------------------------------------------------
 
+    and  a, #0xDF     ;; to upper case
     cp   a, b
     jr   nc, menu_adjust
 
