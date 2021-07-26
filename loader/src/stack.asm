@@ -1439,4 +1439,18 @@ _print_char_loop:
     pop  bc
     pop  hl
 
+    ret  nz
+
+    ;; -----------------------------------------------------------------------
+    ;; E became zero: means we reached the end of one of the 2K VRAM segments.
+    ;; Skip to the next one.
+    ;;
+    ;; This destroys the A value saved from print_div above, but that value
+    ;; only matters to print_ip_addr, which never crosses segment boundaries.
+    ;; -----------------------------------------------------------------------
+
+    ld   a, d
+    add  a, #8
+    ld   d, a
+
     ret

@@ -156,21 +156,9 @@ no_padding:
 
     call print_char
 
-    jr   nz, no_end_of_segment
-
-    ;; E became zero: means we reached the end of one of the 2K VRAM segments,
-    ;; skip to the next one
-
-    ld   a, d
-    add  a, #8
-    ld   d, a
-
-no_end_of_segment:
-
     ld   a, e
     and  a, #0x1f
     jr   nz, print_string_loop
-
 
     inc  de    ;; skip first cell on each line
     inc  c
@@ -311,7 +299,7 @@ menu_hit_enter:
 
     call get_filename_pointer
 
-    push hl     ;; push arg for tftp_read_request below
+    push hl                         ;; push arg for tftp_request_snapshot below
 
     ;; ------------------------------------------------------------------------
     ;; send a TFTP request for the snapshot
