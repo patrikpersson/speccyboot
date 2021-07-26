@@ -171,20 +171,20 @@ main_loop:
     ld    de, #(EPKTCNT & REG_MASK) + (8 << 8)    ;; EPKTCNT is an ETH register
     call  enc28j60_read_register
 
-    ex    af, af'                                   ;; keep EPKTCNT value in A'
+    ;; ------------------------------------------------------------------------
+    ;; restore register bank 0, keep EPKTCNT in A' for use below
+    ;; ------------------------------------------------------------------------
 
-    ;; ------------------------------------------------------------------------
-    ;; restore register bank 0
-    ;; ------------------------------------------------------------------------
+    ex    af, af'                                   ;; keep EPKTCNT value in A'
 
     ld    e, b                            ;; B == 0 from enc28j60_read_register
     rst   enc28j60_select_bank
 
+    ex    af, af'                         ;; restore EPKTCNT value from A' to A
+
     ;; ------------------------------------------------------------------------
     ;; any packet received?
     ;; ------------------------------------------------------------------------
-
-    ex    af, af'                         ;; restore EPKTCNT value from A' to A
 
     or    a, a
     jr    nz, packet_received

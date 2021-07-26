@@ -114,9 +114,9 @@ show_attr_digit_row_loop:
 
 show_attr_char_pixel_loop:
     add   a, a
-    ld    (hl), #BLACK + (BLACK << 3)
-    jr    c, show_attr_char_pixel_set
     ld    (hl), #WHITE + (WHITE << 3)
+    jr    nc, show_attr_char_pixel_set
+    inc   (hl)
 show_attr_char_pixel_set:
     inc   hl
     djnz  show_attr_char_pixel_loop
