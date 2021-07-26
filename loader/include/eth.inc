@@ -30,6 +30,7 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
+;; ---------------------------------------------------------------------------
 ;; MEMORY MAP
 ;; ==========
 ;;
@@ -47,10 +48,12 @@
 ;;
 ;; 0x1800   ... 0x1FFF  Reserved for temporary storage during snapshot
 ;;                      loading (see context_switch.asm)
+;; ---------------------------------------------------------------------------
 
 ENC28J60_RXBUF_START    = 0x0000
 ENC28J60_EVACUATED_DATA = 0x1800
 
+;; ---------------------------------------------------------------------------
 ;; Worst-case payload for transmitted UDP frames (BOOTP REQUEST):
 ;;
 ;;      20b  IP header
@@ -62,22 +65,30 @@ ENC28J60_EVACUATED_DATA = 0x1800
 ;; Worst-case payload for transmitted ARP frames (ARP REPLY):
 ;;
 ;;     28b  ARP
+;; ---------------------------------------------------------------------------
 
 ETH_MAX_UDP_TX_PAYLOAD = 328
 ETH_MAX_ARP_TX_PAYLOAD = 28
 
+;; ---------------------------------------------------------------------------
 ;; Worst-case payload for received frames:
 ;;  60   (max IP header size)
 ;;   8   (UDP header)
 ;; 516   (TFTP: 4 bytes header, 512 bytes data)
 ;; ---
 ;; 574 bytes
+;; ---------------------------------------------------------------------------
 
 ETH_MAX_RX_FRAME_SIZE = ETH_HEADER_SIZE + 574
 
+;; ---------------------------------------------------------------------------
 ;; Transmission buffer sizes:
 ;; Ethernet header, payload, and 8 bytes of administrative info stored
 ;; by controller
+;;
+;; NOTE: ENC28J60_TXBUF1_START is assumed (in stack.asm, ip_send_critical) to
+;;       have its first ETH_HEADER_SIZE bytes in the same RAM page.
+;; ---------------------------------------------------------------------------
 
 ENC28J60_UDP_TXBUF_SIZE = (ETH_HEADER_SIZE + ETH_MAX_UDP_TX_PAYLOAD + 8)    ;; 0x156
 ENC28J60_ARP_TXBUF_SIZE = (ETH_HEADER_SIZE + ETH_MAX_ARP_TX_PAYLOAD + 8)    ;; 0x2a

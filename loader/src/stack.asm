@@ -1004,11 +1004,15 @@ ip_send_critical:
     ;;               + nbr_bytes
     ;;               - 1 (point to last byte, not after it)
     ;;             = start + ETH_HEADER_SIZE + nbr_bytes
+    ;;
+    ;; Assume that adding ETH_HEADER_SIZE to ENC28J60_TXBUF1_START stays
+    ;; in the same RAM page (set in eth.inc).
     ;; ------------------------------------------------------------------------
 
-    ld    de, #ENC28J60_TXBUF1_START
-    ld    bc, #ENC28J60_TXBUF1_START+ETH_HEADER_SIZE
-    add   hl, bc
+    ld    de, #ENC28J60_TXBUF1_START+ETH_HEADER_SIZE
+    add   hl, de
+
+    ld    e, #<ENC28J60_TXBUF1_START
 
     ;; FALL THROUGH to eth_send_frame
 
