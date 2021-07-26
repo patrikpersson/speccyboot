@@ -184,13 +184,13 @@ no_padding:
     cp   a, #KEY_ENTER
     jr   z, menu_hit_enter
 
-    sub  a, #KEY_UP
-    jr   z, menu_hit_up
-
     ;; ------------------------------------------------------------------------
     ;; any key less than KEY_UP is treated as KEY_DOWN
     ;; ------------------------------------------------------------------------
 
+    sub  a, #KEY_UP
+    ld   a, c
+    jr   z, menu_hit_up
     jr   c, menu_hit_down
 
     ;; ========================================================================
@@ -198,7 +198,7 @@ no_padding:
     ;; select the first snapshot with that initial letter
     ;; ========================================================================
 
-    ld   c, b ;; C will hold the result (selected index); B==0 after menu_erase_highlight
+    ld   c, b ;; C will hold the result (selected index); B==0 after menu_set_highlight
     ld   b, (hl)
 
 find_snapshot_for_key_lp:
@@ -233,7 +233,6 @@ find_snapshot_for_key_lp:
 
 menu_hit_down:
 
-    ld   a, c
     inc  a
     cp   a, e
     jr   nc, menu_loop
@@ -252,7 +251,6 @@ menu_hit_down:
 
 menu_hit_up:
 
-    ld   a, c
     or   a, a
     jr   z, menu_loop
 
