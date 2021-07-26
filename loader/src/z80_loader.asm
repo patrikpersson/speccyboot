@@ -125,14 +125,11 @@ _digits:
     .ds  >(TO)->(FROM)     ;; if the two routines are on different pages
 
     ;; So place all state routines in segment _Z80_LOADER_STATES
-    ;; and use the .map file to verify that this segment starts at
-    ;; 0x700 or higher. Then this macro _should_ be safe.
+    ;; and use the .map file to verify that all state routines start at
+    ;; 0x6xx. Then this macro _should_ be safe.
 
     .endm
 
-    .macro SWITCH_STATE_SAFE FROM TO
-    ld   ix, #TO
-    .endm
 
 ;; ############################################################################
 ;; check_limits_and_load_byte
