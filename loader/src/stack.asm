@@ -738,7 +738,7 @@ no_carry_in_header_size_subtraction:
     ;; break this assumption. It _seems_ to work fine, though...
     ;;
     ;; Compute HL := DE + A, where
-    ;;  HL is the IP checksum
+    ;;  HL is the IP checksum (network order)
     ;;  DE is the UDP length (host order)
     ;;  A  is IP_PROTOCOL_UDP
     ;;
@@ -749,9 +749,9 @@ no_carry_in_header_size_subtraction:
     add  a, e
     ld   h, a
     ld   l, d
-    jr   nc, no_carry
+    jr   nc, no_carry_in_initial_checksum
     inc  l
-no_carry:
+no_carry_in_initial_checksum:
     ld   (_ip_checksum), hl
 
     ;; -----------------------------------------------------------------------
