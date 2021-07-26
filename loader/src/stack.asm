@@ -1050,12 +1050,15 @@ eth_send_frame:
     ;;       for continuous scanning of PHSTAT2 -- see eth_init
     ;; ----------------------------------------------------------------------
 
-    ld    e, #2             ;; bank 2 for MIRDH
+    ld    e, #2                                           ;; bank 2 for MIRDH
     rst   enc28j60_select_bank
 
-    ;; poll MIRDH until PHSTAT2_HI_LSTAT is set
+    ;; ----------------------------------------------------------------------
+    ;; Poll MIRDH until PHSTAT2_HI_LSTAT is set. MIRDH is a MAC/MII register,
+    ;; so expect an extra (unused) byte before the actual result.
+    ;; ----------------------------------------------------------------------
 
-    ld    de, #(MIRDH & REG_MASK) + (16 << 8)  ;; MIRDH is a MAC_MII register
+    ld    de, #(MIRDH & REG_MASK) + (16 << 8)
     ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
     call  poll_register
 
@@ -1214,7 +1217,7 @@ ip_receive_check_checksum:
 ;; ----------------------------------------------------------------------------
 
 tftp_default_file:
-    .ascii 'menu.bin'
+    .ascii 'menu.dat'
     .db    0
 
 bootp_receive:
@@ -1226,22 +1229,22 @@ bootp_receive:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; keep configuration for loading 'menu.bin' in DE', HL'
+    ;; keep configuration for loading 'menu.dat' in DE', HL'
     ;; ------------------------------------------------------------------------
 
-    ld   de, #tftp_default_file                   ;; 'menu.bin'
-    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.bin
+    ld   de, #tftp_default_file                   ;; 'menu.dat'
+    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.dat
     exx
 
     ;; ------------------------------------------------------------------------
     ;; inspect the FILE field, set Z flag if filename is empty
-    ;; (interpreted as a request to load 'menu.bin')
+    ;; (interpreted as a request to load 'menu.dat')
     ;; ------------------------------------------------------------------------
 
     ld   de, #_rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
 
     ;; ------------------------------------------------------------------------
-    ;; an empty filename is interpreted as a request to load 'menu.bin'
+    ;; an empty filename is interpreted as a request to load 'menu.dat'
     ;; ------------------------------------------------------------------------
 
     ld   a, (de)

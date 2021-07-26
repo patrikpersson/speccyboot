@@ -39,7 +39,7 @@ import os
 import glob
 import sys
 
-FINAL_BINARY = 'menu.bin'
+FINAL_BINARY = 'menu.dat'
 
 loading_address = 0x6400
 
