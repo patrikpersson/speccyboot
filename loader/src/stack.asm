@@ -865,8 +865,8 @@ handle_ip_or_arp_packet:
 
     ;; HL is set to _rx_frame and preserved by enc28j60_read_memory_to_rxframe
 
-    ld   de, #arpoutgoing_header_start
-    ld   b, #(arpoutgoing_header_end - arpoutgoing_header_start - 1)
+    ld   de, #arp_outgoing_header_start
+    ld   b, #(arp_outgoing_header_end - arp_outgoing_header_start - 1)
     call memory_compare
     ret  nz   ;; if the receive packet does not match the expected header, return
 
@@ -905,16 +905,16 @@ handle_ip_or_arp_packet:
     ;; inline data for enc28j60_write_memory_inline: ARP reply header
     ;; -----------------------------------------------------------------------
 
-    .db  arpoutgoing_header_end - arpoutgoing_header_start         ;; length
+    .db  arp_outgoing_header_end - arp_outgoing_header_start         ;; length
 
-arpoutgoing_header_start:
+arp_outgoing_header_start:
     .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
 ethertype_ip:
     .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
     .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
     .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
     .db  0, 2                  ;; OPER: reply, 16 bits, network order
-arpoutgoing_header_end:
+arp_outgoing_header_end:
 
     ;; -----------------------------------------------------------------------
     ;; SHA: local MAC address
