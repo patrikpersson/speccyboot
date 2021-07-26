@@ -101,7 +101,8 @@ tftp_state_menu_loader:
     ;; E = total number of snapshots (0..255)
     ;; ========================================================================
 
-    ld   c, #0
+    ;; BC == 0 here, from LDIR above
+
     ld   d, c
     ld   a, (nbr_snapshots)
     ld   e, a

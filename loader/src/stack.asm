@@ -1295,7 +1295,7 @@ tftp_load_menu_bin:
 
     ld   e, #<SERVER_IP_POS
 
-    ld   a, #'R'
+    ld   a, #'S'
     call  print_char
 
     ;; FALL THROUGH to print_ip_addr
