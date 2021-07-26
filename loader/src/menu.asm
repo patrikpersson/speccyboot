@@ -196,10 +196,14 @@ no_end_of_segment:
     cp   a, #KEY_ENTER
     jr   z, menu_hit_enter
 
-    sub  a, #KEY_DOWN
-    jr   z, menu_hit_down
-    dec  a                                                           ;; KEY_UP?
+    sub  a, #KEY_UP
     jr   z, menu_hit_up
+
+    ;; ------------------------------------------------------------------------
+    ;; any key less than KEY_UP is treated as KEY_DOWN
+    ;; ------------------------------------------------------------------------
+
+    jr   c, menu_hit_down
 
     ;; ========================================================================
     ;; user hit something else than ENTER/UP/DOWN:
