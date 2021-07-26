@@ -616,7 +616,7 @@ ip_header_defaults:                          ;; IP header meaning
     ld     b, l                              ;; 0x45: version, IHL
     nop                                      ;; 0x00: DSCP, EN
 
-    ld     hl, #outgoing_header             ;; 2 bytes IP length (placeholder)
+    ld     hl, #outgoing_header              ;; 2 bytes IP length (placeholder)
     rst    enc28j60_write_memory_small       ;; 2 bytes packet ID (arbitrary)
 
     ld     b, b                              ;; 0x40: DO NOT FRAGMENT
@@ -967,9 +967,24 @@ tftp_reply_ack:
 
     call  udp_create
 
+    ;; -----------------------------------------------------------------------
+    ;; udp_create ends with enc28j60_write_memory, so DE == 0 here
+    ;; -----------------------------------------------------------------------
+
     ld    e, #TFTP_SIZE_OF_ACK_PACKET
     ld    hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_OPCODE
-    rst   enc28j60_write_memory_small
+
+    ;; FALL THROUGH to ip_append_data_and_send
+
+;; ############################################################################
+;; ip_append_data_and_send
+;;
+;; Call enc28j60_write_memory and continue with ip_send_critical.
+;; ############################################################################
+
+ip_append_data_and_send:
+
+    call enc28j60_write_memory
 
     ;; FALL THROUGH to ip_send_critical
 
