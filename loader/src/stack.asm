@@ -1314,29 +1314,31 @@ tftp_load_menu_bin:
     ld   de, #LOCAL_IP_POS
     ld   hl, #outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
 
-    call print_ip_addr
+    ld   a, #'L'
+    call print_char_and_ip_addr
 
     ld   e, #<SERVER_IP_POS
-
     ld   a, #'S'
-    call  print_char
 
-    ;; FALL THROUGH to print_ip_addr
+    ;; FALL THROUGH to print_char_and_ip_addr
 
 
 ;; ############################################################################
 ;; Subroutine:
-;; prints IP address, four octets of 1-3 digits
+;; prints a char and an IP address, four octets of 1-3 digits
+;; A = char to print
 ;; DE = VRAM pointer
 ;; HL = pointer to IP address
 ;; AF, AF', and BC are destroyed. DE and HL are increased.
 ;; ############################################################################
 
-print_ip_addr:
+print_char_and_ip_addr:
 
     ;; DE = VRAM pointer
     ;; HL = IP address
     ;; AF, BC = scratch
+
+    call  print_char
 
 00001$:
     ld    a, (hl)
