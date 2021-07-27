@@ -151,13 +151,6 @@ tftp_state:
 main_loop:
 
     ;; ------------------------------------------------------------------------
-    ;; The menu (stage 2) JP:s here to load snapshots.lst.
-    ;; Save a few bytes of stack.
-    ;; ------------------------------------------------------------------------
-
-    ld    sp, #_stack_top
-
-    ;; ------------------------------------------------------------------------
     ;; Spin here until at least one frame is received. Do this by
     ;; polling EPKTCNT. (Errata rev B5, item #4: do not trust EIR.PKTIF)
     ;;
