@@ -333,21 +333,22 @@ ram_trampoline:
 
   jr    nc, go_to_basic      ;; if Caps Shift was pressed, go to BASIC
 
-  ;; -------------------------------------------------------------------------
-  ;; copy ROM data (6x 0xff, keymap, font) to RAM
-  ;; -------------------------------------------------------------------------
+  ;; --------------------------------------------------------------------------
+  ;; Copy ROM data (6x 0xff, keymap, font) to RAM. Slightly more data than
+  ;; necessary is copied, to ensure HL == 0x0300 afterwards.
+  ;; --------------------------------------------------------------------------
 
   ld    hl, #ROM_DATA_ADDR
   ld    de, #copied_rom_data
-  ld    bc, #ROM_DATA_LENGTH
+  ld    bc, #ROM_DATA_LENGTH + 0xD3                      ;; to make L := 0x0300
   ldir
 
-  ld    hl, #ROM_FONTDATA_ADDR
-  ld    de, #_font_data      ;; address of font buffer in RAM
-  ld    b, #0x03             ;; C == 0 from LDIR above
+  ld    b, h                               ;; H == 0x03, C == 0 from LDIR above
+  ld    h, #>ROM_FONTDATA_ADDR                       ;; L == 0 after LDIR above
+  ld    de, #_font_data                        ;; address of font buffer in RAM
   ldir
 
-  xor   a                    ;; page in SpeccyBoot ROM, keep ETH in reset
+  xor   a, a                       ;; page in SpeccyBoot ROM, keep ETH in reset
   out   (SPI_OUT), a
 
   jp    initialize_global_data

@@ -81,17 +81,12 @@ tftp_state_menu_loader:
     ldir
 
     ;; ------------------------------------------------------------------------
-    ;; If a full TFTP packet was loaded, return.
+    ;; If a full TFTP packet was loaded, more data will follow, so return.
     ;; (BC above should be exactly 0x200 for all DATA packets except the last
-    ;; one, never larger; so we are done if bit 1 was set in B)
+    ;; one, never larger; so we are done for now if bit 1 was set in B.)
     ;; ------------------------------------------------------------------------
 
     ret nz
-
-    ;; ========================================================================
-    ;; This was the last packet of the stage 2 binary:
-    ;; display menu
-    ;; ========================================================================
 
     ;; ========================================================================
     ;; main loop for the menu
@@ -411,7 +406,7 @@ scan_key_col_loop:
     jr    nz, scan_key
 
     in    a, (c)
-    and   a, d                                            ;; clears carry flag
+    and   a, d
     ret   z
 
     inc   hl
