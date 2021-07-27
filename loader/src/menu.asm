@@ -114,16 +114,25 @@ menu_loop:
     push de
     push bc
 
-    ;; Set up B to be ((last index to display) + 1)
+    ;; -----------------------------------------------------------------------
+    ;; register allocation while redrawing:
+    ;;
+    ;; B:  loop counter, number of entries to show (range 1..DISPLAY_LINES)
+    ;; C:  current entry to print
+    ;; DE: VRAM address
+    ;; HL: filename pointer
+    ;; -----------------------------------------------------------------------
 
-    ld   c, d     ;; C=first index
+    ld   c, d
+
     ld   a, c
     add  a, #DISPLAY_LINES
     cp   a, e
-    ld   b, a
     jr   c, redraw_menu_limit_set
-    ld   b, e
+    ld   a, e
 redraw_menu_limit_set:
+    sub  a, c
+    ld   b, a
 
     ld   de, #0x4101      ;; (0,1)
 
@@ -158,9 +167,7 @@ no_padding:
     inc  de    ;; skip first cell on each line
     inc  c
 
-    ld   a, c
-    cp   a, b
-    jr   c, redraw_menu_loop
+    djnz redraw_menu_loop
 
     ;; ========================================================================
     ;; handle user input
