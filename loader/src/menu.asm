@@ -350,9 +350,16 @@ menu_set_highlight:
     add  hl, hl
     add  hl, hl
     add  hl, hl
-    ex   af, af'
 
+  ;; ========================================================================
+  ;; ARP Ethertype (0x08 0x06)
+  ;; ========================================================================
+
+ethertype_arp:
+
+    ex   af, af'
     ld   b, #32
+
 menu_highlight_loop:
     ld   (hl), a
     inc  hl

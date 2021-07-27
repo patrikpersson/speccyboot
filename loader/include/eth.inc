@@ -133,10 +133,10 @@ ETH_ADDRESS_SIZE = 6
 ETH_HEADER_SIZE = 14
 
 ;; ----------------------------------------------------------------------------
-;; pointer to Ethertype for IP
+;; useful constant value for eth (defined in menu.asm)
 ;; ----------------------------------------------------------------------------
 
-    .globl ethertype_ip
+    .globl ethertype_arp
 
 ;; ============================================================================
 ;; Initialize Ethernet layer
