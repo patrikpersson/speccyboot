@@ -98,9 +98,16 @@ tftp_state_menu_loader:
 
     ;; BC == 0 here, from LDIR above
 
-    ld   d, c
     ld   a, (nbr_snapshots)
     ld   e, a
+
+    ;; -----------------------------------------------------------------------
+    ;; align the display offset with the currently highlighted entry
+    ;; -----------------------------------------------------------------------
+
+align_top:
+
+    ld   d, c
 
 menu_loop:
 
@@ -190,7 +197,7 @@ no_padding:
     ;; any key less than KEY_UP is treated as KEY_DOWN
     ;; ------------------------------------------------------------------------
 
-    sub  a, #KEY_UP
+    cp   a, #KEY_UP
     ld   a, c
     jr   z, menu_hit_up
     jr   c, menu_hit_down
@@ -241,7 +248,7 @@ menu_hit_down:
 
     ;; ------------------------------------------------------------------------
     ;; Do two INC C and fall through to the KEY_UP case below
-    ;; (which does DEC C). Saves a JR.
+    ;; (which does DEC C). The result is that C is increased by 1. Saves a JR.
     ;; ------------------------------------------------------------------------
 
     inc  c
@@ -270,23 +277,16 @@ menu_adjust:
     ;; C < D? Reached top of display?
 
     ld   a, c
-    cp   a, d
-    jr   nc, ensure_visible_not_top
-
-    ;; C < D: adjust D to ensure index C is visible
-
-    ld   d, c
-
-ensure_visible_not_top:
+    sub  a, d
+    jr   c, align_top
 
     ;; reached end of display?
 
-    ld   a, c
-    sub  a, #DISPLAY_LINES - 1
-    jr   c, menu_loop
-    cp   a, d
+    cp   a, #DISPLAY_LINES - 1          ;; (C-D) >= DISPLAY_LINES ?
     jr   c, menu_loop
 
+    ld   a, c
+    sub  a, #DISPLAY_LINES - 1
     ld   d, a
 
     jr   menu_loop
