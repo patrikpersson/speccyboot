@@ -104,8 +104,11 @@ STACK_SIZE                  = 0x20
 _stack_top                  = 0x5b00 + STACK_SIZE
 
 ;; ---------------------------------------------------------------------------
-;; outgoing_header is placed so IP addresses have (Z80) addresses
-;; divisible by 4 (used in stack.asm, print_ip_addr)
+;; Outgoing_header is placed so IP addresses have (Z80) addresses
+;; divisible by 4 (used in stack.asm, print_ip_addr).
+;;
+;; The first four bytes are set to a non-zero initial value in init.asm, but
+;; overwritten with a template header in stack.asm.
 ;; ---------------------------------------------------------------------------
 
 outgoing_header             = 0x5b20             ;; size 0x1c  (20+8)
@@ -147,20 +150,14 @@ keymap                 = copied_rom_data + ROM_KEYMAP_ADDR - ROM_DATA_ADDR
 DISPLAY_LINES = 22
 
 ;; ----------------------------------------------------------------------------
-;; Address of stage 2 loader
-;; ----------------------------------------------------------------------------
-
-    .globl stage2_start
-
-;; ----------------------------------------------------------------------------
-;; Number of snapshots (one byte, directly after stage 2 loader)
+;; Number of snapshots (from loaded 'menu.dat')
 ;; ----------------------------------------------------------------------------
 
     .globl nbr_snapshots
 
 ;; ----------------------------------------------------------------------------
 ;; Array of pointers to snapshot file names. The array size is nbr_snapshots.
-;; (one word, directly after nbr_snapshots)
+;; (from loaded 'menu.dat')
 ;; ----------------------------------------------------------------------------
 
     .globl snapshot_array

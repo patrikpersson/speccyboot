@@ -382,6 +382,13 @@ initialize_global_data:
   ldir
 
   ;; ------------------------------------------------------------------------
+  ;; set WHITE border
+  ;; ------------------------------------------------------------------------
+
+  ld    a, #WHITE
+  out   (ULA_PORT), a
+
+  ;; ------------------------------------------------------------------------
   ;; set up menu colours (lines 0..21)
   ;; ------------------------------------------------------------------------
 
@@ -390,11 +397,17 @@ initialize_global_data:
   ldir
 
   ;; ------------------------------------------------------------------------
-  ;; lines 22..23, also paint stack
+  ;; lines 22..23
+  ;;
+  ;; Also paint stack, and four following bytes. Those four bytes will be
+  ;; overwritten with proper values later (see globals.inc). The reason for
+  ;; writing these four bytes is to set C to 0x64, which happens to be the
+  ;; high byte of _SNAPSHOTLIST. Saves a byte.
   ;; ------------------------------------------------------------------------
 
   ld    (hl), #BLACK + (WHITE << 3)
-  ld    c, #0x20 * 2 + STACK_SIZE
+  ld    c, #0x20 * 2 + STACK_SIZE + 4
+  ld    a, c                                    ;; high byte of _SNAPSHOTLIST
   ldir
 
   ;; ------------------------------------------------------------------------
@@ -402,13 +415,8 @@ initialize_global_data:
   ;; ------------------------------------------------------------------------
 
   ld    (hl), c                                    ;; C == 0 after LDIR above
-  ld    bc, #_font_data - _stack_top
+  ld    bc, #_font_data - _stack_top - 4
   ldir
-
-  ld    a, #WHITE
-  out   (ULA_PORT), a
-
-  ld    a, #>stage2_start
 
   ld    (_tftp_write_pos + 1), a
 
@@ -427,8 +435,6 @@ initialize_global_data:
   .area _DATA
 
   .area _SNAPSHOTLIST         ;; area for loaded snapshot list
-
-stage2_start:
 
 nbr_snapshots:
   .ds    1
