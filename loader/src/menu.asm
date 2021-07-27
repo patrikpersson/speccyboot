@@ -268,25 +268,30 @@ menu_hit_up:
 menu_adjust:
 
     ;; ------------------------------------------------------------------------
-    ;; adjust D (display offset) to ensure
-    ;;   D <= C < E
-    ;; and
-    ;;   D <= C < D + DISPLAY_LINES
+    ;; C < D? Reached top of display? The set display offset D := C
     ;; ------------------------------------------------------------------------
-
-    ;; C < D? Reached top of display?
 
     ld   a, c
     sub  a, d
     jr   c, align_top
 
-    ;; reached end of display?
+    ;; ------------------------------------------------------------------------
+    ;; (C-D) >= DISPLAY_LINES ? Reached end of display?
+    ;; ------------------------------------------------------------------------
 
-    cp   a, #DISPLAY_LINES - 1          ;; (C-D) >= DISPLAY_LINES ?
-    jr   c, menu_loop
-
-    ld   a, c
     sub  a, #DISPLAY_LINES - 1
+    jr   c, menu_loop                ;; no, keep D as is
+
+    ;; ------------------------------------------------------------------------
+    ;; reached end of display
+    ;;
+    ;; at this point, A == C - D - (DISPLAY_LINES-1)
+    ;;
+    ;; set D := A + D == C - (DISPLAY_LINES-1),
+    ;; so C becomes the last visible entry
+    ;; ------------------------------------------------------------------------
+
+    add  a, d
     ld   d, a
 
     jr   menu_loop
