@@ -215,7 +215,7 @@ find_snapshot_for_key_lp:
     inc  c
 
     ld   a, c
-    cp   a, e          ;; ensure (C + 1) < E
+    cp   a, e                                             ;; ensure (C + 1) < E
     jr   nc, dec_c_and_adjust_menu
 
     call get_filename_pointer
@@ -231,9 +231,9 @@ find_snapshot_for_key_lp:
 
     and  a, #0xDF     ;; to upper case
     cp   a, b
-    jr   nc, menu_adjust
+    jr   c, find_snapshot_for_key_lp
 
-    jr   find_snapshot_for_key_lp
+    jr   menu_adjust
 
     ;; ========================================================================
     ;; user hit DOWN: highlight next entry
