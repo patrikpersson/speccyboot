@@ -775,9 +775,8 @@ no_carry_in_initial_checksum:
     ;; were already included (given as initial value above), so we do not add
     ;; it here.
 
-    ld   b, #IPV4_ADDRESS_SIZE    ;; number of words (4 for two IP addresses)
     ld   de, #rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    call nz, add_and_verify_checksum
+    call nz, add_8_bytes_and_verify_checksum
 
     ;; -----------------------------------------------------------------------
     ;; Pass on to BOOTP/TFTP
@@ -818,7 +817,10 @@ no_carry_in_initial_checksum:
     ret  nz
 
     ;; -----------------------------------------------------------------------
-    ;; handle_tftp_packet is a macro, so as to avoid a function call
+    ;; Handle_tftp_packet is a macro, so as to avoid a function call.
+    ;;
+    ;; B == 0 from enc28j60_read_memory and
+    ;; (if invoked) add_8_bytes_and_verify_checksum
     ;; -----------------------------------------------------------------------
 
     HANDLE_TFTP_PACKET
@@ -1196,6 +1198,17 @@ fail:
     di
     out (ULA_PORT), a
     halt
+
+;; -----------------------------------------------------------------------
+;; Subroutine: add 8 bytes (4 16-bit words),
+;; then verify the resulting checksum.
+;; -----------------------------------------------------------------------
+
+add_8_bytes_and_verify_checksum:
+
+    ld   b, #4                                   ;; number of 16-bit words
+
+    ;; FALL THROUGH to add_and_verify_checksum
 
 ;; -----------------------------------------------------------------------
 ;; Subroutine: add a number of bytes to IP checksum,

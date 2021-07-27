@@ -149,6 +149,8 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
 ;; handle a received BOOTP packet
 ;; If a BOOTREPLY with an IP address is found,
 ;; fall through to tftp_request_snapshot; otherwise return.
+;;
+;; Requires B == 0 on entry.
 ;; ===========================================================================
 
     .macro  HANDLE_BOOTP_PACKET
@@ -172,7 +174,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
 
     ld   hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_YIADDR
     ld   e, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    ld   bc, #8
+    ld   c, #8                          ;; B == 0 (precondition for this macro)
     ldir
 
     ;; ========================================================================
