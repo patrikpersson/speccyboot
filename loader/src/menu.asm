@@ -212,10 +212,11 @@ no_padding:
 
 find_snapshot_for_key_lp:
 
+    inc  c
+
     ld   a, c
-    inc  a
     cp   a, e          ;; ensure (C + 1) < E
-    jr   nc, menu_adjust
+    jr   nc, dec_c_and_adjust_menu
 
     call get_filename_pointer
 
@@ -231,8 +232,6 @@ find_snapshot_for_key_lp:
     and  a, #0xDF     ;; to upper case
     cp   a, b
     jr   nc, menu_adjust
-
-    inc  c
 
     jr   find_snapshot_for_key_lp
 
@@ -262,6 +261,8 @@ menu_hit_up:
 
     or   a, a
     jr   z, menu_loop
+
+dec_c_and_adjust_menu:
 
     dec  c
 
