@@ -89,6 +89,7 @@ IP_CONFIG_TFTP_ADDRESS_OFFSET  = 4
 ;; ----------------------------------------------------------------------------
 ;; Create UDP packet (IP + UDP headers). Defined in stack.asm.
 ;;
+;; B: must be 0
 ;; HL: points to destination MAC address
 ;; DE: UDP length, including UDP_HEADER_SIZE (NETWORK ORDER)
 ;; ----------------------------------------------------------------------------

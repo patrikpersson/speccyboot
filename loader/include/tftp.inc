@@ -90,6 +90,8 @@ TFTP_HEADER_SIZE     = 4
 ;; ============================================================================
 ;; Macro: executed by UDP when a TFTP packet has been identified.
 ;; Returns (RET or RET cc) when done.
+;;
+;; Requires B == 0 on entry.
 ;; ============================================================================
 
     .macro  HANDLE_TFTP_PACKET
@@ -146,14 +148,14 @@ TFTP_HEADER_SIZE     = 4
     ld    l, #<tftp_last_block_no_received
 
     cp    a, (hl)
-    jr    nz, tftp_reply_ack
+    jr    nz, tftp_reply_ack                 ;; B == 0 from precondition above
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; packet number OK: acknowledge
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     inc   (hl)
-    call  tftp_reply_ack
+    call  tftp_reply_ack                     ;; B == 0 from precondition above
 
     ;; -----------------------------------------------------------------------
     ;; Compute TFTP data length by subtracting UDP+TFTP header sizes
@@ -289,6 +291,11 @@ tftp_state_loop:
     ld   d, a
 
     ld   hl, #eth_broadcast_address    ;; all we know at this point
+
+    ;; -----------------------------------------------------------------------
+    ;; B == 0 from string length calculation above
+    ;; -----------------------------------------------------------------------
+
     call udp_create
 
     ;; append 16-bit TFTP opcode

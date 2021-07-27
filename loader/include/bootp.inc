@@ -104,6 +104,10 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
 
     ld   de, #((UDP_HEADER_SIZE + <BOOTP_PACKET_SIZE) * 0x0100) + >BOOTP_PACKET_SIZE
 
+    ;; ------------------------------------------------------------------------
+    ;; B == 0 from LDIR above
+    ;; ------------------------------------------------------------------------
+
     call udp_create
 
     ;; ------------------------------------------------------------------------

@@ -500,13 +500,15 @@ udp_create:
 
     ;; ----------------------------------------------------------------------
     ;; Set up a header template, to be filled in with proper data below.
+    ;; Only the first part of the header is copied here, up to (but not
+    ;; including) source/destination IP addresses.
     ;; ----------------------------------------------------------------------
 
     push  de
 
     ld    hl, #ip_header_defaults
     ld    de, #outgoing_header
-    ld    bc, #12        ;; IP v4 header size excluding src/dst addresses
+    ld    c, #12                                 ;; B == 0 from precondition
 
     ldir
 
@@ -944,6 +946,8 @@ arp_outgoing_header_end:
 
 ;; ===========================================================================
 ;; subroutine: reply with ACK
+;;
+;; requires B == 0 on entry
 ;; ===========================================================================
 
 tftp_reply_ack:
@@ -962,6 +966,10 @@ tftp_reply_ack:
     ;; -----------------------------------------------------------------------
 
     ld    de, #0x0100 * (UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET)
+
+    ;; -----------------------------------------------------------------------
+    ;; B == 0 from precondition above
+    ;; -----------------------------------------------------------------------
 
     call  udp_create
 
