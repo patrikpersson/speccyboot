@@ -1324,7 +1324,7 @@ tftp_load_menu_bin:
     ;; ========================================================================
     ;; Display IP address information:
     ;;
-    ;; print local IP address, 'S', server IP address
+    ;; print 'L'; local IP address, 'S'; server IP address
     ;;
     ;; This will be displayed when a snapshot is requested too, but remains
     ;; invisible (as PAPER and INK colours have been both set to WHITE+BRIGHT)
