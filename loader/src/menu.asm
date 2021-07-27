@@ -200,23 +200,33 @@ no_padding:
     cp   a, #KEY_UP
     ld   a, c
     jr   z, menu_hit_up
-    jr   c, menu_hit_down
+    jr   nc, menu_search
+
+    ;; ========================================================================
+    ;; user hit DOWN: highlight next entry
+    ;; ========================================================================
+
+    inc  a
+    cp   a, e
+    jr   nc, menu_loop
+
+    inc  c
+
+    jr   menu_adjust
+
+menu_search:
 
     ;; ========================================================================
     ;; user hit something else than ENTER/UP/DOWN:
     ;; select the first snapshot with that initial letter
+    ;;
+    ;; search the filename array, and set C to the chosen index
     ;; ========================================================================
 
-    ld   c, b ;; C will hold the result (selected index); B==0 after menu_set_highlight
+    ld   c, b                                  ;; B==0 after menu_set_highlight
     ld   b, (hl)
 
-find_snapshot_for_key_lp:
-
-    inc  c
-
-    ld   a, c
-    cp   a, e                                             ;; ensure (C + 1) < E
-    jr   nc, dec_c_and_adjust_menu
+find_snapshot_for_key:
 
     call get_filename_pointer
 
@@ -229,29 +239,18 @@ find_snapshot_for_key_lp:
     ;; (as digits < KEY_DOWN are considered equivalent to KEY_DOWN above)
     ;; ------------------------------------------------------------------------
 
+    inc  c
+
     and  a, #0xDF     ;; to upper case
     cp   a, b
-    jr   c, find_snapshot_for_key_lp
+    jr   nc, dec_c_and_adjust_menu
 
-    jr   menu_adjust
+    ld   a, c
+    cp   a, e                                             ;; ensure (C + 1) < E
+    jr   c, find_snapshot_for_key
 
-    ;; ========================================================================
-    ;; user hit DOWN: highlight next entry
-    ;; ========================================================================
+    ;; FALL THROUGH to case menu_hit_up: A != 0, and DEC C works fine here
 
-menu_hit_down:
-
-    inc  a
-    cp   a, e
-    jr   nc, menu_loop
-
-    ;; ------------------------------------------------------------------------
-    ;; Do two INC C and fall through to the KEY_UP case below
-    ;; (which does DEC C). The result is that C is increased by 1. Saves a JR.
-    ;; ------------------------------------------------------------------------
-
-    inc  c
-    inc  c
 
     ;; ========================================================================
     ;; user hit UP: highlight previous entry
