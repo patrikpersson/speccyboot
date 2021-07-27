@@ -116,8 +116,8 @@ menu_loop:
     ;; redraw menu contents
     ;; ========================================================================
 
-    push bc
     push de
+    push bc
 
     ;; Set up B to be ((last index to display) + 1)
 
@@ -173,8 +173,8 @@ no_padding:
 
     call wait_key
 
-    pop  de
     pop  bc
+    pop  de
 
     ld   a, #BLACK + (WHITE << 3) + BRIGHT
     call menu_set_highlight
@@ -332,7 +332,7 @@ menu_set_highlight:
     ;; ------------------------------------------------------------------------
 
     push hl
-    push af
+    ex   af, af'
     ld   h, #>0x2C0
     ld   a, c
     sub  a, d
@@ -343,7 +343,7 @@ menu_set_highlight:
     add  hl, hl
     add  hl, hl
     add  hl, hl
-    pop  af
+    ex   af, af'
 
     ld   b, #32
 menu_highlight_loop:
@@ -355,7 +355,7 @@ menu_highlight_loop:
 
     ret
 
-;; ############################################################################
+;; ###########################################################################
 ;; wait_key
 ;;
 ;; Blocks until a key is pressed. If any key is pressed when the routine is
@@ -364,13 +364,13 @@ menu_highlight_loop:
 ;; Destroys AF, BC, DE, HL.
 ;;
 ;; On return, HL points to the pressed key (ASCII).
-;; ############################################################################
+;; ###########################################################################
 
     .area _CODE
 
 wait_key:
 
-    ld    bc, #ULA_PORT                ;; set B := 0, to detect any key press
+    ld    bc, #ULA_PORT                 ;; set B := 0, to detect any key press
 
 wait_until_no_key_pressed:
 

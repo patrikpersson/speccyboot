@@ -156,9 +156,6 @@ FATAL_FILE_NOT_FOUND      = RED
 ;; DE points to VRAM location
 ;; destroys AF and AF'; preserves BC, HL; DE is preserved and increased by one
 ;;
-;; Z flag is set if E became zero (that is, after last char in one of the
-;; VRAM bitmap thirds).
-;;
 ;; Defined in bootp.asm.
 ;; ----------------------------------------------------------------------------
 
