@@ -55,8 +55,11 @@ ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 ;; Location of local and server IP addresses (row 23, columns 0 and 16)
 ;; ----------------------------------------------------------------------------
 
-LOCAL_IP_POS  = (BITMAP_BASE + 0x1100 + 7*32 + 0)
-SERVER_IP_POS = (BITMAP_BASE + 0x1100 + 7*32 + 16)
+LOCAL_IP_POS   = (BITMAP_BASE + 0x1100 + 7*32 + 0)
+SERVER_IP_POS  = (BITMAP_BASE + 0x1100 + 7*32 + 16)
+
+LOCAL_IP_ATTR  = (ATTRS_BASE + 23*32 + 0)
+SERVER_IP_ATTR = (ATTRS_BASE + 23*32 + 16)
 
 ;; ============================================================================
 
@@ -1252,6 +1255,16 @@ bootp_receive:
     ;; ========================================================================
     ;; A BOOTREPLY was received
     ;; ========================================================================
+
+    ;; ------------------------------------------------------------------------
+    ;; highlight 'L' and 'S' (printed below)
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #LOCAL_IP_ATTR
+    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
+
+    ld   l, #<SERVER_IP_ATTR
+    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
 
     ;; ------------------------------------------------------------------------
     ;; keep configuration for loading 'menu.dat' in DE', HL'
