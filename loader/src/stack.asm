@@ -949,27 +949,6 @@ arp_outgoing_header_end:
 
 
 ;; ===========================================================================
-;; Handle incorrect TFTP block number
-;;
-;; On entry, A is the difference received-expected. If this is -1
-;; (received-expected == -1  <=>  received == expected-1) it means that the
-;; previous ACK was lost. Then fall through to acknowledge, but ignore the
-;; data.
-;;
-;; Otherwise, silently drop the packet.
-;;
-;; requires B == 0 on entry
-;; ===========================================================================
-
-tftp_wrong_block_no:
-
-    inc  a
-    ret  nz
-
-    ;; FALL THROUGH to tftp_reply_ack        (returns below, ignoring payload)
-
-
-;; ===========================================================================
 ;; subroutine: reply with ACK
 ;;
 ;; requires B == 0 on entry

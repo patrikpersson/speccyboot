@@ -119,14 +119,21 @@ TFTP_HEADER_SIZE     = 4
 
     ;; ========================================================================
     ;; check block number: acceptable cases are
-    ;; received == expected   (normal case: acknowledge and read)
-    ;; received == expected-1 (previous ACK lost: acknowledge, but do not read)
+    ;;   received == expected     (normal case: acknowledge and read)
+    ;;
+    ;; A possible case is
+    ;;   received == expected-1   (previous ACK lost)
+    ;;
+    ;; The latter case is ignored, so the previous ACK will be re-transmitted
+    ;; upon time-out.
     ;;
     ;; The TFTP RFC indicates that an ERROR response is not critical:
     ;;
     ;; "This is only a courtesy since it will not be retransmitted or
     ;;  acknowledged, so it may never be received.
     ;;  Timeouts must also be used to detect errors."
+    ;;
+    ;; (https://datatracker.ietf.org/doc/html/rfc1350#section-7)
     ;;
     ;; No ERROR packet is sent here. Incorrect packets are silently dropped.
     ;; -----------------------------------------------------------------------
@@ -135,8 +142,8 @@ TFTP_HEADER_SIZE     = 4
     dec   a
     ld    l, #<tftp_last_block_no_received
 
-    sub   a, (hl)
-    jr    nz, tftp_wrong_block_no            ;; B == 0 from precondition above
+    cp    a, (hl)
+    ret   nz
 
     ;; -----------------------------------------------------------------------
     ;; packet number OK: acknowledge

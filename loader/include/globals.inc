@@ -36,19 +36,7 @@
 ;; Version information
 ;; ============================================================================
 
-VERSION_STAGE1 = 4
-
-;; ----------------------------------------------------------------------------
-;; The VERSION_MAGIC byte is encoded as a LD r, r' instruction, with
-;; VERSION_STAGE1 in the lower 4 bits. As long as VERSION_STAGE1 < 0x30 this
-;; instruction does not write to memory.
-;;
-;; It is harmless to execute as part of the jump to the stage 2 loader.
-;;
-;; It can also be passed as-is to show_attr_digit.
-;; ----------------------------------------------------------------------------
-
-VERSION_MAGIC  = 0x40 | VERSION_STAGE1
+VERSION_STAGE1 = 5
 
 ;; ===========================================================================
 ;; ROM1 data, to be copied to RAM
