@@ -140,14 +140,6 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
       </tr>
       <tr>
         <td><div style="background-color:#f00;color:#fff">red</div></td>
-        <td>wrong version for <code>menu.bin</code></td>
-        <td>The menu binary <code>menu.bin</code> is incompatible with the SpeccyBoot firmware version. The firmware version is displayed on screen.</td>
-        <td>
-          Update the SpeccyBoot firmware and/or the Linux-side software (<code style="padding:0">speccyboot-update</code>) and ensure both are the same version.
-        </td>
-      </tr>
-      <tr>
-        <td><div style="background-color:#ff0">yellow</div></td>
         <td>file not found</td>
         <td>The TFTP server responded with a <code style="padding:0">TFTP ERROR</code>. This usually means the requested file could not be found on the server.</td>
         <td>
@@ -167,13 +159,13 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
             due to a missing (or faulty) server response:
           </p>
           <ul style="margin-bottom:0;padding:0 0 0 0.5rem">
-            <li>If all you see is a flashing cursor on a blank screen, BOOTP communication failed.</li>
+            <li>If all you see is a flashing green/black cursor on a blank screen, BOOTP communication failed.</li>
             <li>If you see two IP addresses on screen (local+server) and a flashing <code style="background-color:#0f0;color:#000">S</code>, TFTP communication failed.</li>
           </ul>
-</p>        </td>
+        </td>
         <td>
-          Check your <a href="#tftpserver">BOOTP and/or TFTP server configuration</a>.
-          <a href="https://www.wireshark.org/">Wireshark</a> can be useful for determining what's gone wrong.
+          <p>Check your <a href="#tftpserver">BOOTP and/or TFTP server configuration</a>.</p>
+          <p><a href="https://www.wireshark.org/">Wireshark</a> can be useful for determining what's gone wrong.</p>
         </td>
       </tr>
       <tr>
