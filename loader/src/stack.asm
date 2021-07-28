@@ -51,16 +51,6 @@ ARP_OFFSET_SPA = 14         ;; offset of SPA field in ARP header
 ARP_OFFSET_TPA = 24         ;; offset of TPA field in ARP header
 ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 
-;; ----------------------------------------------------------------------------
-;; Location of local and server IP addresses (row 23, columns 0 and 16)
-;; ----------------------------------------------------------------------------
-
-LOCAL_IP_POS   = (BITMAP_BASE + 0x1100 + 7*32 + 0)
-SERVER_IP_POS  = (BITMAP_BASE + 0x1100 + 7*32 + 16)
-
-LOCAL_IP_ATTR  = (ATTRS_BASE + 23*32 + 0)
-SERVER_IP_ATTR = (ATTRS_BASE + 23*32 + 16)
-
 ;; ============================================================================
 
 ETH_ADM_HEADER_SIZE = 20
@@ -135,6 +125,15 @@ tftp_state:
 ;; Main function: initiate BOOTP, receive frames and act on them
 ;; Must be first in the _CODE segment, as init will execute right into it
 ;; ############################################################################
+
+    ;; ------------------------------------------------------------------------
+    ;; set flashing cursor, to indicate BOOTP is working
+    ;;
+    ;; BLACK INK + GREEN PAPER + FLASH + BRIGHT == 0xe0 == <LOCAL_IP_ATTR
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #LOCAL_IP_ATTR
+    ld   (hl), l
 
     ;; ========================================================================
     ;; system initialization
@@ -525,13 +524,17 @@ udp_create:
     ;; (no carry needed), as HL holds one of the following lengths
     ;; (byte-swapped to network order):
     ;;
-    ;; BOOTP boot request: UDP_HEADER_SIZE + BOOTP_PACKET_SIZE = 308 = 0x134
-    ;; TFTP read request: UDP_HEADER_SIZE
-    ;;                       + TFTP_SIZE_OF_RRQ_PREFIX
-    ;;                       + TFTP_SIZE_OF_RRQ_OPTION
-    ;;                    = 27 = 0x1b
-    ;; TFTP ACK: UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET = 8 + 4 = 0x0c
-    ;; TFTP ERROR: UDP_HEADER_SIZE + TFTP_SIZE_OF_ERROR_PACKET = 8 + 5 = 0x0d
+    ;; BOOTP boot request:
+    ;;   UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
+    ;;   = 308 = 0x134
+    ;;
+    ;; TFTP read request:
+    ;;   UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
+    ;;   = 16 = 0x10
+    ;;
+    ;; TFTP ACK:
+    ;;   UDP_HEADER_SIZE + TFTP_SIZE_OF_ACK_PACKET
+    ;;   = 12 = 0x0c
     ;;
     ;; In all these cases, the lower byte (that is, H in network order)
     ;; is < 0xec, so adding IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition
@@ -688,7 +691,7 @@ ip_receive:
 
     ld   d, b                                         ;; D := 0
     ld   e, a                                         ;; E := IP header length
-    ld   l, #<rx_frame + IPV4_HEADER_SIZE            ;; offset of UDP header
+    ld   l, #<rx_frame + IPV4_HEADER_SIZE             ;; offset of UDP header
     call nz, enc28j60_read_memory
 
     ;; -----------------------------------------------------------------------
@@ -944,6 +947,28 @@ arp_outgoing_header_end:
 
     jr   eth_send_frame
 
+
+;; ===========================================================================
+;; Handle incorrect TFTP block number
+;;
+;; On entry, A is the difference received-expected. If this is -1
+;; (received-expected == -1  <=>  received == expected-1) it means that the
+;; previous ACK was lost. Then fall through to acknowledge, but ignore the
+;; data.
+;;
+;; Otherwise, silently drop the packet.
+;;
+;; requires B == 0 on entry
+;; ===========================================================================
+
+tftp_wrong_block_no:
+
+    inc  a
+    ret  nz
+
+    ;; FALL THROUGH to tftp_reply_ack        (returns below, ignoring payload)
+
+
 ;; ===========================================================================
 ;; subroutine: reply with ACK
 ;;
@@ -1105,14 +1130,8 @@ eth_send_frame:
     rst   enc28j60_write8plus8
 
     ;; ----------------------------------------------------------------------
-    ;; clear EIE.TXIE, EIR.TXIF, EIR.TXERIF, ESTAT.TXABRT
+    ;; clear ESTAT.TXABRT
     ;; ----------------------------------------------------------------------
-
-    ld    hl, #0x0100 * EIE_TXIE + OPCODE_BFC + (EIE & REG_MASK)
-    rst   enc28j60_write8plus8
-
-    ld    hl, #0x0100 * (EIR_TXIF + EIR_TXERIF) + OPCODE_BFC + (EIR & REG_MASK)
-    rst   enc28j60_write8plus8
 
     ld    hl, #0x0100 * (ESTAT_TXABRT) + OPCODE_BFC + (ESTAT & REG_MASK)
     rst   enc28j60_write8plus8
@@ -1244,13 +1263,19 @@ bootp_receive:
     ;; ========================================================================
 
     ;; ------------------------------------------------------------------------
-    ;; highlight 'L' and 'S' (printed below)
+    ;; set 'S' (printed below) to bright flashing green/black
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #LOCAL_IP_ATTR
-    ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
+    ld   hl, #SERVER_IP_ATTR
+    ld   (hl), #BLACK + (GREEN << 3) + BRIGHT + FLASH                   ;; 0xE0
 
-    ld   l, #<SERVER_IP_ATTR
+    ;; ------------------------------------------------------------------------
+    ;; highlight 'L' (printed below) with bright background
+    ;;
+    ;; the attribute byte written above happens to be 0xE0 == <LOCAL_IP_ATTR
+    ;; ------------------------------------------------------------------------
+
+    ld   l, (hl)                                         ;; HL := LOCAL_IP_ATTR
     ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
 
     ;; ------------------------------------------------------------------------

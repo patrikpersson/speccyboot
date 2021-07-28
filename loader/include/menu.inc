@@ -30,6 +30,15 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
+;; ----------------------------------------------------------------------------
+;; Location of local and server IP addresses (row 23, columns 0 and 16)
+;; ----------------------------------------------------------------------------
+
+LOCAL_IP_POS   = (BITMAP_BASE + 0x1100 + 7*32 + 0)
+SERVER_IP_POS  = (BITMAP_BASE + 0x1100 + 7*32 + 16)
+
+LOCAL_IP_ATTR  = (ATTRS_BASE + 23*32 + 0)
+SERVER_IP_ATTR = (ATTRS_BASE + 23*32 + 16)
 
 ;; ----------------------------------------------------------------------------
 ;; First state for TFTP loader: load a menu file and display it.

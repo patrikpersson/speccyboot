@@ -259,14 +259,15 @@ enc28j60_end_transaction_and_return:
 init_continued:
 
   ;; --------------------------------------------------------------------------
-  ;; Perform a delay of about 200ms before accessing any memory, for the 128k
+  ;; Perform a delay of about 400ms before accessing any memory, for the 128k
   ;; reset logic (bank switching) to initialize properly. Essentially the same
-  ;; delay as initially performed in the standard 128k ROM 0.
+  ;; delay as initially performed in the standard 128k ROM 0, but extended
+  ;; from 200ms to 400ms (to be on the safe side).
   ;;
-  ;; >= 0x6b00 iterations  x  26 T-states  >=  200.79ms @3.54690MHz
+  ;; >= 0xd600 iterations  x  26 T-states  >=  401.59ms @3.54690MHz
   ;; --------------------------------------------------------------------------
 
-  ld    b, #0x6b      ;; BC := 0x6bxx ; the value of C doesn't matter much here
+  ld    b, #0xd6      ;; BC := 0xd6xx ; the value of C doesn't matter much here
 reset_delay:
   dec   bc
   ld    a, b
@@ -325,14 +326,6 @@ ram_trampoline:
   ;; A == 0x20 == PAGE_OUT here: page out SpeccyBoot, keep ETH in reset
   out   (SPI_OUT), a
 
-  ;; Is Caps Shift being pressed? Clear C flag if it is
-
-  ld    a, #0xFE             ;; 0xFEFE: keyboard scan row CAPS..V
-  in    a, (0xFE)
-  rra
-
-  jr    nc, go_to_basic      ;; if Caps Shift was pressed, go to BASIC
-
   ;; --------------------------------------------------------------------------
   ;; Copy ROM data (6x 0xff, keymap, font) to RAM. Slightly more data than
   ;; necessary is copied, to ensure HL == 0x0300 afterwards.
@@ -342,6 +335,14 @@ ram_trampoline:
   ld    de, #copied_rom_data
   ld    bc, #ROM_DATA_LENGTH + 0xD3                      ;; to make L := 0x0300
   ldir
+
+  ;; Is Caps Shift being pressed? Clear C flag if it is
+
+  ld    a, #0xFE                           ;; 0xFEFE: keyboard scan row CAPS..V
+  in    a, (0xFE)
+  rra
+
+  jr    nc, go_to_basic               ;; if Caps Shift was pressed, go to BASIC
 
   ld    b, h                               ;; H == 0x03, C == 0 from LDIR above
   ld    h, #>ROM_FONTDATA_ADDR                       ;; L == 0 after LDIR above
@@ -360,9 +361,9 @@ go_to_basic:
   ;; Ensure the right ROM is selected on a 128k/+2/+3 machine.
   ;; --------------------------------------------------------------------------
 
-  ld    bc, #MEMCFG_ADDR
-  out   (c), l               ;; L == 0 here
-  ld    b, #>MEMCFG_PLUS_ADDR
+  ld    bc, #MEMCFG_PLUS_ADDR
+  out   (c), l                                                   ;; L == 0 here
+  ld    b, #>MEMCFG_ADDR
   out   (c), l
   rst   #0
 

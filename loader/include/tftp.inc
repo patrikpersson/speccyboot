@@ -122,18 +122,6 @@ TFTP_HEADER_SIZE     = 4
     ;; received == expected   (normal case: acknowledge and read)
     ;; received == expected-1 (previous ACK lost: acknowledge, but do not read)
     ;;
-    ;; Other cases _should_ not happen. A block number larger than the expected
-    ;; would mean the server has received an ACK not sent by this client.
-    ;; A block number less than (expected-1) would mean that the server sent
-    ;; a DATA packet already known to be acknowledged.
-    ;;
-    ;; For simplicity, DATA packets with block numbers other than the expected
-    ;; are acknowledged and silently dropped. This handles the acceptable
-    ;; cases above, and makes for at least predictable results in the "should
-    ;; not happen" cases.
-    ;; 
-    ;; Also for simplicity, only the least significant byte is checked.
-    ;; -----------------------------------------------------------------------
     ;; The TFTP RFC indicates that an ERROR response is not critical:
     ;;
     ;; "This is only a courtesy since it will not be retransmitted or
@@ -147,8 +135,8 @@ TFTP_HEADER_SIZE     = 4
     dec   a
     ld    l, #<tftp_last_block_no_received
 
-    cp    a, (hl)
-    jr    nz, tftp_reply_ack                 ;; B == 0 from precondition above
+    sub   a, (hl)
+    jr    nz, tftp_wrong_block_no            ;; B == 0 from precondition above
 
     ;; -----------------------------------------------------------------------
     ;; packet number OK: acknowledge
