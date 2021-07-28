@@ -1,0 +1,15 @@
+Current issues:
+
+TFTP ACKs go out of synchronization somehow
+-------------------------------------------
+
+In some cases, the TFTP client seems to get out of sync with the server.  This
+problem manifests itself as follows:
+
+* The client receives packet N, and sends an ACK for packet N.
+* The client receives packet N+1, but keeps ACK:ing packet N.
+* The client keeps re-sending ACK for packet N, and the server responds
+  (correctly) with packet N+1, but the client seems not to accept this packet.
+
+Perhaps something goes wrong when a bit error is detected in packet N+1 the
+first time around.

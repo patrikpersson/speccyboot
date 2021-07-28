@@ -1,6 +1,10 @@
-* Further SPI performance optimizations (~62 kbit/s).
+* Continued footprint optimizations: entire loader now fits in 2K ROM, so no
+  code is needed in RAM. The index file loaded over TFTP (menu.dat) only
+  contains the snapshot table, no code. The menu.dat file is now smaller,
+  loads faster, and has much looser dependencies upon the firmware version.
 * Fixed boot delay for 128k reset logic (avoiding some sporadic boot crashes).
-* User interface initialized earlier, so we can see better what's going on.
+* The ser interface is initialized earlier, so we can see better what the
+  machine is up to.
 
 -------------------------------------------------------------------------------
 
