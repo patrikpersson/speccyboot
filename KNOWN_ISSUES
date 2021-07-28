@@ -3,13 +3,19 @@ Current issues:
 TFTP ACKs go out of synchronization somehow
 -------------------------------------------
 
-In some cases, the TFTP client seems to get out of sync with the server.  This
-problem manifests itself as follows:
+In some rare cases, the TFTP client seems to get out of sync with the server.
+This problem manifests itself as follows:
 
-* The client receives packet N, and sends an ACK for packet N.
-* The client receives packet N+1, but keeps ACK:ing packet N.
+* The client receives packet N, and sends an ACK for packet N (as usual).
+* The client receives packet N+1, but responds with another ACK for packet N
+  (suggesting that packet N+1 was lost).
 * The client keeps re-sending ACK for packet N, and the server responds
   (correctly) with packet N+1, but the client seems not to accept this packet.
+  The loading process doesn't progress beyond packet N.
 
 Perhaps something goes wrong when a bit error is detected in packet N+1 the
-first time around.
+first time around, and the internal state (expected packet) somehow becomes
+invalid.  I haven't figured out how this would happen.
+
+The problem happens rarely, so the obvious workaround is to reset the machine
+and reload the snapshot.
