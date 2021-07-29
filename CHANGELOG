@@ -1,4 +1,4 @@
-SpeccyBoot 4 (July 28, 2021):
+SpeccyBoot 4 (July 29, 2021):
 
 * Continued footprint optimizations: entire loader now fits in 2K ROM, so no
   code is needed in RAM. The index file loaded over TFTP (menu.dat) only
