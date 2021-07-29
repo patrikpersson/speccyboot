@@ -97,12 +97,10 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
 
     <p>After you have created the directory above, and whenever
     you add or remove a snapshot to/from this directory,
-    you will need to update the SpeccyBoot binary <code>menu.bin</code>.
-    (This is a menu application combined with a
-    list of snapshots, and is required for snapshot loading to work.)
+    you will need to update the SpeccyBoot index <code>menu.dat</code>.
 
     <p>The Python script <span class="code">speccyboot-update</span>
-    generates a <code>menu.bin</code> file for you. It is located in the <code>utils</code>
+    generates a <code>menu.dat</code> file for you. This script is located in the <code>utils</code>
     directory of the SpeccyBoot source code, and is installed
     into <code>/usr/local/bin</code> by running <code>make
     install</code> from the <span class="code">speccyboot/utils</span> directory
@@ -155,12 +153,12 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
             so a white border is not in itself an indication of any error.
           </p>
           <p>
-            However, if SpeccyBoot gets <b>stuck</b> with a white border it is likely
+            However, if SpeccyBoot gets <b>stuck</b> for more than ten seconds with a white border it is likely
             due to a missing (or faulty) server response:
           </p>
           <ul style="margin-bottom:0;padding:0 0 0 0.5rem">
             <li>If all you see is a flashing green/black digit on a blank screen, BOOTP communication failed.</li>
-            <li>If you see two IP addresses on screen (local+server) and a flashing <code style="background-color:#0f0;color:#000">S</code>, TFTP communication failed.</li>
+            <li>If you see two IP addresses on screen (local+server) and a flashing green/black <code style="background-color:#0f0;color:#000">S</code>, TFTP communication failed.</li>
           </ul>
         </td>
         <td>
