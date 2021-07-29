@@ -76,7 +76,10 @@
         SpeccyBoot broadcasts a BOOTP request,
         and expects a BOOTP reply from the BOOTP server.
         <p>
-          The local IP address and the TFTP server address are then set according to this BOOTP reply.
+          While SpeccyBoot is waiting for the BOOTP reply, a flashing digit on the screen indicates the current firmware version.
+        </p>
+        <p>
+          When a BOOTP reply is received, the local IP address and the TFTP server address are set accordingly, and displayed on the screen.
         </p>
         <p>
           By default,
