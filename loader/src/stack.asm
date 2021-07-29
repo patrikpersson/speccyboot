@@ -135,6 +135,10 @@ tftp_state:
     ld   hl, #LOCAL_IP_ATTR
     ld   (hl), l
 
+    ld   a, #VERSION + '0'
+    ld   de, #LOCAL_IP_POS
+    call print_char
+
     ;; ========================================================================
     ;; system initialization
     ;; ========================================================================
@@ -383,8 +387,6 @@ eth_register_defaults:
     .db   ERXRDPTL, <ENC28J60_RXBUF_END
     .db   ERXRDPTH, >ENC28J60_RXBUF_END
 
-    .db   ERXFCON,  ERXFCON_CRCEN
-
     ;; MAC initialization: half duplex
     .db   MACON1,   MACON1_MARXEN
 
@@ -418,10 +420,7 @@ eth_register_defaults:
     .db   MIREGADR, PHSTAT2
     .db   MICMD,    MICMD_MIISCAN
 
-    ;; Enable reception and transmission
-    .db   EIE,      0x00     ;; disable all interrupts
-    .db   EIR,      0x00     ;; no pending interrupts
-    .db   ECON2,    ECON2_AUTOINC
+    ;; Enable reception
     .db   ECON1,    ECON1_RXEN
 
     ;; ------------------------------------------------------------------------
@@ -1305,6 +1304,9 @@ tftp_request_snapshot:
     ld   c, #0x1f
     ld   (hl), #WHITE + (WHITE << 3) + BRIGHT
     ldir
+
+    xor  a, a
+    call show_attr_digit_right
 
 tftp_load_menu_bin:
 

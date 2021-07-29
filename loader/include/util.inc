@@ -174,6 +174,8 @@ FATAL_FILE_NOT_FOUND      = RED
 
     .globl show_attr_digit
 
+    .globl show_attr_digit_right                                ;; with L := 24
+
 ;; ----------------------------------------------------------------------------
 ;; alternate entrypoint for show_attr_digit:
 ;;
