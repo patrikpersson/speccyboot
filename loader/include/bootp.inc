@@ -178,7 +178,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
 
     ld   hl, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_YIADDR
     ld   e, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    ld   c, #8                          ;; B == 0 (precondition for this macro)
+    ld   c, #8                            ;; B == 0 from memory_compare_4_bytes
     ldir
 
     ;; ========================================================================
@@ -200,7 +200,7 @@ bootp_receive_octet_loop:
     ;; given anything else than digits, a period ('.'), or NUL.
     ;; ========================================================================
 
-    ld   (hl), #0
+    ld   (hl), c                                     ;; C == 0 after LDIR above
 
 parse_loop:
 

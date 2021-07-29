@@ -136,7 +136,7 @@ TFTP_HEADER_SIZE     = 4
     ;; (https://datatracker.ietf.org/doc/html/rfc1350#section-7)
     ;;
     ;; No ERROR packet is sent here. Incorrect packets are silently dropped.
-    ;; -----------------------------------------------------------------------
+    ;; ========================================================================
 
     ld    a, (rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + TFTP_OFFSET_OF_BLOCKNO + 1)
     dec   a
