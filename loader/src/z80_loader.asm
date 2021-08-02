@@ -67,13 +67,13 @@ _digits:
 ;; The Z80 snapshot state machine is implemented by one routine for each
 ;; state. The function returns whenever one of the following happens:
 ;;
-;; - all currently available data has been consumed (HL == 0)
+;; - all currently available TFTP data has been consumed (HL == 0)
 ;; - a state transition is required
-;; - the DE write pointer has reached an integral number of kilobytes
+;; - the DE write pointer reached kilobyte boundary (DE & 0x03ff == 0)
 ;; ----------------------------------------------------------------------------
 ;;
 ;; States:
-;;  
+;;
 ;;                        HEADER
 ;;                           |
 ;; (for v.1 snapshots) /-----+-----\ (for v.2+ snapshots)
@@ -84,22 +84,22 @@ _digits:
 ;;                     v           v                                    |
 ;;                     |      CHUNK_HEADER2                             |
 ;;                     |           |                                    |
-;;                     |           v                                    ^
+;;                     |           v                                    |
 ;;                     |      CHUNK_HEADER3                             |
 ;;                     |           |                                    |
-;;                     \--v--------/                                    |
-;;                        |                                             |
-;;                        |                                             |
-;;                        +--------> CHUNK_WRITE_DATA_UNCOMPRESSED -->--+
-;;                        |                                             |
-;;                        v                                             |
-;;    REPETITION ------> CHUNK_WRITE_DATA_COMPRESSED ----------->-------/ 
-;;        |                 |        ^
-;;        |                 v        |
-;;        ^               CHUNK_COMPRESSED_ESCAPE -----<-----\
-;;        |                   |             |                |
-;;        |                   v             v                |
-;;   CHUNK_REPVAL <-- CHUNK_REPCOUNT      CHUNK_COMPRESSED_ESCAPE_FALSE
+;;                     \----v------/                                    |
+;;                          |                                           ^
+;;                          |                                           |
+;;                          +------> CHUNK_WRITE_DATA_UNCOMPRESSED -->--+
+;;                          |                                           |
+;;                          v                                           |
+;;    REPETITION --------> CHUNK_WRITE_DATA_COMPRESSED --------->-------/ 
+;;        |                 |                       ^
+;;        |                 v                       |
+;;        ^      CHUNK_COMPRESSED_ESCAPE -----> CHUNK_COMPRESSED_ESCAPE_FALSE
+;;        |                 |
+;;        |                 v
+;;   CHUNK_REPVAL <-- CHUNK_REPCOUNT
 ;;
 ;; ----------------------------------------------------------------------------
 
