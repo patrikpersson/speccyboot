@@ -18,21 +18,21 @@
         <div id="rightheading">How to emulate it in Fuse</div>
       </div>
 
-      <p>Recent versions of Fuse (the
+      <p>Fuse (the
       <a href="http://fuse-emulator.sourceforge.net/">Free Unix
-      Spectrum Emulator</a>) include support for emulating
-      SpeccyBoot.  This allows you to try the SpeccyBoot out in an
+      Spectrum Emulator</a>) includes emulation of the SpeccyBoot hardware (Ethernet controller and SPI host).
+      This allows you to try the SpeccyBoot out in an
       emulated environment &mdash; without any Spectrum or
       SpeccyBoot hardware.</p>
 
       <p>The emulation is based on
-      <a href="http://en.wikipedia.org/wiki/TUN/TAP">Ethernet TAP
-      networking</a> and requires a Linux host (I have verified this using Ubuntu
-      20.04).</p>
+        <a href="http://en.wikipedia.org/wiki/TUN/TAP">Ethernet TAP networking</a> and requires a Linux host.
+        (I have verified this using Ubuntu 20.04.)
+      </p>
 
       <h2>Configuring your network for TAP</h2>
 
-      <p>The following example involves creating a separate
+      <p>The following example setup involves creating a separate
       network for the emulated Spectrum. Your Linux machine will
       get another (virtual) network interface, and this interface
       is connected to the emulated Spectrum. Your Linux machine
@@ -127,6 +127,12 @@ WantedBy=multi-user.target</pre>
       </p>
 
       <pre class="code">fuse --speccyboot --speccyboot-tap=tap0 --rom-speccyboot=speccyboot-fuse.rom</pre>
+
+      <p>
+        Be sure to select the correct <code>.rom</code> file for emulation, which should have a size of 8 kilobytes (8192 bytes).
+        The <a href="file:///home/patrik/git/speccyboot/build.html#software"><code>Makefile</code></a> builds two <code>.rom</code> files,
+        and their only difference is that <code>speccyboot-fuse.rom</code> is padded to 8 kilobytes in size.
+      </p>
 
       <div class="footer">
         <SCRIPT type="text/javascript">eval(unescape('%66%75%6E%63%74%69%6F%6E%20%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%68%29%20%7B%76%61%72%20%73%3D%27%61%6D%6C%69%6F%74%73%3A%65%70%63%63%62%79%6F%6F%40%74%6D%67%69%61%2E%6C%6F%63%6D%27%3B%76%61%72%20%72%3D%27%27%3B%66%6F%72%28%76%61%72%20%69%3D%30%3B%69%3C%73%2E%6C%65%6E%67%74%68%3B%69%2B%2B%2C%69%2B%2B%29%7B%72%3D%72%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2B%31%2C%69%2B%32%29%2B%73%2E%73%75%62%73%74%72%69%6E%67%28%69%2C%69%2B%31%29%7D%68%2E%68%72%65%66%3D%72%3B%7D%64%6F%63%75%6D%65%6E%74%2E%77%72%69%74%65%28%27%3C%61%20%68%72%65%66%3D%22%23%22%20%6F%6E%4D%6F%75%73%65%4F%76%65%72%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%20%6F%6E%46%6F%63%75%73%3D%22%6A%61%76%61%73%63%72%69%70%74%3A%70%67%72%65%67%67%5F%74%72%61%6E%73%70%6F%73%65%31%28%74%68%69%73%29%22%3E%50%61%74%72%69%6B%20%50%65%72%73%73%6F%6E%3C%2F%61%3E%27%29%3B'))</SCRIPT>
