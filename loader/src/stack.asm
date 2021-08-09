@@ -930,17 +930,20 @@ arp_outgoing_header_end:
 
     ;; -----------------------------------------------------------------------
     ;; THA+TPA: remote MAC+IP addresses,
-    ;; taken from SHA+TPA fields in source frame
+    ;; taken from SHA+SPA fields in source frame
     ;; -----------------------------------------------------------------------
 
     ld   e, #ETH_ADDRESS_SIZE + IPV4_ADDRESS_SIZE
     ld   l, #<rx_frame + ARP_OFFSET_SHA
     rst  enc28j60_write_memory_small
 
-    pop  de                               ;; recall ENC28J60_TXBUF2_START
+    ;; -----------------------------------------------------------------------
+    ;; ENC28J60_TXBUF2_START is now the top word on the stack
+    ;; -----------------------------------------------------------------------
+
     ld   hl, #ENC28J60_TXBUF2_START + ETH_HEADER_SIZE + ARP_IP_ETH_PACKET_SIZE
 
-    jr   eth_send_frame
+    jr   eth_send_frame_start_on_stack
 
 
 ;; ===========================================================================
@@ -1058,6 +1061,17 @@ eth_send_frame:
     ;; ----------------------------------------------------------------------
 
     push  de                                       ;; push start address
+
+;; ############################################################################
+;; eth_send_frame_start_on_stack:
+;;
+;; Alternative entry point to eth_send_frame.
+;;
+;; top word on stack: address of the first byte in the frame
+;; HL: address of the last byte in the frame
+;; ############################################################################
+
+eth_send_frame_start_on_stack:
 
     ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
     rst   enc28j60_write_register16
