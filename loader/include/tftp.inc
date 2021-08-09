@@ -111,8 +111,8 @@ TFTP_HEADER_SIZE     = 4
 
     ;; ------------------------------------------------------------------------
     ;; The only conceivable non-DATA packet at this point would be an ERROR
-    ;; packet. In this case, A is now (TFTP_OPCODE_ERROR - TFTP_OPCODE_DATA)
-    ;; == 2 == FATAL_FILE_NOT_FOUND
+    ;; packet. In this case, A is now
+    ;; (TFTP_OPCODE_ERROR - TFTP_OPCODE_DATA)  ==  2  == FATAL_FILE_NOT_FOUND
     ;; ------------------------------------------------------------------------
 
     jp   nz, fail

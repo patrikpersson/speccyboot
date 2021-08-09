@@ -1135,7 +1135,7 @@ eth_send_frame:
 ;;
 ;;   (reg & mask) == expected_value
 ;;
-;; Fails if the condition is not fulfilled within a few seconds.
+;; Fails if the condition is not fulfilled within a couple of seconds.
 ;;
 ;; Call with registers:
 ;;
@@ -1145,14 +1145,14 @@ eth_send_frame:
 ;;
 ;; Returns with A == 0 and Z flag set.
 ;;
-;; Destroys AF, BC
+;; Destroys AF, B
 ;; ----------------------------------------------------------------------------
 
 poll_register:
 
     ;; Ensure BC is at least 0x5000, give controller plenty of time to respond
 
-    ld     b, #0x50
+    ld     b, #50 * 2                                ;; 100 frames == 2 seconds
 00001$:
     push   bc
     call   enc28j60_read_register
@@ -1162,12 +1162,10 @@ poll_register:
     sub    a, l
     ret    z
 
-    dec    bc
-    ld     a, b
-    or     a, c
-    jr     nz, 00001$
+    halt
+    djnz   00001$
 
-    ;; A is zero here, which is FATAL_INTERNAL_ERROR
+    xor    a, a     ;; FATAL_INTERNAL_ERROR == 0
 
 fail:
 
