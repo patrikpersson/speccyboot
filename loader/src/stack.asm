@@ -818,7 +818,7 @@ no_carry_in_initial_checksum:
     ret  nz
 
     ;; -----------------------------------------------------------------------
-    ;; Handle_tftp_packet is a macro, so as to avoid a function call.
+    ;; HANDLE_TFTP_PACKET is a macro, so as to avoid a function call.
     ;;
     ;; B == 0 from enc28j60_read_memory and
     ;; (if invoked) add_8_bytes_and_verify_checksum
@@ -878,16 +878,11 @@ handle_ip_or_arp_packet:
     ret  nz
 
     ;; ------------------------------------------------------------------------
-    ;; check that a local IP address has been set,
-    ;; and that the packet was sent to this address
+    ;; check that the packet was sent to this address
+    ;; (assuming TPA is never 0.0.0.0 for an ARP REQUEST)
     ;; ------------------------------------------------------------------------
 
-    ;; A is 0 from memory_compare above
-
     ld   l, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    or   a, (hl)
-    ret  z
-
     ld   de, #rx_frame + ARP_OFFSET_TPA
     call memory_compare_4_bytes
     ret  nz   ;; if the packet is not for the local IP address, return
