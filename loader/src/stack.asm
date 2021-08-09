@@ -554,12 +554,11 @@ udp_create:
     ;; compute checksum of IP header
     ;; ----------------------------------------------------------------------
 
-    ld     h, b                        ;; BC == 0 from LDIR above, so HL := 0
-    ld     l, b
+    sbc   hl, hl               ;; carry == 0 from ADD A, #n above, so HL := 0
 
-    ld     b, #(IPV4_HEADER_SIZE / 2)   ;; number of words (10)
-    ld     de, #outgoing_header
-    call   enc28j60_add_to_checksum_hl
+    ld    b, #(IPV4_HEADER_SIZE / 2)                  ;; number of words (10)
+    ld    de, #outgoing_header
+    call  enc28j60_add_to_checksum_hl
 
     ;; ----------------------------------------------------------------------
     ;; store one-complemented checksum
@@ -719,6 +718,7 @@ no_carry_in_header_size_subtraction:
     ;; check IP header checksum
     ;; -----------------------------------------------------------------------
 
+    ld   hl, (_ip_checksum)
     call ip_receive_check_checksum
 
     ;; -----------------------------------------------------------------------
@@ -775,6 +775,7 @@ no_carry_in_initial_checksum:
     ;; were already included (given as initial value above), so we do not add
     ;; it here.
 
+    ld   hl, (_ip_checksum)
     ld   de, #rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
     call nz, add_8_bytes_and_verify_checksum
 
@@ -1121,8 +1122,10 @@ eth_send_frame:
     ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
     rst   enc28j60_write8plus8
 
-    ld    l, b
-    ;; keep H==ECON1_TXRTS from above, B==0 from _spi_write_byte
+    ld    l, b                                                       ;; L := 0
+    ;; keep H==ECON1_TXRTS from above, B==0 from enc28j60_write8plus8,
+    ;; so this sets HL := 0x0100 * ECON1_TXRTS
+
     ld    de, #(ECON1 & REG_MASK) + (8 << 8)       ;; ECON1 is an ETH register
 
     ;; FALL THROUGH to poll_register
@@ -1188,21 +1191,12 @@ add_8_bytes_and_verify_checksum:
 
     ld   b, #4                                   ;; number of 16-bit words
 
-    ;; FALL THROUGH to add_and_verify_checksum
-
-;; -----------------------------------------------------------------------
-;; Subroutine: add a number of bytes to IP checksum,
-;; then verify the resulting checksum.
-;; -----------------------------------------------------------------------
-
-add_and_verify_checksum:
-
-    call enc28j60_add_to_checksum
+    call enc28j60_add_to_checksum_hl
 
     ;; FALL THROUGH to ip_receive_check_checksum
 
 ;; -----------------------------------------------------------------------
-;; Helper: check IP checksum.
+;; Helper: check IP checksum in HL.
 ;; If OK (0xffff): return to caller.
 ;; if not OK: pop return address and return to next caller
 ;;            (that is, return from ip_receive)
@@ -1211,7 +1205,6 @@ add_and_verify_checksum:
 ;; -----------------------------------------------------------------------
 
 ip_receive_check_checksum:
-    ld   hl, (_ip_checksum)
     ld   a, h
     and  a, l
     inc  a   ;; if both bytes are 0xff, A will now become zero
@@ -1280,6 +1273,7 @@ bootp_receive:
     jr   z, tftp_load_menu_bin
 
     ;; FALL THROUGH to tftp_request_snapshot
+
 
 ;; ###########################################################################
 ;; tftp_request_snapshot

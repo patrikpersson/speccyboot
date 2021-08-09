@@ -237,12 +237,8 @@ spi_byte_inline_loop:
 
 
 ;; ############################################################################
-;; enc28j60_add_to_checksum
+;; enc28j60_add_to_checksum_hl
 ;; ############################################################################
-
-enc28j60_add_to_checksum:
-
-    ld    hl, (_ip_checksum)
 
 enc28j60_add_to_checksum_hl:
 

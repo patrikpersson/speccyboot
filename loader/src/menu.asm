@@ -187,7 +187,7 @@ no_padding:
     ;; handle user input
     ;; ========================================================================
 
-    call wait_key
+    call wait_key                                     ;; B == 0 from DJNZ above
 
     pop  bc
     pop  de
@@ -328,6 +328,7 @@ menu_hit_enter:
 
     jp   main_loop
 
+
 ;; ############################################################################
 ;; subroutine: highlight current line to colour (in register C)
 ;;
@@ -341,8 +342,8 @@ menu_set_highlight:
 
     ;; ------------------------------------------------------------------------
     ;; The VRAM attribute address is 0x5800 + 32 * (C - D). This is computed as
-    ;; 32 * (C - D + 0x2C0). The difference (C-D) is at most decimal 20, so the
-    ;; value (C - D + 0xC0) fits in a byte (at most 0xD4)
+    ;; 32 * (C - D + 0x2C0). The difference (C-D) is at most decimal 22, so the
+    ;; value (C - D + 0xC0) fits in a byte (at most 0xD6)
     ;; ------------------------------------------------------------------------
 
     push hl
@@ -382,6 +383,8 @@ menu_highlight_loop:
 ;; Blocks until a key is pressed. If any key is pressed when the routine is
 ;; called, block until that key is released.
 ;;
+;; Requires B == 0 on entry.
+;;
 ;; Destroys AF, BC, DE, HL.
 ;;
 ;; On return, HL points to the pressed key (ASCII).
@@ -391,7 +394,7 @@ menu_highlight_loop:
 
 wait_key:
 
-    ld    bc, #ULA_PORT                 ;; set B := 0, to detect any key press
+    ld    c, #ULA_PORT               ;; assume B == 0, to detect any key press
 
 wait_until_no_key_pressed:
 
