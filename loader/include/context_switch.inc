@@ -218,7 +218,9 @@ REG_R_ADJUSTMENT                 = 0xF8
     ;; ========================================================================
 
     ld   de, #EVACUATION_TEMP_BUFFER + 5            ;; points to attribute data
+    ld   b, #5
 clear_cells_loop:
+    dec  e
     ld   a, (de)
     rra
     rra
@@ -228,28 +230,27 @@ clear_cells_loop:
     ld   a, (de)
     and  a, #0xf8
     or   a, c
-    dec  e
     ld   (de), a
-    jr   nz, clear_cells_loop
+    djnz clear_cells_loop
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; write trampoline to VRAM
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld   hl, #trampoline_data
-    ld   d, #0x3F                 ;; E==0 here
+    ld   d, #0x3F                                                 ;; E==0 here
 
 create_trampoline_loop:
     inc  d
-    ld   bc, #5
+    ld   c, #5                      ;; B == 0 from DJNZ above or previous LDIR
     ldir
-    ld   e, b        ;; B==0 since LDIR, so start of next scanline
-    bit  1, d        ;; up to and including 0x42
+    ld   e, b                  ;; B == 0 since LDIR, so start of next scanline
+    bit  1, d                                      ;; up to and including 0x42
     jr   z, create_trampoline_loop
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; if IFF1 is 0 in snapshot, replace EI with NOP
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld   a, (stored_snapshot_header + Z80_HEADER_OFFSET_IFF1)
     or   a, a
