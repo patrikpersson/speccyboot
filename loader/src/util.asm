@@ -110,7 +110,21 @@ show_attr_digit_already_shifted:
 show_attr_digit_row_loop:
     inc   de
     ld    a, (de)
-    ld    b, #7
+
+    ;; -----------------------------------------------------------------------
+    ;; Return when an empty pixel row is found.
+    ;; This will behave badly if DE does not point to correct font data.
+    ;; -----------------------------------------------------------------------
+
+    or    a, a
+    ret   z
+
+    ;; -----------------------------------------------------------------------
+    ;; set B := 7
+    ;;     C := (ROW_LENGTH-7)
+    ;; -----------------------------------------------------------------------
+
+    ld    bc, #0x0700 + (ROW_LENGTH-7)
 
 show_attr_char_pixel_loop:
     add   a, a
@@ -121,11 +135,10 @@ show_attr_char_pixel_set:
     inc   hl
     djnz  show_attr_char_pixel_loop
 
-    ld    a, #(ROW_LENGTH-7)
-    add   a, l
-    ld    l, a
+    ;; -----------------------------------------------------------------------
+    ;; now B == 0, so BC == C == (ROW_LENGTH-7)
+    ;; -----------------------------------------------------------------------
 
-    cp    a, #ROW_LENGTH * 6
-    jr    c, show_attr_digit_row_loop
+    add   hl, bc                                         ;; next row on screen
 
-    ret
+    jr    show_attr_digit_row_loop

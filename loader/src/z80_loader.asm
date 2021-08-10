@@ -769,6 +769,7 @@ update_progress:
     ;;
     ;; If Z is set, then the number of kilobytes became zero in BCD:
     ;; in other words, it just wrapped from 99 to (1)00.
+    ;; (In this case, carry will also be set.)
     ;;
     ;; If H (half-carry) is set, the last digit wrapped from 9 to 0, and the
     ;; second-to-last (tens) digit increased. H is bit 4 in register F.
@@ -777,26 +778,28 @@ update_progress:
     inc   a
     daa
 
-    push  af                                                 ;; remember flags
+    push  af                                      ;; remember flags and digits
     ld    (hl), a
-    ld    c, a
 
     ;; -----------------------------------------------------------------------
     ;; if the counter wrapped to 00 in BCD, display the digit '1' for hundreds
+    ;; (in this case, Z and C will both be set)
     ;; -----------------------------------------------------------------------
 
     ld    l, #10
-    rla                                     ;; make A := 1 without affecting Z
+    rla                ;; make A := 1 without affecting Z, assuming carry == 1
     call  z, show_attr_digit
-    ld    a, c
 
     ;; -----------------------------------------------------------------------
     ;; if the last digit wrapped to 0, display tens (_x_)
     ;; -----------------------------------------------------------------------
 
-    pop   de                                ;; recall flags, old F is now in E
+    pop   de                   ;; recall flags, old F is now in E, digits in D
+    push  de
+
     bit   #4, e                ;; was H flag set? Then the tens have increased
 
+    ld    a, d
     rra
     ld    l, #17
     call  nz, show_attr_digit_already_shifted
@@ -805,12 +808,12 @@ update_progress:
     ;; always display the last digit (__x)
     ;; -----------------------------------------------------------------------
 
-    ld    a, c
+    pop   af                                             ;; recall digits to A
     call  show_attr_digit_right
 
-    ;; ========================================================================
+    ;; =======================================================================
     ;; update progress bar
-    ;; ========================================================================
+    ;; =======================================================================
 
     ;; kilobytes_loaded is located directly before kilobytes_expected, so
     ;; use a single pointer
@@ -821,9 +824,9 @@ update_progress:
     dec   hl                           ;; now points to kilobytes_loaded
     inc   (hl)                         ;; increase kilobytes_loaded
 
-    ;; ========================================================================
+    ;; =======================================================================
     ;; if all data has been loaded, perform the context switch
-    ;; ========================================================================
+    ;; =======================================================================
 
     cp    a, (hl)
     jr    nz, no_context_switch

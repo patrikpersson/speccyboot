@@ -169,7 +169,7 @@ FATAL_FILE_NOT_FOUND      = RED
 ;; L: column (0..31)
 ;; A: digit (0..9), bits 4-7 are ignored
 ;;
-;; Destroys AF, B, DE, HL. Returns with L increased by 7.
+;; Destroys AF, BC, DE, HL. Returns with L increased by 7.
 ;; ----------------------------------------------------------------------------
 
     .globl show_attr_digit

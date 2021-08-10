@@ -282,7 +282,7 @@ eth_init:
     out  (SPI_OUT), a
 
     ;; ------------------------------------------------------------------------
-    ;; poll ESTAT until ESTAT_CLKRDY is set                        (10+10+17+x)
+    ;; poll ESTAT until ESTAT_CLKRDY is set
     ;; ------------------------------------------------------------------------
 
     ld    de, #(ESTAT & REG_MASK) + (8 << 8)        ;; ESTAT is an ETH register
@@ -290,16 +290,15 @@ eth_init:
     call  poll_register
 
     ;; ------------------------------------------------------------------------
-    ;; A is 0 (from poll_register above),
-    ;; and HL needs to be 0x0000 (ENC28J60_RXBUF_START)                (4+4+16)
+    ;; carry is 0 (from poll_register above),
+    ;; and HL needs to be 0x0000 (ENC28J60_RXBUF_START)
     ;; ------------------------------------------------------------------------
 
-    ld    h, a
-    ld    l, a
+    sbc   hl, hl
     ld    (next_frame_to_read), hl
 
     ;; ========================================================================
-    ;; set up initial register values for ENC28J60                         (10)
+    ;; set up initial register values for ENC28J60
     ;; ========================================================================
 
     ld    hl, #eth_register_defaults
@@ -311,16 +310,13 @@ eth_init:
     ;;
     ;; 50us == ~178 T-states @ 3.55MHz               (this is the minimum time)
     ;;
-    ;; Preamble above is 10+10+17+x+4+4+16+10
-    ;;   == 71+x T-states    (where x is the execution time for poll_register)
-    ;;
     ;; poll_register includes at least one SPI byte read, which takes at least
     ;; 8*56 T-states, so x >= 448. This poll_register call does not access any
     ;; PHY register.
     ;;
-    ;; At least 519 (17+448) T-states, or 146us @3.55MHz, pass from reset until
-    ;; the first loop iteration. PHY registers are accessed a few iterations
-    ;; into the loop, well after the specified minimum time.
+    ;; More than 448 T-states, or 146us @3.55MHz, pass from reset until the
+    ;; first loop iteration. PHY registers are accessed a few iterations into
+    ;; the loop, well after the specified minimum time.
     ;; ------------------------------------------------------------------------
 
 eth_init_registers_loop:
@@ -1143,9 +1139,9 @@ eth_send_frame:
 ;; H=mask
 ;; L=expected_value
 ;;
-;; Returns with A == 0 and Z flag set.
+;; Returns with A == 0, Z flag set, and carry cleared.
 ;;
-;; Destroys AF, B
+;; Destroys AF, BC. B will be zero on exit.
 ;; ----------------------------------------------------------------------------
 
 poll_register:
