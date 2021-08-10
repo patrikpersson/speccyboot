@@ -1090,7 +1090,11 @@ eth_send_frame:
     ;; Errata, item 10:
     ;;
     ;; Reset transmit logic before transmitting a frame:
-    ;; set bit TXRST in ECON1, then clear it
+    ;; set bit TXRST in ECON1, then clear it.
+    ;;
+    ;; Set bank 0 explicitly here (although ECON1 and ESTAT are available in
+    ;; every bank 0..3), for the context switch code to access bank 0
+    ;; directly.
     ;; ----------------------------------------------------------------------
 
     ld    e, a                          ;; A == 0, which is the bank of ECON1
