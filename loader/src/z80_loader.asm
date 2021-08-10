@@ -836,39 +836,35 @@ update_progress:
 no_context_switch:
 
     ;; ------------------------------------------------------------------------
-    ;; Scale loaded number of kilobytes to a value 0..32.
-    ;; 48k snapshots:   (k + 1) * 2 / 3
-    ;; 128k snapshots:  (k + 1) * 1 / 4
+    ;; Scale loaded number of kilobytes to a value 0..31. This is only called
+    ;; when k < kilobytes_expected, so the value _should_ not become 32.
+    ;; (No big deal if it does; it would overwrite the first stack byte, which
+    ;; most likely is unused anyway.)
     ;;
-    ;; the 'k + 1' addition rounds the progress value up a bit, so as to
-    ;; ensure the progress bar reaches its maximum before the context switch
+    ;; 48k snapshots:   k * 2 / 3  ; becomes 31 for k == 47
+    ;; 128k snapshots:  k * 1 / 4  ; becomes 31 for k == 127
     ;; ------------------------------------------------------------------------
 
     add   a, a                         ;; sets carry if this is a 128k snapshot
 
     ld    a, (hl)                      ;; kilobytes_loaded
-    inc   a                            ;; 'k + 1', see above
 
     ld    b, #4
 
     jr    c, progress_128
 
-    add   a, a       ;; 48 snapshot: * 2 / 3
+    add   a, a                         ;; 48k snapshot: * 2 / 3
     dec   b
 
 progress_128:
 
     call  a_div_b
     ld    a, c
-    or    a, a
-    jr    z, no_progress_bar
 
-    ld    h, #>(PROGRESS_BAR_BASE-1)
-    add   a, #<(PROGRESS_BAR_BASE-1)
+    ld    h, #>PROGRESS_BAR_BASE
+    add   a, #<PROGRESS_BAR_BASE
     ld    l, a
     ld    (hl), #(GREEN + (GREEN << 3))
-
-no_progress_bar:
 
     exx
 
