@@ -739,7 +739,11 @@ no_carry_in_header_size_subtraction:
     ;; -----------------------------------------------------------------------
 
     ld   hl, (_ip_checksum)
-    call ip_receive_check_checksum
+
+    ld   a, h
+    and  a, l
+    inc  a   ;; if both bytes are 0xff, A will now become zero
+    ret  nz
 
     ;; -----------------------------------------------------------------------
     ;; Check for UDP (everything else will be ignored)
@@ -798,6 +802,7 @@ no_carry_in_initial_checksum:
     ld   hl, (_ip_checksum)
     ld   de, #rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
     call nz, add_8_bytes_and_verify_checksum
+    ret  nz
 
     ;; -----------------------------------------------------------------------
     ;; Pass on to BOOTP/TFTP
@@ -1206,34 +1211,20 @@ fail:
 ;; ---------------------------------------------------------------------------
 ;; Subroutine: add 8 bytes (4 16-bit words),
 ;; then verify the resulting checksum.
+;;
+;; Z is set if the checksum matches, cleared otherwise.
 ;; ---------------------------------------------------------------------------
 
 add_8_bytes_and_verify_checksum:
 
-    ld   b, #4                                   ;; number of 16-bit words
+    ld   b, #4                                       ;; number of 16-bit words
 
     call enc28j60_add_to_checksum_hl
 
-    ;; FALL THROUGH to ip_receive_check_checksum
-
-;; ---------------------------------------------------------------------------
-;; Helper: check IP checksum in HL.
-;; If OK (0xffff): return to caller.
-;; if not OK: pop return address and return to next caller
-;;            (that is, return from ip_receive)
-;; Must NOT have anything else on stack when this is called.
-;; Destroys AF, HL. Returns with A==0, H==L==0xff and Z set on success.
-;; ---------------------------------------------------------------------------
-
-ip_receive_check_checksum:
-    ld   a, h
+    ;; A == H from enc28j60_add_to_checksum_hl
     and  a, l
-    inc  a   ;; if both bytes are 0xff, A will now become zero
-    ret  z
-
-    pop  af   ;; pop return address within ip_receive
-
-    ret       ;; return to _caller_ of ip_receive
+    inc  a                   ;; if both bytes are 0xff, A will now become zero
+    ret
 
 
 ;; ---------------------------------------------------------------------------
