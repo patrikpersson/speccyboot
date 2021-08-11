@@ -535,20 +535,19 @@ udp_create:
 
     pop   hl         ;; recall UDP length
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; set UDP length (network order)
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld    (outgoing_header + IPV4_HEADER_SIZE + UDP_HEADER_OFFSETOF_LENGTH), hl
 
-    ;; ----------------------------------------------------------------------
-    ;; Add IPV4_HEADER_SIZE to HL. This can safely be done as a byte addition
-    ;; (no carry needed), as HL holds one of the following lengths
-    ;; (byte-swapped to network order):
+    ;; -----------------------------------------------------------------------
+    ;; Add IPV4_HEADER_SIZE to HL. This addition generates no carry, as HL
+    ;; holds one of the following lengths (byte-swapped to network order):
     ;;
     ;; BOOTP boot request:
     ;;   UDP_HEADER_SIZE + BOOTP_PACKET_SIZE
-    ;;   = 308 = 0x134
+    ;;   = 308 = 0x134    (so lower byte is 0x34)
     ;;
     ;; TFTP read request:
     ;;   UDP_HEADER_SIZE + TFTP_SIZE_OF_RRQ_PREFIX + TFTP_SIZE_OF_RRQ_OPTION
@@ -559,17 +558,15 @@ udp_create:
     ;;   = 12 = 0x0c
     ;;
     ;; In all these cases, the lower byte (that is, H in network order)
-    ;; is < 0xec, so adding IPV4_HEADER_SIZE = 20 = 0x14 as a byte addition
-    ;; is safe.
-    ;; ----------------------------------------------------------------------
+    ;; is < 0xec, so adding IPV4_HEADER_SIZE = 0x14 to H generates no carry.
+    ;; -----------------------------------------------------------------------
 
-    ld    a, h                    ;; least significant byte in network order
-    add   a, #IPV4_HEADER_SIZE
-    ld    h, a
+    ld    b, #IPV4_HEADER_SIZE      ;; least significant byte in network order
+    add   hl, bc                    ;; C == 0 after LDIR above
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; prepare IP header in outgoing_header
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld    (outgoing_header + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH), hl
 
@@ -577,7 +574,7 @@ udp_create:
     ;; compute checksum of IP header
     ;; ----------------------------------------------------------------------
 
-    sbc   hl, hl               ;; carry == 0 from ADD A, #n above, so HL := 0
+    sbc   hl, hl              ;; carry == 0 from ADD HL, BC above, so HL := 0
 
     ld    b, #(IPV4_HEADER_SIZE / 2)                  ;; number of words (10)
     ld    de, #outgoing_header
