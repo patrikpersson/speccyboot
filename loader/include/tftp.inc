@@ -301,14 +301,34 @@ tftp_state_loop:
     ;; inline data for enc28j60_write_memory_inline
     ;; -----------------------------------------------------------------------
 
-    .db  rrq_prefix_end - rrq_prefix_start
+    .db  2                                ;; two bytes of data for TFTP follow
 
-rrq_prefix_start:
-    .db  0, TFTP_OPCODE_RRQ    ;; opcode in network order
-rrq_prefix_end:
+arp_template:
 
     ;; -----------------------------------------------------------------------
+    ;; This is a bit convoluted. This short table is used for three purposes:
+    ;;
+    ;; 1. TFTP RRQ inline data (2 bytes, 0x01, network order)
+    ;; 2. ARP header template (4 bytes, HTYPE == 0x01 and PTYPE == 0x0800)
+    ;; 3. Ethertype IP (2 bytes, 0x0800, network order)
+    ;; -----------------------------------------------------------------------
 
+    .db  0, 1                       ;; TFTP: TFTP_OPCODE_RRQ   ARP: ETH_HWTYPE
+
+    ;; -----------------------------------------------------------------------
+    ;; The following two bytes are included for the ARP header template. They
+    ;; are executed as
+    ;;
+    ;;   EX AF, AF'
+    ;;   NOP
+    ;;
+    ;; and should be benign.
+    ;; -----------------------------------------------------------------------
+
+ethertype_ip:
+    .db  8, 0                          ;; TFTP: (not used)   ARP: ETHERTYPE_IP
+
+    ;; -----------------------------------------------------------------------
 
     ;; filename and length already stacked above
 

@@ -46,9 +46,10 @@
 ;; ARP header constants
 ;; ============================================================================
 
-ARP_OFFSET_SHA =  8         ;; offset of SHA field in ARP header
-ARP_OFFSET_SPA = 14         ;; offset of SPA field in ARP header
-ARP_OFFSET_TPA = 24         ;; offset of TPA field in ARP header
+ARP_OFFSET_OPER =  6        ;; offset of OPER field in ARP header
+ARP_OFFSET_SHA  =  8        ;; offset of SHA field in ARP header
+ARP_OFFSET_SPA  = 14        ;; offset of SPA field in ARP header
+ARP_OFFSET_TPA  = 24        ;; offset of TPA field in ARP header
 ARP_IP_ETH_PACKET_SIZE = 28 ;; size of an ARP packet for an IP-Ethernet mapping
 
 ;; ============================================================================
@@ -887,20 +888,25 @@ handle_ip_or_arp_packet:
 
     ;; ------------------------------------------------------------------------
     ;; check header against template
-    ;; (ARP_OPER_REQUEST, ETHERTYPE_IP, ETH_HWTYPE)
+    ;; (ETHERTYPE_IP, ETH_HWTYPE)
     ;; ------------------------------------------------------------------------
-
-    ;; first check everything except OPER
 
     ;; HL is set to rx_frame and preserved by enc28j60_read_memory_to_rxframe
 
-    ld   de, #arp_outgoing_header_start
-    ld   b, #(arp_outgoing_header_end - arp_outgoing_header_start - 1)
-    call memory_compare
-    ret  nz   ;; if the receive packet does not match the expected header, return
+    ld   de, #arp_template
+    call memory_compare_4_bytes
+    ret  nz                      ;; if not matching the expected header, return
 
-    ;; HL now points to the low-order OPER byte, expected to be 1 (REQUEST)
-    dec  (hl)
+    ;; ------------------------------------------------------------------------
+    ;; check the low-order OPER byte, expected to be 1 (REQUEST)
+    ;;
+    ;; change OPER := REPLY, so the header can be re-used for the response
+    ;; ------------------------------------------------------------------------
+
+    ld   l, #<(rx_frame + ARP_OFFSET_OPER + 1)   ;; least significant, network order
+    ld   a, (hl)
+    inc  (hl)                                                  ;; OPER := REPLY
+    dec  a
     ret  nz
 
     ;; ------------------------------------------------------------------------
@@ -911,34 +917,23 @@ handle_ip_or_arp_packet:
     ld   l, #<outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
     ld   de, #rx_frame + ARP_OFFSET_TPA
     call memory_compare_4_bytes
-    ret  nz   ;; if the packet is not for the local IP address, return
+    ret  nz
 
     ld   bc, #eth_sender_address
     ld   de, #ethertype_arp
     ld   hl, #ENC28J60_TXBUF2_START
 
-    push hl                             ;; useful below
+    push hl                         ;; stack argument for eth_send_frame below
 
     call eth_create
 
-    ;; ARP header
-
-    rst enc28j60_write_memory_inline
-
     ;; -----------------------------------------------------------------------
-    ;; inline data for enc28j60_write_memory_inline: ARP reply header
+    ;; ARP header (copied and modified from the original request)
     ;; -----------------------------------------------------------------------
 
-    .db  arp_outgoing_header_end - arp_outgoing_header_start         ;; length
-
-arp_outgoing_header_start:
-    .db  0, ETH_HWTYPE         ;; HTYPE: 16 bits, network order
-ethertype_ip:
-    .db  8, 0                  ;; PTYPE: ETHERTYPE_IP, 16 bits, network order
-    .db  ETH_ADDRESS_SIZE      ;; HLEN (Ethernet)
-    .db  IPV4_ADDRESS_SIZE     ;; PLEN (IPv4)
-    .db  0, 2                  ;; OPER: reply, 16 bits, network order
-arp_outgoing_header_end:
+    ld   hl, #rx_frame
+    ld   e, #ARP_OFFSET_SHA                             ;; all bytes up to SHA
+    rst  enc28j60_write_memory_small
 
     ;; -----------------------------------------------------------------------
     ;; SHA: local MAC address
@@ -1092,7 +1087,7 @@ eth_send_frame:
     ld    a, #OPCODE_WCR | ETXNDL
     rst   enc28j60_write_register16
 
-    pop   hl                                             ;; pop start address
+    pop   hl                                              ;; pop start address
 
     ld    a, #OPCODE_WCR | ETXSTL
     rst  enc28j60_write_register16
