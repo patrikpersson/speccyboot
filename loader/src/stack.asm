@@ -324,34 +324,43 @@ eth_init:
 
 eth_init_registers_loop:
 
-    ld    a, (hl)                               ;; register descriptor, 8 bits
-    cp    a, #END_OF_TABLE
-    ret   z
+    ld    c, (hl)                               ;; register descriptor, 8 bits
+    bit   7, c
+    ret   nz
 
     inc   hl
 
     ;; ------------------------------------------------------------------------
-    ;; modify bit 6..7 to OPCODE_WCR (0x40)
+    ;; build opcode in C, as 0x40 | (register id), and bank (0..3) in A
+    ;;
+    ;; shift in bits 1+0 to C, shift out bank bits 1 and 0 into A
+    ;; (this shifting is the reason why the bank bits are reversed in the
+    ;; table below)
     ;; ------------------------------------------------------------------------
 
-    ld    c, a
-    set   6, c
-    res   7, c
+    xor   a, a
+
+    scf
+    rr    c      ;; shift 1 into A bit 7, shift out bank bit 1
+    rla          ;; shift bank bit 1 into C bit 0, shift out 0
+    rr    c      ;; shift 0 into A bit 7, shift out bank bit 0
+    rla          ;; shift bank bit 0 into C bit 0
+
+    ;; ------------------------------------------------------------------------
+    ;; now C == opcode, set B := register value
+    ;; ------------------------------------------------------------------------
 
     ld    b, (hl)
     inc   hl
 
-    push  bc                        ;; arguments for enc28j60_write8plus8 below
+    push  bc                                             ;; push opcode + value
 
     ;; ------------------------------------------------------------------------
-    ;; select register bank (encoded as bits 6-7 from descriptor)
+    ;; select register bank
     ;; ------------------------------------------------------------------------
 
     exx           ;; keep HL
 
-    rlca          ;; rotate left 2 == rotate right 6
-    rlca
-    and   a, #3
     ld    e, a
     rst   enc28j60_select_bank
 
@@ -359,7 +368,7 @@ eth_init_registers_loop:
     ;; write register value
     ;; ------------------------------------------------------------------------
 
-    pop   hl         ;; into HL
+    pop   hl                                           ;; recall opcode + value
     rst   enc28j60_write8plus8
 
     exx
@@ -369,67 +378,82 @@ eth_init_registers_loop:
     ;; ------------------------------------------------------------------------
     ;; ETH register defaults for initialization
     ;;
+    ;; Each entry is a pair of bytes: register + value
+    ;;
+    ;; register byte format:
+    ;;
+    ;;   bit 0:       bank bit 1      (NOTE: reversed bit order!)
+    ;;   bit 1:       bank bit 0
+    ;;   bits 2..6:   register id, 5 bits
+    ;;   bit 7:       stop bit (0 for data bytes, 1 means end of data)
+    ;;
     ;; Since the ENC28J60 does not support auto-negotiation, we will need to
     ;; stick to half duplex. Not a problem, since Ethernet performance is not
     ;; really a bottleneck here. (The bottleneck is instead SPI communication
     ;; from the ENC28J60 to the Spectrum.)
     ;; ------------------------------------------------------------------------
 
-eth_register_defaults:
-    .db   ERXSTL,   <ENC28J60_RXBUF_START
-    .db   ERXSTH,   >ENC28J60_RXBUF_START
+    ;; ------------------------------------------------------------------------
+    ;; values for bank, with bits reversed
+    ;; ------------------------------------------------------------------------
 
-    .db   ERXNDL,   <ENC28J60_RXBUF_END
-    .db   ERXNDH,   >ENC28J60_RXBUF_END
+BANK_0 = 0x00
+BANK_1 = 0x02
+BANK_2 = 0x01
+BANK_3 = 0x03
+
+eth_register_defaults:
+    .db   ((ERXSTL & REG_MASK) << 2) | BANK_0,   <ENC28J60_RXBUF_START
+    .db   ((ERXSTH & REG_MASK) << 2) | BANK_0,   >ENC28J60_RXBUF_START
+
+    .db   ((ERXNDL & REG_MASK) << 2) | BANK_0,   <ENC28J60_RXBUF_END
+    .db   ((ERXNDH & REG_MASK) << 2) | BANK_0,   >ENC28J60_RXBUF_END
 
     ;; B5 errata, item 11: only odd values are allowed when writing ERXRDPT
-    .db   ERXRDPTL, <ENC28J60_RXBUF_END
-    .db   ERXRDPTH, >ENC28J60_RXBUF_END
+    .db   ((ERXRDPTL & REG_MASK) << 2) | BANK_0, <ENC28J60_RXBUF_END
+    .db   ((ERXRDPTH & REG_MASK) << 2) | BANK_0, >ENC28J60_RXBUF_END
 
     ;; MAC initialization: half duplex
-    .db   MACON1,   MACON1_MARXEN
+    .db   ((MACON1 & REG_MASK) << 2) | BANK_2,   MACON1_MARXEN
 
     ;; MACON3: set bits PADCFG0..2 to pad frames to at least 64B, append CRC
-    .db   MACON3,   0xE0 + MACON3_TXCRCEN
-    .db   MACON4,   MACON4_DEFER
+    .db   ((MACON3 & REG_MASK) << 2) | BANK_2,   0xE0 + MACON3_TXCRCEN
+    .db   ((MACON4 & REG_MASK) << 2) | BANK_2,   MACON4_DEFER
 
-    .db   MAMXFLL,  <ETH_MAX_RX_FRAME_SIZE
-    .db   MAMXFLH,  >ETH_MAX_RX_FRAME_SIZE
+    .db   ((MAMXFLL & REG_MASK) << 2) | BANK_2,  <ETH_MAX_RX_FRAME_SIZE
+    .db   ((MAMXFLH & REG_MASK) << 2) | BANK_2,  >ETH_MAX_RX_FRAME_SIZE
 
-    .db   MABBIPG,  0x12    ;; as per datasheet section 6.5
-    .db   MAIPGL,   0x12    ;; as per datasheet section 6.5
-    .db   MAIPGH,   0x0C    ;; as per datasheet section 6.5
+    .db   ((MABBIPG & REG_MASK) << 2) | BANK_2,  0x12    ;; as per datasheet section 6.5
+    .db   ((MAIPGL & REG_MASK) << 2) | BANK_2,   0x12    ;; as per datasheet section 6.5
+    .db   ((MAIPGH & REG_MASK) << 2) | BANK_2,   0x0C    ;; as per datasheet section 6.5
 
-    .db   MAADR1,   MAC_ADDR_0
-    .db   MAADR2,   MAC_ADDR_1
-    .db   MAADR3,   MAC_ADDR_2
-    .db   MAADR4,   MAC_ADDR_3
-    .db   MAADR5,   MAC_ADDR_4
-    .db   MAADR6,   MAC_ADDR_5
+    .db   ((MAADR1 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_0
+    .db   ((MAADR2 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_1
+    .db   ((MAADR3 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_2
+    .db   ((MAADR4 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_3
+    .db   ((MAADR5 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_4
+    .db   ((MAADR6 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_5
 
     ;; PHY initialization
 
-    .db   MIREGADR, PHCON1
-    .db   MIWRL,    0x00     ;; PHCON1 := 0x0000 -- half duplex
-    .db   MIWRH,    0x00
+    .db   ((MIREGADR & REG_MASK) << 2) | BANK_2, PHCON1
+    .db   ((MIWRL & REG_MASK) << 2) | BANK_2,    0x00     ;; PHCON1 := 0x0000 -- half duplex
+    .db   ((MIWRH & REG_MASK) << 2) | BANK_2,    0x00
 
     ;; Set up PHY to automatically scan the PHSTAT2 every 10.24 us
     ;; (the current value can then be read directly from MIRD)
 
-    .db   MIREGADR, PHSTAT2
-    .db   MICMD,    MICMD_MIISCAN
+    .db   ((MIREGADR & REG_MASK) << 2) | BANK_2, PHSTAT2
+    .db   ((MICMD & REG_MASK) << 2) | BANK_2,    MICMD_MIISCAN
 
     ;; Enable reception
-    .db   ECON1,    ECON1_RXEN
+    .db   ((ECON1 & REG_MASK) << 2) | BANK_0,    ECON1_RXEN
 
     ;; ------------------------------------------------------------------------
-    ;; NOTE: no explicit sentinel here. The table is terminated by the byte
-    ;; 0xD5, which happens to be the first byte of eth_create below.
-    ;; (This byte would correspond to bank 3, register 0x15, ECOCON, which
-    ;; is not used here.)
+    ;; NOTE: no explicit sentinel here. The table is terminated by a byte
+    ;; with bit 7 set, which happens to be the first byte of eth_create below
+    ;; (0xD5 == PUSH DE)
     ;; ------------------------------------------------------------------------
-    
-END_OF_TABLE = 0xD5                                                  ;; PUSH DE
 
 ;; ############################################################################
 ;; eth_create
