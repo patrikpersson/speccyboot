@@ -83,14 +83,14 @@
   ;; clear bits 0 and 1 of register ECON1
   ;; ------------------------------------------------------------------------
 
-  ld   hl, #0x0100 * 0x03 + OPCODE_BFC + (ECON1 & REG_MASK)        ;; 3 bytes
+  ld   hl, #0x0100 * 0x03 + OPCODE_BFC + ECON1                     ;; 3 bytes
   rst  enc28j60_write8plus8                                        ;; 1 byte
 
   ;; ------------------------------------------------------------------------
   ;; mask in "bank" in bits 0 and 1 of register ECON1
   ;; ------------------------------------------------------------------------
 
-  ld   l, #OPCODE_BFS + (ECON1 & REG_MASK)                         ;; 2 bytes
+  ld   l, #OPCODE_BFS + ECON1                                      ;; 2 bytes
   ld   h, e                                                        ;; 1 byte
 
   ;; FALL THROUGH to enc28j60_write8plus8

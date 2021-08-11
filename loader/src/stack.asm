@@ -164,10 +164,10 @@ main_loop:
     ;; of class 'ETH_FRAME_PRIORITY' (if any), and reset the timer.
     ;; ------------------------------------------------------------------------
 
-    ld    e, #1       ;; bank 1 for EPKTCNT
+    ld    e, #1                                           ;; bank 1 for EPKTCNT
     rst   enc28j60_select_bank
 
-    ld    de, #(EPKTCNT & REG_MASK) + (8 << 8)    ;; EPKTCNT is an ETH register
+    ld    de, #READ_ETH_REGISTER | EPKTCNT
     call  enc28j60_read_register
 
     ;; ------------------------------------------------------------------------
@@ -217,7 +217,7 @@ packet_received:
     ld    hl, (next_frame_to_read)
     push  hl                                        ;; stack next_frame_to_read
 
-    ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
+    ld    a, #OPCODE_WCR | ERDPTL
     rst   enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
@@ -234,7 +234,7 @@ packet_received:
     ;; the packet has been received from ENC28J60 by this host
     ;; ------------------------------------------------------------------------
 
-    ld    hl, #0x0100 * ECON2_PKTDEC + OPCODE_BFS + (ECON2 & REG_MASK)
+    ld    hl, #(0x0100 * ECON2_PKTDEC)  +  (OPCODE_BFS | ECON2)
     rst   enc28j60_write8plus8
 
     ;; ------------------------------------------------------------------------
@@ -258,7 +258,7 @@ packet_received:
     dec   hl
     set   0, l
 
-    ld    a, #OPCODE_WCR + (ERXRDPTL & REG_MASK)
+    ld    a, #OPCODE_WCR | ERXRDPTL
     rst   enc28j60_write_register16
 
     jr    main_loop
@@ -288,8 +288,8 @@ eth_init:
     ;; poll ESTAT until ESTAT_CLKRDY is set
     ;; ------------------------------------------------------------------------
 
-    ld    de, #(ESTAT & REG_MASK) + (8 << 8)        ;; ESTAT is an ETH register
-    ld    hl, #ESTAT_CLKRDY + 0x0100 * ESTAT_CLKRDY
+    ld    de, #READ_ETH_REGISTER | ESTAT
+    ld    hl, #(0x0100 * ESTAT_CLKRDY)  +  ESTAT_CLKRDY
     call  poll_register
 
     ;; ------------------------------------------------------------------------
@@ -394,7 +394,7 @@ eth_init_registers_loop:
     ;; ------------------------------------------------------------------------
 
     ;; ------------------------------------------------------------------------
-    ;; values for bank, with bits reversed
+    ;; values for bank selection, with bits reversed (see loop above for why)
     ;; ------------------------------------------------------------------------
 
 BANK_0 = 0x00
@@ -403,51 +403,51 @@ BANK_2 = 0x01
 BANK_3 = 0x03
 
 eth_register_defaults:
-    .db   ((ERXSTL & REG_MASK) << 2) | BANK_0,   <ENC28J60_RXBUF_START
-    .db   ((ERXSTH & REG_MASK) << 2) | BANK_0,   >ENC28J60_RXBUF_START
+    .db   (ERXSTL << 2)   | BANK_0,   <ENC28J60_RXBUF_START
+    .db   (ERXSTH << 2)   | BANK_0,   >ENC28J60_RXBUF_START
 
-    .db   ((ERXNDL & REG_MASK) << 2) | BANK_0,   <ENC28J60_RXBUF_END
-    .db   ((ERXNDH & REG_MASK) << 2) | BANK_0,   >ENC28J60_RXBUF_END
+    .db   (ERXNDL << 2)   | BANK_0,   <ENC28J60_RXBUF_END
+    .db   (ERXNDH << 2)   | BANK_0,   >ENC28J60_RXBUF_END
 
     ;; B5 errata, item 11: only odd values are allowed when writing ERXRDPT
-    .db   ((ERXRDPTL & REG_MASK) << 2) | BANK_0, <ENC28J60_RXBUF_END
-    .db   ((ERXRDPTH & REG_MASK) << 2) | BANK_0, >ENC28J60_RXBUF_END
+    .db   (ERXRDPTL << 2) | BANK_0,   <ENC28J60_RXBUF_END
+    .db   (ERXRDPTH << 2) | BANK_0,   >ENC28J60_RXBUF_END
 
     ;; MAC initialization: half duplex
-    .db   ((MACON1 & REG_MASK) << 2) | BANK_2,   MACON1_MARXEN
+    .db   (MACON1 << 2)   | BANK_2,   MACON1_MARXEN
 
     ;; MACON3: set bits PADCFG0..2 to pad frames to at least 64B, append CRC
-    .db   ((MACON3 & REG_MASK) << 2) | BANK_2,   0xE0 + MACON3_TXCRCEN
-    .db   ((MACON4 & REG_MASK) << 2) | BANK_2,   MACON4_DEFER
+    .db   (MACON3 << 2)   | BANK_2,   0xE0 + MACON3_TXCRCEN
+    .db   (MACON4 << 2)   | BANK_2,   MACON4_DEFER
 
-    .db   ((MAMXFLL & REG_MASK) << 2) | BANK_2,  <ETH_MAX_RX_FRAME_SIZE
-    .db   ((MAMXFLH & REG_MASK) << 2) | BANK_2,  >ETH_MAX_RX_FRAME_SIZE
+    .db   (MAMXFLL << 2)  | BANK_2,   <ETH_MAX_RX_FRAME_SIZE
+    .db   (MAMXFLH << 2)  | BANK_2,   >ETH_MAX_RX_FRAME_SIZE
 
-    .db   ((MABBIPG & REG_MASK) << 2) | BANK_2,  0x12    ;; as per datasheet section 6.5
-    .db   ((MAIPGL & REG_MASK) << 2) | BANK_2,   0x12    ;; as per datasheet section 6.5
-    .db   ((MAIPGH & REG_MASK) << 2) | BANK_2,   0x0C    ;; as per datasheet section 6.5
+    .db   (MABBIPG << 2)  | BANK_2,   0x12     ;; as per datasheet section 6.5
+    .db   (MAIPGL << 2)   | BANK_2,   0x12     ;; as per datasheet section 6.5
+    .db   (MAIPGH << 2)   | BANK_2,   0x0C     ;; as per datasheet section 6.5
 
-    .db   ((MAADR1 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_0
-    .db   ((MAADR2 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_1
-    .db   ((MAADR3 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_2
-    .db   ((MAADR4 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_3
-    .db   ((MAADR5 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_4
-    .db   ((MAADR6 & REG_MASK) << 2) | BANK_3,   MAC_ADDR_5
+    .db   (MAADR1 << 2)   | BANK_3,   MAC_ADDR_0
+    .db   (MAADR2 << 2)   | BANK_3,   MAC_ADDR_1
+    .db   (MAADR3 << 2)   | BANK_3,   MAC_ADDR_2
+    .db   (MAADR4 << 2)   | BANK_3,   MAC_ADDR_3
+    .db   (MAADR5 << 2)   | BANK_3,   MAC_ADDR_4
+    .db   (MAADR6 << 2)   | BANK_3,   MAC_ADDR_5
 
     ;; PHY initialization
 
-    .db   ((MIREGADR & REG_MASK) << 2) | BANK_2, PHCON1
-    .db   ((MIWRL & REG_MASK) << 2) | BANK_2,    0x00     ;; PHCON1 := 0x0000 -- half duplex
-    .db   ((MIWRH & REG_MASK) << 2) | BANK_2,    0x00
+    .db   (MIREGADR << 2) | BANK_2,    PHCON1
+    .db   (MIWRL << 2)    | BANK_2,    0x00                ;; PHCON1 := 0x0000
+    .db   (MIWRH << 2)    | BANK_2,    0x00                ;; -- half duplex
 
     ;; Set up PHY to automatically scan the PHSTAT2 every 10.24 us
     ;; (the current value can then be read directly from MIRD)
 
-    .db   ((MIREGADR & REG_MASK) << 2) | BANK_2, PHSTAT2
-    .db   ((MICMD & REG_MASK) << 2) | BANK_2,    MICMD_MIISCAN
+    .db   (MIREGADR << 2) | BANK_2,    PHSTAT2
+    .db   (MICMD << 2)    | BANK_2,    MICMD_MIISCAN
 
     ;; Enable reception
-    .db   ((ECON1 & REG_MASK) << 2) | BANK_0,    ECON1_RXEN
+    .db   (ECON1 << 2)    | BANK_0,    ECON1_RXEN
 
     ;; ------------------------------------------------------------------------
     ;; NOTE: no explicit sentinel here. The table is terminated by a byte
@@ -472,7 +472,7 @@ eth_create:
     ;; set up EWRPT for writing packet data                   (assuming bank 0)
     ;; ------------------------------------------------------------------------
 
-    ld    a, #OPCODE_WCR + (EWRPTL & REG_MASK)
+    ld    a, #OPCODE_WCR | EWRPTL
     rst   enc28j60_write_register16
 
     ;; ========================================================================
@@ -1012,11 +1012,11 @@ tftp_reply_ack:
 
     ;; FALL THROUGH to ip_append_data_and_send
 
-;; ############################################################################
+;; ###########################################################################
 ;; ip_append_data_and_send
 ;;
 ;; Call enc28j60_write_memory and continue with udp_send.
-;; ############################################################################
+;; ###########################################################################
 
 ip_append_data_and_send:
 
@@ -1025,11 +1025,11 @@ ip_append_data_and_send:
     ;; FALL THROUGH to udp_send
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; udp_send
 ;;
 ;; Send a completed IP/UDP packet (packet length determined by IP header).
-;; ############################################################################
+;; ###########################################################################
 
 udp_send:
 
@@ -1038,14 +1038,14 @@ udp_send:
     ld   l, h
     ld   h, a
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; Reset retransmission timer. A is not always exactly zero here,
     ;; but close enough (1 for BOOTP BOOTREQUEST, 0 for TFTP).
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld   (retransmission_count), a
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; set DE := start address of frame in transmission buffer,
     ;;     HL := end address of frame in transmission buffer
     ;;
@@ -1058,19 +1058,19 @@ udp_send:
     ;;
     ;; Assume that adding ETH_HEADER_SIZE to ENC28J60_TXBUF1_START stays
     ;; in the same RAM page (set in eth.inc).
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld    de, #ENC28J60_TXBUF1_START+ETH_HEADER_SIZE
     add   hl, de
 
     ld    e, #<ENC28J60_TXBUF1_START
 
-    push  de                                              ;; push start address
+    push  de                                             ;; push start address
 
     ;; FALL THROUGH to eth_send_frame
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; eth_send_frame:
 ;;
 ;; Perform a frame transmission.
@@ -1078,42 +1078,41 @@ udp_send:
 ;;
 ;; top word on stack:  address of the first byte in the frame
 ;; HL:                 address of the last byte in the frame
-;; ############################################################################
+;; ###########################################################################
 
 eth_send_frame:
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; set up registers:  ETXST := start address, ETXND := end address
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    ld    a, #OPCODE_WCR + (ETXNDL & REG_MASK)
+    ld    a, #OPCODE_WCR | ETXNDL
     rst   enc28j60_write_register16
 
     pop   hl                                             ;; pop start address
 
-    ld    a, #OPCODE_WCR + (ETXSTL & REG_MASK)
+    ld    a, #OPCODE_WCR | ETXSTL
     rst  enc28j60_write_register16
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; Poll for link to come up (if it has not already)
     ;;
     ;; NOTE: this code assumes the MIREGADR/MICMD registers to be configured
     ;;       for continuous scanning of PHSTAT2 -- see eth_init
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    ld    e, #2                                           ;; bank 2 for MIRDH
+    ld    e, #2                                            ;; bank 2 for MIRDH
     rst   enc28j60_select_bank
 
-    ;; ----------------------------------------------------------------------
-    ;; Poll MIRDH until PHSTAT2_HI_LSTAT is set. MIRDH is a MAC/MII register,
-    ;; so expect an extra (unused) byte before the actual result.
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
+    ;; Poll MIRDH until PHSTAT2_HI_LSTAT is set.
+    ;; -----------------------------------------------------------------------
 
-    ld    de, #(MIRDH & REG_MASK) + (16 << 8)
+    ld    de, #READ_MAC_MII_REGISTER | MIRDH
     ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
     call  poll_register
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; Errata, item 10:
     ;;
     ;; Reset transmit logic before transmitting a frame:
@@ -1122,42 +1121,42 @@ eth_send_frame:
     ;; Set bank 0 explicitly here (although ECON1 and ESTAT are available in
     ;; every bank 0..3), for the context switch code to access bank 0
     ;; directly.
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    ld    e, a                          ;; A == 0, which is the bank of ECON1
+    ld    e, a                           ;; A == 0, which is the bank of ECON1
     rst   enc28j60_select_bank
 
-    ld    hl, #0x0100 * ECON1_TXRST + OPCODE_BFS + (ECON1 & REG_MASK)
+    ld    hl, #(0x0100 * ECON1_TXRST)  +  (OPCODE_BFS | ECON1)
     rst   enc28j60_write8plus8
 
     ;; keep H == ECON1_TXRST
-    ld    l, #OPCODE_BFC + (ECON1 & REG_MASK)
+    ld    l, #OPCODE_BFC | ECON1
     rst   enc28j60_write8plus8
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; clear ESTAT.TXABRT
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    ld    hl, #0x0100 * (ESTAT_TXABRT) + OPCODE_BFC + (ESTAT & REG_MASK)
+    ld    hl, #(0x0100 * ESTAT_TXABRT)  +  (OPCODE_BFC | ESTAT)
     rst   enc28j60_write8plus8
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; set ECON1.TXRTS, and poll it until it clears
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    ld    hl, #0x0100 * ECON1_TXRTS + OPCODE_BFS + (ECON1 & REG_MASK)
+    ld    hl, #(0x0100 * ECON1_TXRTS)  +  (OPCODE_BFS | ECON1)
     rst   enc28j60_write8plus8
 
     ld    l, b                                                       ;; L := 0
     ;; keep H==ECON1_TXRTS from above, B==0 from enc28j60_write8plus8,
     ;; so this sets HL := 0x0100 * ECON1_TXRTS
 
-    ld    de, #(ECON1 & REG_MASK) + (8 << 8)       ;; ECON1 is an ETH register
+    ld    de, #READ_ETH_REGISTER | ECON1
 
     ;; FALL THROUGH to poll_register
 
 
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 ;; Subroutine: poll indicated ETH/MAC/MII register until
 ;;
 ;;   (reg & mask) == expected_value
@@ -1173,7 +1172,7 @@ eth_send_frame:
 ;; Returns with A == 0, Z flag set, and carry cleared.
 ;;
 ;; Destroys AF, BC. B will be zero on exit.
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 
 poll_register:
 
@@ -1207,10 +1206,10 @@ fail:
     out (ULA_PORT), a
     halt
 
-;; -----------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 ;; Subroutine: add 8 bytes (4 16-bit words),
 ;; then verify the resulting checksum.
-;; -----------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 
 add_8_bytes_and_verify_checksum:
 
@@ -1220,14 +1219,14 @@ add_8_bytes_and_verify_checksum:
 
     ;; FALL THROUGH to ip_receive_check_checksum
 
-;; -----------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 ;; Helper: check IP checksum in HL.
 ;; If OK (0xffff): return to caller.
 ;; if not OK: pop return address and return to next caller
 ;;            (that is, return from ip_receive)
 ;; Must NOT have anything else on stack when this is called.
 ;; Destroys AF, HL. Returns with A==0, H==L==0xff and Z set on success.
-;; -----------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 
 ip_receive_check_checksum:
     ld   a, h
@@ -1240,11 +1239,11 @@ ip_receive_check_checksum:
     ret       ;; return to _caller_ of ip_receive
 
 
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 ;; Called by UDP when a BOOTP packet has been received.
 ;; If a BOOTREPLY with an IP address is found,
 ;; make a TFTP file read request, otherwise return.
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 
 tftp_default_file:
     .ascii 'menu.dat'
@@ -1254,44 +1253,44 @@ bootp_receive:
 
     HANDLE_BOOTP_PACKET
 
-    ;; ========================================================================
+    ;; =======================================================================
     ;; A BOOTREPLY was received
-    ;; ========================================================================
+    ;; =======================================================================
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; set 'S' (printed below) to bright flashing green/black
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld   hl, #SERVER_IP_ATTR
-    ld   (hl), #BLACK + (GREEN << 3) + BRIGHT + FLASH                   ;; 0xE0
+    ld   (hl), #BLACK + (GREEN << 3) + BRIGHT + FLASH                  ;; 0xE0
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; highlight 'L' (printed below) with bright background
     ;;
     ;; the attribute byte written above happens to be 0xE0 == <LOCAL_IP_ATTR
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    ld   l, (hl)                                         ;; HL := LOCAL_IP_ATTR
+    ld   l, (hl)                                        ;; HL := LOCAL_IP_ATTR
     ld   (hl), #BLACK + (WHITE << 3) + BRIGHT
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; keep configuration for loading 'menu.dat' in DE', HL'
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    ld   de, #tftp_default_file                   ;; 'menu.dat'
-    ld   hl, #tftp_state_menu_loader              ;; state for loading menu.dat
+    ld   de, #tftp_default_file                  ;; 'menu.dat'
+    ld   hl, #tftp_state_menu_loader             ;; state for loading menu.dat
     exx
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; inspect the FILE field, set Z flag if filename is empty
     ;; (interpreted as a request to load 'menu.dat')
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld   de, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; an empty filename is interpreted as a request to load 'menu.dat'
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld   a, (de)
     or   a, a
@@ -1306,11 +1305,11 @@ bootp_receive:
 
 tftp_request_snapshot:
 
-    ;; ========================================================================
+    ;; =======================================================================
     ;; prepare for snapshot loading
-    ;; ========================================================================
+    ;; =======================================================================
 
-    ld   hl, #s_header                       ;; state for .z80 snapshot loading
+    ld   hl, #s_header                      ;; state for .z80 snapshot loading
 
     exx
 
@@ -1333,14 +1332,14 @@ tftp_load_menu_bin:
 
     SEND_TFTP_READ_REQUEST
 
-    ;; ========================================================================
+    ;; =======================================================================
     ;; Display IP address information:
     ;;
     ;; print 'L'; local IP address, 'S'; server IP address
     ;;
     ;; This will be displayed when a snapshot is requested too, but remains
     ;; invisible (as PAPER and INK colours have been both set to WHITE+BRIGHT)
-    ;; ========================================================================
+    ;; =======================================================================
 
     ld   de, #LOCAL_IP_POS
     ld   hl, #outgoing_header + IPV4_HEADER_OFFSETOF_SRC_ADDR
@@ -1354,14 +1353,14 @@ tftp_load_menu_bin:
     ;; FALL THROUGH to print_char_and_ip_addr
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; Subroutine:
 ;; prints a char and an IP address, four octets of 1-3 digits
 ;; A = char to print
 ;; DE = VRAM pointer
 ;; HL = pointer to IP address
 ;; AF, AF', and BC are destroyed. DE and HL are increased.
-;; ############################################################################
+;; ###########################################################################
 
 print_char_and_ip_addr:
 
@@ -1397,13 +1396,13 @@ print_char_and_ip_addr:
     jr    00001$           ;; next octet
 
 
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 ;; Examines A and prints one or two digits.
 ;;
 ;; If A >= 100, prints 1 or 2 (hundreds). No 0 will be printed.
 ;; Then prints tens, unconditionally.
 ;; Returns with A == (original A) % 10, in range 0..9.
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 
 print_hundreds_and_tens:
 
@@ -1416,10 +1415,10 @@ print_hundreds_and_tens:
     ;; FALL THROUGH to print_div
 
 
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 ;; Divides A by B, and prints as one digit. Returns remainder in A.
 ;; Destroys AF'.
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 
 print_div:
     call  a_div_b
@@ -1430,7 +1429,7 @@ print_div:
     ;; FALL THROUGH to print_digit
 
 
-;; ############################################################################
+;; ###########################################################################
 
 print_digit:
     add  a, #'0'
@@ -1438,9 +1437,9 @@ print_digit:
     ;; FALL THROUGH to print_char
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; print_char
-;; ############################################################################
+;; ###########################################################################
 
 print_char:
 

@@ -29,119 +29,68 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
-;; ----------------------------------------------------------------------------
-;; To save some space, information for each register (which bank it belongs
-;; to, and whether it is an ETH or a MAC/MII register) is encoded into a single
-;; byte, along with the register number.
-;;
-;; bit 0..4: register number (0..0x1f)
-;; bit 6..7: bank (0..3)
-;; ----------------------------------------------------------------------------
-
-BANK0          = 0x00
-BANK1          = 0x40
-BANK2          = 0x80
-BANK3          = 0xC0
-
-MAC_MII        = 0x00    ;; just a tag
-
-REG_MASK       = 0x1f
-BANK_MASK      = 0xC0
-
-;; ----------------------------------------------------------------------------
+;; ===========================================================================
 ;; register definitions
-;; ----------------------------------------------------------------------------
+;; ===========================================================================
 
-ERDPTL                = BANK0 | 0x00
-ERDPTH                = BANK0 | 0x01
-EWRPTL                = BANK0 | 0x02
-EWRPTH                = BANK0 | 0x03
-ETXSTL                = BANK0 | 0x04
-ETXSTH                = BANK0 | 0x05
-ETXNDL                = BANK0 | 0x06
-ETXNDH                = BANK0 | 0x07
-ERXSTL                = BANK0 | 0x08
-ERXSTH                = BANK0 | 0x09
-ERXNDL                = BANK0 | 0x0a
-ERXNDH                = BANK0 | 0x0b
-ERXRDPTL              = BANK0 | 0x0c
-ERXRDPTH              = BANK0 | 0x0d
-ERXWRPTL              = BANK0 | 0x0e
-ERXWRPTH              = BANK0 | 0x0f
-EDMASTL               = BANK0 | 0x10
-EDMASTH               = BANK0 | 0x11
-EDMANDL               = BANK0 | 0x12
-EDMANDH               = BANK0 | 0x13
-EDMADSTL              = BANK0 | 0x14
-EDMADSTH              = BANK0 | 0x15
-EDMACSL               = BANK0 | 0x16
-EDMACSH               = BANK0 | 0x17
-EIE                   = BANK0 | 0x1b
-EIR                   = BANK0 | 0x1c
-ESTAT                 = BANK0 | 0x1d
-ECON2                 = BANK0 | 0x1e
-ECON1                 = BANK0 | 0x1f
+;; ---------------------------------------------------------------------------
+;; bank 0
+;; ---------------------------------------------------------------------------
 
-EHT0                  = BANK1 | 0x00
-EHT1                  = BANK1 | 0x01
-EHT2                  = BANK1 | 0x02
-EHT3                  = BANK1 | 0x03
-EHT4                  = BANK1 | 0x04
-EHT5                  = BANK1 | 0x05
-EHT6                  = BANK1 | 0x06
-EHT7                  = BANK1 | 0x07
-EPMM0                 = BANK1 | 0x08
-EPMM1                 = BANK1 | 0x09
-EPMM2                 = BANK1 | 0x0a
-EPMM3                 = BANK1 | 0x0b
-EPMM4                 = BANK1 | 0x0c
-EPMM5                 = BANK1 | 0x0d
-EPMM6                 = BANK1 | 0x0e
-EPMM7                 = BANK1 | 0x0f
-EPMCSL                = BANK1 | 0x10
-EPMCSH                = BANK1 | 0x11
-EPMOL                 = BANK1 | 0x14
-EPMOH                 = BANK1 | 0x15
-EWOLIE                = BANK1 | 0x16
-EWOLIR                = BANK1 | 0x17
-ERXFCON               = BANK1 | 0x18
-EPKTCNT               = BANK1 | 0x19
+ERDPTL                 = 0x00
+ERDPTH                 = 0x01
+EWRPTL                 = 0x02
+EWRPTH                 = 0x03
+ETXSTL                 = 0x04
+ETXSTH                 = 0x05
+ETXNDL                 = 0x06
+ETXNDH                 = 0x07
+ERXSTL                 = 0x08
+ERXSTH                 = 0x09
+ERXNDL                 = 0x0a
+ERXNDH                 = 0x0b
+ERXRDPTL               = 0x0c
+ERXRDPTH               = 0x0d
+ERXWRPTL               = 0x0e
+ERXWRPTH               = 0x0f
+ESTAT                  = 0x1d
+ECON2                  = 0x1e
+ECON1                  = 0x1f
 
-MACON1                = BANK2 | MAC_MII | 0x00
-MACON3                = BANK2 | MAC_MII | 0x02
-MACON4                = BANK2 | MAC_MII | 0x03
-MABBIPG               = BANK2 | MAC_MII | 0x04
-MAIPGL                = BANK2 | MAC_MII | 0x06
-MAIPGH                = BANK2 | MAC_MII | 0x07
-MACLCON1              = BANK2 | MAC_MII | 0x08
-MACLCON2              = BANK2 | MAC_MII | 0x09
-MAMXFLL               = BANK2 | MAC_MII | 0x0a
-MAMXFLH               = BANK2 | MAC_MII | 0x0b
-MICMD                 = BANK2 | MAC_MII | 0x12
-MIREGADR              = BANK2 | MAC_MII | 0x14
-MIWRL                 = BANK2 | MAC_MII | 0x16
-MIWRH                 = BANK2 | MAC_MII | 0x17
-MIRDL                 = BANK2 | MAC_MII | 0x18
-MIRDH                 = BANK2 | MAC_MII | 0x19
+;; ---------------------------------------------------------------------------
+;; bank 1
+;; ---------------------------------------------------------------------------
 
-MAADR5                = BANK3 | MAC_MII | 0x00
-MAADR6                = BANK3 | MAC_MII | 0x01
-MAADR3                = BANK3 | MAC_MII | 0x02
-MAADR4                = BANK3 | MAC_MII | 0x03
-MAADR1                = BANK3 | MAC_MII | 0x04
-MAADR2                = BANK3 | MAC_MII | 0x05
-EBSTSD                = BANK3 | 0x06
-EBSTCON               = BANK3 | 0x07
-EBSTCSL               = BANK3 | 0x08
-EBSTCSH               = BANK3 | 0x09
-MISTAT                = BANK3 | MAC_MII | 0x0a
-EREVID                = BANK3 | 0x12
-EFLOCON               = BANK3 | 0x17
-EPAUSL                = BANK3 | 0x18
-EPAUSH                = BANK3 | 0x19
+EPKTCNT                = 0x19
 
-;; Special register value address, not used by ENC28J60 (sentinel in table)
-ENC28J60_TABLE_END    = 0x22
+;; ---------------------------------------------------------------------------
+;; bank 2
+;; ---------------------------------------------------------------------------
+
+MACON1                 = 0x00                                       ;; MAC/MII
+MACON3                 = 0x02                                       ;; MAC/MII
+MACON4                 = 0x03                                       ;; MAC/MII
+MABBIPG                = 0x04                                       ;; MAC/MII
+MAIPGL                 = 0x06                                       ;; MAC/MII
+MAIPGH                 = 0x07                                       ;; MAC/MII
+MAMXFLL                = 0x0a                                       ;; MAC/MII
+MAMXFLH                = 0x0b                                       ;; MAC/MII
+MICMD                  = 0x12                                       ;; MAC/MII
+MIREGADR               = 0x14                                       ;; MAC/MII
+MIWRL                  = 0x16                                       ;; MAC/MII
+MIWRH                  = 0x17                                       ;; MAC/MII
+MIRDH                  = 0x19                                       ;; MAC/MII
+
+;; ---------------------------------------------------------------------------
+;; bank 3
+;; ---------------------------------------------------------------------------
+
+MAADR5                 = 0x00                                       ;; MAC/MII
+MAADR6                 = 0x01                                       ;; MAC/MII
+MAADR3                 = 0x02                                       ;; MAC/MII
+MAADR4                 = 0x03                                       ;; MAC/MII
+MAADR1                 = 0x04                                       ;; MAC/MII
+MAADR2                 = 0x05                                       ;; MAC/MII
 
 ;; ----------------------------------------------------------------------------
 ;; ENC28J60 PHY control registers  (datasheet table 3-3)
@@ -154,31 +103,19 @@ PHSTAT2                = 0x11
 ;; Individual bits in ETH, MAC, MII registers
 ;; ----------------------------------------------------------------------------
 
-EIE_TXIE               = 0x08
-EIR_TXIF               = 0x08
-EIR_TXERIF             = 0x02
 ESTAT_CLKRDY           = 0x01
 ESTAT_TXABRT           = 0x02
 ECON2_PKTDEC           = 0x40
-ECON2_AUTOINC          = 0x80
 ECON1_TXRST            = 0x80
-ECON1_RXRST            = 0x40
-ECON1_DMAST            = 0x20
-ECON1_CSUMEN           = 0x10
 ECON1_TXRTS            = 0x08
 ECON1_RXEN             = 0x04
 
 ERXFCON_CRCEN          = 0x20
 
 MACON1_MARXEN          = 0x01
-MACON1_RXPAUS          = 0x04
-MACON1_TXPAUS          = 0x08
 MACON3_TXCRCEN         = 0x10
-MACON3_FULDPX          = 0x01
 MACON4_DEFER           = 0x40
 MICMD_MIISCAN          = 0x02
-MISTAT_BUSY            = 0x01
-MISTAT_NVALID          = 0x04
 
 ;; ----------------------------------------------------------------------------
 ;; Bit in high byte of 16-bit PHY register PHSTAT2
@@ -189,10 +126,10 @@ PHSTAT2_HI_LSTAT       = 0x04
 ;; Opcodes for SPI commands
 ;; ----------------------------------------------------------------------------
 
-OPCODE_RCR             = 0x00   ;; OR'ed with register 0..0x1f
-OPCODE_WCR             = 0x40   ;; OR'ed with register 0..0x1f
-OPCODE_BFS             = 0x80   ;; OR'ed with register 0..0x1f
-OPCODE_BFC             = 0xA0   ;; OR'ed with register 0..0x1f
+OPCODE_RCR             = 0x00                    ;; OR'ed with register 0..0x1f
+OPCODE_WCR             = 0x40                    ;; OR'ed with register 0..0x1f
+OPCODE_BFS             = 0x80                    ;; OR'ed with register 0..0x1f
+OPCODE_BFC             = 0xA0                    ;; OR'ed with register 0..0x1f
 OPCODE_RBM             = 0x3A
 OPCODE_WBM             = 0x7A
 
@@ -212,8 +149,8 @@ RX_FRAME_SIZE = 20 + 8 + 4 + 512
 ;; Write a 16-bit register.
 ;;
 ;; Call with A set to a WCR opcode for the low half of the register,
-;; e.g., OPCODE_WCR + (ERXRDPTL & REG_MASK), and HL set to the 16-bit
-;; value to write. Defined in init.asm.
+;; e.g., OPCODE_WCR | ERXRDPTL, and HL set to the 16-bit value to write.
+;; Defined in init.asm.
 ;;
 ;; Destroys F, BC, DE, L.
 ;;
@@ -254,6 +191,9 @@ enc28j60_write8plus8 = 0x18
 ;; Returns the read value in A.
 ;; Destroys AF, BC. B will be zero on exit.
 ;; ----------------------------------------------------------------------------
+
+READ_ETH_REGISTER     = (8 << 8)
+READ_MAC_MII_REGISTER = (16 << 8)
 
     .globl enc28j60_read_register
 

@@ -320,7 +320,7 @@ evacuate_iff1_set:
     ;; ========================================================================
 
     ld   hl, #ENC28J60_EVACUATED_DATA
-    ld   a, #OPCODE_WCR + (EWRPTL & REG_MASK)
+    ld   a, #OPCODE_WCR | EWRPTL
     rst  enc28j60_write_register16
 
     ld   de, #RUNTIME_DATA_LENGTH
@@ -346,7 +346,7 @@ evacuate_iff1_set:
     ;; ------------------------------------------------------------------------
 
     ld   hl, #ENC28J60_EVACUATED_DATA
-    ld   a, #OPCODE_WCR + (ERDPTL & REG_MASK)
+    ld   a, #OPCODE_WCR | ERDPTL
     rst  enc28j60_write_register16
 
     ;; ------------------------------------------------------------------------
