@@ -29,7 +29,7 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 
-    .module eth
+    .module stack
 
     .include "bootp.inc"
     .include "enc28j60.inc"
@@ -151,8 +151,8 @@ tftp_state:
     ;; main loop: receive packets and act on them
     ;; ========================================================================
 
-    ;; At this point, eth_send() has already been called once for a PRIORITY
-    ;; frame (BOOTP above), so the ACK timer does not need to be reset.
+    ;; At this point, udp_send() has already been called once (BOOTP above),
+    ;; so the ACK timer does not need to be reset.
 
 main_loop:
 
@@ -215,6 +215,8 @@ packet_received:
     ;; ------------------------------------------------------------------------
 
     ld    hl, (next_frame_to_read)
+    push  hl                                        ;; stack next_frame_to_read
+
     ld    a, #OPCODE_WCR + (ERDPTL & REG_MASK)
     rst   enc28j60_write_register16
 
@@ -251,7 +253,8 @@ packet_received:
 
     ;; errata B5, item 11:  EXRDPT must always be written with an odd value
 
-    ld    hl, (next_frame_to_read)
+    pop   hl                                       ;; recall next_frame_to_read
+
     dec   hl
     set   0, l
 
