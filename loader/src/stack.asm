@@ -707,9 +707,9 @@ ip_receive:
     ;; B==0 from enc28j60_read_memory_to_rxframe or memory_compare_4_bytes
     ;; -----------------------------------------------------------------------
 
-    ld   d, b                                         ;; D := 0
-    ld   e, a                                         ;; E := IP header length
-    ld   l, #<rx_frame + IPV4_HEADER_SIZE             ;; offset of UDP header
+    ld   d, b                               ;; D := 0
+    ld   e, a                               ;; E := remaining IP header length
+    ld   l, #<rx_frame + IPV4_HEADER_SIZE   ;; offset of UDP header
     call nz, enc28j60_read_memory
 
     ;; -----------------------------------------------------------------------
@@ -723,10 +723,10 @@ ip_receive:
     ;; HL can be any size up to 0x220 bytes, so carry must be considered.
     ;; -----------------------------------------------------------------------
 
-    pop  bc                                      ;; B now holds IP header size
+    pop  bc                  ;; B now holds IP header size (including options)
 
     ld   hl, (rx_frame + IPV4_HEADER_OFFSETOF_TOTAL_LENGTH)
-    ld   a, h    ;; HL is in network order, so this is the low byte
+    ld   a, h               ;; HL is in network order, so this is the low byte
     sub  a, b
     ld   e, a
     ld   d, l
