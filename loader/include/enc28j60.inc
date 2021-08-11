@@ -230,10 +230,18 @@ READ_MAC_MII_REGISTER = (16 << 8)
 ;;   BC == 0
 ;;   DE points to next byte after checksummed data
 ;;   HL holds current checksum (also stored in _ip_checksum)
-;;   A  holds same value as H
+;;   A  == 0 if checksum == 0xffff
+;;   Z is set if checksum == 0xffff
 ;; ----------------------------------------------------------------------------
 
     .globl enc28j60_add_to_checksum_hl
+
+;; ---------------------------------------------------------------------------
+;; Alternate entrypoint to enc28j60_add_to_checksum_hl.
+;; Sets B := 4.
+;; ---------------------------------------------------------------------------
+
+    .globl enc28j60_add_8_bytes_to_checksum_hl
 
 ;; ----------------------------------------------------------------------------
 ;; Reads one byte (8 bits) from SPI to register C.

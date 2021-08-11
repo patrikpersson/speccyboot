@@ -236,9 +236,20 @@ spi_byte_inline_loop:
     ;; -------------------------------------------------------------
 
 
-;; ############################################################################
+;; ###########################################################################
+;; enc28j60_add_8_bytes_to_checksum_hl
+;; ###########################################################################
+
+enc28j60_add_8_bytes_to_checksum_hl:
+
+    ld   b, #4                                       ;; number of 16-bit words
+
+    ;; FALL THROUGH to enc28j60_add_to_checksum_hl
+
+
+;; ###########################################################################
 ;; enc28j60_add_to_checksum_hl
-;; ############################################################################
+;; ###########################################################################
 
 enc28j60_add_to_checksum_hl:
 
@@ -267,6 +278,16 @@ add_final_carry_and_store_checksum:
     adc   hl, bc    ;; final carry only (BC is zero here)
 
     ld    (_ip_checksum), hl
+
+    ;; ------------------------------------------------------------------------
+    ;; if invoked from enc28j60_add_to_checksum_hl, A == H (checksum high byte)
+    ;; and the Z flag is set if the checksum == 0xffff
+    ;;
+    ;; if invoked from enc28j60_read_memory, this is meaningless (but benign)
+    ;; ------------------------------------------------------------------------
+
+    or    a, l
+    inc   a
 
     ret
 

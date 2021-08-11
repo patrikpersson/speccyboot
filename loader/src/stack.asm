@@ -585,7 +585,7 @@ udp_create:
     ;; ----------------------------------------------------------------------
 
     ld     e, #<outgoing_header + IPV4_HEADER_OFFSETOF_CHECKSUM + 1
-    ;; A now holds same value as H (checksum, second byte)
+    ld     a, h
     cpl
     ld     (de), a
     dec    de
@@ -801,7 +801,7 @@ no_carry_in_initial_checksum:
 
     ld   hl, (_ip_checksum)
     ld   de, #rx_frame + IPV4_HEADER_OFFSETOF_SRC_ADDR
-    call nz, add_8_bytes_and_verify_checksum
+    call nz, enc28j60_add_8_bytes_to_checksum_hl
     ret  nz
 
     ;; -----------------------------------------------------------------------
@@ -816,7 +816,8 @@ no_carry_in_initial_checksum:
 
     or   a, l      ;; A == 0 from above:
                    ;; either the UDP checksum was zero, A == 0, CALL not taken
-                   ;; or add_and_verify_checksum was called, and set A == 0
+                   ;; or add_and_verify_checksum was called, the checksum
+                   ;; matched, and so A == 0 was set
     ret  nz
 
     ;; -----------------------------------------------------------------------
@@ -846,7 +847,7 @@ no_carry_in_initial_checksum:
     ;; HANDLE_TFTP_PACKET is a macro, so as to avoid a function call.
     ;;
     ;; B == 0 from enc28j60_read_memory and
-    ;; (if invoked) add_8_bytes_and_verify_checksum
+    ;; (if invoked) enc28j60_add_8_bytes_to_checksum_hl
     ;; -----------------------------------------------------------------------
 
     HANDLE_TFTP_PACKET
@@ -1207,25 +1208,6 @@ fail:
     di
     out (ULA_PORT), a
     halt
-
-;; ---------------------------------------------------------------------------
-;; Subroutine: add 8 bytes (4 16-bit words),
-;; then verify the resulting checksum.
-;;
-;; Z is set if the checksum matches, cleared otherwise.
-;; ---------------------------------------------------------------------------
-
-add_8_bytes_and_verify_checksum:
-
-    ld   b, #4                                       ;; number of 16-bit words
-
-    call enc28j60_add_to_checksum_hl
-
-    ;; A == H from enc28j60_add_to_checksum_hl
-    and  a, l
-    inc  a                   ;; if both bytes are 0xff, A will now become zero
-    ret
-
 
 ;; ---------------------------------------------------------------------------
 ;; Called by UDP when a BOOTP packet has been received.
