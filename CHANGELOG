@@ -1,4 +1,11 @@
-SpeccyBoot 4 (July 29, 2021):
+v5 ():
+
+* Faster SPI communication
+* Clearer version indicator
+
+-------------------------------------------------------------------------------
+
+v4 (July 29, 2021):
 
 * Continued footprint optimizations: entire loader now fits in 2K ROM, so no
   code is needed in RAM. The index file loaded over TFTP (menu.dat) only
@@ -10,7 +17,7 @@ SpeccyBoot 4 (July 29, 2021):
 
 -------------------------------------------------------------------------------
 
-SpeccyBoot 3 (July 17, 2021):
+v3 (July 17, 2021):
 
 * Optimized footprint further: all code except the menu application
   now fits in 2K ROM; no code in RAM is necessary for loading snapshots.

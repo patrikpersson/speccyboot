@@ -148,35 +148,12 @@ redraw_menu_limit_set:
     sub  a, c
     ld   b, a
 
-    ld   de, #0x4101      ;; (0,1)
+    ld   de, #0x4141      ;; (2,1)
 
 redraw_menu_loop:
 
     call get_filename_pointer
-
-    ;; ------------------------------------------------------------------------
-    ;; print string, terminated by '.' (that is, _not_ NUL).
-    ;;
-    ;; The string is truncated to the end of the line, and padded with spaces.
-    ;; ------------------------------------------------------------------------
-
-print_string_loop:
-
-    ld   a, (hl)
-    cp   a, #'.'
-    jr   nz, no_padding
-    ld   a, #' '
-    .db  JR_NZ          ;; Z is set here, so this will skip the INC HL below
-
-no_padding:
-
-    inc  hl
-
-    call print_char
-
-    ld   a, e
-    and  a, #0x1f
-    jr   nz, print_string_loop
+    call print_line
 
     inc  de    ;; skip first cell on each line
     inc  c
@@ -329,29 +306,29 @@ menu_hit_enter:
     jp   main_loop
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; subroutine: highlight current line to colour (in register C)
 ;;
 ;; destroys B, AF; preserves DE, HL
 ;; on return B==0 
-;; ############################################################################
+;; ###########################################################################
 
     .area _CODE
 
 menu_set_highlight:
 
-    ;; ------------------------------------------------------------------------
-    ;; The VRAM attribute address is 0x5800 + 32 * (C - D). This is computed as
-    ;; 32 * (C - D + 0x2C0). The difference (C-D) is at most decimal 22, so the
-    ;; value (C - D + 0xC0) fits in a byte (at most 0xD6)
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
+    ;; The VRAM attribute address is 0x5840 + 32 * (C - D). This is computed
+    ;; as 32 * (C - D + 0x2C2). The difference (C-D) is at most decimal 20, so
+    ;; the value (C - D + 0xC2) fits in a byte (at most 0xD6)
+    ;; -----------------------------------------------------------------------
 
     push hl
     ex   af, af'
-    ld   h, #>0x2C0
+    ld   h, #>0x2C2
     ld   a, c
     sub  a, d
-    add  a, #<0x2C0
+    add  a, #<0x2C2
     ld   l, a
     add  hl, hl
     add  hl, hl
@@ -359,9 +336,9 @@ menu_set_highlight:
     add  hl, hl
     add  hl, hl
 
-  ;; ========================================================================
+  ;; =========================================================================
   ;; ARP Ethertype (0x08 0x06)
-  ;; ========================================================================
+  ;; =========================================================================
 
 ethertype_arp:
 

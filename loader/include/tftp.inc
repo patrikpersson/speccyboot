@@ -115,7 +115,7 @@ TFTP_HEADER_SIZE     = 4
     ;; (TFTP_OPCODE_ERROR - TFTP_OPCODE_DATA)  ==  2  == FATAL_FILE_NOT_FOUND
     ;; ------------------------------------------------------------------------
 
-    jp   nz, fail
+    jr   nz, fail
 
     ;; ========================================================================
     ;; check block number: acceptable cases are
@@ -209,6 +209,18 @@ tftp_state_loop:
     ld    (_tftp_write_pos), de
 
     jr    tftp_state_loop
+
+fail:
+
+    ;; -----------------------------------------------------------------------
+    ;; It would make some sense to RESET the ENC28J60 here. However, any
+    ;; outgoing (but not yet transmitted) packets would then be lost, and
+    ;; possibly confuse debugging.
+    ;; -----------------------------------------------------------------------
+
+    di
+    out (ULA_PORT), a
+    halt
 
     .endm
 

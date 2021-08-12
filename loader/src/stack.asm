@@ -128,24 +128,48 @@ tftp_state:
 ;; ############################################################################
 
     ;; ------------------------------------------------------------------------
-    ;; set flashing cursor, to indicate BOOTP is working
-    ;;
+    ;; present heading, to indicate BOOTP is working
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #heading
+    ld   de, #HEADING_POS
+    call print_line
+
+    ;; ------------------------------------------------------------------------
     ;; BLACK INK + GREEN PAPER + FLASH + BRIGHT == 0xe0 == <LOCAL_IP_ATTR
     ;; ------------------------------------------------------------------------
 
-    ld   hl, #LOCAL_IP_ATTR
-    ld   (hl), l
-
-    ld   a, #VERSION + '0'
-    ld   de, #LOCAL_IP_POS
-    call print_char
+    ;; ld   hl, #LOCAL_IP_ATTR
+    ;; ld   (hl), l
 
     ;; ========================================================================
     ;; system initialization
     ;; ========================================================================
 
     call  eth_init
+
+    ;; -----------------------------------------------------------------------
+    ;; The ENC28J60 has facilities for waiting for the link to become active,
+    ;; but this doesn't seem to be quite enough: the outgoing BOOTP REQUEST
+    ;; is frequently missed by the server if sent immediately. An explicit
+    ;; delay is introduced here to give the server a better chance.
+    ;;
+    ;; The data sheet (section 14.0) says that "After leaving Sleep mode,
+    ;; there is a delay of many milliseconds before a new link is established
+    ;; (assuming an appropriate link partner is present)." Though this refers
+    ;; to waking up from sleep mode, it is taken here as an indication that
+    ;; the link normally comes up in "many milliseconds". This is vague.
+    ;;
+    ;; A delay of two frame interrupts (20-40 milliseconds) is assumed to be
+    ;; enough here. This is admittedly crude, but if the link takes longer
+    ;; time than this to come up, all that happens it that we will have to
+    ;; wait for the (then lost) BOOTP REQUEST to be retransmitted. This is
+    ;; not critical.
+    ;; -----------------------------------------------------------------------
     
+    halt
+    halt
+
     BOOTP_INIT
 
     ;; ========================================================================
@@ -168,7 +192,7 @@ main_loop:
     ld    e, #1                                           ;; bank 1 for EPKTCNT
     rst   enc28j60_select_bank
 
-    ld    de, #READ_ETH_REGISTER | EPKTCNT
+    ld    c, #EPKTCNT
     call  enc28j60_read_register
 
     ;; ------------------------------------------------------------------------
@@ -264,6 +288,11 @@ packet_received:
 
     jr    main_loop
 
+heading:
+    .ascii "SpeccyBoot "
+    .db    VERSION + '0'
+    .db    '.'
+
 
 ;; ############################################################################
 ;; eth_init
@@ -286,15 +315,24 @@ eth_init:
     out  (SPI_OUT), a
 
     ;; ------------------------------------------------------------------------
-    ;; poll ESTAT until ESTAT_CLKRDY is set
+    ;; Data sheet, #2.2:
+    ;;
+    ;; Wait for the OST (Oscillator Startup Timer) to become ready. The data
+    ;; sheet indicates this takes about 300 us.
+    ;;
+    ;; Wait for two frame ticks (20-40 ms). This is obviously overkill, but
+    ;; saves the hassle of polling ESTAT.CLKRDY.
+    ;;
+    ;; This delay also covers the requirement in #11.2:
+    ;;
+    ;; Wait at least 50us after a System Reset before accessing PHY registers.
     ;; ------------------------------------------------------------------------
 
-    ld    de, #READ_ETH_REGISTER | ESTAT
-    ld    hl, #(0x0100 * ESTAT_CLKRDY)  +  ESTAT_CLKRDY
-    call  poll_register
+    halt
+    halt
 
     ;; ------------------------------------------------------------------------
-    ;; carry is 0 (from poll_register above),
+    ;; carry is 0 (from XOR A, A above),
     ;; and HL needs to be 0x0000 (ENC28J60_RXBUF_START)
     ;; ------------------------------------------------------------------------
 
@@ -307,21 +345,6 @@ eth_init:
 
     ld    hl, #eth_register_defaults
 
-    ;; ------------------------------------------------------------------------
-    ;; Data sheet, #11.2:
-    ;;
-    ;; Wait at least 50us after a System Reset before accessing PHY registers.
-    ;;
-    ;; 50us == ~178 T-states @ 3.55MHz               (this is the minimum time)
-    ;;
-    ;; poll_register includes at least one SPI byte read, which takes at least
-    ;; 8*56 T-states, so x >= 448. This poll_register call does not access any
-    ;; PHY register.
-    ;;
-    ;; More than 448 T-states, or 146us @3.55MHz, pass from reset until the
-    ;; first loop iteration. PHY registers are accessed a few iterations into
-    ;; the loop, well after the specified minimum time.
-    ;; ------------------------------------------------------------------------
 
 eth_init_registers_loop:
 
@@ -404,36 +427,36 @@ BANK_2 = 0x01
 BANK_3 = 0x03
 
 eth_register_defaults:
-    .db   (ERXSTL << 2)   | BANK_0,   <ENC28J60_RXBUF_START
-    .db   (ERXSTH << 2)   | BANK_0,   >ENC28J60_RXBUF_START
+    .db   (ERXSTL << 2)   | BANK_0,    <ENC28J60_RXBUF_START
+    .db   (ERXSTH << 2)   | BANK_0,    >ENC28J60_RXBUF_START
 
-    .db   (ERXNDL << 2)   | BANK_0,   <ENC28J60_RXBUF_END
-    .db   (ERXNDH << 2)   | BANK_0,   >ENC28J60_RXBUF_END
+    .db   (ERXNDL << 2)   | BANK_0,    <ENC28J60_RXBUF_END
+    .db   (ERXNDH << 2)   | BANK_0,    >ENC28J60_RXBUF_END
 
     ;; B5 errata, item 11: only odd values are allowed when writing ERXRDPT
-    .db   (ERXRDPTL << 2) | BANK_0,   <ENC28J60_RXBUF_END
-    .db   (ERXRDPTH << 2) | BANK_0,   >ENC28J60_RXBUF_END
+    .db   (ERXRDPTL << 2) | BANK_0,    <ENC28J60_RXBUF_END
+    .db   (ERXRDPTH << 2) | BANK_0,    >ENC28J60_RXBUF_END
 
     ;; MAC initialization: half duplex
-    .db   (MACON1 << 2)   | BANK_2,   MACON1_MARXEN
+    .db   (MACON1 << 2)   | BANK_2,    MACON1_MARXEN
 
     ;; MACON3: set bits PADCFG0..2 to pad frames to at least 64B, append CRC
-    .db   (MACON3 << 2)   | BANK_2,   0xE0 + MACON3_TXCRCEN
-    .db   (MACON4 << 2)   | BANK_2,   MACON4_DEFER
+    .db   (MACON3 << 2)   | BANK_2,    0xE0 + MACON3_TXCRCEN
+    .db   (MACON4 << 2)   | BANK_2,    MACON4_DEFER
 
-    .db   (MAMXFLL << 2)  | BANK_2,   <ETH_MAX_RX_FRAME_SIZE
-    .db   (MAMXFLH << 2)  | BANK_2,   >ETH_MAX_RX_FRAME_SIZE
+    .db   (MAMXFLL << 2)  | BANK_2,    <ETH_MAX_RX_FRAME_SIZE
+    .db   (MAMXFLH << 2)  | BANK_2,    >ETH_MAX_RX_FRAME_SIZE
 
-    .db   (MABBIPG << 2)  | BANK_2,   0x12     ;; as per datasheet section 6.5
-    .db   (MAIPGL << 2)   | BANK_2,   0x12     ;; as per datasheet section 6.5
-    .db   (MAIPGH << 2)   | BANK_2,   0x0C     ;; as per datasheet section 6.5
+    .db   (MABBIPG << 2)  | BANK_2,    0x12    ;; as per datasheet section 6.5
+    .db   (MAIPGL << 2)   | BANK_2,    0x12    ;; as per datasheet section 6.5
+    .db   (MAIPGH << 2)   | BANK_2,    0x0C    ;; as per datasheet section 6.5
 
-    .db   (MAADR1 << 2)   | BANK_3,   MAC_ADDR_0
-    .db   (MAADR2 << 2)   | BANK_3,   MAC_ADDR_1
-    .db   (MAADR3 << 2)   | BANK_3,   MAC_ADDR_2
-    .db   (MAADR4 << 2)   | BANK_3,   MAC_ADDR_3
-    .db   (MAADR5 << 2)   | BANK_3,   MAC_ADDR_4
-    .db   (MAADR6 << 2)   | BANK_3,   MAC_ADDR_5
+    .db   (MAADR1 << 2)   | BANK_3,    MAC_ADDR_0
+    .db   (MAADR2 << 2)   | BANK_3,    MAC_ADDR_1
+    .db   (MAADR3 << 2)   | BANK_3,    MAC_ADDR_2
+    .db   (MAADR4 << 2)   | BANK_3,    MAC_ADDR_3
+    .db   (MAADR5 << 2)   | BANK_3,    MAC_ADDR_4
+    .db   (MAADR6 << 2)   | BANK_3,    MAC_ADDR_5
 
     ;; PHY initialization
 
@@ -441,96 +464,90 @@ eth_register_defaults:
     .db   (MIWRL << 2)    | BANK_2,    0x00                ;; PHCON1 := 0x0000
     .db   (MIWRH << 2)    | BANK_2,    0x00                ;; -- half duplex
 
-    ;; Set up PHY to automatically scan the PHSTAT2 every 10.24 us
-    ;; (the current value can then be read directly from MIRD)
-
-    .db   (MIREGADR << 2) | BANK_2,    PHSTAT2
-    .db   (MICMD << 2)    | BANK_2,    MICMD_MIISCAN
-
     ;; Enable reception
     .db   (ECON1 << 2)    | BANK_0,    ECON1_RXEN
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; NOTE: no explicit sentinel here. The table is terminated by a byte
     ;; with bit 7 set, which happens to be the first byte of eth_create below
     ;; (0xD5 == PUSH DE)
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-;; ############################################################################
+;; ###########################################################################
 ;; eth_create
-;; ############################################################################
+;; ###########################################################################
 
 eth_create:
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; NOTE: the first instruction here (0xD5) terminates the table above.
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
-    push  de                                                 ;; stack Ethertype
-    push  bc                                   ;; stack destination MAC address
+    push  de                                                ;; stack Ethertype
+    push  bc                                  ;; stack destination MAC address
 
-    ;; ------------------------------------------------------------------------
-    ;; set up EWRPT for writing packet data                   (assuming bank 0)
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
+    ;; set up EWRPT for writing packet data                  (assuming bank 0)
+    ;; -----------------------------------------------------------------------
 
     ld    a, #OPCODE_WCR | EWRPTL
     rst   enc28j60_write_register16
 
-    ;; ========================================================================
+    ;; =======================================================================
     ;; write Ethernet header, including administrative control byte
-    ;; ========================================================================
+    ;; =======================================================================
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; write per-packet control byte  (0x0E; datasheet, section 7.1)
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     rst   enc28j60_write_memory_inline
 
     .db   1, 0x0e
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; write destination (remote) MAC address
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld    e, #ETH_ADDRESS_SIZE
-    pop   hl                                  ;; recall destination MAC address
+    pop   hl                                 ;; recall destination MAC address
     rst   enc28j60_write_memory_small
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; write source (local) MAC address
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     call  enc28j60_write_local_hwaddr
 
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; write Ethertype
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     ld    e, #ETH_SIZEOF_ETHERTYPE
-    pop   hl                                                ;; recall Ethertype
+    pop   hl                                               ;; recall Ethertype
     rst   enc28j60_write_memory_small
     ret
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; udp_create
-;; ############################################################################
+;; ###########################################################################
 
 udp_create:
 
     push  hl
 
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
     ;; Set up a header template, to be filled in with proper data below.
     ;; Only the first part of the header is copied here, up to (but not
     ;; including) source/destination IP addresses.
-    ;; ----------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
 
     push  de
 
     ld    hl, #ip_header_defaults
     ld    de, #outgoing_header
-    ld    c, #12                                 ;; B == 0 from precondition
+    ld    c, #12                                   ;; B == 0 from precondition
 
     ldir
 
@@ -598,7 +615,7 @@ udp_create:
     ;; create IP packet
     ;; ----------------------------------------------------------------------
 
-    pop    bc             ;; destination MAC address
+    pop    bc                                      ;; destination MAC address
     ld     de, #ethertype_ip
     ld     hl, #ENC28J60_TXBUF1_START
     call   eth_create
@@ -612,7 +629,7 @@ udp_create:
 
     ;; FALL THROUGH and continue execution in the IP header defaults
 
-;; ============================================================================
+;; ===========================================================================
 ;; IP header defaults
 ;; https://en.wikipedia.org/wiki/IPv4#Header
 ;;
@@ -621,7 +638,7 @@ udp_create:
 ;; This is a table of IP header defaults, combined with the final parts
 ;; of the code in udp_create and the initial parts of ip_receive.
 ;;
-;; The length field is only a placeholder (the actual value is set at runtime).
+;; The length field is only a placeholder (actual value set at runtime).
 ;; The ID field is arbitrary when the Don't Fragment flag is set, according to
 ;; RFC 6864:
 ;;
@@ -629,7 +646,7 @@ udp_create:
 ;;   atomic datagrams to any value.
 ;;
 ;; https://datatracker.ietf.org/doc/html/rfc6864#section-4.1
-;; ============================================================================
+;; ===========================================================================
 
 ip_header_defaults:                          ;; IP header meaning
                                              ;; -----------------
@@ -646,9 +663,9 @@ ip_header_defaults:                          ;; IP header meaning
 
     ;; IP header data continues as the first three bytes of ip_receive below
 
-;; ############################################################################
+;; ###########################################################################
 ;; ip_receive
-;; ############################################################################
+;; ###########################################################################
 
 ip_receive:
 
@@ -932,7 +949,7 @@ handle_ip_or_arp_packet:
     ;; -----------------------------------------------------------------------
 
     ld   hl, #rx_frame
-    ld   e, #ARP_OFFSET_SHA                             ;; all bytes up to SHA
+    ld   e, #ARP_OFFSET_SHA                           ;; all 8 bytes up to SHA
     rst  enc28j60_write_memory_small
 
     ;; -----------------------------------------------------------------------
@@ -1093,24 +1110,6 @@ eth_send_frame:
     rst  enc28j60_write_register16
 
     ;; -----------------------------------------------------------------------
-    ;; Poll for link to come up (if it has not already)
-    ;;
-    ;; NOTE: this code assumes the MIREGADR/MICMD registers to be configured
-    ;;       for continuous scanning of PHSTAT2 -- see eth_init
-    ;; -----------------------------------------------------------------------
-
-    ld    e, #2                                            ;; bank 2 for MIRDH
-    rst   enc28j60_select_bank
-
-    ;; -----------------------------------------------------------------------
-    ;; Poll MIRDH until PHSTAT2_HI_LSTAT is set.
-    ;; -----------------------------------------------------------------------
-
-    ld    de, #READ_MAC_MII_REGISTER | MIRDH
-    ld    hl, #PHSTAT2_HI_LSTAT * 0x100 + PHSTAT2_HI_LSTAT
-    call  poll_register
-
-    ;; -----------------------------------------------------------------------
     ;; Errata, item 10:
     ;;
     ;; Reset transmit logic before transmitting a frame:
@@ -1145,64 +1144,15 @@ eth_send_frame:
     ld    hl, #(0x0100 * ECON1_TXRTS)  +  (OPCODE_BFS | ECON1)
     rst   enc28j60_write8plus8
 
-    ld    l, b                                                       ;; L := 0
-    ;; keep H==ECON1_TXRTS from above, B==0 from enc28j60_write8plus8,
-    ;; so this sets HL := 0x0100 * ECON1_TXRTS
+    ld    c, #ECON1
 
-    ld    de, #READ_ETH_REGISTER | ECON1
-
-    ;; FALL THROUGH to poll_register
-
-
-;; ---------------------------------------------------------------------------
-;; Subroutine: poll indicated ETH/MAC/MII register until
-;;
-;;   (reg & mask) == expected_value
-;;
-;; Fails if the condition is not fulfilled within a few seconds.
-;;
-;; Call with registers:
-;;
-;; DE=register, as for enc28j60_read_register
-;; H=mask
-;; L=expected_value
-;;
-;; Returns with A == 0, Z flag set, and carry cleared.
-;;
-;; Destroys AF, BC. B will be zero on exit.
-;; ---------------------------------------------------------------------------
-
-poll_register:
-
-    xor    a, a                              ;; 256 frames == approx. 5 seconds
-00001$:
-    ex     af, af'
+poll_econ1:
     call   enc28j60_read_register
 
-    and    a, h
-    sub    a, l
+    and    a, h                                 ;; H == ECON1_TXRTS from above
     ret    z
 
-    halt
-
-    ex     af, af'
-    dec    a
-
-    jr     nz, 00001$
-
-    ;; A is now 0 == FATAL_INTERNAL_ERROR
-
-fail:
-
-    ;; -----------------------------------------------------------------------
-    ;; It would make some sense to RESET the ENC28J60 here. However, any
-    ;; outgoing (but not yet transmitted) packets would then be lost, and
-    ;; possibly confuse debugging.
-    ;; -----------------------------------------------------------------------
-
-    di
-    out (ULA_PORT), a
-    halt
+    jr     poll_econ1
 
 ;; ---------------------------------------------------------------------------
 ;; Called by UDP when a BOOTP packet has been received.
@@ -1252,10 +1202,6 @@ bootp_receive:
     ;; -----------------------------------------------------------------------
 
     ld   de, #rx_frame + IPV4_HEADER_SIZE + UDP_HEADER_SIZE + BOOTP_OFFSETOF_FILE
-
-    ;; -----------------------------------------------------------------------
-    ;; an empty filename is interpreted as a request to load 'menu.dat'
-    ;; -----------------------------------------------------------------------
 
     ld   a, (de)
     or   a, a

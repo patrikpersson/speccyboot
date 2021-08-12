@@ -41,8 +41,6 @@ MAC_ADDR_3 = 0x1b
 MAC_ADDR_4 = 0x7a
 MAC_ADDR_5 = 0xb3
 
-TICK_PER_SECOND   = 50
-
 
 ULA_PORT   = 0xFE
 
@@ -52,6 +50,7 @@ ULA_PORT   = 0xFE
 
 MEMCFG_ADDR         = 0x7ffd
 MEMCFG_PLUS_ADDR    = 0x1ffd
+
 MEMCFG_ROM_48K      = 0x10
 MEMCFG_LOCK         = 0x20
 MEMCFG_PLUS_ROM_48K = 0x04
@@ -116,7 +115,6 @@ ATTR_DIGIT_ROW = 0x5a00
 ;; codes for fail(), displayed as border colours
 ;; ----------------------------------------------------------------------------
 
-FATAL_INTERNAL_ERROR      = BLACK
 FATAL_FILE_NOT_FOUND      = RED
 
 ;; ----------------------------------------------------------------------------
@@ -130,16 +128,8 @@ FATAL_FILE_NOT_FOUND      = RED
 ;; ----------------------------------------------------------------------------
 
      .globl memory_compare
-
      .globl memory_compare_4_bytes          ;; sets B to 4
 
-
-;; ----------------------------------------------------------------------------
-;; Set border to the value of register A, and halt the machine (DI+HALT).
-;; Defined in tftp.asm.
-;; ----------------------------------------------------------------------------
-
-    .globl fail
 
 ;; ----------------------------------------------------------------------------
 ;; Divides A by B. Returns result in C and remainder in A.
@@ -161,6 +151,22 @@ FATAL_FILE_NOT_FOUND      = RED
 
     .globl print_char
 
+
+;; ----------------------------------------------------------------------------
+;; print_line
+;;
+;; Print string, terminated by '.' (that is, _not_ NUL). The string is
+;; truncated to the end of the line, and padded with spaces.
+;;
+;; On entry:
+;;
+;;  DE: bitmap VRAM position
+;;  HL: string
+;; ----------------------------------------------------------------------------
+
+    .globl print_line
+
+
 ;; ----------------------------------------------------------------------------
 ;; show_attr_digit
 ;;
@@ -173,8 +179,8 @@ FATAL_FILE_NOT_FOUND      = RED
 ;; ----------------------------------------------------------------------------
 
     .globl show_attr_digit
-
     .globl show_attr_digit_right                                ;; with L := 24
+
 
 ;; ----------------------------------------------------------------------------
 ;; alternate entrypoint for show_attr_digit:

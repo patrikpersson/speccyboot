@@ -142,3 +142,28 @@ show_attr_char_pixel_set:
     add   hl, bc                                         ;; next row on screen
 
     jr    show_attr_digit_row_loop
+
+
+;; ###########################################################################
+;; print_line
+;; ###########################################################################
+
+print_line:
+
+    ld   a, (hl)
+    cp   a, #'.'
+    jr   nz, no_padding
+    ld   a, #' '
+    .db  JR_NZ            ;; Z is set here, so this will skip the INC HL below
+
+no_padding:
+
+    inc  hl
+
+    call print_char
+
+    ld   a, e
+    and  a, #0x1f
+    jr   nz, print_line
+
+    ret

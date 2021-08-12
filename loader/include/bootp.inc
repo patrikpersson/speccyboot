@@ -121,12 +121,12 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; ------------------------------------------------------------------------
     ;; part 2: 20 bytes of zeros
     ;; Use bitmap VRAM as source of 20 zero-valued bytes. The entire range
-    ;; 0x4000..0x5800 is currently zero, so the low address byte is
+    ;; 0x4800..0x5000 is currently zero, so the low address byte is
     ;; inconsequential.
     ;; ------------------------------------------------------------------------
 
     ld   e, #BOOTP_PART2_SIZE
-    ld   h, #>BITMAP_BASE
+    ld   h, #0x48
     rst  enc28j60_write_memory_small
 
     ;; ------------------------------------------------------------------------
@@ -141,7 +141,7 @@ BOOTP_OFFSETOF_FILE = (BOOTP_PART1_SIZE + BOOTP_PART2_SIZE + BOOTP_PART3_SIZE + 
     ;; ------------------------------------------------------------------------
 
     ld   de, #BOOTP_PART4_SIZE
-    ld   h, #>BITMAP_BASE
+    ld   h, #0x48
     call ip_append_data_and_send
 
     .endm

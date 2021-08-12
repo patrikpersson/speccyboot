@@ -103,14 +103,14 @@ enc28j60_read_memory:
     ex    af, af'              ;; to primary AF
 
     ;; =======================================================================
-    ;; each word_loop iteration (16 bits) takes 965.0916 T-states (average)
-    ;;   <=> 58.03 kbit/s  (48k machines @3.5MHz)
-    ;;       58.80 kbit/s  (128k machines @3.54690MHz)
+    ;; each word_loop iteration (16 bits) takes 913.0916 T-states (average)
+    ;;   <=> 61.33 kbit/s  (48k machines @3.5MHz)
+    ;;       62.15 kbit/s  (128k machines @3.54690MHz)
     ;; =======================================================================
 
 word_loop:
 
-    call spi_read_byte_to_memory      ;; 17+442.0458
+    call spi_read_byte_to_memory      ;; 17+416.0458
 
     ld   e, a                         ;; 4
 
@@ -121,7 +121,7 @@ word_loop:
 
     ld   a, b                         ;; 4      D := 0, preserve Z flag
 
-    call nz, spi_read_byte_to_memory  ;; 17+442.0458
+    call nz, spi_read_byte_to_memory  ;; 17+416.0458
 
     ld   d, a                         ;; 4
 
@@ -194,13 +194,14 @@ spi_read_byte_to_memory:
 
     exx                               ;;  4
 
-    ld   e, #1                        ;;  7
-spi_byte_inline_loop:
+    READ_BIT_TO_E
+    READ_BIT_TO_E
+    READ_BIT_TO_E
+    READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E
     READ_BIT_TO_E                     ;; 376  (47 * 8)
-    jr   nc, spi_byte_inline_loop     ;; 12 + 7
 
     ld   (hl), e                      ;;  7
     inc  hl                           ;;  6
@@ -224,15 +225,15 @@ spi_byte_inline_loop:
 
     ret                               ;; 10
                                       ;; ---
-                                      ;; 442 T-states (..RET NZ)
-                                      ;; 450 T-states (..DEC B; RET)
+                                      ;; 416 T-states (..RET NZ)
+                                      ;; 424 T-states (..DEC B; RET)
 
     ;; -------------------------------------------------------------
     ;; T-state calculation, assuming a fully loaded TFTP packet:
     ;; 8 (UDP header) + 4 (TFTP header) + 512 (TFTP payload) == 524
     ;;
-    ;; Results in 3 long instances (450) and 521 short ones (442),
-    ;; so (3*450+521*442)/524 == 442.0458 T-states (average)
+    ;; Results in 3 long instances (424) and 521 short ones (416),
+    ;; so (3*424+521*416)/524 == 416.0458 T-states (average)
     ;; -------------------------------------------------------------
 
 
@@ -292,48 +293,32 @@ add_final_carry_and_store_checksum:
     ret
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; enc28j60_read_register
-;; ############################################################################
+;; ###########################################################################
 
 enc28j60_read_register:
 
-    ;; ------------------------------------------------------------------------
-    ;; start transaction: RCR = 0x00
-    ;; ------------------------------------------------------------------------
+    ;; -----------------------------------------------------------------------
+    ;; opcode OPCODE_RCR == 0x00, so C is good as it is
+    ;; -----------------------------------------------------------------------
 
-    ld    c, e
-    rst   spi_write_byte
+    rst  spi_write_byte
 
-    ;; ------------------------------------------------------------------------
-    ;; Set B to either 8 or 16, since reading MAC and MII registers requires
-    ;; ignoring a dummy byte
-    ;; ------------------------------------------------------------------------
-
-    ld   b, d
-    call read_bits_to_c
+    call spi_read_byte_to_c
 
     jr   do_end_transaction
 
 
-;; ############################################################################
+;; ###########################################################################
 ;; spi_read_byte_to_c
-;; ############################################################################
+;; ###########################################################################
 
 spi_read_byte_to_c:
+
     ld   b, #8
 
-    ;; FALL THROUGH to read_bits_to_c
-
-;; ===========================================================================
-;; helper: read_bits_to_c
-;;
-;; Reads B (typically 8) bits into C. Destroys AF, returns with B==0.
-;; Execution time: 56*B + 13 *(B-1) + 8 + 10 = 69*B + 5
-;; ===========================================================================
-
 read_bits_to_c:
-
     SPI_READ_BIT_TO   c
     djnz  read_bits_to_c
     ret
