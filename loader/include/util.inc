@@ -168,6 +168,15 @@ FATAL_FILE_NOT_FOUND      = RED
 
 
 ;; ----------------------------------------------------------------------------
+;; heading
+;;
+;; Presentation heading ("SpeccyBoot vX"), terminated by '.'
+;; ----------------------------------------------------------------------------
+
+    .globl heading
+
+
+;; ----------------------------------------------------------------------------
 ;; show_attr_digit
 ;;
 ;; show huge digit in attributes, on row ATTR_DIGIT_ROW and down

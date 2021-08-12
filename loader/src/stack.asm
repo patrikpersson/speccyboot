@@ -288,11 +288,6 @@ packet_received:
 
     jr    main_loop
 
-heading:
-    .ascii "SpeccyBoot "
-    .db    VERSION + '0'
-    .db    '.'
-
 
 ;; ############################################################################
 ;; eth_init
@@ -344,7 +339,6 @@ eth_init:
     ;; ========================================================================
 
     ld    hl, #eth_register_defaults
-
 
 eth_init_registers_loop:
 
