@@ -118,8 +118,7 @@ ATTR_DIGIT_ROW = 0x5a00
 FATAL_FILE_NOT_FOUND      = RED
 
 ;; ----------------------------------------------------------------------------
-;; Compare memory blocks pointed to by HL and DE. Register B indicates the
-;; number of bytes to compare (so, max 256).
+;; Compare 4-byte memory blocks pointed to by HL and DE.
 ;;
 ;; On return, Z is set if blocks are equal.
 ;; On a successful compare, B is zero, and HL and DE point to the
@@ -127,8 +126,7 @@ FATAL_FILE_NOT_FOUND      = RED
 ;; A is the difference in the last comparison (== 0 on success).
 ;; ----------------------------------------------------------------------------
 
-     .globl memory_compare
-     .globl memory_compare_4_bytes          ;; sets B to 4
+     .globl memory_compare_4_bytes
 
 
 ;; ----------------------------------------------------------------------------

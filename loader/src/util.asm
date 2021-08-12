@@ -51,8 +51,8 @@ a_div_b_loop:
     sub   a, b
     jr    a_div_b_loop
 
+
 ;; ############################################################################
-;; memory_compare
 ;; memory_compare_4_bytes
 ;; ############################################################################
   
@@ -61,13 +61,13 @@ a_div_b_loop:
 memory_compare_4_bytes:
     ld   b, #4
 
-memory_compare:
+memory_compare_loop:
     ld   a, (de)
     sub  a, (hl)
     ret  nz
     inc  de
     inc  hl
-    djnz memory_compare
+    djnz memory_compare_loop
     ret
 
 
@@ -76,6 +76,8 @@ memory_compare:
 ;;
 ;; NOTE: the following opcode (LD L, #n) terminates the string (same as '.')
 ;; ############################################################################
+  
+    .area _CODE
 
 heading:
 
@@ -161,6 +163,8 @@ show_attr_char_pixel_set:
 ;; ###########################################################################
 ;; print_line
 ;; ###########################################################################
+  
+    .area _CODE
 
 print_line:
 
