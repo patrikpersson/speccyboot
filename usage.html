@@ -129,8 +129,7 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
 
     <h3>Troubleshooting</h3>
 
-    <p>If the SpeccyBoot seems stuck, the border colour can give a hint as to
-    what went wrong:</p>
+    <p>If the SpeccyBoot seems stuck, look at the border colour:</p>
 
     <table id="errortable">
       <tr>
@@ -157,7 +156,7 @@ sudo cp <span class="scriptcomment">&lt;path-to-snapshots&gt;</span>/*.z80 $SNAP
             due to a missing (or faulty) server response:
           </p>
           <ul style="margin-bottom:0;padding:0 0 0 0.5rem">
-            <li>If all you see is a flashing green/black blank cursor on a blank screen, BOOTP communication failed.</li>
+            <li>If all you see is a &quot;SpeccyBoot&quot; heading and a flashing green/black cursor, but no IP addresses, BOOTP communication failed.</li>
             <li>If you see two IP addresses on screen (local+server) and a flashing green/black <code style="background-color:#0f0;color:#000">S</code>, TFTP communication failed.</li>
           </ul>
         </td>
