@@ -128,18 +128,121 @@ tftp_state:
 ;; ############################################################################
 
     ;; ------------------------------------------------------------------------
-    ;; present heading, to indicate BOOTP is working
+    ;; present heading and flashing cursor, to indicate BOOTP is working
     ;; ------------------------------------------------------------------------
 
     ld   hl, #heading
     ld   de, #HEADING_POS
     call print_line
 
+    ;; ------------------------------------------------------------------------
+    ;; BLACK INK + GREEN PAPER + FLASH + BRIGHT == 0xe0 == <LOCAL_IP_ATTR
+    ;; ------------------------------------------------------------------------
+
+    ld   hl, #LOCAL_IP_ATTR
+    ld   (hl), l
+
     ;; ========================================================================
     ;; system initialization
     ;; ========================================================================
 
-    call  eth_init
+
+
+;; ############################################################################
+;; eth_init
+;; ############################################################################
+
+eth_init:
+
+    ;; ========================================================================
+    ;; reset Ethernet controller
+    ;;
+    ;; Data sheet, Table 16.3: Trstlow = 400ns
+    ;; (minimal RST low time, shorter pulses are filtered out)
+    ;;
+    ;; 400ns < 2 T-states == 571ns    (no problem at all)
+    ;; ========================================================================
+
+    xor  a, a                      ;; RST low
+    out  (SPI_OUT), a
+    ld   a, #SPI_IDLE              ;; RST high again
+    out  (SPI_OUT), a
+
+    ;; ------------------------------------------------------------------------
+    ;; Data sheet, #2.2:
+    ;;
+    ;; Wait for the OST (Oscillator Startup Timer) to become ready. The data
+    ;; sheet indicates this takes about 300 us.
+    ;;
+    ;; Wait for three frame ticks (40-60 ms). This is obviously overkill, but
+    ;; saves the hassle of polling ESTAT.CLKRDY.
+    ;;
+    ;; This delay also covers the requirement in #11.2:
+    ;;
+    ;; Wait at least 50us after a System Reset before accessing PHY registers.
+    ;; ------------------------------------------------------------------------
+
+    halt
+    halt
+    halt
+
+    ;; ========================================================================
+    ;; set up initial register values for ENC28J60
+    ;; ========================================================================
+
+    ld    hl, #eth_register_defaults
+
+eth_init_registers_loop:
+
+    ld    c, (hl)                               ;; register descriptor, 8 bits
+
+    inc   hl
+
+    ;; ------------------------------------------------------------------------
+    ;; build opcode in C, as 0x40 | (register id), and bank (0..3) in A
+    ;;
+    ;; shift in bits 1+0 to C, shift out bank bits 1 and 0 into A
+    ;; (this shifting is the reason why the bank bits are reversed in the
+    ;; table below)
+    ;; ------------------------------------------------------------------------
+
+    xor   a, a
+
+    scf
+    rr    c      ;; shift 1 into A bit 7, shift out bank bit 1
+    rla          ;; shift bank bit 1 into C bit 0, shift out 0
+    rr    c      ;; shift 0 into A bit 7, shift out bank bit 0
+    rla          ;; shift bank bit 0 into C bit 0
+
+    ;; ------------------------------------------------------------------------
+    ;; now C == opcode, set B := register value
+    ;; ------------------------------------------------------------------------
+
+    ld    b, (hl)
+    inc   hl
+
+    push  bc                                             ;; push opcode + value
+
+    ;; ------------------------------------------------------------------------
+    ;; select register bank
+    ;; ------------------------------------------------------------------------
+
+    exx           ;; keep HL
+
+    ld    e, a
+    rst   enc28j60_select_bank
+
+    ;; ------------------------------------------------------------------------
+    ;; write register value
+    ;; ------------------------------------------------------------------------
+
+    pop   hl                                           ;; recall opcode + value
+    rst   enc28j60_write8plus8
+
+    exx
+
+    bit   7, (hl)                                             ;; end of table?
+    jr    z, eth_init_registers_loop
 
     ;; -----------------------------------------------------------------------
     ;; The ENC28J60 has facilities for waiting for the link to become active,
@@ -153,13 +256,15 @@ tftp_state:
     ;; to waking up from sleep mode, it is taken here as an indication that
     ;; the link normally comes up in "many milliseconds". This is vague.
     ;;
-    ;; A delay of two frame interrupts (20-40 milliseconds) is assumed to be
+    ;; A delay of three frame interrupts (40-60 milliseconds) is assumed to be
     ;; enough here. This is admittedly crude, but if the link takes longer
     ;; time than this to come up, all that happens it that we will have to
     ;; wait for the (then lost) BOOTP REQUEST to be retransmitted. This is
-    ;; not critical.
+    ;; not critical, but seems to work (at least) as good as polling for an
+    ;; active link.
     ;; -----------------------------------------------------------------------
     
+    halt
     halt
     halt
 
@@ -281,110 +386,6 @@ packet_received:
 
     jr    main_loop
 
-
-;; ############################################################################
-;; eth_init
-;; ############################################################################
-
-eth_init:
-
-    ;; ========================================================================
-    ;; reset Ethernet controller
-    ;;
-    ;; Data sheet, Table 16.3: Trstlow = 400ns
-    ;; (minimal RST low time, shorter pulses are filtered out)
-    ;;
-    ;; 400ns < 2 T-states == 571ns    (no problem at all)
-    ;; ========================================================================
-
-    xor  a, a                      ;; RST low
-    out  (SPI_OUT), a
-    ld   a, #SPI_IDLE              ;; RST high again
-    out  (SPI_OUT), a
-
-    ;; ------------------------------------------------------------------------
-    ;; Data sheet, #2.2:
-    ;;
-    ;; Wait for the OST (Oscillator Startup Timer) to become ready. The data
-    ;; sheet indicates this takes about 300 us.
-    ;;
-    ;; Wait for two frame ticks (20-40 ms). This is obviously overkill, but
-    ;; saves the hassle of polling ESTAT.CLKRDY.
-    ;;
-    ;; This delay also covers the requirement in #11.2:
-    ;;
-    ;; Wait at least 50us after a System Reset before accessing PHY registers.
-    ;; ------------------------------------------------------------------------
-
-    halt
-    halt
-
-    ;; ------------------------------------------------------------------------
-    ;; carry is 0 (from XOR A, A above),
-    ;; and HL needs to be 0x0000 (ENC28J60_RXBUF_START)
-    ;; ------------------------------------------------------------------------
-
-    sbc   hl, hl
-    ld    (next_frame_to_read), hl
-
-    ;; ========================================================================
-    ;; set up initial register values for ENC28J60
-    ;; ========================================================================
-
-    ld    hl, #eth_register_defaults
-
-eth_init_registers_loop:
-
-    ld    c, (hl)                               ;; register descriptor, 8 bits
-    bit   7, c
-    ret   nz
-
-    inc   hl
-
-    ;; ------------------------------------------------------------------------
-    ;; build opcode in C, as 0x40 | (register id), and bank (0..3) in A
-    ;;
-    ;; shift in bits 1+0 to C, shift out bank bits 1 and 0 into A
-    ;; (this shifting is the reason why the bank bits are reversed in the
-    ;; table below)
-    ;; ------------------------------------------------------------------------
-
-    xor   a, a
-
-    scf
-    rr    c      ;; shift 1 into A bit 7, shift out bank bit 1
-    rla          ;; shift bank bit 1 into C bit 0, shift out 0
-    rr    c      ;; shift 0 into A bit 7, shift out bank bit 0
-    rla          ;; shift bank bit 0 into C bit 0
-
-    ;; ------------------------------------------------------------------------
-    ;; now C == opcode, set B := register value
-    ;; ------------------------------------------------------------------------
-
-    ld    b, (hl)
-    inc   hl
-
-    push  bc                                             ;; push opcode + value
-
-    ;; ------------------------------------------------------------------------
-    ;; select register bank
-    ;; ------------------------------------------------------------------------
-
-    exx           ;; keep HL
-
-    ld    e, a
-    rst   enc28j60_select_bank
-
-    ;; ------------------------------------------------------------------------
-    ;; write register value
-    ;; ------------------------------------------------------------------------
-
-    pop   hl                                           ;; recall opcode + value
-    rst   enc28j60_write8plus8
-
-    exx
-
-    jr    eth_init_registers_loop
 
     ;; ------------------------------------------------------------------------
     ;; ETH register defaults for initialization

@@ -288,15 +288,11 @@ menu_hit_enter:
 
     call get_filename_pointer
 
-    push hl                         ;; push arg for tftp_request_snapshot below
-
     ;; ------------------------------------------------------------------------
     ;; send a TFTP request for the snapshot
     ;; ------------------------------------------------------------------------
 
-    call eth_init
-
-    pop  de
+    ex   de, hl
     call tftp_request_snapshot
 
     ;; ------------------------------------------------------------------------
