@@ -185,19 +185,75 @@ wait_key_press:
 
   ld   l, c
 
-  ld   bc, #0x1234
+  ;; -------------------------------------------------------------------------
+  ;; select bank 3
+  ;; -------------------------------------------------------------------------
+
+  ld   c, #0x80 | 0x1f                             ;; BFS = 0x80, ECON1 = 0x1f
+  call spi_write_byte
+  ld   c, #0x03                                    ;; set bits 0..1, bank := 3
+  call spi_write_byte
+  call spi_end_transaction
+
+  ;; -------------------------------------------------------------------------
+  ;; read EREVID
+  ;; -------------------------------------------------------------------------
+
+  ld   c, #0x12                                    ;; RCR = 0x0, EREVID = 0x12
+  call spi_write_byte
+  call spi_read_byte_and_end_transaction
+
+  ;; -------------------------------------------------------------------------
+  ;; check the EWRPTH/L values read
+  ;; -------------------------------------------------------------------------
+
+  ld   de, #0x1234
   or   a, a                                                     ;; clear carry
-  sbc  hl, bc
+  sbc  hl, de
+
+  jr    nz, spi_check_failed
+
+  push  bc                                         ;; keep C == HW revision ID
 
   ld    de, #msg_spi_ok
   ld    bc, #msg_spi_ok_end-msg_spi_ok
 
-  jr   z, print_spi_result
+  call  PR_STRING
+
+  pop   bc
+  push  bc
+
+  ;; -------------------------------------------------------------------------
+  ;; print '1' or '0', depending on whether bit 4 in C is set
+  ;; -------------------------------------------------------------------------
+
+  ld    a, #'0'
+  bit   4, c
+  jr    z, print0
+  inc   a
+print0:
+  rst   #PRINT_A
+
+  ;; -------------------------------------------------------------------------
+  ;; translate lower 4 bits of version ID to a hex digit
+  ;; -------------------------------------------------------------------------
+
+  pop   bc
+  ld    a, c
+  and   a, #0x0f
+  add   a, #0x30
+  cp    a, #0x3a               ;; letter or digit?
+  jr    c, digit
+  add   a, #'A' - ('0' + 10)
+digit:
+  rst   #PRINT_A
+
+  jr    wait_key_and_restart
+
+spi_check_failed:
 
   ld    de, #msg_spi_fail
   ld    bc, #msg_spi_fail_end-msg_spi_fail
-
-print_spi_result:
   call  PR_STRING
 
   ;; =========================================================================
@@ -274,7 +330,7 @@ reprogram:
 
   ld    a, #NBR_PAGES / 2
 
-  ld    bc, #0x5800 + 14 * 32       ;; attribute line 14
+  ld    bc, #0x5800 + 16 * 32       ;; attribute line 16
 
 write_block_loop:
 
@@ -506,7 +562,7 @@ msg_press_key:
   .db   0x14, 0, 0x13, 0      ;; INVERSE 0, BRIGHT 0
   .db   13, 13, 13
 
-  .ascii " 0. test SPI communication"
+  .ascii " 0. test SPI/ENC28J60 connection"
   .db   13, 13
 
   .ascii "or select EEPROM configuration:"
@@ -531,6 +587,7 @@ msg_writing_end:
 msg_ok:
   .db   0x11, 4, 0x13, 1      ;; INK 4, BRIGHT 1
   .ascii " OK "
+  .db   0x11, 7, 0x13, 0      ;; INK 7, BRIGHT 0
 msg_ok_end:
   
 msg_fail:
@@ -543,11 +600,15 @@ msg_fail:
 msg_fail_end:
 
 msg_spi_ok:
-  .db   13, 13, 13, 13
-  .ascii "SPI works, ENC28J60 response  "
+  .db   13, 13, 13
+  .ascii "SPI connection              "
   .db   0x11, 4, 0x13, 1                        ;; PAPER 4, BRIGHT 1
-  .ascii "OK"
+  .ascii " OK "
   .db   0x11, 7, 0x13, 0                        ;; PAPER 7, BRIGHT 0
+  .db   13, 13
+  .ascii "  detected ENC28J60 hw rev. "
+  .db   0x13, 1                                 ;; BRIGHT 1
+  .ascii "0x"
 msg_spi_ok_end:
 
 msg_spi_fail:
