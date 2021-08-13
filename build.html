@@ -168,9 +168,15 @@ make</pre>
             you should see the following screen:<br>
             <img class="fw-loader" src="fw-loader-1.png" /></li>
           <li>
-            If you are unsure whether your hardware is working, press 0 to run a (very basic) SPI self-test.
-            (The test communicates with the ENC28J60 using SPI.
-            It writes two ENC28J60 control registers and reads them back.)
+            <p>
+              If you are unsure whether your hardware is working, press 0 to run a (very basic) SPI self-test.
+              The test communicates with the ENC28J60 using SPI:
+              it writes two ENC28J60 control registers and reads them back.
+            </p>
+            <p>
+              If the self-test passes, the ENC28J60 hardware revision is also displayed,
+              as read from the lower 5 bits of the EREVID control register.
+            </p>
           </li>
           <li>Remove the JP1 jumper to enable EEPROM (if you hadn't already).</li>
           <li>
