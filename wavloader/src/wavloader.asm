@@ -4,7 +4,7 @@
 ;;
 ;; Part of SpeccyBoot <https://github.com/patrikpersson/speccyboot>
 ;;
-;; ----------------------------------------------------------------------------
+;; ---------------------------------------------------------------------------
 ;;
 ;; Copyright (c) 2009-  Patrik Persson
 ;;
@@ -29,16 +29,24 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 ;; OTHER DEALINGS IN THE SOFTWARE.
 ;;
-;; ============================================================================
+;; ===========================================================================
 
   ;; ROM switching control. EEPROM pages below are 16K halves of a 32K EEPROM,
   ;; paged using bit 4 of the control register. Page 0 is the default one.
 
-  EEPROM_OUT      = 0x28   ;; EEPROM paged out, internal ROM enabled, ETH reset
-  EEPROM_IN       = 0x08   ;; EEPROM paged in, internal ROM disabled, ETH reset
+  EEPROM_OUT      = 0x28  ;; EEPROM paged out, internal ROM enabled, ETH reset
+  EEPROM_IN       = 0x08  ;; EEPROM paged in, internal ROM disabled, ETH reset
   EEPROM_IN_PG0   = EEPROM_IN
   EEPROM_IN_PG1   = 0x18
-  ROMCS_CTL       = 0x9f   ;; SpeccyBoot EEPROM & SPI control register
+
+  SPI_CS   = 0x08
+  SPI_RST  = 0x40
+
+  PAGE_OUT = 0x20       ;; mask for paging out SpeccyBoot, paging in BASIC ROM
+
+  SPI_IDLE = PAGE_OUT + SPI_RST ;; SPI idle, MOSI=0, RST high, CS low, SCK low
+
+  SPI_CTL         = 0x9f   ;; SpeccyBoot EEPROM & SPI control register
 
   ;; EEPROM write protection config
   
@@ -54,7 +62,8 @@
 
   ;; Keyboard input
 
-  KBD_DIGITS_ROW  = 0xf7fe ;; keyboard row with keys 1..3
+  KBD_12345_ROW   = 0xf7fe
+  KBD_09876_ROW   = 0xeffe
 
   ;; Firmware parameters
 
@@ -71,6 +80,7 @@
   PRINT_A         = 0x10
   
   BEEPER          = 0x03b5
+  CLS             = 0x0db6
   CHAN_OPEN       = 0x1601
   PR_STRING       = 0x203c
   STACK_BC        = 0x2d2b
@@ -83,10 +93,14 @@
 
   ;; ensure the EEPROM is paged out, so it is safe to set switches to enable it
   ;; (useful when EEPROM contains garbage)
-  
+
+restart:
+
   ld    a, #EEPROM_OUT
-  out   (ROMCS_CTL), a
+  out   (SPI_CTL), a
   
+  call  CLS
+
   ld    a, #CHANNEL_S
   call  CHAN_OPEN
 
@@ -98,33 +112,145 @@
   ld    bc, #msg_press_key_end-msg_press_key
   call  PR_STRING
 
-  ld    bc, #KBD_DIGITS_ROW
 wait_key_press:
+  ld    bc, #KBD_12345_ROW
   in    a, (c)
   rra
-  jr nc, pressed1
+  ld    d, #CONFIG_28C16
+  jp nc, reprogram
   rra
-  jr nc, pressed2
+  ld    d, #CONFIG_28C64
+  jp nc, reprogram
   rra
-  jr nc, pressed3
+  ld    d, #CONFIG_28C256
+  jp nc, reprogram
   rra
-  jr c, wait_key_press
+  ld    d, #CONFIG_PLAIN
+  jp nc, reprogram
 
-  ld    a, #CONFIG_PLAIN
-  jr    set_config
+  ld    b, #>KBD_09876_ROW
+  in    a, (c)
+  rra
+  jr    c, wait_key_press
 
-pressed1:
-  ld    a, #CONFIG_28C16
-  jr    set_config
+  ;; =========================================================================
+  ;; HARDWARE TEST
+  ;; =========================================================================
 
-pressed2:
-  ld    a, #CONFIG_28C64
-  jr    set_config
+  ld    a, #'0'
+  rst   #PRINT_A
 
-pressed3:
-  ld    a, #CONFIG_28C256
+  ;; -------------------------------------------------------------------------
+  ;; reset ENC28J60
+  ;; -------------------------------------------------------------------------
 
-set_config:
+  xor  a, a                      ;; RST low
+  out  (SPI_CTL), a
+  ld   a, #SPI_IDLE              ;; RST high again
+  out  (SPI_CTL), a
+
+  ;; -------------------------------------------------------------------------
+  ;; write EWRPTH := 0x12
+  ;; -------------------------------------------------------------------------
+
+  ld   c, #0x43                                   ;; WCR = 0x40, EWRPTH = 0x03
+  call spi_write_byte
+  ld   c, #0x12
+  call spi_write_byte
+  call spi_end_transaction
+
+  ;; -------------------------------------------------------------------------
+  ;; write EWRPTL := 0x34
+  ;; -------------------------------------------------------------------------
+
+  ld   c, #0x42                                   ;; WCR = 0x40, EWRPTL = 0x02
+  call spi_write_byte
+  ld   c, #0x34
+  call spi_write_byte
+  call spi_end_transaction
+
+  ;; -------------------------------------------------------------------------
+  ;; read EWRPTH and EWRPTL
+  ;; -------------------------------------------------------------------------
+
+  ld   c, #0x03                                    ;; RCR = 0x0, EWRPTH = 0x03
+  call spi_write_byte
+  call spi_read_byte_and_end_transaction
+
+  ld   h, c                                                ;; keep ERDPTH in H
+
+  ld   c, #0x02                                    ;; RCR = 0x0, EWRPTH = 0x02
+  call spi_write_byte
+  call spi_read_byte_and_end_transaction
+
+  ld   l, c
+
+  ld   bc, #0x1234
+  or   a, a                                                     ;; clear carry
+  sbc  hl, bc
+
+  ld    de, #msg_spi_ok
+  ld    bc, #msg_spi_ok_end-msg_spi_ok
+
+  jr   z, print_spi_result
+
+  ld    de, #msg_spi_fail
+  ld    bc, #msg_spi_fail_end-msg_spi_fail
+
+print_spi_result:
+  call  PR_STRING
+
+  ;; =========================================================================
+  ;; WAIT FOR KEYPRESS, THEN RESTART
+  ;; =========================================================================
+
+wait_key_and_restart:
+
+  ld    de, #msg_press_key_to_restart
+  ld    bc, #msg_press_key_to_restart_end-msg_press_key_to_restart
+
+  call  PR_STRING
+
+  ld    bc, #<KBD_12345_ROW                          ;; scan all keys (B == 0)
+
+  ;; -------------------------------------------------------------------------
+  ;; wait until all keys are released
+  ;; -------------------------------------------------------------------------
+
+wait_any_key0:
+  in    a, (c)
+  cpl
+  and   a, #0x1f
+  jr    nz, wait_any_key0
+
+  ;; -------------------------------------------------------------------------
+  ;; wait for any key to be pressed
+  ;; -------------------------------------------------------------------------
+
+wait_any_key1:
+  in    a, (c)
+  cpl
+  and   a, #0x1f
+  jr    z, wait_any_key1
+
+  ;; -------------------------------------------------------------------------
+  ;; wait until all keys are released
+  ;; -------------------------------------------------------------------------
+
+wait_any_key2:
+  in    a, (c)
+  cpl
+  and   a, #0x1f
+  jr    nz, wait_any_key2
+
+  jp    restart
+
+  ;; =========================================================================
+  ;; FIRMWARE PROGRAMMING
+  ;; =========================================================================
+
+reprogram:
+  ld    a, d
   ld    (config), a
   rst   #PRINT_A
 
@@ -139,7 +265,7 @@ set_config:
   di
 
   ld    a, #EEPROM_IN
-  out   (ROMCS_CTL), a
+  out   (SPI_CTL), a
 
   ;; perform the write in chunks of EEPROM_PAGESIZE
   
@@ -185,7 +311,7 @@ verify_loop:
 verify_done:
 
   ld    a, #EEPROM_OUT
-  out   (ROMCS_CTL), a
+  out   (SPI_CTL), a
 
   ei
   
@@ -218,7 +344,9 @@ success:
   
 do_beep:
   ld    de, #0x0105         ;; 4s @1046.52Hz, 0.5s @130.815Hz
-  jp    BEEPER
+  call  BEEPER
+
+  jp    wait_key_and_restart
 
   ;; --------------------------------------------------------------------------  
   ;; Write one block (32 bytes)
@@ -270,28 +398,28 @@ wp_28c256:
   ;; Perform the special write-lock sequence supported by some 32K EEPROMs
 
   ld    a, #EEPROM_IN_PG1
-  out   (ROMCS_CTL), a
+  out   (SPI_CTL), a
 
   ld    a, #0xaa
   ld    (0x1555), a    ;; page 1 enabled => address on bus is 0x5555
   call  write_delay
 
   ld    a, #EEPROM_IN_PG0
-  out   (ROMCS_CTL), a
+  out   (SPI_CTL), a
   
   ld    a, #0x55
   ld    (0x2aaa), a
   call  write_delay
 
   ld    a, #EEPROM_IN_PG1
-  out   (ROMCS_CTL), a
+  out   (SPI_CTL), a
 
   ld    a, #0xaa
   ld    (0x1555), a    ;; page 1 enabled => address on bus is 0x5555
   call  write_delay
 
   ld    a, #EEPROM_IN_PG0
-  out   (ROMCS_CTL), a
+  out   (SPI_CTL), a
 
 wp_done:
   ld    bc, #EEPROM_PAGESIZE
@@ -316,6 +444,59 @@ write_delay_loop:
   ret
 
   ;; --------------------------------------------------------------------------  
+  ;; spi_write_byte: writes SPI byte in C
+  ;; --------------------------------------------------------------------------
+
+spi_write_byte:
+
+  ld    b, #8
+spi_write_byte_loop:
+
+  ld    a, #SPI_IDLE+SPI_IDLE
+  sla   c
+  rra
+  out   (SPI_CTL), a
+  inc   a
+  out   (SPI_CTL), a
+
+  djnz  spi_write_byte_loop
+  ret
+
+  ;; --------------------------------------------------------------------------  
+  ;; spi_read_byte: reads SPI byte into C, then end transaction
+  ;; --------------------------------------------------------------------------
+
+spi_read_byte_and_end_transaction:
+
+  ld    b, #8
+spi_read_byte_loop:
+
+  ld    a, #SPI_IDLE
+  out   (SPI_CTL), a
+  inc   a
+  out   (SPI_CTL), a
+  in    a, (SPI_CTL)
+  rra
+  rl    c
+
+  djnz  spi_read_byte_loop
+
+  ;; FALL THROUGH to spi_end_transaction
+
+  ;; --------------------------------------------------------------------------  
+  ;; spi_end_transaction
+  ;; --------------------------------------------------------------------------
+
+spi_end_transaction:
+
+  ld  a, #SPI_IDLE
+  out (SPI_CTL), a
+  ld  a, #SPI_IDLE+SPI_CS
+  out (SPI_CTL), a
+
+  ret
+
+  ;; --------------------------------------------------------------------------  
   ;; Messages
   ;; --------------------------------------------------------------------------
   
@@ -324,7 +505,11 @@ msg_press_key:
   .ascii " SpeccyBoot firmware installer  "
   .db   0x14, 0, 0x13, 0      ;; INVERSE 0, BRIGHT 0
   .db   13, 13, 13
-  .ascii "select EEPROM configuration:"
+
+  .ascii " 0. test SPI communication"
+  .db   13, 13
+
+  .ascii "or select EEPROM configuration:"
   .db   13, 13
   .ascii  " 1. 28C16  with write protection"
   .db   13
@@ -356,7 +541,30 @@ msg_fail:
   .db   0x10, 0, 0x11, 7, 0x13, 0, 0x12, 0      ;; INK 0, PAPER 7, BRIGHT 0, FLASH 0
   .ascii " at address "
 msg_fail_end:
-  
+
+msg_spi_ok:
+  .db   13, 13, 13, 13
+  .ascii "SPI works, ENC28J60 response  "
+  .db   0x11, 4, 0x13, 1                        ;; PAPER 4, BRIGHT 1
+  .ascii "OK"
+  .db   0x11, 7, 0x13, 0                        ;; PAPER 7, BRIGHT 0
+msg_spi_ok_end:
+
+msg_spi_fail:
+  .db   13, 13, 13, 13
+  .ascii "SPI check "
+  .db   0x10, 6, 0x11, 2, 0x13, 1, 0x12, 1      ;; INK 6, PAPER 2, BRIGHT 1, FLASH 1
+  .ascii "FAILED"
+  .db   0x10, 0, 0x11, 7, 0x13, 0, 0x12, 0      ;; INK 0, PAPER 7, BRIGHT 0, FLASH 0
+msg_spi_fail_end:
+
+msg_press_key_to_restart:
+  .db   0x16, 21, 8                             ;; AT (21, 8)
+  .db   0x12, 1, 0x13, 1                        ;; FLASH 1, BRIGHT 1
+  .ascii " PRESS ANY KEY "
+  .db   0x12, 0, 0x13, 0                        ;; FLASH 0, BRIGHT 0
+msg_press_key_to_restart_end:
+
   ;; --------------------------------------------------------------------------  
   ;; Selected configuration
   ;; --------------------------------------------------------------------------
