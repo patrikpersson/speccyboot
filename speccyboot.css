@@ -124,6 +124,7 @@ img.fw-loader {
   margin: 1rem auto 1rem 2rem;
   width: 50%;
   border: 1px solid #ddd;
+  filter: contrast(1.7);
 }
 
 li {
