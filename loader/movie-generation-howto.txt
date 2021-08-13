@@ -1,0 +1,6 @@
+# mkdir png scaled
+# fuse-gtk --debugger-command '' --movie-start movie.fmf --rate 1 &
+# fmfconv --png -i movie.fmf -o png/frame0.png
+# for F in png/frame0-*; do echo $F; convert $F -scale 200% scaled/$(basename $F); done
+# apngasm animation.png scaled/frame0-* 1 50
+
