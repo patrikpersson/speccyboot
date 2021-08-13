@@ -146,7 +146,7 @@ make</pre>
         </a>
 
         <p>
-          If you have an (E)EPROM programmer, you can use that, of course.
+          If you have an (E)EPROM programmer, you can use that instead, of course.
           (In that case you can safely leave out the EEPROM write logic from your hardware too.)
         </p>
 
@@ -167,6 +167,11 @@ make</pre>
             software above, to the Spectrum. After about 30 seconds of loading,
             you should see the following screen:<br>
             <img class="fw-loader" src="fw-loader-1.png" /></li>
+          <li>
+            If you are unsure whether your hardware is working, press 0 to run a (very basic) SPI self-test.
+            (The test communicates with the ENC28J60 using SPI.
+            It writes two ENC28J60 control registers and reads them back.)
+          </li>
           <li>Remove the JP1 jumper to enable EEPROM (if you hadn't already).</li>
           <li>
             <p>Press 1, 2, 3, or 4 (depending on the EEPROM model you use). If you are unsure, try alternative 4.</p>
