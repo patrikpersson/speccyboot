@@ -182,10 +182,9 @@ eth_init:
     ;; Wait at least 50us after a System Reset before accessing PHY registers.
     ;; ------------------------------------------------------------------------
 
-    ld   b, #50
-delay1:
     halt
-    djnz delay1
+    halt
+    halt
 
     ;; ========================================================================
     ;; set up initial register values for ENC28J60
